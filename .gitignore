@@ -15,3 +15,6 @@ packages/api/prisma/dev.db-journal
 packages/api/prisma/migrations/*
 *.db
 *.db-journal
+
+# Core orchestration runtime PIDs
+.core/*.pid
