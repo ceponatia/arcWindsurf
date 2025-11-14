@@ -28,15 +28,23 @@ const BASE_RULES: string[] = SystemPromptSchema.parse(systemPromptJson).rules
 const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules
 
 function serializeCharacter(c: CharacterProfile) {
+  const rawPersonality = c.personality
+  const personalityLine = Array.isArray(rawPersonality)
+    ? `Personality Traits: ${(rawPersonality as string[]).map(p => truncate(p, 120)).join('; ')}`
+    : `Personality: ${truncate(rawPersonality, 400)}`
+
   return [
     `Character: ${c.name}`,
+    ('age' in c && typeof (c as { age?: unknown }).age === 'number') ? `Age: ${(c as { age?: number }).age}` : undefined,
     `Summary: ${c.summary}`,
     `Backstory: ${truncate(c.backstory, 1200)}`,
-    `Personality: ${truncate(c.personality, 400)}`,
+    personalityLine,
     c.appearance ? `Appearance: ${serializeAppearance(c.appearance)}` : undefined,
     `Goals: ${c.goals.join('; ')}`,
     `Speaking Style: ${c.speakingStyle}`,
     c.tags?.length ? `Tags: ${c.tags.join(', ')}` : undefined,
+    // scent is optional; guard via in-operator for forward/backward compat
+    ('scent' in c && (c as { scent?: unknown }).scent) ? serializeScent((c as { scent?: unknown }).scent) : undefined,
     serializeStyle(c) || undefined,
   ].filter(Boolean).join('\n')
 }
@@ -77,11 +85,22 @@ function serializeAppearance(a: CharacterProfile['appearance']): string {
     if (hairBits) parts.push(`Hair: ${hairBits}`)
   }
   if (obj.eyes?.color) parts.push(`Eyes: ${obj.eyes.color}`)
-  if (obj.heightCm) parts.push(`Height: ${obj.heightCm}cm`)
+  const anyObj = obj as unknown as { height?: string }
+  if (anyObj.height) parts.push(`Height: ${anyObj.height}`)
   if (obj.build) parts.push(`Build: ${obj.build}`)
   if (obj.features?.length) parts.push(`Features: ${obj.features.join(', ')}`)
   if (obj.description) parts.push(truncate(obj.description, 200))
   return parts.join('; ')
+}
+
+function serializeScent(s: unknown): string {
+  if (!s || typeof s !== 'object') return ''
+  const obj = s as { hairScent?: string; bodyScent?: string; perfume?: string }
+  const bits: string[] = []
+  if (typeof obj.hairScent === 'string') bits.push(`hair=${obj.hairScent}`)
+  if (typeof obj.bodyScent === 'string') bits.push(`body=${obj.bodyScent}`)
+  if (typeof obj.perfume === 'string') bits.push(`perfume=${truncate(obj.perfume, 40)}`)
+  return bits.length ? `Scent Hints: ${bits.join(', ')}` : ''
 }
 
 function summarizeHistory(messages: Message[], keepLast: number, maxChars: number) {

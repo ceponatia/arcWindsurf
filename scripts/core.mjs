@@ -116,6 +116,30 @@ async function start() {
   await ensureCoreDir()
   console.log('[core] Starting orchestration...')
 
+  // Ensure schemas package is freshly built so runtime validation uses latest definitions.
+  console.log('[core] Building schemas package...')
+  try {
+    await runCmd('pnpm', ['-F', '@minimal-rpg/schemas', 'build'])
+    console.log('[core] Schemas build complete.')
+  } catch (err) {
+    console.error('[core] Schemas build failed:', err.message || err)
+    process.exit(1)
+  }
+
+  // Data validation (fail-fast before any other startup work)
+  console.log('[core] Validating data profiles...')
+  try {
+    const code = await runCmd('node', ['./scripts/validate-data.js'])
+    if (code !== 0) {
+      throw new Error('Data validation exited non-zero')
+    }
+    console.log('[core] Data validation passed.')
+  } catch (err) {
+    console.error('[core] Data validation failed. Fix JSON under data/characters or data/settings and retry.')
+    console.error('[core] Validation error:', err.message || err)
+    process.exit(1)
+  }
+
   // Port pre-flight
   const apiBusy = await checkPort(API_PORT)
   const webBusy = await checkPort(WEB_PORT)
@@ -125,6 +149,10 @@ async function start() {
   }
   if (webBusy) {
     console.error(`[core] Port ${WEB_PORT} already in use. If an old Web dev server is running, run 'pnpm core:quit' or stop it.`)
+    // Fail fast: skipping web spawn can leave users thinking core "hangs"; abort with guidance.
+    console.error('[core] Web port busy; aborting startup. Run `pnpm core:quit` to clear stale processes, then retry `pnpm core`.')
+    try { await prisma.$disconnect().catch(()=>{}) } catch {}
+    process.exit(1)
   }
 
   // Migrations (idempotent) + seed
@@ -149,6 +177,13 @@ async function start() {
     console.log(`[core] Web dev server spawned (pid ${webPid}) on port ${WEB_PORT}`)
   } else {
     console.log('[core] Skipping Web spawn (port busy)')
+  }
+
+  // If both servers started (or were skipped due to busy ports), we can exit early unless monitoring needed.
+  if (!process.env.CORE_MONITOR) {
+    console.log('[core] Detachment complete. Use `pnpm core:quit` to stop servers.')
+    await prisma.$disconnect().catch(()=>{})
+    return // exit start() without health polling to avoid perceived hang
   }
 
   // Health polling (only if API started or already running)

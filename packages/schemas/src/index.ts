@@ -16,21 +16,33 @@ export const AppearanceSchema = z.object({
     })
     .partial()
     .optional(),
-  heightCm: z.number().int().positive().max(300).optional(),
+  height: z.enum(['short', 'average', 'tall']).optional(),
   build: z.enum(['slight', 'average', 'athletic', 'heavy']).optional(),
+  skinTone: z.string().min(1).optional(),
   features: z.array(z.string().min(1)).optional(),
   description: z.string().min(1).optional(),
 })
 
 export type Appearance = z.infer<typeof AppearanceSchema>
 
+// Optional scent descriptors for realism
+export const ScentSchema = z.object({
+  hairScent: z.enum(['floral', 'citrus', 'fresh', 'herbal', 'neutral']).optional(),
+  bodyScent: z.enum(['clean', 'fresh', 'neutral', 'light musk']).optional(),
+  perfume: z.string().min(1).max(40).optional(),
+})
+
+export type Scent = z.infer<typeof ScentSchema>
+
 // CharacterProfile schema
 export const CharacterProfileSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(80),
+  age: z.number().int().positive().max(120).optional(),
   summary: z.string().min(1),
   backstory: z.string().min(1),
-  personality: z.string().min(1),
+  // Allow personality as either a single string or an array of strings for more granular traits
+  personality: z.union([z.string().min(1), z.array(z.string().min(1)).nonempty()]),
   // Backward-compatible: allow either a free text string or structured object
   appearance: z.union([z.string().min(1), AppearanceSchema]).optional(),
   goals: z.array(z.string().min(1)),
@@ -46,6 +58,7 @@ export const CharacterProfileSchema = z.object({
       verbosity: z.enum(['terse', 'balanced', 'lavish']).optional(),
     })
     .optional(),
+  scent: ScentSchema.optional(),
 })
 
 export type CharacterProfile = z.infer<typeof CharacterProfileSchema>

@@ -11,7 +11,9 @@ Minimum expectations:
 
 - `id`: non-empty string identifier
 - `name`: 1..80 character name
-- `summary`, `backstory`, `personality`, `lore`, `tone`: non-empty strings
+- `summary`, `backstory`, `lore`, `tone`: non-empty strings
+- `personality`: non-empty string OR array of non-empty strings
+- `age`: optional integer 16..120
 - `goals`: array of non-empty strings (for characters)
 - `tags`: optional array of strings
 - `constraints`: optional array of strings (for settings)
@@ -22,13 +24,18 @@ Minimum expectations:
   - `pacing`: `slow` | `balanced` | `fast`
   - `formality`: `casual` | `neutral` | `formal`
   - `verbosity`: `terse` | `balanced` | `lavish`
-- `appearance`: optional object describing physical traits
+- `appearance`: optional object describing physical traits (sanitized)
   - `hair.color` | `hair.style` | `hair.length`: strings
   - `eyes.color`: string
-  - `heightCm`: positive integer (max 300)
+  - `height`: `short` | `average` | `tall`
   - `build`: `slight` | `average` | `athletic` | `heavy`
+  - `skinTone`: string
   - `features`: array of strings
   - `description`: string
+- `scent`: optional object of light ambient descriptors
+  - `hairScent`: `floral` | `citrus` | `fresh` | `herbal` | `neutral`
+  - `bodyScent`: `clean` | `fresh` | `neutral` | `light musk`
+  - `perfume`: short free-text (<=40 chars)
 
 Tips
 
