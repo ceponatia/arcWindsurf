@@ -1,5 +1,0 @@
-
-
-> @minimal-rpg/shared@0.0.0 lint /home/runner/work/rpg-light/rpg-light/packages/shared
-> eslint src --max-warnings=0
-

@@ -1,5 +1,0 @@
-
-
-> @minimal-rpg/shared@0.0.0 build /home/runner/work/rpg-light/rpg-light/packages/shared
-> tsc -p tsconfig.json
-

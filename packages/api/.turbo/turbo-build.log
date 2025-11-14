@@ -1,5 +1,0 @@
-
-
-> @minimal-rpg/api@0.0.0 build /home/runner/work/rpg-light/rpg-light/packages/api
-> tsc -p tsconfig.json
-
