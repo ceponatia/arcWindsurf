@@ -19,6 +19,7 @@
     "@hono/node-server": "^1.19.6",
     "hono": "^4.10.4",
     "@minimal-rpg/shared": "workspace:*",
+    "@minimal-rpg/schemas": "workspace:*",
     "@prisma/client": "^5.20.0",
     "dotenv": "^16.4.5",
     "zod": "^4.1.12"

@@ -1,11 +1,11 @@
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/shared'
+import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas'
 import type { Message } from '../sessions/store.js'
-import baseRulesJson from './prompts/base-rules.json' with { type: 'json' }
+import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' }
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' }
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' }
 import { z } from 'zod'
 
-const BaseRulesSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() })
+const SystemPromptSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() })
 const SafetyRulesSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() })
 const SafetyModeSchema = z.object({
   safetyModeMessage: z.string().min(1),
@@ -14,7 +14,7 @@ const SafetyModeSchema = z.object({
 
 export function assertPromptConfigValid(): void {
   try {
-    BaseRulesSchema.parse(baseRulesJson)
+    SystemPromptSchema.parse(systemPromptJson)
     SafetyRulesSchema.parse(safetyRulesJson)
     SafetyModeSchema.parse(safetyModeJson)
   } catch (err) {
@@ -24,7 +24,7 @@ export function assertPromptConfigValid(): void {
   }
 }
 
-const BASE_RULES: string[] = BaseRulesSchema.parse(baseRulesJson).rules
+const BASE_RULES: string[] = SystemPromptSchema.parse(systemPromptJson).rules
 const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules
 
 function serializeCharacter(c: CharacterProfile) {

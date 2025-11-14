@@ -6,7 +6,7 @@ import {
   SettingProfileSchema,
   type CharacterProfile,
   type SettingProfile,
-} from '@minimal-rpg/shared'
+} from '@minimal-rpg/schemas'
 
 // Returns the closest ancestor folder that contains a `data` directory
 async function findNearestDataDir(startDir: string) {

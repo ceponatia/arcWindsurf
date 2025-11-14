@@ -1,7 +1,8 @@
 # Copilot Instructions for Minimal RPG
 
-This monorepo uses pnpm + Turbo with three packages:
-- `packages/shared` — shared types and Zod schemas
+This monorepo uses pnpm + Turbo with four packages:
+- `packages/schemas` — Zod schemas for domain profiles
+- `packages/shared` — shared types and helpers (re-exports schemas)
 - `packages/api` — Hono-based Node API server
 - `packages/web` — Vite web client (scaffolded)
 - Data at repo root: `data/characters/*.json`, `data/settings/*.json`
@@ -14,9 +15,9 @@ This monorepo uses pnpm + Turbo with three packages:
 - TypeScript + ESM across the repo. `tsconfig.base.json` sets `verbatimModuleSyntax: true`.
   - When importing local files, include the `.js` extension in TS code (e.g., `import { X } from './file.js'`).
   - API overrides to `NodeNext` module/resolution; shared/web use `Bundler`.
-- Shared types are defined via Zod in `packages/shared/src/schemas.ts` and exported from `packages/shared/src/index.ts`.
+- Shared schemas live in `packages/schemas/src/index.ts` and are exported via the package `@minimal-rpg/schemas`.
   - Exported: `CharacterProfileSchema`, `SettingProfileSchema` and inferred types `CharacterProfile`, `SettingProfile`.
-  - `packages/shared` emits runtime JS to `dist/` so other packages can import schemas at runtime.
+  - `packages/shared` re-exports these for compatibility, but new code should import from `@minimal-rpg/schemas` directly.
 - Data loader lives in `packages/api/src/data/loader.ts`.
   - Reads all JSON under `data/characters` and `data/settings` using `fs/promises`.
   - Validates each file with the shared Zod schemas; on any error, logs and exits process non-zero (fail-fast).
@@ -40,10 +41,10 @@ This monorepo uses pnpm + Turbo with three packages:
 
 ## Data & Schemas
 - Add character files to `data/characters/*.json`; settings to `data/settings/*.json`.
-- Must conform to shared schemas. Minimums include non-empty strings for names and summaries; character `goals` is an array of non-empty strings; optional arrays: `tags`, `constraints`.
+- Must conform to schemas in `@minimal-rpg/schemas`. Minimums include non-empty strings for names and summaries; character `goals` is an array of non-empty strings; optional arrays: `tags`, `constraints`.
 - Example validation usage:
   ```ts
-  import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/shared'
+  import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas'
   const parsed = CharacterProfileSchema.parse(obj)
   const character: CharacterProfile = parsed
   ```
@@ -60,7 +61,8 @@ This monorepo uses pnpm + Turbo with three packages:
 
 ## Key Files
 - Root: `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`
-- Shared: `packages/shared/src/schemas.ts`, `packages/shared/src/index.ts`
+- Schemas: `packages/schemas/src/index.ts`
+- Shared: `packages/shared/src/index.ts` (re-exports from `@minimal-rpg/schemas`)
 - API: `packages/api/src/data/loader.ts`, `packages/api/src/server.ts`
 - Data: `data/README.md`, `data/characters/example.json`, `data/settings/example.json`
 

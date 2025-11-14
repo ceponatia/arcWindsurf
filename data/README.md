@@ -5,7 +5,7 @@ This repository includes runtime content the API loads on startup. Place JSON fi
 - `data/characters/*.json` — Character profile documents (one per file)
 - `data/settings/*.json` — Setting profile documents (one per file)
 
-Each file must be valid JSON and conform to the shared Zod schemas (see `@minimal-rpg/shared`).
+Each file must be valid JSON and conform to the shared Zod schemas (see `@minimal-rpg/schemas`).
 
 Minimum expectations:
 
@@ -27,4 +27,4 @@ Tips
 
 - Keep each JSON file small and focused; the API will parse and validate all files at startup.
 - When adding new files, follow the field names exactly and ensure JSON parseability.
-- For stricter validation or examples, look into `@minimal-rpg/shared` for the Zod schemas.
+- For stricter validation or examples, look into `@minimal-rpg/schemas` for the Zod schemas.

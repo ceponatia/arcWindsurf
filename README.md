@@ -134,6 +134,20 @@ Base URL defaults to `http://localhost:3001`.
 
 Tip: Characters and settings are defined in JSON files under `data/characters` and `data/settings`. The server validates these on startup.
 
+## Schemas
+
+- Source package: `@minimal-rpg/schemas` (in `packages/schemas`)
+- Provides Zod schemas and types for characters and settings.
+- Example usage:
+
+```ts
+import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas'
+const parsed = CharacterProfileSchema.parse(obj)
+const character: CharacterProfile = parsed
+```
+
+Prefer importing directly from `@minimal-rpg/schemas`. The `@minimal-rpg/shared` package no longer exports these schemas.
+
 ## Configuration
 
 The API reads environment variables with sensible defaults for local development.
@@ -152,7 +166,7 @@ The API reads environment variables with sensible defaults for local development
 ### Prompts
 
 - System prompts are now managed as JSON files under `packages/api/src/llm/prompts/`:
-  - `base-rules.json` — core narration rules
+  - `system-prompt.json` — core narration rules
   - `safety-rules.json` — safety and boundaries
   - `safety-mode.json` — safety-mode directive and sensitive note
 - The API loads these at startup via ESM JSON imports; edit them to adjust guide behavior without code changes.

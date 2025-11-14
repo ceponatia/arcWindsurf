@@ -1,5 +1,5 @@
 {
-  "name": "@minimal-rpg/shared",
+  "name": "@minimal-rpg/schemas",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -17,6 +17,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@minimal-rpg/schemas": "workspace:*"
+    "zod": "^4.1.12"
   }
 }

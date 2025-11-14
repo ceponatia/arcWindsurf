@@ -33,6 +33,10 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`)
     }
+    // No Content
+    if (res.status === 204) {
+      return undefined as T
+    }
     if (parseAsText) {
       return (await res.text()) as T
     }

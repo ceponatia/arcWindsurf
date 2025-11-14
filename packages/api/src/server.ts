@@ -7,13 +7,20 @@ import { loadData, type LoadedData } from './data/loader.js'
 import { createSession, getSession, appendMessage, listSessions } from './sessions/store.js'
 import { buildPrompt, assertPromptConfigValid } from './llm/prompt.js'
 import { chatWithOpenRouter } from './llm/openrouter.js'
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/shared'
+import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas'
 import { getConfig } from './util/config.js'
 import { getVersion } from './util/version.js'
-import { prisma } from './db/prisma.js'
+import { prisma, resolvedDbUrl, resolvedDbPath } from './db/prisma.js'
+import { access } from 'node:fs/promises'
 import { Prisma as PrismaNs } from '@prisma/client'
 
 const app = new Hono()
+
+app.onError((err, c) => {
+	console.error('[server] Unhandled error:', err)
+	const message = (err && typeof err === 'object' && 'message' in err) ? (err as { message?: string }).message ?? 'Server error' : 'Server error'
+	return c.json({ ok: false, error: message }, 500)
+})
 
 app.get('/hello', (c) => c.json({ ok: true, message: 'hello' }))
 app.get('/config', (c) => {
@@ -118,29 +125,30 @@ async function start() {
 		}
 		try {
 			const models = PrismaNs.dmmf.datamodel.models
-			const results: Array<{
-				name: string
-				columns: Array<{ name: string; type: string; isId: boolean; isRequired: boolean; isList: boolean }>
-				rowCount: number
-				sample: Array<Record<string, unknown>>
-			}> = []
+			interface Column { name: string; type: string; isId: boolean; isRequired: boolean; isList: boolean }
+			type Row = Record<string, unknown>
+			const results: { name: string; columns: Column[]; rowCount: number; sample: Row[] }[] = []
 			for (const m of models) {
 				const name = m.name
 				const columns = m.fields.map((f) => ({ name: f.name, type: typeof f.type === 'string' ? String(f.type) : 'object', isId: !!f.isId, isRequired: !!f.isRequired, isList: !!f.isList }))
 				const delegateName = name.charAt(0).toLowerCase() + name.slice(1)
-				// @ts-expect-error - dynamic delegate access
-				const delegate = prisma[delegateName]
+				// narrow dynamic delegate access to a safe shape
+				const delegateMap = prisma as unknown as Record<string, { count?: () => Promise<number>; findMany?: (args: { take?: number; orderBy?: unknown }) => Promise<Row[]> }>
+				const delegate = delegateMap[delegateName]
 				let rowCount = 0
-				let sample: Array<Record<string, unknown>> = []
+				let sample: Row[] = []
 				if (delegate) {
 					try {
-						rowCount = await delegate.count()
-					} catch {}
+						rowCount = typeof delegate.count === 'function' ? await delegate.count() : 0
+					} catch {
+						/* noop */
+					}
 					try {
-						// Try order by createdAt if present, else just take N
 						const orderBy = m.fields.some((f) => f.name === 'createdAt') ? { createdAt: 'desc' as const } : undefined
-						sample = await delegate.findMany({ take: 50, orderBy })
-					} catch {}
+						sample = typeof delegate.findMany === 'function' ? await delegate.findMany({ take: 50, orderBy }) : []
+					} catch {
+						/* noop */
+					}
 				}
 				results.push({ name, columns, rowCount, sample })
 			}
@@ -149,6 +157,13 @@ async function start() {
 			console.error('DB overview error', (err as Error).message)
 			return c.json({ ok: false, error: 'Failed to load DB overview' }, 500)
 		}
+	})
+
+	app.get('/admin/db/path', async (c) => {
+		if (process.env.ADMIN_DB_TOOLS !== 'true') return c.json({ ok: false, error: 'Admin DB tools disabled' }, 403)
+		let exists = false
+		try { await access(resolvedDbPath); exists = true } catch { /* noop */ }
+		return c.json({ url: resolvedDbUrl, path: resolvedDbPath, exists }, 200)
 	})
 
 	app.delete('/admin/db/:model/:id', async (c) => {
@@ -167,13 +182,13 @@ async function start() {
 				return c.json({ ok: false, error: 'Delete only supported for single id primary key named "id"' }, 400)
 			}
 			const delegateName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
-			// @ts-expect-error dynamic delegate access
-			const delegate = prisma[delegateName]
-			if (!delegate?.delete) return c.json({ ok: false, error: 'Delete not supported for model' }, 400)
+			const delegateMap = prisma as unknown as Record<string, { delete?: (args: { where: { id: string } }) => Promise<unknown> }>
+			const delegate = delegateMap[delegateName]
+			if (!(delegate && typeof delegate.delete === 'function')) return c.json({ ok: false, error: 'Delete not supported for model' }, 400)
 			try {
 				await delegate.delete({ where: { id: idParam } })
-			} catch (err) {
-				const msg = (err as Error)?.message ?? String(err)
+			} catch (err: unknown) {
+				const msg = (err && typeof err === 'object' && 'message' in err) ? String((err as { message?: unknown }).message) : String(err)
 				if (/Record to delete does not exist/i.test(msg)) return c.json({ ok: false, error: 'Not found' }, 404)
 				throw err
 			}
