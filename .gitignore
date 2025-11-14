@@ -8,3 +8,6 @@ coverage
 
 # Env files
 .env
+
+# Local SQLite dev DB
+packages/api/prisma/dev.db

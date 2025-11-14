@@ -68,7 +68,7 @@ async function start() {
 	// Enable CORS for browser-based clients (Vite dev on 5173, etc.)
 	app.use('*', cors({
 		origin: '*',
-		allowMethods: ['GET', 'POST', 'OPTIONS'],
+		allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
 		allowHeaders: ['Content-Type'],
 	}))
 
@@ -113,6 +113,9 @@ async function start() {
 
 	// Admin DB endpoints (dev tooling)
 	app.get('/admin/db/overview', async (c) => {
+		if (process.env.ADMIN_DB_TOOLS !== 'true') {
+			return c.json({ ok: false, error: 'Admin DB tools disabled' }, 403)
+		}
 		try {
 			const models = PrismaNs.dmmf.datamodel.models
 			const results: Array<{
@@ -145,6 +148,40 @@ async function start() {
 		} catch (err) {
 			console.error('DB overview error', (err as Error).message)
 			return c.json({ ok: false, error: 'Failed to load DB overview' }, 500)
+		}
+	})
+
+	app.delete('/admin/db/:model/:id', async (c) => {
+		if (process.env.ADMIN_DB_TOOLS !== 'true') {
+			return c.json({ ok: false, error: 'Admin DB tools disabled' }, 403)
+		}
+		const modelParam = c.req.param('model')
+		const idParam = c.req.param('id')
+		if (!modelParam || !idParam) return c.json({ ok: false, error: 'model and id are required' }, 400)
+		try {
+			const models = PrismaNs.dmmf.datamodel.models
+			const model = models.find((m) => m.name.toLowerCase() === modelParam.toLowerCase())
+			if (!model) return c.json({ ok: false, error: 'Unknown model' }, 400)
+			const idFields = model.fields.filter((f) => f.isId)
+			if (idFields.length !== 1 || idFields[0]?.name !== 'id') {
+				return c.json({ ok: false, error: 'Delete only supported for single id primary key named "id"' }, 400)
+			}
+			const delegateName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
+			// @ts-expect-error dynamic delegate access
+			const delegate = prisma[delegateName]
+			if (!delegate?.delete) return c.json({ ok: false, error: 'Delete not supported for model' }, 400)
+			try {
+				await delegate.delete({ where: { id: idParam } })
+			} catch (err) {
+				const msg = (err as Error)?.message ?? String(err)
+				if (/Record to delete does not exist/i.test(msg)) return c.json({ ok: false, error: 'Not found' }, 404)
+				throw err
+			}
+			console.warn(`[admin-db] delete ${model.name} id=${idParam}`)
+			return c.body(null, 204)
+		} catch (err) {
+			console.error('DB delete error', (err as Error).message)
+			return c.json({ ok: false, error: 'Failed to delete row' }, 500)
 		}
 	})
 

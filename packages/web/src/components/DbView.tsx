@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { getDbOverview, type DbOverview, type DbTableOverview } from '../api/client.js'
+import { getDbOverview, deleteDbRow, type DbOverview, type DbTableOverview } from '../api/client.js'
+import { DB_TOOLS } from '../config.js'
+
+// Ensure typed reference for delete function to satisfy strict lint rules
+const callDeleteDbRow: (model: string, id: string) => Promise<void> = deleteDbRow as unknown as (model: string, id: string) => Promise<void>
 
 function toDisplay(v: unknown): string {
   if (v === null || v === undefined) return ''
@@ -13,18 +17,23 @@ export const DbView: React.FC = () => {
   const [data, setData] = useState<DbOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  const reload = (signal?: AbortSignal) => {
+    setLoading(true)
+    setError(null)
+    return getDbOverview(signal)
+      .then((d) => setData(d))
+      .catch((e) => setError((e as Error).message || 'Failed to load DB overview'))
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
     abortRef.current?.abort()
     const ctrl = new AbortController()
     abortRef.current = ctrl
-    setLoading(true)
-    setError(null)
-    getDbOverview(ctrl.signal)
-      .then((d) => setData(d))
-      .catch((e) => setError((e as Error).message || 'Failed to load DB overview'))
-      .finally(() => setLoading(false))
+    void reload(ctrl.signal)
     return () => abortRef.current?.abort()
   }, [])
 
@@ -47,19 +56,19 @@ export const DbView: React.FC = () => {
               <tr>
                 <th style={th}>name</th>
                 <th style={th}>type</th>
-                <th style={th}>notnull</th>
-                <th style={th}>pk</th>
-                <th style={th}>default</th>
+                <th style={th}>id</th>
+                <th style={th}>required</th>
+                <th style={th}>list</th>
               </tr>
             </thead>
             <tbody>
               {table.columns.map((c) => (
-                <tr key={c.cid}>
+                <tr key={c.name}>
                   <td style={td}>{c.name}</td>
                   <td style={td}>{c.type}</td>
-                  <td style={td}>{c.notnull ? 'yes' : 'no'}</td>
-                  <td style={td}>{c.pk ? 'yes' : 'no'}</td>
-                  <td style={td}>{String(c.dflt_value ?? '')}</td>
+                  <td style={td}>{c.isId ? 'yes' : 'no'}</td>
+                  <td style={td}>{c.isRequired ? 'yes' : 'no'}</td>
+                  <td style={td}>{c.isList ? 'yes' : 'no'}</td>
                 </tr>
               ))}
             </tbody>
@@ -73,19 +82,52 @@ export const DbView: React.FC = () => {
                 <thead>
                   <tr>
                     {columns.map((k) => <th key={k} style={th}>{k}</th>)}
+                    {DB_TOOLS ? <th style={th}>actions</th> : null}
                   </tr>
                 </thead>
                 <tbody>
-                  {table.sample.map((row, i) => (
-                    <tr key={i}>
-                      {columns.map((k) => {
-                        const rec: Record<string, unknown> = row
-                        const val = rec[k]
-                        const display = toDisplay(val)
-                        return <td key={k} style={td}>{display}</td>
-                      })}
-                    </tr>
-                  ))}
+                  {table.sample.map((row, i) => {
+                    const rec: Record<string, unknown> = row
+                    const idVal = rec.id ?? rec.ID ?? rec.Id ?? rec[columns[0]!] // best-effort fallback
+                    const idStr = (typeof idVal === 'string' || typeof idVal === 'number') ? String(idVal) : undefined
+                    return (
+                      <tr key={i}>
+                        {columns.map((k) => {
+                          const val = rec[k]
+                          const display = toDisplay(val)
+                          return <td key={k} style={td}>{display}</td>
+                        })}
+                        {DB_TOOLS ? (
+                          <td style={td}>
+                            <button
+                              disabled={!!deleting}
+                              title={deleting ? `Deleting ${table.name}#${deleting}…` : 'Delete row'}
+                              onClick={() => {
+                                if (!idStr) { alert('No id column found for this row'); return }
+                                const ok = confirm(`Delete ${table.name}#${idStr}? This cannot be undone.`)
+                                if (!ok) return
+                                const run = async () => {
+                                  setDeleting(idStr)
+                                  try {
+                                    await callDeleteDbRow(table.name, idStr)
+                                    await reload()
+                                  } catch (e: unknown) {
+                                    const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: unknown }).message) : 'Delete failed'
+                                    alert(msg)
+                                  } finally {
+                                    setDeleting(null)
+                                  }
+                                }
+                                void run()
+                              }}
+                            >
+                              {deleting && idStr === deleting ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </td>
+                        ) : null}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             ) : (

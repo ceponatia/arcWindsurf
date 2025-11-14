@@ -163,6 +163,13 @@ The API reads environment variables with sensible defaults for local development
 - Backed by `GET /admin/db/overview` which introspects Prisma's DMMF and queries sample rows.
 - For development use only; do not expose this endpoint in production.
 
+#### Row Deletion (Dev-only)
+
+- Enable server-side admin tools by setting `ADMIN_DB_TOOLS=true` in `packages/api/.env`.
+- Enable the UI controls by setting `VITE_DB_TOOLS=true` for the web app.
+- When both are enabled, `/dbview` shows a Delete action per row. Clicking Delete calls `DELETE /admin/db/:model/:id` and refreshes the table.
+- The API only supports deletion for models with a single `id` primary key and returns `204` on success.
+
 ### Generation Parameters
 
 - `CONTEXT_WINDOW` (default: `12`) — how many recent turns to include

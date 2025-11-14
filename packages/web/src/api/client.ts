@@ -1,7 +1,7 @@
 import type { CharacterSummary, SettingSummary, Message, Session, SessionSummary } from '../types.js'
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../config.js'
-export interface DbColumn { cid: number; name: string; type: string; notnull: number; dflt_value: string | null; pk: number }
-export interface DbTableOverview { name: string; columns: DbColumn[]; rowCount: number; sample: Array<Record<string, unknown>> }
+export interface DbColumn { name: string; type: string; isId: boolean; isRequired: boolean; isList: boolean }
+export interface DbTableOverview { name: string; columns: DbColumn[]; rowCount: number; sample: Record<string, unknown>[] }
 export interface DbOverview { tables: DbTableOverview[] }
 
 function getBaseUrl(): string {
@@ -102,4 +102,13 @@ export default Api
 
 export async function getDbOverview(signal?: AbortSignal): Promise<DbOverview> {
   return http<DbOverview>('/admin/db/overview', { signal })
+}
+
+export async function deleteDbRow(model: string, id: string, signal?: AbortSignal): Promise<void> {
+  await http<void>(`/admin/db/${encodeURIComponent(model)}/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    signal,
+    // Allow small timeout to avoid hanging UI if server rejects
+    timeoutMs: 15000,
+  })
 }
