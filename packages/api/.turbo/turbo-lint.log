@@ -1,0 +1,6 @@
+
+
+> @minimal-rpg/api@0.0.0 lint /home/runner/work/rpg-light/rpg-light/packages/api
+> eslint src --max-warnings=0
+
+ ELIFECYCLE  Command failed.
