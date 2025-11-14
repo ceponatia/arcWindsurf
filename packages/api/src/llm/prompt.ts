@@ -1,4 +1,4 @@
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas'
+import type { CharacterProfile, SettingProfile, Appearance } from '@minimal-rpg/schemas'
 import type { Message } from '../sessions/store.js'
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' }
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' }
@@ -33,6 +33,7 @@ function serializeCharacter(c: CharacterProfile) {
     `Summary: ${c.summary}`,
     `Backstory: ${truncate(c.backstory, 1200)}`,
     `Personality: ${truncate(c.personality, 400)}`,
+    c.appearance ? `Appearance: ${serializeAppearance(c.appearance)}` : undefined,
     `Goals: ${c.goals.join('; ')}`,
     `Speaking Style: ${c.speakingStyle}`,
     c.tags?.length ? `Tags: ${c.tags.join(', ')}` : undefined,
@@ -64,6 +65,23 @@ function serializeStyle(c: CharacterProfile) {
   if (st.formality) pairs.push(`formality=${st.formality}`)
   if (st.verbosity) pairs.push(`verbosity=${st.verbosity}`)
   return pairs.length ? `Style Hints: ${pairs.join(', ')}` : ''
+}
+
+function serializeAppearance(a: CharacterProfile['appearance']): string {
+  if (!a) return ''
+  if (typeof a === 'string') return truncate(a, 240)
+  const obj: Appearance = a as Appearance
+  const parts: string[] = []
+  if (obj.hair) {
+    const hairBits = [obj.hair.color, obj.hair.length, obj.hair.style].filter(Boolean).join(' ')
+    if (hairBits) parts.push(`Hair: ${hairBits}`)
+  }
+  if (obj.eyes?.color) parts.push(`Eyes: ${obj.eyes.color}`)
+  if (obj.heightCm) parts.push(`Height: ${obj.heightCm}cm`)
+  if (obj.build) parts.push(`Build: ${obj.build}`)
+  if (obj.features?.length) parts.push(`Features: ${obj.features.join(', ')}`)
+  if (obj.description) parts.push(truncate(obj.description, 200))
+  return parts.join('; ')
 }
 
 function summarizeHistory(messages: Message[], keepLast: number, maxChars: number) {

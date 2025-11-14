@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server'
 import { randomUUID } from 'node:crypto'
 import { loadData, type LoadedData } from './data/loader.js'
 import { createSession, getSession, appendMessage, listSessions } from './sessions/store.js'
+import { getEffectiveProfiles, upsertCharacterOverrides, upsertSettingOverrides, getEffectiveCharacter, getEffectiveSetting } from './sessions/instances.js'
 import { buildPrompt, assertPromptConfigValid } from './llm/prompt.js'
 import { chatWithOpenRouter } from './llm/openrouter.js'
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas'
@@ -75,7 +76,7 @@ async function start() {
 	// Enable CORS for browser-based clients (Vite dev on 5173, etc.)
 	app.use('*', cors({
 		origin: '*',
-		allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+		allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 		allowHeaders: ['Content-Type'],
 	}))
 
@@ -213,6 +214,51 @@ async function start() {
 		return c.json(sorted, 200)
 	})
 
+	// GET /sessions/:id/effective - return effective merged character + setting for the session
+	app.get('/sessions/:id/effective', async (c) => {
+		if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
+		const id = c.req.param('id')
+		const session = await getSession(id)
+		if (!session) return c.json({ ok: false, error: 'session not found' }, 404)
+		const character = loaded.characters.find((ch) => ch.id === session.characterId)
+		const setting = loaded.settings.find((s) => s.id === session.settingId)
+		if (!character || !setting) return c.json({ ok: false, error: 'character or setting not found for session' }, 500)
+		const effective = await getEffectiveProfiles(session.id, character, setting)
+		return c.json(effective, 200)
+	})
+
+	// PUT /sessions/:id/overrides/character - upsert character overrides for the session
+	app.put('/sessions/:id/overrides/character', async (c) => {
+		if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
+		const id = c.req.param('id')
+		const session = await getSession(id)
+		if (!session) return c.json({ ok: false, error: 'session not found' }, 404)
+		const character = loaded.characters.find((ch) => ch.id === session.characterId)
+		if (!character) return c.json({ ok: false, error: 'character not found for session' }, 500)
+		const body: unknown = await c.req.json().catch(() => null)
+		const overrides = (body && typeof body === 'object') ? (body as Record<string, unknown>) : undefined
+		if (!overrides || Array.isArray(overrides)) return c.json({ ok: false, error: 'overrides must be an object' }, 400)
+		const audit = await upsertCharacterOverrides({ sessionId: session.id, characterId: character.id, baseline: character, overrides })
+		const effective = await getEffectiveCharacter(session.id, character)
+		return c.json({ effective, audit }, 200)
+	})
+
+	// PUT /sessions/:id/overrides/setting - upsert setting overrides for the session
+	app.put('/sessions/:id/overrides/setting', async (c) => {
+		if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
+		const id = c.req.param('id')
+		const session = await getSession(id)
+		if (!session) return c.json({ ok: false, error: 'session not found' }, 404)
+		const setting = loaded.settings.find((s) => s.id === session.settingId)
+		if (!setting) return c.json({ ok: false, error: 'setting not found for session' }, 500)
+		const body: unknown = await c.req.json().catch(() => null)
+		const overrides = (body && typeof body === 'object') ? (body as Record<string, unknown>) : undefined
+		if (!overrides || Array.isArray(overrides)) return c.json({ ok: false, error: 'overrides must be an object' }, 400)
+		const audit = await upsertSettingOverrides({ sessionId: session.id, settingId: setting.id, baseline: setting, overrides })
+		const effective = await getEffectiveSetting(session.id, setting)
+		return c.json({ effective, audit }, 200)
+	})
+
 	// POST /sessions/:id/messages - append a user message
 	app.post('/sessions/:id/messages', async (c) => {
 		if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
@@ -245,7 +291,8 @@ async function start() {
 
 		const sessAfterUser = await getSession(session.id)
 		const history = sessAfterUser?.messages ?? session.messages
-		const messages = buildPrompt({ character, setting, history, historyWindow: cfg.contextWindow })
+		const effective = await getEffectiveProfiles(session.id, character, setting)
+		const messages = buildPrompt({ character: effective.character, setting: effective.setting, history, historyWindow: cfg.contextWindow })
 		console.info(`Session ${session.id}: calling OpenRouter model ${cfg.openrouterModel} with ${messages.length} messages`)
 		const result = await chatWithOpenRouter({ apiKey: cfg.openrouterApiKey, model: cfg.openrouterModel, messages, options: { temperature: cfg.temperature, top_p: cfg.topP } })
 		if (result.error) {

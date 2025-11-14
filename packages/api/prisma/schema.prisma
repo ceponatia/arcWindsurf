@@ -18,6 +18,8 @@ model UserSession {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   messages    Message[]
+  characterInstances CharacterInstance[]
+  settingInstances   SettingInstance[]
 
   @@index([createdAt])
 }
@@ -33,4 +35,34 @@ model Message {
 
   @@index([sessionId, idx])
   @@unique([sessionId, idx])
+}
+
+/// Per-session overrides for a character template with auditing baseline snapshot
+model CharacterInstance {
+  id                  String      @id
+  session             UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId           String
+  templateCharacterId String
+  baseline            String      // snapshot of the character template at time of first write (JSON string)
+  overrides           String      @default("{}") // user- or system-provided overrides merged at read (JSON string)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@unique([sessionId, templateCharacterId])
+  @@index([sessionId])
+}
+
+/// Per-session overrides for a setting template with auditing baseline snapshot
+model SettingInstance {
+  id               String      @id
+  session          UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId        String
+  templateSettingId String
+  baseline         String      // snapshot of the setting template at time of first write (JSON string)
+  overrides        String      @default("{}")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([sessionId, templateSettingId])
+  @@index([sessionId])
 }

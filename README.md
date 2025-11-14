@@ -129,10 +129,22 @@ Base URL defaults to `http://localhost:3001`.
 - `POST /sessions/:id/messages` — Send a message
   - Body: `{ "content": string }`
   - Returns: `{ message }` (the assistant reply)
+- `GET /sessions/:id/effective` — Get effective merged `character` and `setting` for the session (template + overrides)
+- `PUT /sessions/:id/overrides/character` — Upsert character overrides for the session
+  - Body: JSON object with partial fields to override (arrays replace)
+  - Audited: persists a baseline JSON snapshot of the template on first write
+- `PUT /sessions/:id/overrides/setting` — Upsert setting overrides for the session
+  - Body: JSON object with partial fields to override (arrays replace)
+  - Audited: persists a baseline JSON snapshot of the template on first write
 - `GET /health` — Health and reachability
 - `GET /config` — Effective runtime configuration (no secrets)
 
 Tip: Characters and settings are defined in JSON files under `data/characters` and `data/settings`. The server validates these on startup.
+
+### Per-Session Overrides
+
+- Overrides are stored in SQLite (Prisma models: `CharacterInstance`, `SettingInstance`) keyed by `(sessionId, templateId)` with `overrides` and an auditable `baseline` JSON snapshot (captured on first write).
+- The chat prompt uses the merged effective profiles (template + overrides). Arrays in overrides replace the template arrays; objects merge deeply.
 
 ## Schemas
 
