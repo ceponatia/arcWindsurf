@@ -12,19 +12,19 @@ Successfully researched and documented cloud-hosted uncensored LLM options with 
    - Technical comparison matrix
    - Cost estimation and optimization tips
 
-2. **OpenRouter Adapter Implementation** (`packages/api/src/llm/openrouter.ts`)
+1. **OpenRouter Adapter Implementation** (`packages/api/src/llm/openrouter.ts`)
    - Drop-in compatible with OpenAI SDK
    - Ready-to-use implementation
    - Fully typed with TypeScript
    - Passes all linting and type checking
 
-3. **Migration Guide** (`dev-docs/migration-guide.md`)
+1. **Migration Guide** (`dev-docs/migration-guide.md`)
    - Step-by-step migration instructions
    - Code examples for integration
    - Troubleshooting section
    - Rollback plan
 
-4. **Updated Documentation**
+1. **Updated Documentation**
    - README.md updated with new configuration options
    - Clear instructions for both cloud and local LLM usage
    - Links to detailed documentation
@@ -34,6 +34,7 @@ Successfully researched and documented cloud-hosted uncensored LLM options with 
 ### Why Mistral Large 2?
 
 **Best Overall Balance:**
+
 - **Quality:** ⭐⭐⭐⭐ (Very good creative writing and character consistency)
 - **Cost:** $6 per million output tokens (2.5x cheaper than Claude)
 - **Context:** 128K tokens (sufficient for long conversations)
@@ -42,6 +43,7 @@ Successfully researched and documented cloud-hosted uncensored LLM options with 
 - **Speed:** Very fast inference
 
 **Use Cases:**
+
 - Ideal for production deployment of RPG narrator
 - Excellent for character acting with consistent personalities
 - Cost-effective for high-volume usage
@@ -49,11 +51,13 @@ Successfully researched and documented cloud-hosted uncensored LLM options with 
 
 ### Alternative Options
 
-**Premium Quality: Claude 3.5 Sonnet**
+#### Premium Quality: Claude 3.5 Sonnet
+
 - Best-in-class creative writing ($15/M tokens)
 - Use when budget allows and maximum quality is required
 
-**Budget Option: DeepSeek V3**
+#### Budget Option: DeepSeek V3
+
 - Very affordable ($1.10/M tokens)
 - Good for cost-sensitive deployments
 
@@ -62,16 +66,18 @@ Successfully researched and documented cloud-hosted uncensored LLM options with 
 The migration can be completed in 3 simple steps:
 
 1. **Sign up for OpenRouter**
-   - Create account at <https://openrouter.ai>
-   - Add API key to environment variables
 
-2. **Configure Environment**
+- Create account at <https://openrouter.ai>
+- Add API key to environment variables
+
+1. **Configure Environment**
+
    ```bash
    OPENROUTER_API_KEY=REMOVED_SECRET
    OPENROUTER_MODEL=mistralai/mistral-large-2411
    ```
 
-3. **Update Server Code** (see migration guide)
+1. **Update Server Code** (see migration guide)
    - Modify `server.ts` to use OpenRouter adapter
    - Add health checks
    - Test and deploy
@@ -81,6 +87,7 @@ The migration can be completed in 3 simple steps:
 ### Function Calling Support
 
 All recommended models support function calling via OpenRouter's standardized interface:
+
 - Compatible with OpenAI function calling format
 - Easy to extend for game mechanics (dice rolls, inventory, etc.)
 - Well-documented API
@@ -95,6 +102,7 @@ All recommended models support function calling via OpenRouter's standardized in
 ### Safety and Content Policies
 
 Application already implements content filtering:
+
 - Basic keyword detection in `prompt.ts`
 - Fade-to-black suggestions
 - Safety mode system prompts
@@ -106,11 +114,13 @@ This allows using less filtered models while maintaining appropriate boundaries.
 Based on typical RPG chat usage (15K tokens per conversation):
 
 ### Daily Costs (100 conversations/day)
+
 - **Mistral Large 2:** ~$5/day (~$150/month)
 - **Claude 3.5 Sonnet:** ~$10.50/day (~$315/month)
 - **DeepSeek V3:** ~$0.75/day (~$22.50/month)
 
 ### Monthly Costs (3,000 conversations/month)
+
 - **Mistral Large 2:** $150
 - **Claude 3.5 Sonnet:** $315
 - **DeepSeek V3:** $22.50
@@ -125,25 +135,28 @@ Based on typical RPG chat usage (15K tokens per conversation):
 ## Next Steps for Production
 
 1. ✅ Research completed
-2. ✅ Implementation ready
-3. ✅ Documentation complete
-4. ⏭️ Team decision on model choice
-5. ⏭️ API key setup and configuration
-6. ⏭️ Testing with real conversations
-7. ⏭️ Gradual rollout to production
+1. ✅ Implementation ready
+1. ✅ Documentation complete
+1. ⏭️ Team decision on model choice
+1. ⏭️ API key setup and configuration
+1. ⏭️ Testing with real conversations
+1. ⏭️ Gradual rollout to production
 
 ## References
 
 ### Documentation Files
+
 - `dev-docs/llm-recommendations.md` - Detailed model comparisons
 - `dev-docs/migration-guide.md` - Step-by-step migration
 - `README.md` - Updated configuration instructions
 
 ### Implementation Files
+
 - `packages/api/src/llm/openrouter.ts` - OpenRouter adapter
 - `packages/api/src/llm/ollama.ts` - Existing Ollama adapter (kept for compatibility)
 
 ### External Resources
+
 - OpenRouter: <https://openrouter.ai>
 - OpenRouter Docs: <https://openrouter.ai/docs>
 - Model Comparisons: <https://artificialanalysis.ai/models>
@@ -151,6 +164,7 @@ Based on typical RPG chat usage (15K tokens per conversation):
 ## Conclusion
 
 The research is complete and the implementation is ready. Mistral Large 2 via OpenRouter provides the best combination of:
+
 - High-quality creative writing and roleplay
 - Strong function calling support
 - Large context window (128K tokens)
