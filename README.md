@@ -49,8 +49,8 @@ When finished, stop everything and free the ports:
 pnpm core:quit
 ```
 
-- Sends SIGTERM/SIGKILL to tracked PIDs and confirms ports 3001/5173 are clear.
-- If other processes keep those ports busy, the script tells you which ones to stop manually.
+- Sends SIGTERM/SIGKILL to tracked services and forcibly clears any processes bound to ports 3001/5173.
+- If ports remain busy after automated cleanup, the script highlights them so you can investigate manually.
 
 ## Run Locally
 
