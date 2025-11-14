@@ -1,0 +1,36 @@
+// Prisma schema for Minimal RPG API
+// SQLite database for durable session storage
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+model UserSession {
+  id          String    @id
+  characterId String
+  settingId   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  messages    Message[]
+
+  @@index([createdAt])
+}
+
+model Message {
+  id        String      @id
+  session   UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  idx       Int
+  role      String
+  content   String
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, idx])
+  @@unique([sessionId, idx])
+}

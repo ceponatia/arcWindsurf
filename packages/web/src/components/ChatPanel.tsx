@@ -94,7 +94,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
           <div className="message system">Start or select a session to begin chatting.</div>
         </div>
         <div className="chat-composer">
-          <input className="chat-input" placeholder="Type a message..." disabled />
+          <input
+            className="chat-input"
+            placeholder="Type a message..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            disabled
+          />
           <button className="btn" disabled>Send</button>
         </div>
       </div>
@@ -120,11 +126,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
-              onSend()
+              void onSend()
             }
           }}
         />
-        <button className="btn primary" onClick={onSend} disabled={disabled || draft.trim().length === 0}>
+        <button className="btn primary" onClick={() => { void onSend() }} disabled={disabled || draft.trim().length === 0}>
           {sending ? 'Sending…' : 'Send'}
         </button>
       </div>

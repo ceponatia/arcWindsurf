@@ -1,11 +1,11 @@
-export type CharacterSummary = {
+export interface CharacterSummary {
   id: string
   name: string
   summary: string
   tags?: string[]
 }
 
-export type SettingSummary = {
+export interface SettingSummary {
   id: string
   name: string
   tone: string
@@ -25,4 +25,13 @@ export interface Session {
   settingId: string
   createdAt: string // ISO timestamp
   messages: Message[]
+}
+
+export interface SessionSummary {
+  id: string
+  characterId: string
+  settingId: string
+  createdAt: string
+  characterName?: string | null
+  settingName?: string | null
 }

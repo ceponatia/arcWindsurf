@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import type { ZodSchema } from 'zod'
 import {
   CharacterProfileSchema,
   SettingProfileSchema,
@@ -15,7 +16,7 @@ async function findNearestDataDir(startDir: string) {
     try {
       const stat = await fs.stat(candidate)
       if (stat.isDirectory()) return candidate
-    } catch (err) {
+    } catch {
       // ignore - candidate does not exist
     }
     const parent = path.dirname(current)
@@ -37,7 +38,7 @@ export async function loadData(dataDir?: string) {
   const charactersDir = path.join(base, 'characters')
   const settingsDir = path.join(base, 'settings')
 
-  async function loadFiles<T>(folder: string, schema: { safeParse(o: unknown): { success: boolean; error?: any; data?: T } }) {
+  async function loadFiles<T>(folder: string, schema: ZodSchema<T>) {
     const results: T[] = []
     try {
       const files = await fs.readdir(folder)
@@ -45,7 +46,7 @@ export async function loadData(dataDir?: string) {
         if (!f.endsWith('.json')) continue
         const p = path.join(folder, f)
         const raw = await fs.readFile(p, 'utf-8')
-        let parsed
+        let parsed: unknown
         try {
           parsed = JSON.parse(raw)
         } catch (err) {
@@ -54,10 +55,10 @@ export async function loadData(dataDir?: string) {
         }
         const res = schema.safeParse(parsed)
         if (!res.success) {
-          console.error(`Validation failed for ${p}:`, res.error.format ? res.error.format() : res.error)
+          console.error(`Validation failed for ${p}:`, res.error.format())
           process.exit(1)
         }
-        results.push(res.data as T)
+        results.push(res.data)
       }
     } catch (err) {
       // If directory doesn't exist, treat as empty list

@@ -1,50 +1,87 @@
-type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
 
-export type OllamaChatResponse = {
+export interface OllamaChatResponse {
   message?: { role: 'assistant'; content: string }
   error?: string
 }
 
-export async function chatWithOllama(opts: {
+interface ChatWithOllamaOptions {
   baseUrl: string
   model: string
   messages: ChatMessage[]
   timeoutMs?: number
-}): Promise<OllamaChatResponse> {
-  const { baseUrl, model, messages } = opts
-  const timeoutMs = opts.timeoutMs ?? 60_000
+  options?: { temperature?: number; top_p?: number; max_tokens?: number }
+}
 
+interface OllamaMessagePayload {
+  message?: { role?: string; content?: unknown }
+  response?: unknown
+}
+
+export async function chatWithOllama(opts: ChatWithOllamaOptions): Promise<OllamaChatResponse> {
+  const { baseUrl, model, messages, timeoutMs = 60_000, options = {} } = opts
   const controller = new AbortController()
-  const t = setTimeout(() => controller.abort(), timeoutMs)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await (globalThis as any).fetch(`${baseUrl.replace(/\/$/, '')}/api/chat`, {
+    const endpoint = `${trimTrailingSlash(baseUrl)}/api/chat`
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream: false }),
+      body: JSON.stringify({ model, messages, stream: false, options }),
       signal: controller.signal,
     })
     if (!res.ok) {
       const text = await safeText(res)
       return { error: `Ollama error ${res.status}: ${text}` }
     }
-    const data = await res.json().catch(() => ({})) as any
-    // Non-streaming response shape from Ollama should include a final message
-    if (data && data.message && typeof data.message.content === 'string') {
-      return { message: { role: 'assistant', content: data.message.content } }
-    }
-    // Some versions may return { response: string }
-    if (typeof data?.response === 'string') {
-      return { message: { role: 'assistant', content: data.response } }
+    const payload = await safeJson(res)
+    const assistantReply = extractAssistantContent(payload)
+    if (assistantReply) {
+      return { message: { role: 'assistant', content: assistantReply } }
     }
     return { error: 'Invalid Ollama response' }
-  } catch (err) {
-    const msg = (err as Error).message || String(err)
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
     return { error: `Ollama request failed: ${msg}` }
   } finally {
-    clearTimeout(t)
+    clearTimeout(timer)
   }
 }
 
-async function safeText(res: Response) {
-  try { return await res.text() } catch { return '<no body>' }
+function trimTrailingSlash(url: string): string {
+  return url.replace(/\/$/, '')
+}
+
+async function safeText(res: Response): Promise<string> {
+  try {
+    return await res.text()
+  } catch {
+    return '<no body>'
+  }
+}
+
+async function safeJson(res: Response): Promise<unknown> {
+  try {
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+function extractAssistantContent(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+  const data = payload as OllamaMessagePayload
+  const messageContent = data.message?.content
+  if (typeof messageContent === 'string') {
+    return messageContent
+  }
+  if (typeof data.response === 'string') {
+    return data.response
+  }
+  return null
 }

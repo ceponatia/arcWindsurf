@@ -6,6 +6,10 @@ This monorepo uses pnpm + Turbo with three packages:
 - `packages/web` — Vite web client (scaffolded)
 - Data at repo root: `data/characters/*.json`, `data/settings/*.json`
 
+## Important
+
+- After all todo tasks are done / the work required by the prompt is complete, read the root README.md file, add any necessary details related to the work you just did, and then clean up the overall README.md file to ensure it is accurate, concise and up to date. Do not remove any information that was not affected by your current work.
+
 ## Architecture & Conventions
 - TypeScript + ESM across the repo. `tsconfig.base.json` sets `verbatimModuleSyntax: true`.
   - When importing local files, include the `.js` extension in TS code (e.g., `import { X } from './file.js'`).

@@ -15,20 +15,21 @@ export function useSettings() {
 
   const fetchOnce = () => {
     if (fetchedRef.current) return
-    fetchedRef.current = true
     controllerRef.current?.abort()
     const ctrl = new AbortController()
     controllerRef.current = ctrl
 
-    setState({ loading: true, error: null, data: null })
+    setState((prev) => ({ loading: true, error: null, data: prev.data }))
     getSettings(ctrl.signal)
       .then((json: SettingSummary[]) => {
+        fetchedRef.current = true
         setState({ loading: false, error: null, data: json })
       })
       .catch((err: unknown) => {
         if ((err instanceof DOMException || err instanceof Error) && err.name === 'AbortError') return
         const message = (err as Error).message || 'Failed to load settings'
-        setState({ loading: false, error: message, data: null })
+        fetchedRef.current = true
+        setState((prev) => ({ loading: false, error: message, data: prev.data }))
       })
   }
 

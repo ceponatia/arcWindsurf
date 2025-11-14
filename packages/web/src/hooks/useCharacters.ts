@@ -15,20 +15,21 @@ export function useCharacters() {
 
   const fetchOnce = () => {
     if (fetchedRef.current) return
-    fetchedRef.current = true
     controllerRef.current?.abort()
     const ctrl = new AbortController()
     controllerRef.current = ctrl
 
-    setState({ loading: true, error: null, data: null })
+    setState((prev) => ({ loading: true, error: null, data: prev.data }))
     getCharacters(ctrl.signal)
       .then((json: CharacterSummary[]) => {
+        fetchedRef.current = true
         setState({ loading: false, error: null, data: json })
       })
       .catch((err: unknown) => {
         if ((err instanceof DOMException || err instanceof Error) && err.name === 'AbortError') return
         const message = (err as Error).message || 'Failed to load characters'
-        setState({ loading: false, error: message, data: null })
+        fetchedRef.current = true // mark attempted; allow manual retry via retry() which resets ref
+        setState((prev) => ({ loading: false, error: message, data: prev.data }))
       })
   }
 

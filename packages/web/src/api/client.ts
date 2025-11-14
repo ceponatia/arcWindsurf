@@ -1,21 +1,52 @@
-import type { CharacterSummary, SettingSummary, Message, Session } from '../types.js'
-import { API_BASE_URL } from '../config.js'
+import type { CharacterSummary, SettingSummary, Message, Session, SessionSummary } from '../types.js'
+import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../config.js'
 
 function getBaseUrl(): string {
-  return (API_BASE_URL || 'http://localhost:3001').replace(/\/$/, '')
+  return API_BASE_URL.replace(/\/$/, '')
 }
 
-async function http<T>(path: string, init?: RequestInit & { parseAsText?: boolean }): Promise<T> {
+type HttpOptions = RequestInit & { parseAsText?: boolean; timeoutMs?: number }
+
+async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   const base = getBaseUrl()
   const url = `${base}${path.startsWith('/') ? '' : '/'}${path}`
-  const res = await fetch(url, init)
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`)
+  const { signal, timeoutMs = 10000, parseAsText, ...rest } = init ?? {}
+  const controller = new AbortController()
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  let timedOut = false
+  const onAbort = () => controller.abort()
+  if (signal) {
+    if (signal.aborted) controller.abort()
+    else signal.addEventListener('abort', onAbort)
+  }
+  if (timeoutMs > 0) {
+    timeoutId = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, timeoutMs)
   }
   try {
-    return (await res.json()) as T
-  } catch {
-    throw new Error('Failed to parse JSON response')
+    const res = await fetch(url, { ...rest, signal: controller.signal })
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    if (parseAsText) {
+      return (await res.text()) as T
+    }
+    try {
+      return (await res.json()) as T
+    } catch {
+      throw new Error('Failed to parse JSON response')
+    }
+  } catch (err) {
+    const isAbortErr = err instanceof Error && err.name === 'AbortError'
+    if (timedOut && isAbortErr) {
+      throw new Error('Request timed out')
+    }
+    throw err
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+    if (signal) signal.removeEventListener('abort', onAbort)
   }
 }
 
@@ -25,6 +56,10 @@ export async function getCharacters(signal?: AbortSignal): Promise<CharacterSumm
 
 export async function getSettings(signal?: AbortSignal): Promise<SettingSummary[]> {
   return http<SettingSummary[]>('/settings', { signal })
+}
+
+export async function getSessions(signal?: AbortSignal): Promise<SessionSummary[]> {
+  return http<SessionSummary[]>('/sessions', { signal })
 }
 
 export async function createSession(characterId: string, settingId: string, signal?: AbortSignal): Promise<Pick<Session, 'id' | 'characterId' | 'settingId' | 'createdAt'>> {
@@ -42,6 +77,7 @@ export async function sendMessage(sessionId: string, content: string, signal?: A
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
     signal,
+    timeoutMs: MESSAGE_TIMEOUT_MS,
   })
 }
 
@@ -53,6 +89,7 @@ export const Api = {
   getBaseUrl,
   getCharacters,
   getSettings,
+  getSessions,
   createSession,
   sendMessage,
   getSession,

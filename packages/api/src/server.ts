@@ -1,15 +1,47 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serve } from '@hono/node-server'
+import { randomUUID } from 'node:crypto'
 import { loadData, type LoadedData } from './data/loader.js'
-import { createSession, getSession } from './sessions/store.js'
+import { createSession, getSession, appendMessage, listSessions } from './sessions/store.js'
 import { buildPrompt } from './llm/prompt.js'
 import { chatWithOllama } from './llm/ollama.js'
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/shared'
+import { getConfig } from './util/config.js'
+import { checkOllama } from './util/health.js'
+import { getVersion } from './util/version.js'
 
 const app = new Hono()
 
 app.get('/hello', (c) => c.json({ ok: true, message: 'hello' }))
+app.get('/config', (c) => {
+	const cfg = getConfig()
+	return c.json({
+		port: cfg.port,
+		contextWindow: cfg.contextWindow,
+		temperature: cfg.temperature,
+		topP: cfg.topP,
+		ollamaModel: cfg.ollamaModel,
+		ollamaBaseUrl: cfg.ollamaBaseUrl,
+	}, 200)
+})
+app.get('/health', async (c) => {
+	const uptime = process.uptime()
+	const version = await getVersion()
+	// DB check
+	let dbOk = false
+	try {
+		const { prisma } = await import('./db/prisma.js')
+		await prisma.$queryRaw`SELECT 1`
+		dbOk = true
+	} catch (error) {
+		console.warn('Database health check failed', error)
+	}
+	// Ollama check
+	const cfg = getConfig()
+	const ollama = await checkOllama(cfg.ollamaBaseUrl).catch(() => ({ ok: false }))
+	return c.json({ status: dbOk && ollama.ok ? 'ok' : 'degraded', uptime, version, db: { ok: dbOk }, ollama }, 200)
+})
 
 let loaded: LoadedData | undefined = undefined
 
@@ -21,6 +53,15 @@ async function start() {
 		console.error('Failed to load data', (err as Error).message)
 		process.exit(1)
 	}
+	const cfg = getConfig()
+	console.log('Runtime config', {
+		port: cfg.port,
+		contextWindow: cfg.contextWindow,
+		temperature: cfg.temperature,
+		topP: cfg.topP,
+		ollamaModel: cfg.ollamaModel,
+		ollamaBaseUrl: cfg.ollamaBaseUrl,
+	})
 
 	// Enable CORS for browser-based clients (Vite dev on 5173, etc.)
 	app.use('*', cors({
@@ -51,10 +92,26 @@ async function start() {
 		return c.json(mapped, 200)
 	})
 
+	// GET /sessions - list existing sessions with display-friendly names
+	app.get('/sessions', async (c) => {
+		const sessions = await listSessions()
+		if (!loaded) return c.json(sessions, 200)
+		const decorated = sessions.map((sess) => {
+			const character = loaded?.characters.find((ch) => ch.id === sess.characterId)
+			const setting = loaded?.settings.find((s) => s.id === sess.settingId)
+			return {
+				...sess,
+				characterName: character?.name,
+				settingName: setting?.name,
+			}
+		})
+		return c.json(decorated, 200)
+	})
+
 	// GET /sessions/:id - return full conversation
-	app.get('/sessions/:id', (c) => {
+	app.get('/sessions/:id', async (c) => {
 		const id = c.req.param('id')
-		const session = getSession(id)
+		const session = await getSession(id)
 		if (!session) return c.json({ ok: false, error: 'session not found' }, 404)
 		// ensure chronological order by createdAt (ISO strings compare lexicographically)
 		const sorted = {
@@ -68,18 +125,20 @@ async function start() {
 	app.post('/sessions/:id/messages', async (c) => {
 		if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
 		const id = c.req.param('id')
-		const session = getSession(id)
+		const session = await getSession(id)
 		if (!session) {
 			return c.json({ ok: false, error: 'session not found' }, 404)
 		}
-		const body = await c.req.json().catch(() => null)
-		const content = typeof body?.content === 'string' ? body.content : ''
+		const rawBody: unknown = await c.req.json().catch(() => null)
+		if (!isMessageRequest(rawBody)) {
+			return c.json({ ok: false, error: 'content must be 1..4000 characters' }, 400)
+		}
+		const { content } = rawBody
 		if (content.length < 1 || content.length > 4000) {
 			return c.json({ ok: false, error: 'content must be 1..4000 characters' }, 400)
 		}
-		const userMessage = { role: 'user' as const, content, createdAt: new Date().toISOString() }
-		session.messages.push(userMessage)
-		console.info(`Session ${session.id}: user message (${content.length} chars) at ${userMessage.createdAt}`)
+		await appendMessage(session.id, 'user', content)
+		console.info(`Session ${session.id}: user message (${content.length} chars) queued`)
 
 		const character = loaded.characters.find((ch) => ch.id === session.characterId)
 		const setting = loaded.settings.find((s) => s.id === session.settingId)
@@ -87,15 +146,18 @@ async function start() {
 			return c.json({ ok: false, error: 'character or setting not found for session' }, 500)
 		}
 
-		const baseUrl = process.env.OLLAMA_BASE_URL
-		const model = process.env.OLLAMA_MODEL
+		const cfg = getConfig()
+		const baseUrl = cfg.ollamaBaseUrl
+		const model = cfg.ollamaModel
 		if (!baseUrl || !model) {
 			return c.json({ ok: false, error: 'Missing OLLAMA_BASE_URL or OLLAMA_MODEL env vars' }, 500)
 		}
 
-		const messages = buildPrompt({ character, setting, history: session.messages, maxHistory: 10 })
+		const sessAfterUser = await getSession(session.id)
+		const history = sessAfterUser?.messages ?? session.messages
+		const messages = buildPrompt({ character, setting, history, historyWindow: cfg.contextWindow })
 		console.info(`Session ${session.id}: calling Ollama (${model}) with ${messages.length} messages`)
-		const result = await chatWithOllama({ baseUrl, model, messages })
+		const result = await chatWithOllama({ baseUrl, model, messages, options: { temperature: cfg.temperature, top_p: cfg.topP } })
 		if (result.error) {
 			console.error(`Session ${session.id}: Ollama error -> ${result.error}`)
 			return c.json({ ok: false, error: result.error }, 502)
@@ -104,35 +166,62 @@ async function start() {
 		if (!contentReply.trim()) {
 			return c.json({ ok: false, error: 'Empty assistant response from Ollama' }, 502)
 		}
-		const assistantMessage = { role: 'assistant' as const, content: contentReply, createdAt: new Date().toISOString() }
-		session.messages.push(assistantMessage)
-		console.info(`Session ${session.id}: assistant reply (${assistantMessage.content.length} chars) at ${assistantMessage.createdAt}`)
-		return c.json({ message: assistantMessage }, 200)
+		await appendMessage(session.id, 'assistant', contentReply)
+		const sessAfterAssistant = await getSession(session.id)
+		const last = sessAfterAssistant?.messages.at(-1)
+		console.info(`Session ${session.id}: assistant reply (${contentReply.length} chars) stored`)
+		return c.json({ message: last ?? { role: 'assistant', content: contentReply, createdAt: new Date().toISOString() } }, 200)
 	})
 
-		// POST /sessions - create a new session for characterId + settingId
-		app.post('/sessions', async (c) => {
-			if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
-			const body = await c.req.json().catch(() => null)
-			const { characterId, settingId } = body ?? {}
-			if (!characterId || !settingId) {
-				return c.json({ ok: false, error: 'characterId and settingId are required' }, 400)
-			}
-			const charExists = loaded.characters.some((ch) => ch.id === characterId)
-			const setExists = loaded.settings.some((s) => s.id === settingId)
-			if (!charExists || !setExists) {
-				return c.json({ ok: false, error: 'characterId or settingId not found' }, 400)
-			}
-			// generate a UUID without external dependency
-			const id = typeof crypto !== 'undefined' && (crypto as any).randomUUID ? (crypto as any).randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)
-			const session = createSession(id, characterId, settingId)
-			const response = { id: session.id, characterId: session.characterId, settingId: session.settingId, createdAt: session.createdAt }
-			return c.json(response, 201)
-		})
+	// POST /sessions - create a new session for characterId + settingId
+	app.post('/sessions', async (c) => {
+		if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500)
+		const rawBody: unknown = await c.req.json().catch(() => null)
+		if (!isCreateSessionRequest(rawBody)) {
+			return c.json({ ok: false, error: 'characterId and settingId are required' }, 400)
+		}
+		const { characterId, settingId } = rawBody
+		const charExists = loaded.characters.some((ch) => ch.id === characterId)
+		const setExists = loaded.settings.some((s) => s.id === settingId)
+		if (!charExists || !setExists) {
+			return c.json({ ok: false, error: 'characterId or settingId not found' }, 400)
+		}
+		const id = safeRandomId()
+		const session = await createSession(id, characterId, settingId)
+		const response = { id: session.id, characterId: session.characterId, settingId: session.settingId, createdAt: session.createdAt }
+		return c.json(response, 201)
+	})
 
 	const port = Number(process.env.PORT ?? 3001)
 	serve({ fetch: app.fetch, port })
 	console.log(`API server listening on http://localhost:${port}`)
 }
 
-start()
+interface MessageRequestBody {
+	content: string
+}
+
+interface CreateSessionRequestBody {
+	characterId: string
+	settingId: string
+}
+
+function isMessageRequest(body: unknown): body is MessageRequestBody {
+	return Boolean(body && typeof body === 'object' && typeof (body as { content?: unknown }).content === 'string')
+}
+
+function isCreateSessionRequest(body: unknown): body is CreateSessionRequestBody {
+	if (!body || typeof body !== 'object') return false
+	const { characterId, settingId } = body as { characterId?: unknown; settingId?: unknown }
+	return typeof characterId === 'string' && typeof settingId === 'string'
+}
+
+function safeRandomId(): string {
+	try {
+		return randomUUID()
+	} catch {
+		return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
+	}
+}
+
+void start()

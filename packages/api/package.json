@@ -8,15 +8,22 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "eslint src --max-warnings=0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
     "hono": "^4.10.4",
-    "@minimal-rpg/shared": "workspace:*"
+    "@minimal-rpg/shared": "workspace:*",
+    "@prisma/client": "^5.20.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
+    "prisma": "^5.20.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }

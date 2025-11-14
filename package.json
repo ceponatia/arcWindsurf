@@ -9,7 +9,9 @@
     "lint": "turbo run lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
     "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "core": "node scripts/core.mjs",
+    "core:quit": "node scripts/core-quit.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -23,6 +25,7 @@
     "typescript-eslint": "^8.46.4"
   },
   "dependencies": {
+    "@prisma/client": "^5.20.0",
     "@minimal-rpg/shared": "workspace:*",
     "zod": "^4.1.12"
   }
