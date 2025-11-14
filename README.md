@@ -241,3 +241,12 @@ The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is already impleme
   - In dev, React Strict Mode double-invokes effects, often aborting the first fetch. We disable Strict Mode by default via `VITE_STRICT_MODE=false`.
   - If you prefer Strict Mode, set `VITE_STRICT_MODE=true`; the duplicate (canceled) requests are expected during development but harmless.
   - Confirm the API base URL and check the browser console for any real network errors.
+- **`pnpm core` appears to hang, and the Web UI shows no characters/settings:**
+  - `pnpm core` intentionally keeps the API and Web dev servers running; it will not exit on success.
+  - If the API exits immediately, the Web dev server will still run and the UI will have no data. Start the API alone to see validation errors:
+
+    ```bash
+    pnpm -F @minimal-rpg/api dev
+    ```
+
+  - The API fails fast when data JSON violates the Zod schemas (e.g., `appearance.build` must be one of `slight|average|athletic|heavy`, `style.formality` must be `casual|neutral|formal`). Fix the offending file and restart.

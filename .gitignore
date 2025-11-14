@@ -18,3 +18,6 @@ packages/api/prisma/migrations/*
 
 # Core orchestration runtime PIDs
 .core/*.pid
+
+# data files
+data/*
