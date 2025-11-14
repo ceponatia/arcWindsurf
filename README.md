@@ -4,7 +4,7 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
 ## What's New
 
-**November 2024:** Added support for cloud-hosted LLMs via OpenRouter, enabling access to powerful models like Claude 3.5 Sonnet, Mistral Large 2, and more. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
+**November 2025:** OpenRouter is now the default and required LLM path. Configure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
 
 ## Quick Start
 
@@ -12,9 +12,7 @@ Prerequisites:
 
 - Node.js 20+
 - pnpm (Corepack is fine)
-- **LLM Provider (choose one):**
-  - **Recommended:** OpenRouter account with API key (cloud-hosted, see Configuration section)
-  - **Alternative:** Ollama running locally with a suitable model (e.g., `mistral:instruct`)
+- **LLM Provider:** OpenRouter account with API key (see Configuration)
 
 Install dependencies and build everything:
 
@@ -35,7 +33,7 @@ pnpm -F @minimal-rpg/web dev
 
 - API will listen on `http://localhost:3001`
 - Web (Vite dev) will listen on `http://localhost:5173`
-- Configure your LLM provider (OpenRouter or Ollama) in `packages/api/.env` before starting
+- Configure your LLM provider (OpenRouter) in `packages/api/.env` before starting
   - See the Configuration section below for details
 
 ### Unified startup/teardown
@@ -48,7 +46,8 @@ pnpm core
 
 - Applies Prisma migrations via `db:deploy`, seeds demo data, and checks for port conflicts.
 - Spawns the API/Web dev servers (detached) and polls `/health`, `/config`, `/characters`, and `/settings`.
-- Checks LLM provider connectivity (OpenRouter or Ollama, depending on configuration).
+- Checks LLM configuration (`llm.provider`, `llm.model`, and `llm.configured`).
+- Adds a dev DB viewer at `GET /admin/db/overview` (see Web `/dbview`).
 
 When finished, stop everything and free the ports:
 
@@ -108,14 +107,13 @@ Defaults:
 
 - API: `http://localhost:3001`
 - Web (Vite dev): `http://localhost:5173`
-- Ollama endpoint: `http://localhost:11434` (or host-specific)
 
 To change model/runtime params, set env vars (see `packages/api/.env.example`).
 
 ## Health
 
-- `GET /health` returns `{ status, uptime, version, db, ollama }`.
-  - Checks SQLite connectivity and Ollama reachability.
+- `GET /health` returns `{ status, uptime, version, db, llm }`.
+  - Checks SQLite connectivity and LLM configuration (`provider`, `model`, `configured`).
 
 ## API Endpoints (Overview)
 
@@ -145,20 +143,25 @@ The API reads environment variables with sensible defaults for local development
 - `PORT` (default: `3001`)
 - `DATABASE_URL` (default: `file:./prisma/dev.db` inside the API package)
 
-### LLM Configuration (choose one)
-
-**Cloud-hosted (recommended for production):**
+### LLM Configuration
 
 - `OPENROUTER_API_KEY` — Your OpenRouter API key from <https://openrouter.ai/keys>
-- `OPENROUTER_MODEL` — Model to use (e.g., `mistralai/mistral-large-2411`, `anthropic/claude-3.5-sonnet`)
-- See `dev-docs/llm-recommendations.md` for detailed model comparisons and recommendations
+- `OPENROUTER_MODEL` — Model to use (e.g., `deepseek/deepseek-chat-v3-0324`)
+- See `dev-docs/llm-recommendations.md` for detailed model comparisons and recommendations.
 
-**Local development (requires Ollama):**
+### Prompts
 
-- `OLLAMA_BASE_URL` (default: `http://localhost:11434`)
-- `OLLAMA_MODEL` (e.g., `mistral:instruct`)
+- System prompts are now managed as JSON files under `packages/api/src/llm/prompts/`:
+  - `base-rules.json` — core narration rules
+  - `safety-rules.json` — safety and boundaries
+  - `safety-mode.json` — safety-mode directive and sensitive note
+- The API loads these at startup via ESM JSON imports; edit them to adjust guide behavior without code changes.
 
-Note: The application supports both Ollama (local) and OpenRouter (cloud) simultaneously. If both are configured, OpenRouter takes precedence.
+### Dev Database Viewer
+
+- Visit `http://localhost:5173/dbview` to see a live overview of all Prisma models/tables, their fields, row counts, and the 50 most recent rows per table.
+- Backed by `GET /admin/db/overview` which introspects Prisma's DMMF and queries sample rows.
+- For development use only; do not expose this endpoint in production.
 
 ### Generation Parameters
 
@@ -166,6 +169,12 @@ Note: The application supports both Ollama (local) and OpenRouter (cloud) simult
 - `TEMPERATURE` (default: `0.7`) — generation temperature (0.0-1.0)
 - `TOP_P` (default: `0.9`) — nucleus sampling parameter
 - Frontend message timeout: set `VITE_API_MESSAGE_TIMEOUT_MS` (default `60000`) to allow longer-running model responses. The previous 10s default could abort messages mid-generation.
+
+### Frontend (Vite) Settings
+
+- `VITE_API_BASE_URL` (default: `http://localhost:3001`)
+- `VITE_API_MESSAGE_TIMEOUT_MS` (default: `60000`)
+- `VITE_STRICT_MODE` (default: `false`) — when `true`, renders `React.StrictMode` in dev which double-invokes effects. Leave `false` to avoid duplicate fetches/cancellations during development.
 
 Example env file: `packages/api/.env.example`
 
@@ -186,11 +195,8 @@ The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is already impleme
   - Check your API key is valid at <https://openrouter.ai/keys>
   - Ensure you have credits at <https://openrouter.ai/credits>
   - Verify the model name is correct: <https://openrouter.ai/models>
-- **Ollama not detected in `/health`:**
-  - Ensure Ollama is running and `OLLAMA_BASE_URL` points to it (default: `http://localhost:11434`).
-  - Make sure the model in `OLLAMA_MODEL` is pulled (e.g., `ollama pull mistral:instruct`).
 - **"Missing LLM configuration" error:**
-  - Set either `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` or `OLLAMA_MODEL` in your `.env` file
+  - Set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`.
 
 ### Other Issues
 
@@ -198,8 +204,7 @@ The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is already impleme
   - Ensure `DATABASE_URL` is set or use the example migrate command shown above.
 - **Markdown formatting checks failing:**
   - Run `pnpm run lint:md` to see markdown issues and fix indentation/tabs.
-- **Characters or settings show "Loading…" indefinitely in the UI:**
-  - This was previously caused by React Strict Mode aborting the initial fetch before completion while the hook incorrectly marked it as fetched.
-  - Hooks now only mark data as fetched after a successful load (or explicit error), allowing a second Strict Mode mount to complete normally.
-  - If it reoccurs, confirm the API is reachable at `VITE_API_BASE_URL` (default `http://localhost:3001`) and check the browser console for network aborts.
-  - Use `pnpm core` to start both servers with health checks if unsure which service is down.
+- **Characters or settings show "Loading…" or many canceled requests:**
+  - In dev, React Strict Mode double-invokes effects, often aborting the first fetch. We disable Strict Mode by default via `VITE_STRICT_MODE=false`.
+  - If you prefer Strict Mode, set `VITE_STRICT_MODE=true`; the duplicate (canceled) requests are expected during development but harmless.
+  - Confirm the API base URL and check the browser console for any real network errors.

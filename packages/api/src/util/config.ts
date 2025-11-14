@@ -3,8 +3,8 @@ export interface RuntimeConfig {
   contextWindow: number
   temperature: number
   topP: number
-  ollamaBaseUrl: string
-  ollamaModel: string
+  openrouterApiKey: string
+  openrouterModel: string
 }
 
 function num(value: string | undefined, fallback: number) {
@@ -17,10 +17,7 @@ export function getConfig(): RuntimeConfig {
   const contextWindow = num(process.env.CONTEXT_WINDOW, 12)
   const temperature = Number.isFinite(Number(process.env.TEMPERATURE)) ? Number(process.env.TEMPERATURE) : 0.7
   const topP = Number.isFinite(Number(process.env.TOP_P)) ? Number(process.env.TOP_P) : 0.9
-  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434'
-  const ollamaModel = process.env.OLLAMA_MODEL ?? 'mistral:instruct'
-  if (!ollamaBaseUrl || !ollamaModel) {
-    // Keep minimal validation; endpoints will handle missing config
-  }
-  return { port, contextWindow, temperature, topP, ollamaBaseUrl, ollamaModel }
+  const openrouterApiKey = process.env.OPENROUTER_API_KEY ?? ''
+  const openrouterModel = process.env.OPENROUTER_MODEL ?? 'deepseek/deepseek-chat'
+  return { port, contextWindow, temperature, topP, openrouterApiKey, openrouterModel }
 }

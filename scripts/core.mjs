@@ -16,7 +16,6 @@ const ROOT = process.cwd()
 const CORE_DIR = path.join(ROOT, '.core')
 const API_PORT = Number(process.env.PORT || 3001)
 const WEB_PORT = 5173
-const OLLAMA_PORT = 11434
 const START_TIMEOUT_MS = 60_000
 const HEALTH_POLL_INTERVAL_MS = 2_000
 const DEFAULT_DB_FILE = path.join(ROOT, 'packages/api/prisma/dev.db')
@@ -120,7 +119,6 @@ async function start() {
   // Port pre-flight
   const apiBusy = await checkPort(API_PORT)
   const webBusy = await checkPort(WEB_PORT)
-  const ollamaBusy = await checkPort(OLLAMA_PORT)
 
   if (apiBusy) {
     console.error(`[core] Port ${API_PORT} already in use. If an old API instance is running, run 'pnpm core:quit' or manually stop it.`)
@@ -162,9 +160,14 @@ async function start() {
   }
 
   if (health) {
-    console.log(`[core] /health status: ${health.status}; db.ok=${health.db?.ok}; ollama.ok=${health.ollama?.ok}`)
-    if (!health.ollama?.ok) {
-      console.warn(`[core] Ollama not reachable on port ${OLLAMA_PORT}. Continuing without LLM; replies will fail. (Policy: warn only).`)
+    const llmProvider = health.llm?.provider ?? 'unknown'
+    const llmModel = health.llm?.model ?? 'unknown'
+    const llmConfigured = health.llm?.configured ?? false
+    console.log(
+      `[core] /health status: ${health.status}; db.ok=${health.db?.ok}; llm.provider=${llmProvider}; llm.model=${llmModel}; llm.configured=${llmConfigured}`,
+    )
+    if (!llmConfigured) {
+      console.warn('[core] LLM is not fully configured. Ensure OPENROUTER_API_KEY and OPENROUTER_MODEL are set for the API.')
     }
   }
 
@@ -186,9 +189,6 @@ async function start() {
 
   console.log('[core] Startup complete.')
   console.log('[core] Next: open http://localhost:5173 in your browser.')
-  if (!ollamaBusy && health?.ollama?.ok === false) {
-    console.log(`[core] Hint: Install & start Ollama, then set OLLAMA_MODEL env var and retry messages.`)
-  }
 }
 
 start().catch(err => {

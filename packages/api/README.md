@@ -2,27 +2,26 @@
 
 Backend API package for Minimal RPG.
 
-Status: scaffolding placeholder.
+Status: OpenRouter-based runtime (DeepSeek by default).
 
 ## Environment Variables
 
-Copy the root `.env.example` to `.env`:
+Create a `.env` in this package (copy the example):
 
 ```bash
-cp ../../.env.example ../../.env
+cp .env.example .env
 ```
 
-Defaults (used if `.env` is not present):
+Defaults (used if not set):
 
 - `PORT=3001`
-- `OLLAMA_BASE_URL=http://localhost:11434`
-- `OLLAMA_MODEL=mistral:instruct`
+- `OPENROUTER_MODEL=deepseek/deepseek-chat`
 
-When wiring Ollama calls, read with fallbacks, for example:
+Required for LLM calls:
 
-```ts
-const baseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434'
-const model = process.env.OLLAMA_MODEL ?? 'mistral:instruct'
+```dotenv
+OPENROUTER_API_KEY=REMOVED_SECRET
+OPENROUTER_MODEL=deepseek/deepseek-chat-v3-0324
 ```
 
-Note: In Ollama, Mistral Instruct 7B is commonly referenced as `mistral:instruct`. `mistral:latest` also resolves to a recent default; prefer the explicit instruct tag for consistency.
+The server will fail message requests if `OPENROUTER_API_KEY` is missing. See `/health` for `llm.configured`.

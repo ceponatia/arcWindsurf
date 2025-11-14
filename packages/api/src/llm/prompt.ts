@@ -1,20 +1,31 @@
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/shared'
 import type { Message } from '../sessions/store.js'
+import baseRulesJson from './prompts/base-rules.json' with { type: 'json' }
+import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' }
+import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' }
+import { z } from 'zod'
 
-const BASE_RULES = [
-  'You are an in-character narrative guide for a roleplaying scene.',
-  'Stay strictly in character and maintain a consistent POV aligned with the selected character and setting.',
-  'Use vivid, sensory detail and specific imagery; mix third-person narration with natural dialogue and vary cadence for pacing.',
-  'Keep each reply self-contained enough to advance the scene with momentum while honoring prior events and facts.',
-  'Match tone to the setting and the character\'s speaking style and personality.',
-  'Never break character or mention being an AI/model; avoid meta-commentary.',
-  'Avoid generic filler; prioritize concrete details grounded in the setting, character, and ongoing situation.',
-]
+const BaseRulesSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() })
+const SafetyRulesSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() })
+const SafetyModeSchema = z.object({
+  safetyModeMessage: z.string().min(1),
+  sensitiveNote: z.string().min(1),
+})
 
-const SAFETY_RULES = [
-  'Boundaries: Avoid explicit sexual content, graphic violence, or hate speech. Prefer implication and fade-to-black when scenes turn intimate or graphic.',
-  'Handle sensitive topics respectfully and off-screen; maintain immersion without explicit detail.',
-]
+export function assertPromptConfigValid(): void {
+  try {
+    BaseRulesSchema.parse(baseRulesJson)
+    SafetyRulesSchema.parse(safetyRulesJson)
+    SafetyModeSchema.parse(safetyModeJson)
+  } catch (err) {
+    const message = (err as Error)?.message ?? String(err)
+    console.error('[prompts] Invalid prompt JSON configuration:', message)
+    throw new Error('Invalid prompt JSON configuration')
+  }
+}
+
+const BASE_RULES: string[] = BaseRulesSchema.parse(baseRulesJson).rules
+const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules
 
 function serializeCharacter(c: CharacterProfile) {
   return [
@@ -113,11 +124,15 @@ export function buildPrompt(opts: {
     filter.flagged
       ? {
           role: 'system' as const,
-          content:
-            'Safety Mode: If the user asks for explicit sexual content, graphic violence, or hate speech, refuse and redirect in-character. Fade-to-black for intimacy. Keep tone respectful and maintain immersion. Respond with a safe alternative when needed.',
+          content: (safetyModeJson as { safetyModeMessage?: string })?.safetyModeMessage ?? '',
         }
       : undefined,
-    filter.flagged ? { role: 'system' as const, content: filter.note } : undefined,
+    filter.flagged
+      ? {
+          role: 'system' as const,
+          content: (safetyModeJson as { sensitiveNote?: string })?.sensitiveNote ?? '',
+        }
+      : undefined,
   ]
     .filter(Boolean) as { role: 'system'; content: string }[]
 

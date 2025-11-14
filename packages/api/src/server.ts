@@ -1,15 +1,17 @@
+import 'dotenv/config'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serve } from '@hono/node-server'
 import { randomUUID } from 'node:crypto'
 import { loadData, type LoadedData } from './data/loader.js'
 import { createSession, getSession, appendMessage, listSessions } from './sessions/store.js'
-import { buildPrompt } from './llm/prompt.js'
-import { chatWithOllama } from './llm/ollama.js'
+import { buildPrompt, assertPromptConfigValid } from './llm/prompt.js'
+import { chatWithOpenRouter } from './llm/openrouter.js'
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/shared'
 import { getConfig } from './util/config.js'
-import { checkOllama } from './util/health.js'
 import { getVersion } from './util/version.js'
+import { prisma } from './db/prisma.js'
+import { Prisma as PrismaNs } from '@prisma/client'
 
 const app = new Hono()
 
@@ -21,8 +23,7 @@ app.get('/config', (c) => {
 		contextWindow: cfg.contextWindow,
 		temperature: cfg.temperature,
 		topP: cfg.topP,
-		ollamaModel: cfg.ollamaModel,
-		ollamaBaseUrl: cfg.ollamaBaseUrl,
+		openrouterModel: cfg.openrouterModel,
 	}, 200)
 })
 app.get('/health', async (c) => {
@@ -37,16 +38,17 @@ app.get('/health', async (c) => {
 	} catch (error) {
 		console.warn('Database health check failed', error)
 	}
-	// Ollama check
 	const cfg = getConfig()
-	const ollama = await checkOllama(cfg.ollamaBaseUrl).catch(() => ({ ok: false }))
-	return c.json({ status: dbOk && ollama.ok ? 'ok' : 'degraded', uptime, version, db: { ok: dbOk }, ollama }, 200)
+	// For now just return config presence as LLM health indicator
+	const llmOk = Boolean(cfg.openrouterApiKey && cfg.openrouterModel)
+	return c.json({ status: dbOk && llmOk ? 'ok' : 'degraded', uptime, version, db: { ok: dbOk }, llm: { provider: 'openrouter', model: cfg.openrouterModel, configured: llmOk } }, 200)
 })
 
 let loaded: LoadedData | undefined = undefined
 
 async function start() {
 	try {
+		assertPromptConfigValid()
 		loaded = await loadData()
 		console.log(`Startup: loaded ${loaded.characters.length} characters and ${loaded.settings.length} settings`) 
 	} catch (err) {
@@ -59,8 +61,8 @@ async function start() {
 		contextWindow: cfg.contextWindow,
 		temperature: cfg.temperature,
 		topP: cfg.topP,
-		ollamaModel: cfg.ollamaModel,
-		ollamaBaseUrl: cfg.ollamaBaseUrl,
+		openrouterModel: cfg.openrouterModel,
+		openrouterApiKeySet: Boolean(cfg.openrouterApiKey),
 	})
 
 	// Enable CORS for browser-based clients (Vite dev on 5173, etc.)
@@ -105,7 +107,45 @@ async function start() {
 				settingName: setting?.name,
 			}
 		})
+
 		return c.json(decorated, 200)
+	})
+
+	// Admin DB endpoints (dev tooling)
+	app.get('/admin/db/overview', async (c) => {
+		try {
+			const models = PrismaNs.dmmf.datamodel.models
+			const results: Array<{
+				name: string
+				columns: Array<{ name: string; type: string; isId: boolean; isRequired: boolean; isList: boolean }>
+				rowCount: number
+				sample: Array<Record<string, unknown>>
+			}> = []
+			for (const m of models) {
+				const name = m.name
+				const columns = m.fields.map((f) => ({ name: f.name, type: typeof f.type === 'string' ? String(f.type) : 'object', isId: !!f.isId, isRequired: !!f.isRequired, isList: !!f.isList }))
+				const delegateName = name.charAt(0).toLowerCase() + name.slice(1)
+				// @ts-expect-error - dynamic delegate access
+				const delegate = prisma[delegateName]
+				let rowCount = 0
+				let sample: Array<Record<string, unknown>> = []
+				if (delegate) {
+					try {
+						rowCount = await delegate.count()
+					} catch {}
+					try {
+						// Try order by createdAt if present, else just take N
+						const orderBy = m.fields.some((f) => f.name === 'createdAt') ? { createdAt: 'desc' as const } : undefined
+						sample = await delegate.findMany({ take: 50, orderBy })
+					} catch {}
+				}
+				results.push({ name, columns, rowCount, sample })
+			}
+			return c.json({ tables: results }, 200)
+		} catch (err) {
+			console.error('DB overview error', (err as Error).message)
+			return c.json({ ok: false, error: 'Failed to load DB overview' }, 500)
+		}
 	})
 
 	// GET /sessions/:id - return full conversation
@@ -147,24 +187,22 @@ async function start() {
 		}
 
 		const cfg = getConfig()
-		const baseUrl = cfg.ollamaBaseUrl
-		const model = cfg.ollamaModel
-		if (!baseUrl || !model) {
-			return c.json({ ok: false, error: 'Missing OLLAMA_BASE_URL or OLLAMA_MODEL env vars' }, 500)
+		if (!cfg.openrouterApiKey || !cfg.openrouterModel) {
+			return c.json({ ok: false, error: 'Missing OPENROUTER_API_KEY or OPENROUTER_MODEL env vars' }, 500)
 		}
 
 		const sessAfterUser = await getSession(session.id)
 		const history = sessAfterUser?.messages ?? session.messages
 		const messages = buildPrompt({ character, setting, history, historyWindow: cfg.contextWindow })
-		console.info(`Session ${session.id}: calling Ollama (${model}) with ${messages.length} messages`)
-		const result = await chatWithOllama({ baseUrl, model, messages, options: { temperature: cfg.temperature, top_p: cfg.topP } })
+		console.info(`Session ${session.id}: calling OpenRouter model ${cfg.openrouterModel} with ${messages.length} messages`)
+		const result = await chatWithOpenRouter({ apiKey: cfg.openrouterApiKey, model: cfg.openrouterModel, messages, options: { temperature: cfg.temperature, top_p: cfg.topP } })
 		if (result.error) {
-			console.error(`Session ${session.id}: Ollama error -> ${result.error}`)
+			console.error(`Session ${session.id}: OpenRouter error -> ${result.error}`)
 			return c.json({ ok: false, error: result.error }, 502)
 		}
 		const contentReply = result.message?.content ?? ''
 		if (!contentReply.trim()) {
-			return c.json({ ok: false, error: 'Empty assistant response from Ollama' }, 502)
+			return c.json({ ok: false, error: 'Empty assistant response from OpenRouter' }, 502)
 		}
 		await appendMessage(session.id, 'assistant', contentReply)
 		const sessAfterAssistant = await getSession(session.id)

@@ -1,0 +1,4 @@
+{
+  "safetyModeMessage": "Safety Mode: If the user asks for explicit sexual content, graphic violence, or hate speech, refuse and redirect in-character. Fade-to-black for intimacy. Keep tone respectful and maintain immersion. Respond with a safe alternative when needed.",
+  "sensitiveNote": "Sensitive content detected: avoid explicit details, keep events implied or off-screen, and redirect respectfully."
+}
