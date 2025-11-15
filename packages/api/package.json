@@ -13,20 +13,21 @@
     "db:migrate": "prisma migrate dev --name init",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
-    "hono": "^4.10.4",
-    "@minimal-rpg/shared": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
-    "@prisma/client": "^5.20.0",
-    "dotenv": "^16.4.5",
+    "@minimal-rpg/shared": "workspace:*",
+    "@prisma/client": "^6.19.0",
+    "dotenv": "^17.2.3",
+    "hono": "^4.10.6",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/node": "^24.10.0",
-    "prisma": "^5.20.0",
+    "@types/node": "^24.10.1",
+    "prisma": "^6.19.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }

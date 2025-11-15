@@ -1,6 +1,6 @@
 // Prisma schema for Minimal RPG API
 // SQLite database for durable session storage
-
+// Refactor for PostgreSQL
 generator client {
   provider = "prisma-client-js"
 }
