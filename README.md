@@ -244,6 +244,56 @@ The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is already impleme
 
 ### Other Issues
 
+- **Messages endpoint returns 5xx when sending chat:**
+  - Check `GET /health` — `llm.configured` must be `true` and `llm.model` should match your `.env`.
+  - Ensure `packages/api/.env` defines `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` (server now always loads this file).
+  - The web UI shows detailed errors from the API; if you see an OpenRouter error (e.g., auth/credit/model access), fix your key or model.
+  - To see server logs in real time, run the API in a foreground terminal:
+
+    ```bash
+    pnpm -F @minimal-rpg/api dev
+    ```
+
+  - Common causes: invalid model name, insufficient credits, network egress blocked.
+
+- **Prisma P2021: `The table main.SettingInstance does not exist`:**
+  - Your database is missing the per-session overrides tables. Fix by applying the latest migrations:
+
+    ```bash
+    # Ensure Prisma has a database URL (or set it in packages/api/.env)
+    export DATABASE_URL=file:./prisma/dev.db
+    pnpm -F @minimal-rpg/api db:deploy
+    pnpm -F @minimal-rpg/api db:seed
+    ```
+
+  - Alternatively, run an ad-hoc dev migration:
+
+    ```bash
+    DATABASE_URL=file:./prisma/dev.db pnpm -F @minimal-rpg/api db:migrate
+    ```
+
+  - Then restart the API dev server and try sending a message again.
+
+- **`Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@prisma/client'` when running `pnpm core`:**
+  - Restore the generated Prisma Client:
+
+    ```bash
+    DATABASE_URL="file:/home/brian/projects/minimal-rpg/packages/api/prisma/dev.db" pnpm -F @minimal-rpg/api db:generate
+    ```
+
+  - If the error persists, add Prisma deps at the repo root (the `core` script imports Prisma directly):
+
+    ```bash
+    pnpm add -Dw @prisma/client prisma
+    pnpm -w install
+    ```
+
+  - Then re-run:
+
+    ```bash
+    pnpm core
+    ```
+
 - **Database migration errors:**
   - Ensure `DATABASE_URL` is set or use the example migrate command shown above.
 - **Markdown formatting checks failing:**

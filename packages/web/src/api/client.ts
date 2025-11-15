@@ -54,6 +54,19 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   try {
     const res = await fetch(url, { ...rest, signal: controller.signal });
     if (!res.ok) {
+      // Try to surface server-provided error details
+      try {
+        const maybeJson = await res.clone().json();
+        const msg =
+          maybeJson && typeof maybeJson === 'object' && 'error' in maybeJson
+            ? String((maybeJson as { error?: unknown }).error)
+            : undefined;
+        if (msg) throw new Error(`HTTP ${res.status}: ${msg}`);
+      } catch {}
+      try {
+        const text = await res.text();
+        if (text) throw new Error(`HTTP ${res.status}: ${text}`);
+      } catch {}
       throw new Error(`HTTP ${res.status}`);
     }
     // No Content
