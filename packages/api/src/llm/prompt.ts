@@ -30,7 +30,7 @@ const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules
 function serializeCharacter(c: CharacterProfile) {
   const rawPersonality = c.personality
   const personalityLine = Array.isArray(rawPersonality)
-    ? `Personality Traits: ${(rawPersonality as string[]).map(p => truncate(p, 120)).join('; ')}`
+    ? `Personality Traits: ${(rawPersonality).map(p => truncate(p, 120)).join('; ')}`
     : `Personality: ${truncate(rawPersonality, 400)}`
 
   return [

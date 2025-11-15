@@ -158,6 +158,17 @@ const parsed = CharacterProfileSchema.parse(obj)
 const character: CharacterProfile = parsed
 ```
 
+- Namespaced access is also available:
+
+```ts
+import { Character, Setting } from '@minimal-rpg/schemas'
+
+// Character.* includes leaf schemas like AppearanceSchema, ScentSchema, etc.
+const ok = Character.CharacterProfileSchema.safeParse(obj)
+```
+
+The package continues to export flat named types (`CharacterProfile`, `SettingProfile`, `Appearance`, ...), so existing imports remain valid.
+
 Prefer importing directly from `@minimal-rpg/schemas`. The `@minimal-rpg/shared` package no longer exports these schemas.
 
 ## Configuration
