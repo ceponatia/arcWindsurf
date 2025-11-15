@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 // Character basics schema
 export const CharacterBasicsSchema = z.object({
@@ -8,6 +8,6 @@ export const CharacterBasicsSchema = z.object({
   summary: z.string().min(1),
   backstory: z.string().min(1),
   tags: z.array(z.string().min(1)).optional(),
-})
+});
 
-export type CharacterBasics = z.infer<typeof CharacterBasicsSchema>
+export type CharacterBasics = z.infer<typeof CharacterBasicsSchema>;

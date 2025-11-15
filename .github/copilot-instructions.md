@@ -1,6 +1,7 @@
 # Copilot Instructions for Minimal RPG
 
 This monorepo uses pnpm + Turbo with four packages:
+
 - `packages/schemas` — Zod schemas for domain profiles
 - `packages/shared` — shared types and helpers (re-exports schemas)
 - `packages/api` — Hono-based Node API server
@@ -12,6 +13,7 @@ This monorepo uses pnpm + Turbo with four packages:
 - After all todo tasks are done / the work required by the prompt is complete, read the root README.md file, add any necessary details related to the work you just did, and then clean up the overall README.md file to ensure it is accurate, concise and up to date. Do not remove any information that was not affected by your current work.
 
 ## Architecture & Conventions
+
 - TypeScript + ESM across the repo. `tsconfig.base.json` sets `verbatimModuleSyntax: true`.
   - When importing local files, include the `.js` extension in TS code (e.g., `import { X } from './file.js'`).
   - API overrides to `NodeNext` module/resolution; shared/web use `Bundler`.
@@ -27,6 +29,7 @@ This monorepo uses pnpm + Turbo with four packages:
 - If you start the server, you will be unable to proceed because the terminal command will hang. Make sure you start the server in either a separate terminal, in the background, or in a monitoring mode.
 
 ## Developer Workflows
+
 - Install and build everything:
   - `pnpm -w install`
   - `pnpm -w build` (Turbo orchestrates `tsc` builds; outputs to `dist/`)
@@ -40,13 +43,14 @@ This monorepo uses pnpm + Turbo with four packages:
 - Data validation helper (optional): `node ./scripts/validate-data.js`
 
 ## Data & Schemas
+
 - Add character files to `data/characters/*.json`; settings to `data/settings/*.json`.
 - Must conform to schemas in `@minimal-rpg/schemas`. Minimums include non-empty strings for names and summaries; character `goals` is an array of non-empty strings; optional arrays: `tags`, `constraints`.
 - Example validation usage:
   ```ts
-  import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas'
-  const parsed = CharacterProfileSchema.parse(obj)
-  const character: CharacterProfile = parsed
+  import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas';
+  const parsed = CharacterProfileSchema.parse(obj);
+  const character: CharacterProfile = parsed;
   ```
 - Run API with a custom data dir:
   ```bash
@@ -54,12 +58,14 @@ This monorepo uses pnpm + Turbo with four packages:
   ```
 
 ## Patterns to Follow
+
 - Use shared Zod schemas for all runtime validation; avoid duplicating type definitions.
 - Keep imports ESM-correct with explicit `.js` for local paths due to `verbatimModuleSyntax`.
 - API errors on invalid data should be explicit and fail-fast during startup (see `loader.ts`).
 - Prefer small, self-contained JSON files; the loader treats missing directories as empty collections.
 
 ## Key Files
+
 - Root: `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`
 - Schemas: `packages/schemas/src/index.ts`
 - Shared: `packages/shared/src/index.ts` (re-exports from `@minimal-rpg/schemas`)

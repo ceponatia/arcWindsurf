@@ -1,13 +1,13 @@
-import React from 'react'
-import { useCharacters } from '../hooks/useCharacters.js'
+import React from 'react';
+import { useCharacters } from '../hooks/useCharacters.js';
 
 export interface CharactersPanelProps {
-  selectedId: string | null
-  onSelect: (id: string | null) => void
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
 }
 
 export const CharactersPanel: React.FC<CharactersPanelProps> = ({ selectedId, onSelect }) => {
-  const { loading, error, data, retry } = useCharacters()
+  const { loading, error, data, retry } = useCharacters();
 
   return (
     <section className="panel panel-characters">
@@ -17,7 +17,9 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({ selectedId, on
         {error && (
           <div>
             <p className="error">Failed to load: {error}</p>
-            <button className="btn" onClick={retry}>Retry</button>
+            <button className="btn" onClick={retry}>
+              Retry
+            </button>
           </div>
         )}
         {!loading && !error && (
@@ -30,7 +32,7 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({ selectedId, on
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') onSelect(c.id)
+                  if (e.key === 'Enter' || e.key === ' ') onSelect(c.id);
                 }}
               >
                 <div className="item-title">{c.name}</div>
@@ -45,5 +47,5 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({ selectedId, on
         )}
       </div>
     </section>
-  )
-}
+  );
+};

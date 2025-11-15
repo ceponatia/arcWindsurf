@@ -103,7 +103,7 @@ type SettingProfile = {
 - System: Serialized character sheet (compact)
 - System: Serialized setting
 - Recent conversation turns (last N, e.g. 10–20)
-New user message
+  New user message
 
 This is the spine; don’t pollute it with UI fluff.
 
@@ -112,7 +112,7 @@ This is the spine; don’t pollute it with UI fluff.
 ### Phase 0 – Project Skeleton
 
 - Initialize repo:
-  - pnpm, turbo  + TS configs
+  - pnpm, turbo + TS configs
   - packages/api, packages/web, packages/shared (mini-monorepo)
 - Add linting & formatting:
   - ESLint + Prettier
@@ -124,7 +124,7 @@ Deliverable: Builds, lints, runs a hello-world endpoint.
 
 - Define CharacterProfile & SettingProfile types.
 - Implement Zod schemas.
-- Load JSON from data/characters/*.json, data/settings/*.json.
+- Load JSON from data/characters/_.json, data/settings/_.json.
 - On startup:
   - Validate all JSON
   - Fail fast with clear errors
@@ -163,7 +163,7 @@ Deliverable: cURL-able API that returns solid in-character RP text.
 - Show:
   - Character name + setting in header
   - Messages styled distinctly (user vs character)
-  
+
 Deliverable: Fully usable local RP chat, no fluff.
 
 ### Phase 4 – Quality & RP Depth

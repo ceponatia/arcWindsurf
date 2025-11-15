@@ -28,17 +28,17 @@ This addendum addresses specific questions about:
 
 ### Qwen2.5 72B vs Mistral Large 2 for RPG Narrator
 
-| Feature | Qwen2.5 72B | Mistral Large 2 | Winner |
-|---------|-------------|-----------------|--------|
-| **Creative Writing Quality** | ⭐⭐⭐⭐ (Excellent structure, memory) | ⭐⭐⭐⭐ (Very good narrative flow) | **Tie** |
-| **Roleplay/Character Acting** | ⭐⭐⭐⭐⭐ (Exceptional consistency) | ⭐⭐⭐⭐ (Very good) | **Qwen** |
-| **Context Window** | 128K tokens | 128K tokens | Tie |
-| **Function Calling** | ✅ Native support | ✅ Excellent support | Tie |
-| **Censorship Level** | Very Low (minimal filtering) | Low (less than US models) | **Qwen** |
-| **Cost (OpenRouter)** | $0.90 input / $0.90 output per 1M | $2 input / $6 output per 1M | **Qwen** |
-| **Speed** | Fast | Very Fast | **Mistral** |
-| **Multilingual** | Excellent (29+ languages) | Good | **Qwen** |
-| **Long-form Coherence** | Excellent (ranks high on benchmarks) | Very good | **Qwen** |
+| Feature                       | Qwen2.5 72B                            | Mistral Large 2                     | Winner      |
+| ----------------------------- | -------------------------------------- | ----------------------------------- | ----------- |
+| **Creative Writing Quality**  | ⭐⭐⭐⭐ (Excellent structure, memory) | ⭐⭐⭐⭐ (Very good narrative flow) | **Tie**     |
+| **Roleplay/Character Acting** | ⭐⭐⭐⭐⭐ (Exceptional consistency)   | ⭐⭐⭐⭐ (Very good)                | **Qwen**    |
+| **Context Window**            | 128K tokens                            | 128K tokens                         | Tie         |
+| **Function Calling**          | ✅ Native support                      | ✅ Excellent support                | Tie         |
+| **Censorship Level**          | Very Low (minimal filtering)           | Low (less than US models)           | **Qwen**    |
+| **Cost (OpenRouter)**         | $0.90 input / $0.90 output per 1M      | $2 input / $6 output per 1M         | **Qwen**    |
+| **Speed**                     | Fast                                   | Very Fast                           | **Mistral** |
+| **Multilingual**              | Excellent (29+ languages)              | Good                                | **Qwen**    |
+| **Long-form Coherence**       | Excellent (ranks high on benchmarks)   | Very good                           | **Qwen**    |
 
 ### Qwen2.5 72B Strengths for RPG Use
 
@@ -110,12 +110,12 @@ This addendum addresses specific questions about:
 
 #### Benchmark Performance
 
-| Benchmark | DeepSeek V3 | Mistral Large 2 | Claude 3.5 Sonnet | Analysis |
-|-----------|-------------|-----------------|-------------------|----------|
-| **MMLU (Knowledge)** | ~88.5% | ~84% | ~88%+ | DeepSeek ties Claude |
-| **HumanEval (Code)** | ~82.6% | ~87% | ~85%+ | Mistral leads slightly |
-| **MATH** | ~90.2% | ~72% | ~85% | DeepSeek dominates |
-| **Creative Writing** | Near-best | Good | Best-in-class | DeepSeek surprises |
+| Benchmark            | DeepSeek V3 | Mistral Large 2 | Claude 3.5 Sonnet | Analysis               |
+| -------------------- | ----------- | --------------- | ----------------- | ---------------------- |
+| **MMLU (Knowledge)** | ~88.5%      | ~84%            | ~88%+             | DeepSeek ties Claude   |
+| **HumanEval (Code)** | ~82.6%      | ~87%            | ~85%+             | Mistral leads slightly |
+| **MATH**             | ~90.2%      | ~72%            | ~85%              | DeepSeek dominates     |
+| **Creative Writing** | Near-best   | Good            | Best-in-class     | DeepSeek surprises     |
 
 #### Creative Writing Quality Deep Dive
 
@@ -259,12 +259,12 @@ Budget: DeepSeek V3
 
 ## Technical Comparison Matrix (Updated)
 
-| Model | Context | Function Calling | Creative | Roleplay | Censorship | Cost ($/1M out) | Speed | Best For |
-|-------|---------|------------------|----------|----------|------------|-----------------|-------|----------|
-| **DeepSeek V3** | 128K | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Very Low | **$0.28** | Fast | **Value** |
-| **Qwen2.5 72B** | 128K | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Minimal | **$0.90** | Fast | **Roleplay** |
-| Mistral Large 2 | 128K | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Low | $6 | Very Fast | Speed |
-| Claude 3.5 Sonnet | 200K | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Moderate | $15 | Fast | Quality |
+| Model             | Context | Function Calling | Creative   | Roleplay   | Censorship | Cost ($/1M out) | Speed     | Best For     |
+| ----------------- | ------- | ---------------- | ---------- | ---------- | ---------- | --------------- | --------- | ------------ |
+| **DeepSeek V3**   | 128K    | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Very Low   | **$0.28**       | Fast      | **Value**    |
+| **Qwen2.5 72B**   | 128K    | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐   | ⭐⭐⭐⭐⭐ | Minimal    | **$0.90**       | Fast      | **Roleplay** |
+| Mistral Large 2   | 128K    | ⭐⭐⭐⭐         | ⭐⭐⭐⭐   | ⭐⭐⭐⭐   | Low        | $6              | Very Fast | Speed        |
+| Claude 3.5 Sonnet | 200K    | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐   | Moderate   | $15             | Fast      | Quality      |
 
 ---
 
@@ -272,12 +272,12 @@ Budget: DeepSeek V3
 
 ### Scenario: 3,000 conversations/month (15K tokens per conversation)
 
-| Model | Monthly Cost | Cost per Conversation | Value Rating |
-|-------|--------------|----------------------|--------------|
-| **DeepSeek V3** | **$6.30** | $0.002 | ⭐⭐⭐⭐⭐ Exceptional |
-| **Qwen2.5 72B** | **$20.25** | $0.007 | ⭐⭐⭐⭐⭐ Excellent |
-| Mistral Large 2 | $150 | $0.05 | ⭐⭐⭐⭐ Good |
-| Claude 3.5 Sonnet | $315 | $0.105 | ⭐⭐⭐ Fair |
+| Model             | Monthly Cost | Cost per Conversation | Value Rating           |
+| ----------------- | ------------ | --------------------- | ---------------------- |
+| **DeepSeek V3**   | **$6.30**    | $0.002                | ⭐⭐⭐⭐⭐ Exceptional |
+| **Qwen2.5 72B**   | **$20.25**   | $0.007                | ⭐⭐⭐⭐⭐ Excellent   |
+| Mistral Large 2   | $150         | $0.05                 | ⭐⭐⭐⭐ Good          |
+| Claude 3.5 Sonnet | $315         | $0.105                | ⭐⭐⭐ Fair            |
 
 **Potential Savings:**
 

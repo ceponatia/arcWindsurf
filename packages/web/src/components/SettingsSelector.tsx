@@ -1,13 +1,13 @@
-import React from 'react'
-import { useSettings } from '../hooks/useSettings.js'
+import React from 'react';
+import { useSettings } from '../hooks/useSettings.js';
 
 export interface SettingsSelectorProps {
-  value: string | null
-  onChange: (id: string | null) => void
+  value: string | null;
+  onChange: (id: string | null) => void;
 }
 
 export const SettingsSelector: React.FC<SettingsSelectorProps> = ({ value, onChange }) => {
-  const { loading, error, data, retry } = useSettings()
+  const { loading, error, data, retry } = useSettings();
 
   return (
     <section className="panel panel-settings">
@@ -17,7 +17,9 @@ export const SettingsSelector: React.FC<SettingsSelectorProps> = ({ value, onCha
         {error && (
           <div>
             <p className="error">Failed to load: {error}</p>
-            <button className="btn" onClick={retry}>Retry</button>
+            <button className="btn" onClick={retry}>
+              Retry
+            </button>
           </div>
         )}
         {!loading && !error && (
@@ -37,5 +39,5 @@ export const SettingsSelector: React.FC<SettingsSelectorProps> = ({ value, onCha
         )}
       </div>
     </section>
-  )
-}
+  );
+};

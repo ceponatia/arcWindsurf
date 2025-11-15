@@ -2,18 +2,18 @@
   "name": "minimal-rpg",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c",
   "scripts": {
     "build": "turbo build",
+    "check": "turbo lint && turbo typecheck && pnpm lint:md",
+    "clean": "turbo clean",
+    "core": "node scripts/core.mjs",
+    "core:quit": "node scripts/core-quit.mjs",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
-    "typecheck": "turbo typecheck",
-    "check": "pnpm lint && pnpm typecheck",
-    "clean": "turbo clean",
-    "core": "node scripts/core.mjs",
-    "core:quit": "node scripts/core-quit.mjs"
+    "typecheck": "turbo typecheck"
   },
+  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "eslint": "^9.39.1",
@@ -25,5 +25,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4"
   },
-  "dependencies": {}
+  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c"
 }

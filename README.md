@@ -153,18 +153,18 @@ Tip: Characters and settings are defined in JSON files under `data/characters` a
 - Example usage:
 
 ```ts
-import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas'
-const parsed = CharacterProfileSchema.parse(obj)
-const character: CharacterProfile = parsed
+import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas';
+const parsed = CharacterProfileSchema.parse(obj);
+const character: CharacterProfile = parsed;
 ```
 
 - Namespaced access is also available:
 
 ```ts
-import { Character, Setting } from '@minimal-rpg/schemas'
+import { Character, Setting } from '@minimal-rpg/schemas';
 
 // Character.* includes leaf schemas like AppearanceSchema, ScentSchema, etc.
-const ok = Character.CharacterProfileSchema.safeParse(obj)
+const ok = Character.CharacterProfileSchema.safeParse(obj);
 ```
 
 The package continues to export flat named types (`CharacterProfile`, `SettingProfile`, `Appearance`, ...), so existing imports remain valid.
