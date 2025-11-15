@@ -27,7 +27,11 @@ function getBaseUrl(): string {
   return API_BASE_URL.replace(/\/$/, '');
 }
 
-type HttpOptions = RequestInit & { parseAsText?: boolean; timeoutMs?: number };
+type HttpOptions = Omit<RequestInit, 'signal'> & {
+  signal?: AbortSignal;
+  parseAsText?: boolean;
+  timeoutMs?: number;
+};
 
 async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   const base = getBaseUrl();
@@ -77,15 +81,15 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
 }
 
 export async function getCharacters(signal?: AbortSignal): Promise<CharacterSummary[]> {
-  return http<CharacterSummary[]>('/characters', { signal });
+  return http<CharacterSummary[]>('/characters', signal ? { signal } : undefined);
 }
 
 export async function getSettings(signal?: AbortSignal): Promise<SettingSummary[]> {
-  return http<SettingSummary[]>('/settings', { signal });
+  return http<SettingSummary[]>('/settings', signal ? { signal } : undefined);
 }
 
 export async function getSessions(signal?: AbortSignal): Promise<SessionSummary[]> {
-  return http<SessionSummary[]>('/sessions', { signal });
+  return http<SessionSummary[]>('/sessions', signal ? { signal } : undefined);
 }
 
 export async function createSession(
@@ -97,7 +101,7 @@ export async function createSession(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ characterId, settingId }),
-    signal,
+    ...(signal && { signal }),
   });
 }
 
@@ -110,36 +114,26 @@ export async function sendMessage(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
-    signal,
+    ...(signal && { signal }),
     timeoutMs: MESSAGE_TIMEOUT_MS,
   });
 }
 
 export async function getSession(sessionId: string, signal?: AbortSignal): Promise<Session> {
-  return http<Session>(`/sessions/${encodeURIComponent(sessionId)}`, { signal });
+  return http<Session>(
+    `/sessions/${encodeURIComponent(sessionId)}`,
+    signal ? { signal } : undefined,
+  );
 }
 
-export const Api = {
-  getBaseUrl,
-  getCharacters,
-  getSettings,
-  getSessions,
-  createSession,
-  sendMessage,
-  getSession,
-};
-
-export default Api;
-
 export async function getDbOverview(signal?: AbortSignal): Promise<DbOverview> {
-  return http<DbOverview>('/admin/db/overview', { signal });
+  return http<DbOverview>('/admin/db/overview', signal ? { signal } : undefined);
 }
 
 export async function deleteDbRow(model: string, id: string, signal?: AbortSignal): Promise<void> {
   await http<void>(`/admin/db/${encodeURIComponent(model)}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    signal,
-    // Allow small timeout to avoid hanging UI if server rejects
+    ...(signal && { signal }),
     timeoutMs: 15000,
   });
 }

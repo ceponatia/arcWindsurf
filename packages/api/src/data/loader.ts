@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import type { ZodSchema } from 'zod';
+import type { ZodType } from 'zod';
 import {
   CharacterProfileSchema,
   SettingProfileSchema,
@@ -8,8 +8,15 @@ import {
   type SettingProfile,
 } from '@minimal-rpg/schemas';
 
+// Narrowed view of process.env for this loader
+interface LoaderEnv extends NodeJS.ProcessEnv {
+  DATA_DIR?: string;
+}
+
+const env = process.env as LoaderEnv;
+
 // Returns the closest ancestor folder that contains a `data` directory
-async function findNearestDataDir(startDir: string) {
+async function findNearestDataDir(startDir: string): Promise<string | null> {
   let current = path.resolve(startDir);
   while (true) {
     const candidate = path.join(current, 'data');
@@ -35,14 +42,14 @@ const DEFAULT_DATA_DIR = await (async () => {
 export async function loadData(dataDir?: string) {
   const base = dataDir
     ? path.resolve(dataDir)
-    : process.env.DATA_DIR
-      ? path.resolve(process.env.DATA_DIR)
+    : env.DATA_DIR
+      ? path.resolve(env.DATA_DIR)
       : DEFAULT_DATA_DIR;
 
   const charactersDir = path.join(base, 'characters');
   const settingsDir = path.join(base, 'settings');
 
-  async function loadFiles<T>(folder: string, schema: ZodSchema<T>) {
+  async function loadFiles<T>(folder: string, schema: ZodType<T>) {
     const results: T[] = [];
     try {
       const files = await fs.readdir(folder);

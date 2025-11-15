@@ -7,12 +7,6 @@ import {
 } from '../api/client.js';
 import { DB_TOOLS } from '../config.js';
 
-// Ensure typed reference for delete function to satisfy strict lint rules
-const callDeleteDbRow: (model: string, id: string) => Promise<void> = deleteDbRow as unknown as (
-  model: string,
-  id: string,
-) => Promise<void>;
-
 function toDisplay(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (typeof v === 'object') return JSON.stringify(v);
@@ -23,6 +17,14 @@ function toDisplay(v: unknown): string {
   } catch {
     return '';
   }
+}
+
+// DB row type with common id variants plus index signature
+interface DbRow {
+  id?: unknown;
+  ID?: unknown;
+  Id?: unknown;
+  [key: string]: unknown;
 }
 
 export const DbView: React.FC = () => {
@@ -69,6 +71,7 @@ export const DbView: React.FC = () => {
     const columns: string[] = table.sample.length
       ? Object.keys(table.sample[0]!)
       : table.columns.map((c) => c.name);
+
     return (
       <div
         style={{
@@ -126,12 +129,13 @@ export const DbView: React.FC = () => {
                   </thead>
                   <tbody>
                     {table.sample.map((row, i) => {
-                      const rec: Record<string, unknown> = row;
+                      const rec = row as DbRow;
                       const idVal = rec.id ?? rec.ID ?? rec.Id ?? rec[columns[0]!]; // best-effort fallback
                       const idStr =
                         typeof idVal === 'string' || typeof idVal === 'number'
                           ? String(idVal)
                           : undefined;
+
                       return (
                         <tr key={i}>
                           {columns.map((k) => {
@@ -162,7 +166,7 @@ export const DbView: React.FC = () => {
                                   const run = async () => {
                                     setDeleting(idStr);
                                     try {
-                                      await callDeleteDbRow(table.name, idStr);
+                                      await deleteDbRow(table.name, idStr);
                                       await reload();
                                     } catch (e: unknown) {
                                       const msg =
@@ -216,6 +220,7 @@ const th: React.CSSProperties = {
   fontWeight: 600,
   background: '#fafafa',
 };
+
 const td: React.CSSProperties = {
   textAlign: 'left',
   padding: '6px 8px',

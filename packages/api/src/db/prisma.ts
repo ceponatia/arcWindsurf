@@ -2,6 +2,14 @@ import { PrismaClient } from '@prisma/client';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
+// Narrowed view of process.env for Prisma
+interface PrismaEnv extends NodeJS.ProcessEnv {
+  DATABASE_URL?: string;
+  NODE_ENV?: string;
+}
+
+const env = process.env as PrismaEnv;
+
 function toPrismaFileUrl(urlOrConn: string): string {
   if (urlOrConn.startsWith('file://')) {
     const absPath = fileURLToPath(urlOrConn);
@@ -10,28 +18,46 @@ function toPrismaFileUrl(urlOrConn: string): string {
   return urlOrConn;
 }
 
+function defaultDevDbUrl(): string {
+  // ../../prisma/dev.db relative to this file (packages/api/src/db/prisma.ts)
+  const devDbUrl = new URL('../../prisma/dev.db', import.meta.url).href;
+  return toPrismaFileUrl(devDbUrl);
+}
+
 function resolveDbUrl(): string {
-  const envUrl = process.env.DATABASE_URL;
+  const envUrl = env.DATABASE_URL;
 
-  if (envUrl?.startsWith('file://')) return toPrismaFileUrl(envUrl);
+  // If no env DATABASE_URL, fall back to local dev DB file
+  if (!envUrl) {
+    return defaultDevDbUrl();
+  }
 
-  if (envUrl?.startsWith('file:')) {
+  // Absolute file URL provided -> use as-is, normalized
+  if (envUrl.startsWith('file://')) {
+    return toPrismaFileUrl(envUrl);
+  }
+
+  // Relative file path via file:./ or file:../ -> resolve relative to the API package root
+  if (envUrl.startsWith('file:')) {
     const rel = envUrl.slice('file:'.length);
-    const apiRoot = fileURLToPath(new URL('../../', import.meta.url));
+    const apiRoot = fileURLToPath(new URL('../../', import.meta.url)); // packages/api/
     const absPath = path.resolve(apiRoot, rel);
     return toPrismaFileUrl(pathToFileURL(absPath).href);
   }
 
-  return toPrismaFileUrl(new URL('../../prisma/dev.db', import.meta.url).href);
+  // Any other kind of connection string (e.g. postgres://...) -> leave it alone
+  return envUrl;
 }
 
 const dbUrl = resolveDbUrl();
-process.env.DATABASE_URL = dbUrl;
+
+// keep env and process.env in sync (same underlying object)
+env.DATABASE_URL = dbUrl;
 
 export const resolvedDbUrl = dbUrl;
 export const resolvedDbPath = dbUrl.startsWith('file:') ? dbUrl.replace(/^file:/, '') : dbUrl;
 
-if (process.env.NODE_ENV !== 'test') {
+if (env.NODE_ENV !== 'test') {
   console.log(`[prisma] datasource url -> ${dbUrl}`);
 }
 
