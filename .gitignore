@@ -1,23 +1,37 @@
-# Node
+## Node
 node_modules
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
-# Build artifacts
+## OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+## Build artifacts & caches
 dist
 coverage
 .turbo
+*.tsbuildinfo
+.eslintcache
+.vite/
+**/.vite
 
-# Env files
-.env
+## Env files (keep examples tracked)
+**/.env*
+!**/.env.example
 
-# Local SQLite dev DB
-packages/api/prisma/dev.db
-packages/api/prisma/dev.db-journal
-packages/api/prisma/migrations/*
+## Databases (SQLite/Prisma local artifacts)
 *.db
 *.db-journal
+*.sqlite
+*.sqlite-journal
 
-# Core orchestration runtime PIDs
+## Core orchestration runtime PIDs
 .core/*.pid
 
-# data files
+## Local data (sample data is tracked already; ignore new local files by default)
 data/*
