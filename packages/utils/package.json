@@ -1,20 +1,12 @@
 {
-  "name": "@minimal-rpg/schemas",
-  "version": "1.0.0",
+  "name": "@minimal-rpg/utils",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./character": {
-      "import": "./dist/character.js",
-      "types": "./dist/character.d.ts"
-    },
-    "./setting": {
-      "import": "./dist/setting.js",
-      "types": "./dist/setting.d.ts"
     }
   },
   "main": "./dist/index.js",

@@ -1,12 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import type { ZodType } from 'zod';
-import {
-  CharacterProfileSchema,
-  SettingProfileSchema,
-  type CharacterProfile,
-  type SettingProfile,
-} from '@minimal-rpg/schemas';
+import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
+import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 
 // Narrowed view of process.env for this loader
 interface LoaderEnv extends NodeJS.ProcessEnv {
@@ -49,7 +44,13 @@ export async function loadData(dataDir?: string) {
   const charactersDir = path.join(base, 'characters');
   const settingsDir = path.join(base, 'settings');
 
-  async function loadFiles<T>(folder: string, schema: ZodType<T>) {
+  interface Validator<T> {
+    safeParse(
+      value: unknown
+    ): { success: true; data: T } | { success: false; error: { format(): unknown } };
+  }
+
+  async function loadFiles<T>(folder: string, schema: Validator<T>) {
     const results: T[] = [];
     try {
       const files = await fs.readdir(folder);
@@ -86,7 +87,7 @@ export async function loadData(dataDir?: string) {
   const settings = await loadFiles<SettingProfile>(settingsDir, SettingProfileSchema);
 
   console.info(
-    `Loaded ${characters.length} characters and ${settings.length} settings from ${base}`,
+    `Loaded ${characters.length} characters and ${settings.length} settings from ${base}`
   );
   return { characters, settings };
 }

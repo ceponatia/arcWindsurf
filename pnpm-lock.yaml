@@ -60,6 +60,9 @@ importers:
       '@minimal-rpg/shared':
         specifier: workspace:*
         version: link:../shared
+      '@minimal-rpg/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@prisma/client':
         specifier: ^6.19.0
         version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
@@ -87,10 +90,10 @@ importers:
         version: 5.9.3
 
   packages/schemas:
-    dependencies:
-      zod:
-        specifier: ^4.1.12
-        version: 4.1.12
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)
 
   packages/shared:
     dependencies:
@@ -98,8 +101,17 @@ importers:
         specifier: workspace:*
         version: link:../schemas
 
+  packages/utils:
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)
+
   packages/web:
     dependencies:
+      '@minimal-rpg/utils':
+        specifier: workspace:*
+        version: link:../utils
       react:
         specifier: ^19.2.0
         version: 19.2.0

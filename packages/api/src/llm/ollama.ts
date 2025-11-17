@@ -1,3 +1,5 @@
+import { getErrorMessage, safeJson, safeText } from '@minimal-rpg/utils';
+
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -37,14 +39,14 @@ export async function chatWithOllama(opts: ChatWithOllamaOptions): Promise<Ollam
       const text = await safeText(res);
       return { error: `Ollama error ${res.status}: ${text}` };
     }
-    const payload = await safeJson(res);
+    const payload = await safeJson<OllamaMessagePayload>(res);
     const assistantReply = extractAssistantContent(payload);
     if (assistantReply) {
       return { message: { role: 'assistant', content: assistantReply } };
     }
     return { error: 'Invalid Ollama response' };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = getErrorMessage(error, 'Unknown error');
     return { error: `Ollama request failed: ${msg}` };
   } finally {
     clearTimeout(timer);
@@ -55,33 +57,16 @@ function trimTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');
 }
 
-async function safeText(res: Response): Promise<string> {
-  try {
-    return await res.text();
-  } catch {
-    return '<no body>';
-  }
-}
-
-async function safeJson(res: Response): Promise<unknown> {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-function extractAssistantContent(payload: unknown): string | null {
+function extractAssistantContent(payload: OllamaMessagePayload | null): string | null {
   if (!payload || typeof payload !== 'object') {
     return null;
   }
-  const data = payload as OllamaMessagePayload;
-  const messageContent = data.message?.content;
+  const messageContent = payload.message?.content;
   if (typeof messageContent === 'string') {
     return messageContent;
   }
-  if (typeof data.response === 'string') {
-    return data.response;
+  if (typeof payload.response === 'string') {
+    return payload.response;
   }
   return null;
 }

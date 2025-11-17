@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 import type { Message, Session } from '../types.js';
 import { getSession, sendMessage } from '../api/client.js';
 
@@ -30,20 +31,21 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     ctrlRef.current = ctrl;
     setLoading(true);
     setError(null);
-    getSession(effectiveSessionId, ctrl.signal)
-      .then((s) => {
+    const run = async () => {
+      try {
+        const s = (await getSession(effectiveSessionId, ctrl.signal)) as unknown as Session;
         setSession(s);
-      })
-      .catch((e: unknown) => {
-        if (e instanceof DOMException && e.name === 'AbortError') return;
-        const msg = (e as Error).message || 'Failed to load session';
+      } catch (e: unknown) {
+        if (isAbortError(e)) return;
+        const msg = getErrorMessage(e, 'Failed to load session');
         setError(msg);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
         // scroll after load
         setTimeout(doScrollToBottom, 0);
-      });
+      }
+    };
+    void run();
   };
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
       setDraft('');
     } catch (e) {
-      const msg = (e as Error).message || 'Failed to send message';
+      const msg = getErrorMessage(e, 'Failed to send message');
       setError(msg);
       // revert optimistic append by reloading session
       refresh();

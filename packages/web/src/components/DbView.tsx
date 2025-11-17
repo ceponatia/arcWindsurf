@@ -68,8 +68,9 @@ export const DbView: React.FC = () => {
   if (!data) return null;
 
   const TableCard: React.FC<{ table: DbTableOverview }> = ({ table }) => {
-    const columns: string[] = table.sample.length
-      ? Object.keys(table.sample[0]!)
+    const sampleRows = table.sample ?? [];
+    const columns: string[] = sampleRows.length
+      ? Object.keys(sampleRows[0]!)
       : table.columns.map((c) => c.name);
 
     return (
@@ -84,7 +85,9 @@ export const DbView: React.FC = () => {
       >
         <h3 style={{ marginTop: 0 }}>
           {table.name}{' '}
-          <span style={{ color: '#666', fontWeight: 400 }}>({table.rowCount} rows)</span>
+          {typeof table.rowCount === 'number' ? (
+            <span style={{ color: '#666', fontWeight: 400 }}>({table.rowCount} rows)</span>
+          ) : null}
         </h3>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 280 }}>
@@ -115,7 +118,7 @@ export const DbView: React.FC = () => {
           <div style={{ flex: 1, minWidth: 420 }}>
             <h4 style={{ marginBottom: 8 }}>Recent Rows</h4>
             <div style={{ overflowX: 'auto' }}>
-              {table.sample.length ? (
+              {sampleRows.length ? (
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                   <thead>
                     <tr>
@@ -128,7 +131,7 @@ export const DbView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {table.sample.map((row, i) => {
+                    {sampleRows.map((row: unknown, i: number) => {
                       const rec = row as DbRow;
                       const idVal = rec.id ?? rec.ID ?? rec.Id ?? rec[columns[0]!]; // best-effort fallback
                       const idStr =
@@ -160,7 +163,7 @@ export const DbView: React.FC = () => {
                                     return;
                                   }
                                   const ok = confirm(
-                                    `Delete ${table.name}#${idStr}? This cannot be undone.`,
+                                    `Delete ${table.name}#${idStr}? This cannot be undone.`
                                   );
                                   if (!ok) return;
                                   const run = async () => {

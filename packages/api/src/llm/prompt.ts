@@ -1,16 +1,9 @@
 import type { CharacterProfile, SettingProfile, Appearance } from '@minimal-rpg/schemas';
 import type { Message } from '../sessions/store.js';
+import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' };
-import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
-import { z } from 'zod';
-
-const SystemPromptSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() });
-const SafetyRulesSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() });
-const SafetyModeSchema = z.object({
-  safetyModeMessage: z.string().min(1),
-  sensitiveNote: z.string().min(1),
-});
+import { SystemPromptSchema, SafetyRulesSchema, SafetyModeSchema } from '@minimal-rpg/schemas';
 
 export function assertPromptConfigValid(): void {
   try {

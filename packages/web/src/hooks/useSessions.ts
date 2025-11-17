@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 import type { SessionSummary } from '../types.js';
 import { getSessions } from '../api/client.js';
 
@@ -22,9 +23,8 @@ export function useSessions() {
         setState({ loading: false, error: null, data: json });
       })
       .catch((err: unknown) => {
-        if ((err instanceof DOMException || err instanceof Error) && err.name === 'AbortError')
-          return;
-        const message = (err as Error).message || 'Failed to load sessions';
+        if (isAbortError(err)) return;
+        const message = getErrorMessage(err, 'Failed to load sessions');
         setState((prev) => ({ loading: false, error: message, data: prev.data }));
       });
   }, []);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 import type { SettingSummary } from '../types.js';
 import { getSettings } from '../api/client.js';
 
@@ -26,9 +27,8 @@ export function useSettings() {
         setState({ loading: false, error: null, data: json });
       })
       .catch((err: unknown) => {
-        if ((err instanceof DOMException || err instanceof Error) && err.name === 'AbortError')
-          return;
-        const message = (err as Error).message || 'Failed to load settings';
+        if (isAbortError(err)) return;
+        const message = getErrorMessage(err, 'Failed to load settings');
         fetchedRef.current = true;
         setState((prev) => ({ loading: false, error: message, data: prev.data }));
       });

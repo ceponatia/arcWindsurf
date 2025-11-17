@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 import type { CharacterSummary } from '../types.js';
 import { getCharacters } from '../api/client.js';
 
@@ -26,9 +27,8 @@ export function useCharacters() {
         setState({ loading: false, error: null, data: json });
       })
       .catch((err: unknown) => {
-        if ((err instanceof DOMException || err instanceof Error) && err.name === 'AbortError')
-          return;
-        const message = (err as Error).message || 'Failed to load characters';
+        if (isAbortError(err)) return;
+        const message = getErrorMessage(err, 'Failed to load characters');
         fetchedRef.current = true; // mark attempted; allow manual retry via retry() which resets ref
         setState((prev) => ({ loading: false, error: message, data: prev.data }));
       });

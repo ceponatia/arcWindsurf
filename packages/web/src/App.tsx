@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getErrorMessage } from '@minimal-rpg/utils';
 import { AppHeader } from './components/AppHeader.js';
 import { CharactersPanel } from './components/CharactersPanel.js';
 import { SettingsSelector } from './components/SettingsSelector.js';
@@ -31,8 +32,8 @@ export const App: React.FC = () => {
       const res = await createSession(selectedCharacterId, selectedSettingId);
       setCurrentSessionId(res.id);
       refreshSessions();
-    } catch (e) {
-      const msg = (e as Error).message || 'Failed to create session';
+    } catch (e: unknown) {
+      const msg = getErrorMessage(e, 'Failed to create session');
       setCreateError(msg);
     } finally {
       setCreating(false);

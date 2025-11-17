@@ -1,8 +1,14 @@
 {
   "name": "@minimal-rpg/api",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "db:deploy": "prisma migrate deploy",
@@ -20,6 +26,7 @@
     "@hono/node-server": "^1.19.6",
     "@minimal-rpg/schemas": "workspace:*",
     "@minimal-rpg/shared": "workspace:*",
+    "@minimal-rpg/utils": "workspace:*",
     "@prisma/client": "^6.19.0",
     "dotenv": "^17.2.3",
     "hono": "^4.10.6",
