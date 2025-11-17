@@ -11,7 +11,9 @@
     "height": "average",
     "build": "athletic",
     "skinTone": "tan",
-    "features": ["freckles"]
+    "features": ["freckles"],
+    "arms": { "build": "slender", "length": "average" },
+    "legs": { "build": "toned", "length": "average" }
   },
   "scent": {
     "hairScent": "fresh",
