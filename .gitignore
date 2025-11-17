@@ -19,6 +19,7 @@ coverage
 .eslintcache
 .vite/
 **/.vite
+.pnpm-store/
 
 ## Env files (keep examples tracked)
 **/.env*
