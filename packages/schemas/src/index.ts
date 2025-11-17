@@ -1,7 +1,7 @@
 // Package barrel: flat re-exports and namespaced accessors
-export * from './character/index.js';
-export * from './setting/index.js';
+export * from './character';
+export * from './setting';
 
 // Namespaced exports for convenience (avoid clashing with type names)
-export * as Character from './character/index.js';
-export * as Setting from './setting/index.js';
+export * as Character from './character';
+export * as Setting from './setting';

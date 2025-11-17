@@ -1,15 +1,15 @@
 // Character submodule barrel + composite profile schema
 import { z } from 'zod';
-import { AppearanceSchema, type Appearance } from './appearance.js';
-import { CharacterPersonalitySchema } from './personality.js';
-import { ScentSchema, type Scent } from './scent.js';
-import { CharacterBasicsSchema, type CharacterBasics } from './basics.js';
+import { AppearanceSchema, type Appearance } from './appearance';
+import { CharacterPersonalitySchema } from './personality';
+import { ScentSchema, type Scent } from './scent';
+import { CharacterBasicsSchema, type CharacterBasics } from './basics';
 
 // Re-export leaf schemas/types for flat imports
-export * from './appearance.js';
-export * from './personality.js';
-export * from './scent.js';
-export * from './basics.js';
+export * from './appearance';
+export * from './personality';
+export * from './scent';
+export * from './basics';
 
 // Composite character profile schema and type used across the app
 export const CharacterProfileSchema = CharacterBasicsSchema.extend({

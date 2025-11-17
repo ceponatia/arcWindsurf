@@ -171,6 +171,8 @@ The package continues to export flat named types (`CharacterProfile`, `SettingPr
 
 Prefer importing directly from `@minimal-rpg/schemas`. The `@minimal-rpg/shared` package no longer exports these schemas.
 
+Additional design & optimization details for character profile → prompt integration (including RAG roadmap) are documented in `dev-docs/character-profile-llm-integration.md`.
+
 ## Configuration
 
 The API reads environment variables with sensible defaults for local development.

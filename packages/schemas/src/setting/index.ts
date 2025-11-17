@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { SettingBackgroundSchema, type SettingBackground } from './background.js';
+import { SettingBackgroundSchema, type SettingBackground } from './background';
 
 // Re-export leaf schema/type
-export * from './background.js';
+export * from './background';
 
 // SettingProfile is an alias of SettingBackground for now
 export const SettingProfileSchema = SettingBackgroundSchema;

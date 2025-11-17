@@ -11,6 +11,8 @@ This monorepo uses pnpm + Turbo with four packages:
 ## Important
 
 - After all todo tasks are done / the work required by the prompt is complete, read the root README.md file, add any necessary details related to the work you just did, and then clean up the overall README.md file to ensure it is accurate, concise and up to date. Do not remove any information that was not affected by your current work.
+- When writing requested developer notes or documents, put them in /dev-docs.
+- To fix markdown lint issues, try using markdownlint --fix.
 
 ## Architecture & Conventions
 
