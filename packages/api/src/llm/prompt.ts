@@ -119,16 +119,27 @@ function serializeScent(s: unknown): string {
 function summarizeHistory(messages: Message[], keepLast: number, maxChars: number) {
   if (messages.length <= keepLast) return '';
   const older = messages.slice(0, Math.max(0, messages.length - keepLast));
-  // Lightweight summary: extract key lines; limit size
+
+  // Prioritize the most recent of the "older" messages by processing in reverse
+  const reversedOlder = [...older].reverse();
   const keyPoints: string[] = [];
-  for (const m of older) {
+  let currentLen = 0;
+
+  for (const m of reversedOlder) {
     const prefix = m.role === 'user' ? 'User' : m.role === 'assistant' ? 'Narration' : 'System';
-    const line = m.content.replace(/\s+/g, ' ').slice(0, 160);
-    keyPoints.push(`${prefix}: ${line}`);
-    if (keyPoints.join('\n').length >= maxChars) break;
+    // Keep more content (500 chars) to preserve context
+    const content = m.content.replace(/\s+/g, ' ');
+    const line = content.length > 500 ? content.slice(0, 499) + '…' : content;
+    const entry = `${prefix}: ${line}`;
+
+    if (currentLen + entry.length + 1 > maxChars) break;
+
+    keyPoints.push(entry);
+    currentLen += entry.length + 1;
   }
-  const summary = keyPoints.join('\n');
-  return summary.length > maxChars ? summary.slice(0, maxChars - 1) + '…' : summary;
+
+  // Reverse back to chronological order
+  return keyPoints.reverse().join('\n');
 }
 
 function simpleContentFilter(latestUserText: string | undefined) {
@@ -164,7 +175,7 @@ export function buildPrompt(opts: {
 }) {
   const { character, setting } = opts;
   const historyWindow = opts.historyWindow ?? opts.maxHistory ?? 10;
-  const summaryMaxChars = opts.summaryMaxChars ?? 1000;
+  const summaryMaxChars = opts.summaryMaxChars ?? 16000;
   const recent = opts.history.slice(Math.max(0, opts.history.length - historyWindow));
   const summary = summarizeHistory(opts.history, historyWindow, summaryMaxChars);
   const lastUser = [...opts.history].reverse().find((m) => m.role === 'user');
