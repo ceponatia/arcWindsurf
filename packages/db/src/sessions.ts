@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { prisma } from '../db/prisma.js';
+import { prisma } from './prisma.js';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -27,7 +27,7 @@ export interface SessionSummary {
 export async function createSession(
   id: string,
   characterId: string,
-  settingId: string,
+  settingId: string
 ): Promise<Session> {
   const created = await prisma.userSession.upsert({
     where: { id },

@@ -1,5 +1,5 @@
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import { prisma } from '../db/prisma.js';
+import { prisma } from '@minimal-rpg/db/node';
 import { randomUUID } from 'node:crypto';
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -35,7 +35,7 @@ function parseJson<T>(text: string | null | undefined, fallback: T): T {
 
 export async function getCharacterOverrides(
   sessionId: string,
-  characterId: string,
+  characterId: string
 ): Promise<Record<string, unknown> | undefined> {
   const row = await prisma.characterInstance.findUnique({
     where: { sessionId_templateCharacterId: { sessionId, templateCharacterId: characterId } },
@@ -76,7 +76,7 @@ export async function upsertCharacterOverrides(params: {
 
 export async function getSettingOverrides(
   sessionId: string,
-  settingId: string,
+  settingId: string
 ): Promise<Record<string, unknown> | undefined> {
   const row = await prisma.settingInstance.findUnique({
     where: { sessionId_templateSettingId: { sessionId, templateSettingId: settingId } },
@@ -117,7 +117,7 @@ export async function upsertSettingOverrides(params: {
 
 export async function getEffectiveCharacter(
   sessionId: string,
-  character: CharacterProfile,
+  character: CharacterProfile
 ): Promise<CharacterProfile> {
   const overrides = await getCharacterOverrides(sessionId, character.id);
   if (!overrides) return character;
@@ -126,7 +126,7 @@ export async function getEffectiveCharacter(
 
 export async function getEffectiveSetting(
   sessionId: string,
-  setting: SettingProfile,
+  setting: SettingProfile
 ): Promise<SettingProfile> {
   const overrides = await getSettingOverrides(sessionId, setting.id);
   if (!overrides) return setting;
@@ -136,7 +136,7 @@ export async function getEffectiveSetting(
 export async function getEffectiveProfiles(
   sessionId: string,
   character: CharacterProfile,
-  setting: SettingProfile,
+  setting: SettingProfile
 ): Promise<{ character: CharacterProfile; setting: SettingProfile }> {
   const [c, s] = await Promise.all([
     getEffectiveCharacter(sessionId, character),

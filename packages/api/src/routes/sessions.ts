@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 
-import { createSession, getSession, appendMessage, listSessions } from '../sessions/store.js';
+import { createSession, getSession, appendMessage, listSessions } from '@minimal-rpg/db/node';
 import {
   getEffectiveProfiles,
   upsertCharacterOverrides,
@@ -29,7 +29,7 @@ interface CreateSessionRequestBody {
 
 function isMessageRequest(body: unknown): body is MessageRequestBody {
   return Boolean(
-    body && typeof body === 'object' && typeof (body as { content?: unknown }).content === 'string',
+    body && typeof body === 'object' && typeof (body as { content?: unknown }).content === 'string'
   );
 }
 
@@ -208,7 +208,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     if (!cfg.openrouterApiKey || !cfg.openrouterModel) {
       return c.json(
         { ok: false, error: 'Missing OPENROUTER_API_KEY or OPENROUTER_MODEL env vars' },
-        500,
+        500
       );
     }
 
@@ -224,7 +224,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     });
 
     console.info(
-      `Session ${session.id}: calling OpenRouter model ${cfg.openrouterModel} with ${messages.length} messages`,
+      `Session ${session.id}: calling OpenRouter model ${cfg.openrouterModel} with ${messages.length} messages`
     );
 
     const result = await chatWithOpenRouter({
@@ -258,7 +258,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
           createdAt: new Date().toISOString(),
         },
       },
-      200,
+      200
     );
   });
 

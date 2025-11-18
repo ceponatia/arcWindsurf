@@ -1,5 +1,5 @@
 import type { CharacterProfile, SettingProfile, Appearance } from '@minimal-rpg/schemas';
-import type { Message } from '../sessions/store.js';
+import type { Message } from '@minimal-rpg/db/node';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' };

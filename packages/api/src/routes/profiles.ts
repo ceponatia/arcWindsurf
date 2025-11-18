@@ -6,7 +6,7 @@ import {
   type CharacterProfile,
   type SettingProfile,
 } from '@minimal-rpg/schemas';
-import { prisma } from '../db/prisma.js';
+import { prisma } from '@minimal-rpg/db/node';
 import type { LoadedData } from '../data/loader.js';
 
 interface ProfilesRouteDeps {

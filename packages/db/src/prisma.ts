@@ -19,8 +19,8 @@ function toPrismaFileUrl(urlOrConn: string): string {
 }
 
 function defaultDevDbUrl(): string {
-  // ../../prisma/dev.db relative to this file (packages/api/src/db/prisma.ts)
-  const devDbUrl = new URL('../../prisma/dev.db', import.meta.url).href;
+  // ../prisma/dev.db relative to this file (packages/db/src/node.ts)
+  const devDbUrl = new URL('../prisma/dev.db', import.meta.url).href;
   return toPrismaFileUrl(devDbUrl);
 }
 
@@ -37,10 +37,10 @@ function resolveDbUrl(): string {
     return toPrismaFileUrl(envUrl);
   }
 
-  // Relative file path via file:./ or file:../ -> resolve relative to the prisma schema directory (packages/api/prisma)
+  // Relative file path via file:./ or file:../ -> resolve relative to the prisma schema directory (packages/db/prisma)
   if (envUrl.startsWith('file:')) {
     const rel = envUrl.slice('file:'.length);
-    const prismaDir = fileURLToPath(new URL('../../prisma/', import.meta.url)); // packages/api/prisma/
+    const prismaDir = fileURLToPath(new URL('../prisma/', import.meta.url)); // packages/db/prisma/
     const absPath = path.resolve(prismaDir, rel);
     return toPrismaFileUrl(pathToFileURL(absPath).href);
   }

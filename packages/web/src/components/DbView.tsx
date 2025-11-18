@@ -53,14 +53,14 @@ export const DbView: React.FC = () => {
 
   if (loading)
     return (
-      <div className="p-4">
+      <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4">
         <h2 className="text-lg font-semibold">Database</h2>
         <p className="text-slate-400">Loading…</p>
       </div>
     );
   if (error)
     return (
-      <div className="p-4">
+      <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4">
         <h2 className="text-lg font-semibold">Database</h2>
         <p className="text-red-400">{error}</p>
       </div>
@@ -203,7 +203,7 @@ export const DbView: React.FC = () => {
   };
 
   return (
-    <div className="p-4">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4">
       <h2 className="text-lg font-semibold mt-0">Database Overview</h2>
       <p className="text-slate-400 mt-0">
         Showing tables, columns, and up to 50 most recent rows per table.

@@ -18,7 +18,7 @@ export function registerConfigRoutes(app: Hono) {
         topP: cfg.topP,
         openrouterModel: cfg.openrouterModel,
       },
-      200,
+      200
     );
   });
 
@@ -30,7 +30,7 @@ export function registerConfigRoutes(app: Hono) {
     // DB check (lazy-import prisma to avoid circular deps)
     let dbOk = false;
     try {
-      const { prisma } = await import('../db/prisma.js');
+      const { prisma } = await import('@minimal-rpg/db/node');
       await prisma.$queryRaw`SELECT 1`;
       dbOk = true;
     } catch (error) {
@@ -48,7 +48,7 @@ export function registerConfigRoutes(app: Hono) {
         db: { ok: dbOk },
         llm: { provider: 'openrouter', model: cfg.openrouterModel, configured: llmOk },
       },
-      200,
+      200
     );
   });
 }
