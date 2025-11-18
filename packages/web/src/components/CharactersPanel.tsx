@@ -43,6 +43,9 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({ selectedId, on
               </li>
             ))}
             {(data ?? []).length === 0 && <li className="muted">No characters available.</li>}
+            <li className="list-item">
+              <a href="#/character-builder">Character Builder</a>
+            </li>
           </ul>
         )}
       </div>

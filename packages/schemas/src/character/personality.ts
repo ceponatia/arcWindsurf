@@ -14,3 +14,5 @@ export const CharacterPersonalitySchema = z.object({
     })
     .partial(),
 });
+
+export type SpeechStyle = z.infer<typeof CharacterPersonalitySchema.shape.speechStyle>;

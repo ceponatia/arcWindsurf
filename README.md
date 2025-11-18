@@ -120,6 +120,7 @@ To change model/runtime params, set env vars (see `packages/api/.env.example`).
 Base URL defaults to `http://localhost:3001`.
 
 - `GET /characters` — List available characters (id, name, summary, tags)
+- `POST /characters` — Create a new dynamic character (body: CharacterProfile JSON). Persists to SQLite and is merged into subsequent `GET /characters` responses.
 - `GET /settings` — List available settings (id, name, tone)
 - `GET /sessions` — List existing sessions (most recent first, includes character/setting names)
 - `POST /sessions` — Create a chat session
@@ -223,6 +224,12 @@ The API reads environment variables with sensible defaults for local development
 - `VITE_STRICT_MODE` (default: `false`) — when `true`, renders `React.StrictMode` in dev which double-invokes effects. Leave `false` to avoid duplicate fetches/cancellations during development.
 
 Example env file: `packages/api/.env.example`
+
+### Character Builder UI
+
+- The web Character Builder now supports both free-text and structured appearance input. Use the toggle in the Appearance section to switch modes. Structured mode maps 1:1 to the `AppearanceSchema` (hair, eyes, height, torso, skinTone, arms/legs, features).
+- Scent fields use selects constrained by the schema enums; `perfume` is limited to 40 chars.
+- Client-side validation uses `CharacterProfileSchema.safeParse` before sending to the API. Invalid fields are reported inline on save.
 
 ### Migrating from Ollama to Cloud LLMs
 

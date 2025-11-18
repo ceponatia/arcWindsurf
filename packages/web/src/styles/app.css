@@ -260,3 +260,56 @@ body {
   border-radius: 8px;
   background: #fff;
 }
+
+/* Character Builder sections */
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.section-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.section-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 600;
+  font-size: 14px;
+}
+.section-body {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.section-body.full {
+  grid-template-columns: 1fr;
+}
+.section-footer {
+  padding: 12px 14px;
+  border-top: 1px solid #e2e8f0;
+}
+.field input,
+.field textarea {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+.field textarea {
+  min-height: 72px;
+}
+.inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.radio {
+  display: flex;
+  gap: 12px;
+}

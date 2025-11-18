@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getErrorMessage } from '@minimal-rpg/utils';
 import { AppHeader } from './components/AppHeader.js';
 import { CharactersPanel } from './components/CharactersPanel.js';
 import { SettingsSelector } from './components/SettingsSelector.js';
 import { SessionsPanel } from './components/SessionsPanel.js';
 import { ChatPanel } from './components/ChatPanel.js';
+import { CharacterBuilder } from './components/CharacterBuilder.js';
 import { createSession } from './api/client.js';
 import { useSessions } from './hooks/useSessions.js';
 
@@ -39,6 +40,15 @@ export const App: React.FC = () => {
       setCreating(false);
     }
   };
+  const [hash, setHash] = useState<string>(window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const showBuilder = hash === '#/character-builder';
+
   return (
     <div className="app-root">
       <aside className="sidebar">
@@ -93,7 +103,7 @@ export const App: React.FC = () => {
           );
         })()}
         <section className="main-content">
-          <ChatPanel sessionId={currentSessionId} />
+          {showBuilder ? <CharacterBuilder /> : <ChatPanel sessionId={currentSessionId} />}
         </section>
       </main>
     </div>

@@ -109,6 +109,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@minimal-rpg/schemas':
+        specifier: workspace:*
+        version: link:../schemas
       '@minimal-rpg/utils':
         specifier: workspace:*
         version: link:../utils

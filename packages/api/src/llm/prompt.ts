@@ -86,11 +86,23 @@ function serializeAppearance(a: CharacterProfile['appearance']): string {
     if (hairBits) parts.push(`Hair: ${hairBits}`);
   }
   if (obj.eyes?.color) parts.push(`Eyes: ${obj.eyes.color}`);
-  const anyObj = obj as unknown as { height?: string };
-  if (anyObj.height) parts.push(`Height: ${anyObj.height}`);
-  if (obj.build) parts.push(`Build: ${obj.build}`);
+  if (obj.height) parts.push(`Height: ${obj.height}`);
+  if (obj.skinTone) parts.push(`Skin: ${obj.skinTone}`);
+  // Build is encoded within torso/arms/legs; pull representative values
+  if (obj.torso) parts.push(`Torso: ${obj.torso}`);
+  if (obj.arms) {
+    const armBits = [obj.arms.build, obj.arms.length ? `length=${obj.arms.length}` : '']
+      .filter(Boolean)
+      .join(', ');
+    if (armBits) parts.push(`Arms: ${armBits}`);
+  }
+  if (obj.legs) {
+    const legBits = [obj.legs.build, obj.legs.length ? `length=${obj.legs.length}` : '']
+      .filter(Boolean)
+      .join(', ');
+    if (legBits) parts.push(`Legs: ${legBits}`);
+  }
   if (obj.features?.length) parts.push(`Features: ${obj.features.join(', ')}`);
-  if (obj.description) parts.push(truncate(obj.description, 200));
   return parts.join('; ');
 }
 

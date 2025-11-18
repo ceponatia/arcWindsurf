@@ -66,3 +66,11 @@ model SettingInstance {
   @@unique([sessionId, templateSettingId])
   @@index([sessionId])
 }
+
+// Dynamic character templates created via Character Builder UI
+model CharacterTemplate {
+  id          String   @id
+  profileJson String   // serialized CharacterProfile JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
