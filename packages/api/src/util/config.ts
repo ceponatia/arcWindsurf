@@ -26,7 +26,7 @@ function num(value: string | undefined, fallback: number): number {
 
 export function getConfig(): RuntimeConfig {
   const port = num(env.PORT, 3001);
-  const contextWindow = num(env.CONTEXT_WINDOW, 12);
+  const contextWindow = num(env.CONTEXT_WINDOW, 30);
 
   const temperature = Number.isFinite(Number(env.TEMPERATURE)) ? Number(env.TEMPERATURE) : 0.7;
 

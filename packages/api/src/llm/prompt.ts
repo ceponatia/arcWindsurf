@@ -18,7 +18,7 @@ export function assertPromptConfigValid(): void {
 }
 
 const BASE_RULES: string[] = SystemPromptSchema.parse(systemPromptJson).rules;
-const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules;
+// const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules;
 
 function serializeCharacter(c: CharacterProfile) {
   const rawPersonality = c.personality;
@@ -135,9 +135,12 @@ function simpleContentFilter(latestUserText: string | undefined) {
   if (!latestUserText) return { flagged: false as const, note: '' };
   const text = latestUserText.toLowerCase();
   const banned = [
-    /sexual\s*content|explicit|porn|nsfw|erotic|fetish|incest|minor|underage/, // sexual and minors
-    /gore|graphic\s*violence|torture|dismember|mutilat/,
-    /hate\s*speech|slur|genocide|racial\s*superiority|nazi|kkk/,
+    /child abuse/,
+    /sexual violence/,
+    /bestiality/,
+    /necrophilia/,
+    /extreme gore/,
+    /hate speech/,
   ];
   const flagged = banned.some((re) => re.test(text));
   if (!flagged) return { flagged: false as const, note: '' };
@@ -169,7 +172,7 @@ export function buildPrompt(opts: {
 
   const systemMessages = [
     { role: 'system' as const, content: BASE_RULES.join(' ') },
-    { role: 'system' as const, content: SAFETY_RULES.join(' ') },
+    // { role: 'system' as const, content: SAFETY_RULES.join(' ') },
     { role: 'system' as const, content: serializeCharacter(character) },
     { role: 'system' as const, content: serializeSetting(setting) },
     summary

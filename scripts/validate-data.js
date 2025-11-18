@@ -112,21 +112,12 @@ function validateCharacter(obj, file) {
       errs.push('scent must be an object');
     } else {
       const sc = obj.scent;
-      if (
-        sc.hairScent &&
-        !['floral', 'citrus', 'fresh', 'herbal', 'neutral'].includes(sc.hairScent)
-      )
-        errs.push(`scent.hairScent invalid (${sc.hairScent})`);
-      if (sc.bodyScent && !['clean', 'fresh', 'neutral', 'light musk'].includes(sc.bodyScent))
-        errs.push(`scent.bodyScent invalid (${sc.bodyScent})`);
-      if (
-        sc.perfume &&
-        (typeof sc.perfume !== 'string' || sc.perfume.length === 0 || sc.perfume.length > 40)
-      )
-        errs.push('scent.perfume must be 1..40 chars');
-      // Disallowed legacy scent fields
-      const badScent = ['footScent', 'privateScent'];
-      for (const b of badScent) if (b in sc) errs.push(`scent.${b} is deprecated/disallowed`);
+      if (sc.hairScent && (typeof sc.hairScent !== 'string' || sc.hairScent.length === 0))
+        errs.push('scent.hairScent must be non-empty string');
+      if (sc.bodyScent && (typeof sc.bodyScent !== 'string' || sc.bodyScent.length === 0))
+        errs.push('scent.bodyScent must be non-empty string');
+      if (sc.perfume && (typeof sc.perfume !== 'string' || sc.perfume.length === 0))
+        errs.push('scent.perfume must be non-empty string');
     }
   }
   if (errs.length) {

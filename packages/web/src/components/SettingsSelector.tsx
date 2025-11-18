@@ -34,10 +34,9 @@ export const SettingsSelector: React.FC<SettingsSelectorProps> = ({ value, onCha
             >
               <option value="">— Choose —</option>
               {(data ?? []).map((s) => {
-                const full = `${s.name} (${s.tone})`;
-                const display = full.length > 32 ? `${full.slice(0, 29)}…` : full;
+                const display = s.name.length > 32 ? `${s.name.slice(0, 29)}…` : s.name;
                 return (
-                  <option key={s.id} value={s.id} title={full}>
+                  <option key={s.id} value={s.id} title={s.name}>
                     {display}
                   </option>
                 );

@@ -1,7 +1,13 @@
 import type { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 
-import { createSession, getSession, appendMessage, listSessions } from '@minimal-rpg/db/node';
+import {
+  createSession,
+  getSession,
+  appendMessage,
+  listSessions,
+  deleteSession,
+} from '@minimal-rpg/db/node';
 import {
   getEffectiveProfiles,
   upsertCharacterOverrides,
@@ -291,5 +297,15 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     };
 
     return c.json(response, 201);
+  });
+
+  // DELETE /sessions/:id - delete a session
+  app.delete('/sessions/:id', async (c) => {
+    const id = c.req.param('id');
+    const session = await getSession(id);
+    if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
+
+    await deleteSession(id);
+    return c.body(null, 204);
   });
 }

@@ -3,33 +3,11 @@ import { getErrorMessage } from '@minimal-rpg/utils';
 import { AppHeader } from './components/AppHeader.js';
 import { CharactersPanel } from './components/CharactersPanel.js';
 import { SettingsSelector } from './components/SettingsSelector.js';
-import * as db from '@minimal-rpg/db';
-import { API_BASE_URL } from './config.js';
 
-const TrashIcon: React.FC<{ size?: number; className?: string }> = ({ size = 18, className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M3 6h18" />
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-    <path d="M10 11v6" />
-    <path d="M14 11v6" />
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-  </svg>
-);
 import { SessionsPanel } from './components/SessionsPanel.js';
 import { ChatPanel } from './components/ChatPanel.js';
 import { CharacterBuilder } from './components/CharacterBuilder.js';
-import { createSession } from './api/client.js';
+import { createSession, deleteSession } from './api/client.js';
 import { useSessions } from './hooks/useSessions.js';
 
 export const App: React.FC = () => {
@@ -42,7 +20,6 @@ export const App: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const createAbortRef = useRef<AbortController | null>(null);
-  const [settingsReloadKey, setSettingsReloadKey] = useState(0);
 
   const {
     loading: sessionsLoading,
@@ -81,19 +58,18 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleDeleteSetting = async (settingId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this session?')) return;
     try {
-      await db.deleteSettingFromDb(settingId, API_BASE_URL);
-      setSelectedSettingId((prev) => (prev === settingId ? null : prev));
-      setSettingsReloadKey((k) => k + 1);
-    } catch (e) {
-      // Check if 'e' is actually an Error object
-      if (e instanceof Error) {
-        console.error('Failed to delete setting', e.message);
-      } else {
-        // Fallback for non-standard errors (like strings)
-        console.error('Failed to delete setting', String(e));
+      await deleteSession(sessionId);
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+        window.location.hash = '';
       }
+      refreshSessions();
+    } catch (err) {
+      console.error('Failed to delete session', err);
+      alert('Failed to delete session');
     }
   };
 
@@ -104,31 +80,7 @@ export const App: React.FC = () => {
         <aside className="w-80 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col p-3 overflow-hidden">
           <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">
             <CharactersPanel selectedId={selectedCharacterId} onSelect={setSelectedCharacterId} />
-            {/* Settings card with delete action when a setting is selected */}
-            <section className="border border-slate-800 rounded-lg overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold">Settings</h2>
-                {selectedSettingId && (
-                  <button
-                    onClick={() => {
-                      void handleDeleteSetting(selectedSettingId);
-                    }}
-                    className="p-1 rounded hover:bg-slate-800 text-red-400 hover:text-red-300"
-                    aria-label="Delete setting"
-                    title="Delete selected setting"
-                  >
-                    <TrashIcon size={18} />
-                  </button>
-                )}
-              </div>
-              <div className="p-3">
-                <SettingsSelector
-                  key={settingsReloadKey}
-                  value={selectedSettingId}
-                  onChange={setSelectedSettingId}
-                />
-              </div>
-            </section>
+            <SettingsSelector value={selectedSettingId} onChange={setSelectedSettingId} />
             <div className="border border-slate-800 rounded-lg p-3">
               <button
                 className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
@@ -156,6 +108,7 @@ export const App: React.FC = () => {
                 setCurrentSessionId(id);
                 window.location.hash = '';
               }}
+              onDelete={(id) => void handleDeleteSession(id)}
             />
           </div>
         </aside>

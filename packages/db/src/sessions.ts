@@ -73,6 +73,11 @@ export async function listSessions(): Promise<SessionSummary[]> {
   }));
 }
 
+export async function deleteSession(id: string): Promise<void> {
+  await prisma.message.deleteMany({ where: { sessionId: id } });
+  await prisma.userSession.delete({ where: { id } });
+}
+
 export async function clearSessions() {
   await prisma.message.deleteMany({});
   await prisma.userSession.deleteMany({});
