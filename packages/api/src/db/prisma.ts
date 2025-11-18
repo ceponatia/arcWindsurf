@@ -37,11 +37,11 @@ function resolveDbUrl(): string {
     return toPrismaFileUrl(envUrl);
   }
 
-  // Relative file path via file:./ or file:../ -> resolve relative to the API package root
+  // Relative file path via file:./ or file:../ -> resolve relative to the prisma schema directory (packages/api/prisma)
   if (envUrl.startsWith('file:')) {
     const rel = envUrl.slice('file:'.length);
-    const apiRoot = fileURLToPath(new URL('../../', import.meta.url)); // packages/api/
-    const absPath = path.resolve(apiRoot, rel);
+    const prismaDir = fileURLToPath(new URL('../../prisma/', import.meta.url)); // packages/api/prisma/
+    const absPath = path.resolve(prismaDir, rel);
     return toPrismaFileUrl(pathToFileURL(absPath).href);
   }
 

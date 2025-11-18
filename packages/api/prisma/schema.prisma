@@ -74,3 +74,11 @@ model CharacterTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+/// Dynamic setting templates (optional; filesystem settings remain read-only)
+model SettingTemplate {
+  id          String   @id
+  profileJson String   // serialized SettingProfile JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

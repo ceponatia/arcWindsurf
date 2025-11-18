@@ -49,6 +49,14 @@ pnpm core
 - Checks LLM configuration (`llm.provider`, `llm.model`, and `llm.configured`).
 - Adds a dev DB viewer at `GET /admin/db/overview` (see Web `/dbview`).
 
+Optional: force a fresh DB (drop + migrate + seed) before startup:
+
+```bash
+CORE_RESET_DB=true pnpm core
+```
+
+This is destructive but handy if your local schema drifted or you want a clean slate.
+
 When finished, stop everything and free the ports:
 
 ```bash
@@ -224,6 +232,15 @@ The API reads environment variables with sensible defaults for local development
 - `VITE_STRICT_MODE` (default: `false`) — when `true`, renders `React.StrictMode` in dev which double-invokes effects. Leave `false` to avoid duplicate fetches/cancellations during development.
 
 Example env file: `packages/api/.env.example`
+
+See `dev-docs/web-architecture.md` for the web package structure, routing, components, hooks, API client, and data flow.
+
+### Frontend Styling (Tailwind)
+
+- The web UI uses Tailwind CSS with dark theme defaults and the Typography plugin.
+- Edit theme tokens and variants in `packages/web/tailwind.config.js`.
+- Global styles live in `packages/web/src/styles/app.css` and use `@tailwind base/components/utilities` plus a small custom scrollbar.
+- Class names are embedded directly in components. No CSS Modules are used.
 
 ### Character Builder UI
 

@@ -8,13 +8,9 @@
     "clean": "turbo clean",
     "core": "node scripts/core.mjs",
     "core:quit": "node scripts/core-quit.mjs",
-    "core:restart": "pnpm core:quit && pnpm core",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
-    "restart": "echo 'restart lifecycle'",
-    "start": "pnpm core",
-    "stop": "pnpm core:quit",
     "typecheck": "turbo typecheck"
   },
   "dependencies": {

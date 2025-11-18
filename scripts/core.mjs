@@ -4,13 +4,16 @@
 // Uses Prisma migrations via db:deploy then seed.
 // Cross-platform (pure Node) port checks.
 
-import { spawn } from 'node:child_process';
+import { spawn, exec } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import http from 'node:http';
+import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { PrismaClient } from '@prisma/client';
+
+const execAsync = promisify(exec);
 
 const ROOT = process.cwd();
 const CORE_DIR = path.join(ROOT, '.core');
@@ -24,6 +27,26 @@ const prisma = new PrismaClient({ datasources: { db: { url: DEFAULT_DB_URL } } }
 
 async function ensureCoreDir() {
   await fs.mkdir(CORE_DIR, { recursive: true });
+}
+
+async function killPort(port) {
+  try {
+    // Find PID
+    const { stdout } = await execAsync(`lsof -t -i :${port}`);
+    const pids = stdout.trim().split('\n').filter(Boolean);
+    if (pids.length > 0) {
+      console.log(`[core] Killing processes on port ${port}: ${pids.join(', ')}`);
+      await execAsync(`kill -9 ${pids.join(' ')}`);
+      // Give the OS a moment to clean up
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  } catch (e) {
+    // lsof returns exit code 1 if no files found, which is fine
+    if (e.code !== 1) {
+      // Ignore "command not found" if lsof is missing, but warn otherwise
+      console.warn(`[core] Warning: failed to clean port ${port}: ${e.message}`);
+    }
+  }
 }
 
 function checkPort(port) {
@@ -156,48 +179,56 @@ async function start() {
     console.log('[core] Data validation passed.');
   } catch (err) {
     console.error(
-      '[core] Data validation failed. Fix JSON under data/characters or data/settings and retry.',
+      '[core] Data validation failed. Fix JSON under data/characters or data/settings and retry.'
     );
     console.error('[core] Validation error:', err.message || err);
     process.exit(1);
   }
 
-  // Port pre-flight
+  // Port pre-flight & cleanup
+  console.log('[core] Ensuring ports are free...');
+  await killPort(API_PORT);
+  await killPort(WEB_PORT);
+
   const apiBusy = await checkPort(API_PORT);
   const webBusy = await checkPort(WEB_PORT);
 
   if (apiBusy) {
-    console.error(
-      `[core] Port ${API_PORT} already in use. If an old API instance is running, run 'pnpm core:quit' or manually stop it.`,
-    );
+    console.error(`[core] Port ${API_PORT} is still in use after cleanup attempt. Aborting.`);
   }
   if (webBusy) {
-    console.error(
-      `[core] Port ${WEB_PORT} already in use. If an old Web dev server is running, run 'pnpm core:quit' or stop it.`,
-    );
-    // Fail fast: skipping web spawn can leave users thinking core "hangs"; abort with guidance.
-    console.error(
-      '[core] Web port busy; aborting startup. Run `pnpm core:quit` to clear stale processes, then retry `pnpm core`.',
-    );
+    console.error(`[core] Port ${WEB_PORT} is still in use after cleanup attempt. Aborting.`);
+  }
+  if (apiBusy || webBusy) {
     try {
       await prisma.$disconnect().catch(() => {});
     } catch {}
     process.exit(1);
   }
 
-  // Migrations (idempotent) + seed
-  console.log('[core] Applying Prisma migrations (db:deploy)...');
-  await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:deploy'], {
-    env: { DATABASE_URL: DEFAULT_DB_URL },
-  }).catch((err) => {
-    throw new Error('Migration failed: ' + err.message);
-  });
-  console.log('[core] Seeding (db:seed)...');
-  await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:seed'], {
-    env: { DATABASE_URL: DEFAULT_DB_URL },
-  }).catch((err) => {
-    throw new Error('Seed failed: ' + err.message);
-  });
+  // Database prep
+  if (process.env.CORE_RESET_DB === 'true') {
+    console.log('[core] Resetting DB (drop + migrate + seed)...');
+    await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:reset'], {
+      env: { DATABASE_URL: DEFAULT_DB_URL },
+    }).catch((err) => {
+      throw new Error('DB reset failed: ' + err.message);
+    });
+  } else {
+    // Migrations (idempotent) + seed
+    console.log('[core] Applying Prisma migrations (db:deploy)...');
+    await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:deploy'], {
+      env: { DATABASE_URL: DEFAULT_DB_URL },
+    }).catch((err) => {
+      throw new Error('Migration failed: ' + err.message);
+    });
+    console.log('[core] Seeding (db:seed)...');
+    await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:seed'], {
+      env: { DATABASE_URL: DEFAULT_DB_URL },
+    }).catch((err) => {
+      throw new Error('Seed failed: ' + err.message);
+    });
+  }
 
   // Spawn API if free
   if (!apiBusy) {
@@ -219,7 +250,7 @@ async function start() {
 
   // If both servers started (or were skipped due to busy ports), we can exit early unless monitoring needed.
   if (!process.env.CORE_MONITOR) {
-    console.log('[core] Detachment complete. Use `pnpm core:quit` to stop servers.');
+    console.log('[core] Detachment complete. Run `pnpm core` again to restart/reset.');
     await prisma.$disconnect().catch(() => {});
     return; // exit start() without health polling to avoid perceived hang
   }
@@ -237,11 +268,11 @@ async function start() {
     const llmModel = health.llm?.model ?? 'unknown';
     const llmConfigured = health.llm?.configured ?? false;
     console.log(
-      `[core] /health status: ${health.status}; db.ok=${health.db?.ok}; llm.provider=${llmProvider}; llm.model=${llmModel}; llm.configured=${llmConfigured}`,
+      `[core] /health status: ${health.status}; db.ok=${health.db?.ok}; llm.provider=${llmProvider}; llm.model=${llmModel}; llm.configured=${llmConfigured}`
     );
     if (!llmConfigured) {
       console.warn(
-        '[core] LLM is not fully configured. Ensure OPENROUTER_API_KEY and OPENROUTER_MODEL are set for the API.',
+        '[core] LLM is not fully configured. Ensure OPENROUTER_API_KEY and OPENROUTER_MODEL are set for the API.'
       );
     }
   }
@@ -252,7 +283,7 @@ async function start() {
     console.error('[core] DB completeness error:', completeness.error);
   } else {
     console.log(
-      `[core] DB: sessions=${completeness.sessionCount}, messages=${completeness.messageCount}, contiguousIdx=${completeness.contiguousOk}`,
+      `[core] DB: sessions=${completeness.sessionCount}, messages=${completeness.messageCount}, contiguousIdx=${completeness.contiguousOk}`
     );
   }
 

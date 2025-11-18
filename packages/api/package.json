@@ -14,7 +14,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset --force --skip-seed && DATABASE_URL=\"file:./prisma/dev.db\" pnpm db:deploy && pnpm db:seed",
+    "db:reset": "prisma migrate reset --force --skip-seed && pnpm db:deploy && pnpm db:seed",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "dev": "tsx watch src/server.ts",

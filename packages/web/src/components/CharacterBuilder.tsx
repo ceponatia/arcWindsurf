@@ -182,8 +182,8 @@ export const CharacterBuilder: React.FC = () => {
                 length: form.apHairLength || 'medium',
               },
               eyes: { color: form.apEyesColor || 'brown' },
-              height: (form.apHeight || 'average') as 'short' | 'average' | 'tall',
-              torso: (form.apTorso || 'average') as 'slight' | 'average' | 'athletic' | 'heavy',
+              height: form.apHeight || 'average',
+              torso: form.apTorso || 'average',
               skinTone: form.apSkinTone || 'pale',
               features: form.apFeatures
                 ? form.apFeatures
@@ -192,17 +192,12 @@ export const CharacterBuilder: React.FC = () => {
                     .filter(Boolean)
                 : undefined,
               arms: {
-                build: (form.apArmsBuild || 'average') as 'average' | 'muscular' | 'slender',
-                length: (form.apArmsLength || 'average') as 'average' | 'long' | 'short',
+                build: form.apArmsBuild || 'average',
+                length: form.apArmsLength || 'average',
               },
               legs: {
-                length: (form.apLegsLength || 'average') as 'average' | 'long' | 'short',
-                build: (form.apLegsBuild || 'toned') as
-                  | 'very skinny'
-                  | 'slender'
-                  | 'average'
-                  | 'toned'
-                  | 'muscular',
+                length: form.apLegsLength || 'average',
+                build: form.apLegsBuild || 'toned',
               },
             }
           : undefined;

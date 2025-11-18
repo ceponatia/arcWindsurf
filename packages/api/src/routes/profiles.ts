@@ -2,6 +2,7 @@
 import type { Hono } from 'hono';
 import {
   CharacterProfileSchema,
+  SettingProfileSchema,
   type CharacterProfile,
   type SettingProfile,
 } from '@minimal-rpg/schemas';
@@ -93,16 +94,49 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps) {
   });
 
   // GET /settings - summarized setting profiles
-  app.get('/settings', (c) => {
+  app.get('/settings', async (c) => {
     const loaded = deps.getLoaded();
     if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500);
 
-    const mapped = loaded.settings.map((s: SettingProfile) => ({
+    const fsMapped = loaded.settings.map((s: SettingProfile) => ({
       id: s.id,
       name: s.name,
       tone: s.tone,
+      source: 'fs' as const,
     }));
 
-    return c.json(mapped, 200);
+    // Include dynamic settings from DB if present
+    const dbTemplates = await prisma.settingTemplate.findMany({});
+    const dbProfiles: SettingProfile[] = [];
+    for (const t of dbTemplates) {
+      try {
+        const parsed = SettingProfileSchema.parse(JSON.parse(t.profileJson));
+        dbProfiles.push(parsed);
+      } catch {
+        // skip invalid rows
+      }
+    }
+    const dbMapped = dbProfiles.map((s) => ({
+      id: s.id,
+      name: s.name,
+      tone: s.tone,
+      source: 'db' as const,
+    }));
+
+    return c.json([...fsMapped, ...dbMapped], 200);
+  });
+
+  // DELETE /settings/:id — delete a dynamic setting template from DB (filesystem settings are read-only)
+  app.delete('/settings/:id', async (c) => {
+    const id = c.req.param('id');
+    // If this id exists in filesystem-loaded settings, disallow deletion here
+    const loaded = deps.getLoaded();
+    if (loaded?.settings.some((s) => s.id === id)) {
+      return c.json({ ok: false, error: 'filesystem settings cannot be deleted' }, 405);
+    }
+    const existing = await prisma.settingTemplate.findUnique({ where: { id } });
+    if (!existing) return c.json({ ok: false, error: 'not found' }, 404);
+    await prisma.settingTemplate.delete({ where: { id } });
+    return c.body(null, 204);
   });
 }
