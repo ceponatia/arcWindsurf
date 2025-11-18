@@ -20,21 +20,26 @@ export const SessionsPanel: React.FC<SessionsPanelProps> = ({
 }) => {
   const has = sessions.length > 0;
   return (
-    <section className="panel panel-sessions">
-      <h2 className="panel-title">Sessions</h2>
-      <div className="panel-body">
-        {loading && <p className="muted">Loading…</p>}
+    <section className="border border-slate-800 rounded-lg overflow-hidden">
+      <h2 className="px-3 py-2 border-b border-slate-800 bg-slate-900/60 text-sm font-semibold">
+        Sessions
+      </h2>
+      <div className="p-3">
+        {loading && <p className="text-slate-400">Loading…</p>}
         {!loading && error && (
-          <div>
-            <p className="error">Failed to load: {error}</p>
-            <button className="btn" onClick={onRetry}>
+          <div className="space-y-2">
+            <p className="text-red-400">Failed to load: {error}</p>
+            <button
+              className="px-3 py-1.5 rounded-md bg-slate-800 text-slate-200"
+              onClick={onRetry}
+            >
               Retry
             </button>
           </div>
         )}
-        {!loading && !error && !has && <p className="muted">No sessions yet.</p>}
+        {!loading && !error && !has && <p className="text-slate-400">No sessions yet.</p>}
         {!loading && !error && has && (
-          <ul className="list">
+          <ul className="space-y-2">
             {sessions.map((s) => {
               const isActive = s.id === activeId;
               const characterLabel = s.characterName ?? s.characterId;
@@ -42,7 +47,9 @@ export const SessionsPanel: React.FC<SessionsPanelProps> = ({
               return (
                 <li
                   key={s.id}
-                  className={`list-item selectable${isActive ? ' selected' : ''}`}
+                  className={`group flex flex-col p-3 rounded-lg hover:bg-slate-800 border ${
+                    isActive ? 'border-emerald-700' : 'border-transparent hover:border-slate-700'
+                  } cursor-pointer`}
                   onClick={() => onSelect?.(s.id)}
                   role="button"
                   tabIndex={0}
@@ -50,9 +57,9 @@ export const SessionsPanel: React.FC<SessionsPanelProps> = ({
                     if (e.key === 'Enter' || e.key === ' ') onSelect?.(s.id);
                   }}
                 >
-                  <div className="item-title">{characterLabel}</div>
-                  <div className="item-summary">{settingLabel}</div>
-                  <div className="item-tags" style={{ fontSize: '11px' }}>
+                  <div className="text-sm font-medium text-slate-200">{characterLabel}</div>
+                  <div className="text-xs text-slate-400">{settingLabel}</div>
+                  <div className="text-[11px] text-slate-500">
                     {new Date(s.createdAt).toLocaleTimeString()}
                   </div>
                 </li>

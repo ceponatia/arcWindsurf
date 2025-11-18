@@ -91,62 +91,93 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
 
   if (!effectiveSessionId) {
     return (
-      <div className="chat-panel">
-        <div className="chat-messages" ref={scrollRef}>
-          <div className="message system">Start or select a session to begin chatting.</div>
+      <div className="max-w-4xl mx-auto h-full flex flex-col">
+        <div
+          className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-0 py-4 space-y-2"
+          ref={scrollRef}
+        >
+          <div className="text-center text-sm text-slate-500 font-mono">
+            Start or select a session to begin chatting.
+          </div>
         </div>
-        <div className="chat-composer">
-          <input
-            className="chat-input"
-            placeholder="Type a message..."
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            disabled
-          />
-          <button className="btn" disabled>
-            Send
-          </button>
+        <div className="px-2 sm:px-0 py-3">
+          <div className="mx-auto max-w-3xl rounded-xl bg-slate-900/70 border border-slate-800 shadow-sm p-2">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-slate-900 text-slate-200 placeholder:text-slate-500 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                placeholder="Type a message..."
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                disabled
+              />
+              <button
+                className="px-3 py-2 rounded-md bg-slate-800 text-slate-500 cursor-not-allowed"
+                disabled
+              >
+                Send
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="chat-panel">
-      <div className="chat-messages" ref={scrollRef}>
-        {loading && <div className="message system">Loading session…</div>}
-        {error && <div className="message system">{error}</div>}
-        {!loading &&
-          !error &&
-          (session?.messages ?? []).map((m, idx) => (
-            <div key={idx} className={`message ${m.role === 'user' ? 'user' : 'assistant'}`}>
-              {m.content}
-            </div>
-          ))}
+    <div className="max-w-4xl mx-auto h-full flex flex-col">
+      <div
+        className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-0 py-4 space-y-3"
+        ref={scrollRef}
+      >
+        {loading && (
+          <div className="text-center text-sm text-slate-500 font-mono">Loading session…</div>
+        )}
+        {error && <div className="text-center text-sm text-red-400 font-mono">{error}</div>}
+        {!loading && !error && (
+          <div className="prose prose-invert max-w-none">
+            {(session?.messages ?? []).map((m, idx) => (
+              <div key={idx} className="mb-3">
+                {m.role === 'user' ? (
+                  <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans">{m.content}</div>
+                ) : (
+                  <div className="font-serif leading-relaxed">{m.content}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="chat-composer">
-        <input
-          className="chat-input"
-          placeholder={sending ? 'Waiting for assistant…' : 'Type a message...'}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          disabled={disabled}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void onSend();
-            }
-          }}
-        />
-        <button
-          className="btn primary"
-          onClick={() => {
-            void onSend();
-          }}
-          disabled={disabled || draft.trim().length === 0}
-        >
-          {sending ? 'Sending…' : 'Send'}
-        </button>
+      <div className="px-2 sm:px-0 py-3">
+        <div className="mx-auto max-w-3xl rounded-xl bg-slate-900/70 border border-slate-800 shadow-sm p-2">
+          <div className="flex gap-2">
+            <input
+              className="flex-1 bg-slate-900 text-slate-200 placeholder:text-slate-500 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+              placeholder={sending ? 'Waiting for assistant…' : 'Type a message...'}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              disabled={disabled}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void onSend();
+                }
+              }}
+            />
+            <button
+              className={`px-3 py-2 rounded-md text-sm font-medium transition ${
+                disabled || draft.trim().length === 0
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-violet-600 hover:bg-violet-500 text-white'
+              } ${sending ? 'animate-pulse' : ''}`}
+              onClick={() => {
+                void onSend();
+              }}
+              disabled={disabled || draft.trim().length === 0}
+            >
+              {sending ? 'Sending…' : 'Send'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

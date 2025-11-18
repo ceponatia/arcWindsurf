@@ -74,6 +74,11 @@ body {
   color: #b91c1c;
   font-size: 13px;
 }
+.field-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #b91c1c;
+}
 
 /* Simple list styling */
 .list {
@@ -90,209 +95,21 @@ body {
   border-radius: 6px;
   background: #ffffff;
 }
-.list-item.selectable {
-  cursor: pointer;
-}
-.list-item.selected {
-  border-color: #818cf8;
-  background: #eef2ff;
-}
-.item-title {
-  font-weight: 600;
-  color: #0f172a;
-}
-.item-summary {
-  color: #475569;
-  font-size: 13px;
-  margin-top: 4px;
-}
-.item-tags {
-  color: #334155;
-  font-size: 12px;
-  margin-top: 6px;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-.main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+/* Custom thin scrollbar for WebKit */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  gap: var(--space-2);
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85); /* slate-700 */
+  border-radius: 9999px;
 }
-.app-title {
-  font-size: 16px;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
-.tag {
-  font-size: 12px;
-  color: #334155;
-  background: #e2e8f0;
-  padding: 4px 8px;
-  border-radius: 999px;
-}
-.header-info {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #334155;
-}
-.header-character {
-  font-weight: 600;
-}
-.header-setting {
-}
-.header-sep {
-  margin: 0 6px;
-  color: #94a3b8;
-}
-
-.main-content {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-3);
-  height: calc(100% - 54px);
-}
-
-.chat-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
-}
-.chat-messages {
-  flex: 1;
-  padding: var(--space-3);
-  overflow-y: auto;
-}
-.message {
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  border-radius: 6px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-.message.system {
-  color: #475569;
-  background: #f1f5f9;
-}
-.message.user {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-}
-.message.assistant {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-}
-
-.chat-composer {
-  display: flex;
-  gap: var(--space-2);
-  padding: 10px;
-  border-top: 1px solid #e2e8f0;
-}
-.chat-input {
-  flex: 1;
-  padding: 10px var(--space-3);
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-}
-.chat-input:focus,
-.select:focus,
-.btn:focus {
-  outline: 2px solid #818cf8;
-  outline-offset: 2px;
-}
-.btn {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  cursor: not-allowed;
-  color: #64748b;
-}
-.btn.primary {
-  background: #4f46e5;
-  color: #fff;
-  border-color: #4f46e5;
-  cursor: pointer;
-}
-.btn.primary.disabled,
-.btn.primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Responsive: collapse sidebar on narrow widths */
-@media (max-width: 860px) {
-  .app-root {
-    grid-template-columns: 1fr;
-  }
-  .sidebar {
-    display: none;
-  }
-}
-
-/* Form fields */
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.field-label {
-  font-size: 12px;
-  color: #475569;
-}
-.select {
-  padding: 8px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-}
-
-/* Character Builder sections */
-.builder {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.section-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #ffffff;
-  overflow: hidden;
-}
-.section-header {
-  padding: 10px 14px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #334155;
-  font-weight: 600;
-  font-size: 14px;
-}
-.section-body {
-  padding: 14px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.section-body.full {
-  grid-template-columns: 1fr;
-}
-.section-footer {
-  padding: 12px 14px;
-  border-top: 1px solid #e2e8f0;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
 }
 .field input,
 .field textarea {

@@ -53,16 +53,16 @@ export const DbView: React.FC = () => {
 
   if (loading)
     return (
-      <div style={{ padding: 16 }}>
-        <h2>Database</h2>
-        <p>Loading…</p>
+      <div className="p-4">
+        <h2 className="text-lg font-semibold">Database</h2>
+        <p className="text-slate-400">Loading…</p>
       </div>
     );
   if (error)
     return (
-      <div style={{ padding: 16 }}>
-        <h2>Database</h2>
-        <p className="error">{error}</p>
+      <div className="p-4">
+        <h2 className="text-lg font-semibold">Database</h2>
+        <p className="text-red-400">{error}</p>
       </div>
     );
   if (!data) return null;
@@ -74,60 +74,54 @@ export const DbView: React.FC = () => {
       : table.columns.map((c) => c.name);
 
     return (
-      <div
-        style={{
-          border: '1px solid #ddd',
-          borderRadius: 8,
-          padding: 12,
-          marginBottom: 16,
-          background: '#fff',
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>
-          {table.name}{' '}
-          {typeof table.rowCount === 'number' ? (
-            <span style={{ color: '#666', fontWeight: 400 }}>({table.rowCount} rows)</span>
-          ) : null}
-        </h3>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 280 }}>
-            <h4 style={{ marginBottom: 8 }}>Columns</h4>
-            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+      <div className="border border-slate-800 rounded-lg mb-4 bg-slate-950">
+        <div className="px-4 py-3 border-b border-slate-800">
+          <h3 className="m-0 text-base font-semibold text-slate-100">
+            {table.name}{' '}
+            {typeof table.rowCount === 'number' ? (
+              <span className="text-slate-500 font-normal">({table.rowCount} rows)</span>
+            ) : null}
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-6 p-4">
+          <div className="min-w-[280px]">
+            <h4 className="mb-2 text-sm text-slate-300">Columns</h4>
+            <table className="w-full text-sm">
               <thead>
-                <tr>
-                  <th style={th}>name</th>
-                  <th style={th}>type</th>
-                  <th style={th}>id</th>
-                  <th style={th}>required</th>
-                  <th style={th}>list</th>
+                <tr className="bg-slate-800 text-slate-400 uppercase">
+                  <th className="text-left px-2 py-1">name</th>
+                  <th className="text-left px-2 py-1">type</th>
+                  <th className="text-left px-2 py-1">id</th>
+                  <th className="text-left px-2 py-1">required</th>
+                  <th className="text-left px-2 py-1">list</th>
                 </tr>
               </thead>
               <tbody>
                 {table.columns.map((c) => (
-                  <tr key={c.name}>
-                    <td style={td}>{c.name}</td>
-                    <td style={td}>{c.type}</td>
-                    <td style={td}>{c.isId ? 'yes' : 'no'}</td>
-                    <td style={td}>{c.isRequired ? 'yes' : 'no'}</td>
-                    <td style={td}>{c.isList ? 'yes' : 'no'}</td>
+                  <tr key={c.name} className="border-b border-slate-800 hover:bg-slate-900/50">
+                    <td className="px-2 py-1">{c.name}</td>
+                    <td className="px-2 py-1">{c.type}</td>
+                    <td className="px-2 py-1">{c.isId ? 'yes' : 'no'}</td>
+                    <td className="px-2 py-1">{c.isRequired ? 'yes' : 'no'}</td>
+                    <td className="px-2 py-1">{c.isList ? 'yes' : 'no'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div style={{ flex: 1, minWidth: 420 }}>
-            <h4 style={{ marginBottom: 8 }}>Recent Rows</h4>
-            <div style={{ overflowX: 'auto' }}>
+          <div className="flex-1 min-w-[420px]">
+            <h4 className="mb-2 text-sm text-slate-300">Recent Rows</h4>
+            <div className="overflow-x-auto">
               {sampleRows.length ? (
-                <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <table className="w-full text-sm">
                   <thead>
-                    <tr>
+                    <tr className="bg-slate-800 text-slate-400 uppercase">
                       {columns.map((k) => (
-                        <th key={k} style={th}>
+                        <th key={k} className="text-left px-2 py-1">
                           {k}
                         </th>
                       ))}
-                      {DB_TOOLS ? <th style={th}>actions</th> : null}
+                      {DB_TOOLS ? <th className="text-left px-2 py-1">actions</th> : null}
                     </tr>
                   </thead>
                   <tbody>
@@ -140,19 +134,24 @@ export const DbView: React.FC = () => {
                           : undefined;
 
                       return (
-                        <tr key={i}>
+                        <tr key={i} className="border-b border-slate-800 hover:bg-slate-900/50">
                           {columns.map((k) => {
                             const val = rec[k];
                             const display = toDisplay(val);
                             return (
-                              <td key={k} style={td}>
+                              <td key={k} className="px-2 py-1 align-top">
                                 {display}
                               </td>
                             );
                           })}
                           {DB_TOOLS ? (
-                            <td style={td}>
+                            <td className="px-2 py-1">
                               <button
+                                className={`px-2 py-1 rounded-md text-xs ${
+                                  deleting
+                                    ? 'bg-slate-800 text-slate-400'
+                                    : 'bg-red-600 text-white hover:bg-red-500'
+                                }`}
                                 disabled={!!deleting}
                                 title={
                                   deleting ? `Deleting ${table.name}#${deleting}…` : 'Delete row'
@@ -194,7 +193,7 @@ export const DbView: React.FC = () => {
                   </tbody>
                 </table>
               ) : (
-                <p className="muted">No rows</p>
+                <p className="text-slate-400">No rows</p>
               )}
             </div>
           </div>
@@ -204,9 +203,9 @@ export const DbView: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2 style={{ marginTop: 0 }}>Database Overview</h2>
-      <p className="muted" style={{ marginTop: 0 }}>
+    <div className="p-4">
+      <h2 className="text-lg font-semibold mt-0">Database Overview</h2>
+      <p className="text-slate-400 mt-0">
         Showing tables, columns, and up to 50 most recent rows per table.
       </p>
       {data.tables.map((t) => (
@@ -214,21 +213,6 @@ export const DbView: React.FC = () => {
       ))}
     </div>
   );
-};
-
-const th: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '6px 8px',
-  borderBottom: '1px solid #eee',
-  fontWeight: 600,
-  background: '#fafafa',
-};
-
-const td: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '6px 8px',
-  borderBottom: '1px solid #f1f1f1',
-  verticalAlign: 'top',
 };
 
 export default DbView;
