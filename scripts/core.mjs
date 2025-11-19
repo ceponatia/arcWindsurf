@@ -11,7 +11,6 @@ import net from 'node:net';
 import http from 'node:http';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import { PrismaClient } from '@prisma/client';
 
 const execAsync = promisify(exec);
 
@@ -21,9 +20,7 @@ const API_PORT = Number(process.env.PORT || 3001);
 const WEB_PORT = 5173;
 const START_TIMEOUT_MS = 60_000;
 const HEALTH_POLL_INTERVAL_MS = 2_000;
-const DEFAULT_DB_FILE = path.join(ROOT, 'packages/api/prisma/dev.db');
-const DEFAULT_DB_URL = process.env.DATABASE_URL || pathToFileURL(DEFAULT_DB_FILE).href;
-const prisma = new PrismaClient({ datasources: { db: { url: DEFAULT_DB_URL } } });
+const DEFAULT_DB_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/minirpg';
 
 async function ensureCoreDir() {
   await fs.mkdir(CORE_DIR, { recursive: true });
@@ -200,35 +197,16 @@ async function start() {
     console.error(`[core] Port ${WEB_PORT} is still in use after cleanup attempt. Aborting.`);
   }
   if (apiBusy || webBusy) {
-    try {
-      await prisma.$disconnect().catch(() => {});
-    } catch {}
     process.exit(1);
   }
 
   // Database prep
-  if (process.env.CORE_RESET_DB === 'true') {
-    console.log('[core] Resetting DB (drop + migrate + seed)...');
-    await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:reset'], {
-      env: { DATABASE_URL: DEFAULT_DB_URL },
-    }).catch((err) => {
-      throw new Error('DB reset failed: ' + err.message);
-    });
-  } else {
-    // Migrations (idempotent) + seed
-    console.log('[core] Applying Prisma migrations (db:deploy)...');
-    await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:deploy'], {
-      env: { DATABASE_URL: DEFAULT_DB_URL },
-    }).catch((err) => {
-      throw new Error('Migration failed: ' + err.message);
-    });
-    console.log('[core] Seeding (db:seed)...');
-    await runCmd('pnpm', ['-F', '@minimal-rpg/api', 'db:seed'], {
-      env: { DATABASE_URL: DEFAULT_DB_URL },
-    }).catch((err) => {
-      throw new Error('Seed failed: ' + err.message);
-    });
-  }
+  console.log('[core] Applying DB migrations...');
+  await runCmd('pnpm', ['-F', '@minimal-rpg/db', 'db:migrate'], {
+    env: { DATABASE_URL: DEFAULT_DB_URL },
+  }).catch((err) => {
+    throw new Error('Migration failed: ' + err.message);
+  });
 
   // Spawn API if free
   if (!apiBusy) {
@@ -251,7 +229,6 @@ async function start() {
   // If both servers started (or were skipped due to busy ports), we can exit early unless monitoring needed.
   if (!process.env.CORE_MONITOR) {
     console.log('[core] Detachment complete. Run `pnpm core` again to restart/reset.');
-    await prisma.$disconnect().catch(() => {});
     return; // exit start() without health polling to avoid perceived hang
   }
 
@@ -277,15 +254,7 @@ async function start() {
     }
   }
 
-  // DB completeness
-  const completeness = await dbCompleteness();
-  if (completeness.error) {
-    console.error('[core] DB completeness error:', completeness.error);
-  } else {
-    console.log(
-      `[core] DB: sessions=${completeness.sessionCount}, messages=${completeness.messageCount}, contiguousIdx=${completeness.contiguousOk}`
-    );
-  }
+  // DB completeness skipped (Prisma removed). Consider adding a lightweight check via API routes.
 
   // Character / Setting counts (optional)
   try {
@@ -303,7 +272,4 @@ start()
   .catch((err) => {
     console.error('[core] Fatal:', err.message);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect().catch(() => {});
   });

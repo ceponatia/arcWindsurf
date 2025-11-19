@@ -1,7 +1,0 @@
--- CreateTable
-CREATE TABLE "SettingTemplate" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "profileJson" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
-);

@@ -5,6 +5,7 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 ## What's New
 
 **November 2025:** OpenRouter is now the default and required LLM path. Configure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
+**Utilities:** The `deleteSettingFromDb(settingId, baseUrl?)` helper now lives in `@minimal-rpg/utils` and calls `DELETE /settings/:id`. Filesystem-backed settings return 405 and cannot be deleted.
 
 ## Quick Start
 
@@ -44,7 +45,7 @@ Use the orchestration scripts to prep the database, start both servers, and veri
 pnpm core
 ```
 
-- Applies Prisma migrations via `db:deploy`, seeds demo data, and checks for port conflicts.
+- Applies PostgreSQL migrations via `@minimal-rpg/db db:migrate` and checks for port conflicts.
 - Spawns the API/Web dev servers (detached) and polls `/health`, `/config`, `/characters`, and `/settings`.
 - Checks LLM configuration (`llm.provider`, `llm.model`, and `llm.configured`).
 - Adds a dev DB viewer at `GET /admin/db/overview` (see Web `/dbview`).
@@ -87,20 +88,14 @@ Start Web (dev):
 pnpm -F @minimal-rpg/web dev
 ```
 
-## Database Setup & Seeding
+## Database Setup
 
-The API stores sessions in a local SQLite DB via Prisma. If you run the dev server without a migration, it will generate a database for you when you run the migration commands below.
+The app now uses PostgreSQL with the pgvector extension. Provide `DATABASE_URL` in `packages/api/.env` (see `.env.example`).
 
-Create the database schema (one-time per environment):
-
-```bash
-DATABASE_URL=file:./prisma/dev.db pnpm -F @minimal-rpg/api db:migrate
-```
-
-Seed a demo session (idempotent; safe to re-run):
+Create/update the database schema (idempotent):
 
 ```bash
-pnpm -F @minimal-rpg/api db:seed
+pnpm -F @minimal-rpg/db db:migrate
 ```
 
 ## Docker Compose (Dev)
@@ -121,14 +116,14 @@ To change model/runtime params, set env vars (see `packages/api/.env.example`).
 ## Health
 
 - `GET /health` returns `{ status, uptime, version, db, llm }`.
-  - Checks SQLite connectivity and LLM configuration (`provider`, `model`, `configured`).
+  - Checks Postgres connectivity and LLM configuration (`provider`, `model`, `configured`).
 
 ## API Endpoints (Overview)
 
 Base URL defaults to `http://localhost:3001`.
 
 - `GET /characters` — List available characters (id, name, summary, tags)
-- `POST /characters` — Create a new dynamic character (body: CharacterProfile JSON). Persists to SQLite and is merged into subsequent `GET /characters` responses.
+- `POST /characters` — Create a new dynamic character (body: CharacterProfile JSON). Persists to Postgres and is merged into subsequent `GET /characters` responses.
 - `GET /settings` — List available settings (id, name, tone)
 - `GET /sessions` — List existing sessions (most recent first, includes character/setting names)
 - `POST /sessions` — Create a chat session
@@ -152,7 +147,7 @@ Tip: Characters and settings are defined in JSON files under `data/characters` a
 
 ### Per-Session Overrides
 
-- Overrides are stored in SQLite (Prisma models: `CharacterInstance`, `SettingInstance`) keyed by `(sessionId, templateId)` with `overrides` and an auditable `baseline` JSON snapshot (captured on first write).
+- Overrides are stored in Postgres tables (`character_instances`, `setting_instances`) keyed by `(sessionId, templateId)` with `overrides` and an auditable `baseline` JSON snapshot (captured on first write).
 - The chat prompt uses the merged effective profiles (template + overrides). Arrays in overrides replace the template arrays; objects merge deeply.
 
 ## Schemas
@@ -182,6 +177,20 @@ Prefer importing directly from `@minimal-rpg/schemas`. The `@minimal-rpg/shared`
 
 Additional design & optimization details for character profile → prompt integration (including RAG roadmap) are documented in `dev-docs/character-profile-llm-integration.md`.
 
+### API Types & Mappers
+
+All route-facing API DTOs and LLM interfaces are centralized in `packages/api/src/types.ts`. Raw DB entities are never sent directly to clients.
+
+Mapper functions in `packages/api/src/mappers/` translate DB/session entities into stable DTOs:
+
+- `profileMappers.ts` → `CharacterSummary`, `SettingSummary`
+- `sessionMappers.ts` → `SessionListItem`
+- `messageMappers.ts` → `MessageResponse`
+
+The OpenRouter provider exposes a normalized `LlmResponse` shape via `generateWithOpenRouter`, with provider-specific metadata namespaced (`openrouterMeta`). Adding a future provider only requires implementing the `LlmProvider` interface and returning `LlmResponse`.
+
+Overrides logic uses typed `OverridesObject` and `OverridesAudit` to keep merging/auditing explicit.
+
 ## Configuration
 
 The API reads environment variables with sensible defaults for local development.
@@ -189,7 +198,7 @@ The API reads environment variables with sensible defaults for local development
 ### Core Settings
 
 - `PORT` (default: `3001`)
-- `DATABASE_URL` (default: `file:./prisma/dev.db` inside the API package)
+- `DATABASE_URL` (example: `postgres://postgres:postgres@localhost:5432/minirpg`)
 
 ### LLM Configuration
 
@@ -207,8 +216,8 @@ The API reads environment variables with sensible defaults for local development
 
 ### Dev Database Viewer
 
-- Visit `http://localhost:5173/dbview` to see a live overview of all Prisma models/tables, their fields, row counts, and the 50 most recent rows per table.
-- Backed by `GET /admin/db/overview` which introspects Prisma's DMMF and queries sample rows.
+- Visit `http://localhost:5173/dbview` to see a live overview of key tables, their fields, row counts, and the 50 most recent rows per table.
+- Backed by `GET /admin/db/overview` which introspects Postgres metadata and queries sample rows.
 - For development use only; do not expose this endpoint in production.
 
 #### Row Deletion (Dev-only)
@@ -248,14 +257,14 @@ See `dev-docs/web-architecture.md` for the web package structure, routing, compo
 - Scent fields use selects constrained by the schema enums; `perfume` is limited to 40 chars.
 - Client-side validation uses `CharacterProfileSchema.safeParse` before sending to the API. Invalid fields are reported inline on save.
 
-### Migrating from Ollama to Cloud LLMs
+### LLM Migration Notes
 
-For a complete guide on migrating from local Ollama to cloud-hosted LLMs (OpenRouter), see:
+Legacy local Ollama support was removed; OpenRouter is now the sole provider. See:
 
 - **Model Recommendations:** `dev-docs/llm-recommendations.md`
 - **Migration Guide:** `dev-docs/migration-guide.md`
 
-The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is already implemented and ready to use.
+The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is implemented and ready to use.
 
 ## Troubleshooting
 
@@ -282,46 +291,9 @@ The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is already impleme
 
   - Common causes: invalid model name, insufficient credits, network egress blocked.
 
-- **Prisma P2021: `The table main.SettingInstance does not exist`:**
-  - Your database is missing the per-session overrides tables. Fix by applying the latest migrations:
-
-    ```bash
-    # Ensure Prisma has a database URL (or set it in packages/api/.env)
-    export DATABASE_URL=file:./prisma/dev.db
-    pnpm -F @minimal-rpg/api db:deploy
-    pnpm -F @minimal-rpg/api db:seed
-    ```
-
-  - Alternatively, run an ad-hoc dev migration:
-
-    ```bash
-    DATABASE_URL=file:./prisma/dev.db pnpm -F @minimal-rpg/api db:migrate
-    ```
-
-  - Then restart the API dev server and try sending a message again.
-
-- **`Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@prisma/client'` when running `pnpm core`:**
-  - Restore the generated Prisma Client:
-
-    ```bash
-    DATABASE_URL="file:/home/brian/projects/minimal-rpg/packages/api/prisma/dev.db" pnpm -F @minimal-rpg/api db:generate
-    ```
-
-  - If the error persists, add Prisma deps at the repo root (the `core` script imports Prisma directly):
-
-    ```bash
-    pnpm add -Dw @prisma/client prisma
-    pnpm -w install
-    ```
-
-  - Then re-run:
-
-    ```bash
-    pnpm core
-    ```
-
 - **Database migration errors:**
-  - Ensure `DATABASE_URL` is set or use the example migrate command shown above.
+  - Ensure `DATABASE_URL` is set (see `packages/api/.env.example`) and that your Postgres instance is reachable.
+  - Run: `pnpm -F @minimal-rpg/db db:migrate`
 - **Markdown formatting checks failing:**
   - Run `pnpm run lint:md` to see markdown issues and fix indentation/tabs.
 - **Characters or settings show "Loading…" or many canceled requests:**

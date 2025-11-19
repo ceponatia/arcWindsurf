@@ -1,5 +1,10 @@
 // src/util/health.ts (or wherever this lives)
-export async function checkOllama(baseUrl: string): Promise<{ ok: boolean; version?: string }> {
+export interface OllamaHealth {
+  ok: boolean;
+  version?: string;
+}
+
+export async function checkOllama(baseUrl: string): Promise<OllamaHealth> {
   const url = `${trimTrailingSlash(baseUrl)}/api/version`;
 
   try {

@@ -1,5 +1,6 @@
 import type { CharacterProfile, SettingProfile, Appearance } from '@minimal-rpg/schemas';
 import type { Message } from '@minimal-rpg/db/node';
+import type { BuildPromptOptions, BuildPromptResult } from '../types.js';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' };
@@ -165,16 +166,10 @@ function simpleContentFilter(latestUserText: string | undefined) {
   return { flagged: true as const, note };
 }
 
-export function buildPrompt(opts: {
-  character: CharacterProfile;
-  setting: SettingProfile;
-  history: Message[];
-  maxHistory?: number; // deprecated; use historyWindow
-  historyWindow?: number;
-  summaryMaxChars?: number;
-}) {
+export function buildPrompt(opts: BuildPromptOptions): BuildPromptResult {
   const { character, setting } = opts;
-  const historyWindow = opts.historyWindow ?? opts.maxHistory ?? 10;
+  // historyWindow controls how many recent turns are kept verbatim; older turns may be summarized.
+  const historyWindow = opts.historyWindow ?? 10;
   const summaryMaxChars = opts.summaryMaxChars ?? 16000;
   const recent = opts.history.slice(Math.max(0, opts.history.length - historyWindow));
   const summary = summarizeHistory(opts.history, historyWindow, summaryMaxChars);

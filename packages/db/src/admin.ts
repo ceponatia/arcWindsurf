@@ -1,6 +1,5 @@
-import { prisma, resolvedDbUrl, resolvedDbPath } from './prisma.js';
-import { Prisma as PrismaNs } from '@prisma/client';
-import { access } from 'node:fs/promises';
+import { prisma, resolvedDbUrl, pool } from './prisma.js';
+import type { DbRow as Row, QueryResult } from './types.js';
 
 export interface DbColumn {
   name: string;
@@ -10,7 +9,7 @@ export interface DbColumn {
   isList: boolean;
 }
 
-export type DbRow = Record<string, unknown>;
+export type DbRow = Row;
 
 export interface DbTableOverview {
   name: string;
@@ -20,57 +19,53 @@ export interface DbTableOverview {
 }
 
 export async function getDbOverview(): Promise<{ tables: DbTableOverview[] }> {
-  const models = PrismaNs.dmmf.datamodel.models;
+  // Introspect selected tables in public schema
+  const tableNames = [
+    'user_sessions',
+    'messages',
+    'character_instances',
+    'setting_instances',
+    'character_templates',
+    'setting_templates',
+  ];
 
   const results: DbTableOverview[] = [];
 
-  for (const m of models) {
-    const name = m.name;
+  for (const t of tableNames) {
+    const colsRes = await pool.query(
+      `SELECT c.column_name, c.is_nullable, c.data_type
+       FROM information_schema.columns c
+       WHERE c.table_schema = 'public' AND c.table_name = $1
+       ORDER BY c.ordinal_position`,
+      [t]
+    );
+    const columns: DbColumn[] = colsRes.rows.map((r) => {
+      const rec = r as Record<string, unknown>;
+      const name = String(rec['column_name']);
+      const type = String(rec['data_type']);
+      const isNullable = String(rec['is_nullable']);
+      return {
+        name,
+        type,
+        isId: name === 'id',
+        isRequired: isNullable === 'NO',
+        isList: false,
+      };
+    });
 
-    const columns: DbColumn[] = m.fields.map((f) => ({
-      name: f.name,
-      type: typeof f.type === 'string' ? String(f.type) : 'object',
-      isId: !!f.isId,
-      isRequired: !!f.isRequired,
-      isList: !!f.isList,
-    }));
+    const countRes = await pool.query(`SELECT COUNT(*)::int AS count FROM ${t}`);
+    const rowCount = Number((countRes.rows[0] as Record<string, unknown>)?.['count'] ?? 0);
 
-    const delegateName = name.charAt(0).toLowerCase() + name.slice(1);
+    const hasCreatedAt = columns.some((c) => c.name === 'created_at');
+    const order = hasCreatedAt ? 'ORDER BY created_at DESC' : '';
+    const sampleRes: QueryResult<DbRow> = await pool.query(`SELECT * FROM ${t} ${order} LIMIT 50`);
+    const sample: DbRow[] = sampleRes.rows;
 
-    // Narrow dynamic delegate access to a safe shape
-    const delegateMap = prisma as unknown as Record<
-      string,
-      {
-        count?: () => Promise<number>;
-        findMany?: (args: { take?: number; orderBy?: unknown }) => Promise<DbRow[]>;
-      }
-    >;
-
-    const delegate = delegateMap[delegateName];
-
-    let rowCount = 0;
-    let sample: DbRow[] = [];
-
-    if (delegate) {
-      try {
-        rowCount = typeof delegate.count === 'function' ? await delegate.count() : 0;
-      } catch {
-        // ignore count failure
-      }
-
-      try {
-        const orderBy = m.fields.some((f) => f.name === 'createdAt')
-          ? { createdAt: 'desc' as const }
-          : undefined;
-
-        sample =
-          typeof delegate.findMany === 'function'
-            ? await delegate.findMany({ take: 50, orderBy })
-            : [];
-      } catch {
-        // ignore sample failure
-      }
-    }
+    // Present camelCase table name similar to Prisma model for UI consistency
+    const name = t
+      .split('_')
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join('');
 
     results.push({ name, columns, rowCount, sample });
   }
@@ -79,55 +74,37 @@ export async function getDbOverview(): Promise<{ tables: DbTableOverview[] }> {
 }
 
 export async function getDbPathInfo() {
+  // For Postgres, there's no local file path; perform a simple connectivity check
   let exists = false;
   try {
-    await access(resolvedDbPath);
+    await prisma.$queryRaw`SELECT 1`;
     exists = true;
   } catch {
-    // file doesn't exist or not accessible
+    // Connectivity check failed; exists remains false
   }
-
-  return { url: resolvedDbUrl, path: resolvedDbPath, exists };
+  return { url: resolvedDbUrl, path: resolvedDbUrl, exists };
 }
 
 export async function deleteDbRow(modelName: string, id: string): Promise<void> {
-  const models = PrismaNs.dmmf.datamodel.models;
-  const model = models.find((m) => m.name.toLowerCase() === modelName.toLowerCase());
+  const map: Record<string, string> = {
+    usersession: 'user_sessions',
+    usersessions: 'user_sessions',
+    message: 'messages',
+    messages: 'messages',
+    characterinstance: 'character_instances',
+    characterinstances: 'character_instances',
+    settinginstance: 'setting_instances',
+    settinginstances: 'setting_instances',
+    charactertemplate: 'character_templates',
+    charactertemplates: 'character_templates',
+    settingtemplate: 'setting_templates',
+    settingtemplates: 'setting_templates',
+  };
+  const key = modelName.toLowerCase();
+  const table = map[key];
+  if (!table) throw new Error('Unknown model');
 
-  if (!model) {
-    throw new Error('Unknown model');
-  }
-
-  const idFields = model.fields.filter((f) => f.isId);
-  if (idFields.length !== 1 || idFields[0]?.name !== 'id') {
-    throw new Error('Delete only supported for single id primary key named "id"');
-  }
-
-  const delegateName = model.name.charAt(0).toLowerCase() + model.name.slice(1);
-
-  const delegateMap = prisma as unknown as Record<
-    string,
-    { delete?: (args: { where: { id: string } }) => Promise<unknown> }
-  >;
-
-  const delegate = delegateMap[delegateName];
-
-  if (!(delegate && typeof delegate.delete === 'function')) {
-    throw new Error('Delete not supported for model');
-  }
-
-  try {
-    await delegate.delete({ where: { id } });
-  } catch (err: unknown) {
-    const msg =
-      err && typeof err === 'object' && 'message' in err
-        ? String((err as { message?: unknown }).message)
-        : String(err);
-
-    if (/Record to delete does not exist/i.test(msg)) {
-      throw new Error('Not found');
-    }
-
-    throw err;
-  }
+  const res: QueryResult<DbRow> = await pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+  // rowCount not reliable across some drivers, but pg supports it
+  if ((res.rowCount ?? 0) === 0) throw new Error('Not found');
 }

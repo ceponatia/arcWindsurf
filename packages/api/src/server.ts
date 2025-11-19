@@ -9,7 +9,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 
-import { loadData, type LoadedData } from './data/loader.js';
+import { loadData } from './data/loader.js';
+import type { LoadedData, ApiError } from './types.js';
 import { assertPromptConfigValid } from './llm/prompt.js';
 import { getConfig } from './util/config.js';
 
@@ -27,13 +28,14 @@ app.onError((err, c) => {
     err && typeof err === 'object' && 'message' in err
       ? ((err as { message?: string }).message ?? 'Server error')
       : 'Server error';
-  return c.json({ ok: false, error: message }, 500);
+  const body: ApiError = { ok: false, error: message };
+  return c.json(body, 500);
 });
 
 // Loaded data lives here; routes access it via a getter
 let loaded: LoadedData | undefined = undefined;
 
-async function start() {
+async function start(): Promise<void> {
   try {
     // Ensure prompt config is valid before accepting traffic
     assertPromptConfigValid();
@@ -41,7 +43,7 @@ async function start() {
     // Load character + setting JSON from data/
     loaded = await loadData();
     console.log(
-      `Startup: loaded ${loaded.characters.length} characters and ${loaded.settings.length} settings`,
+      `Startup: loaded ${loaded.characters.length} characters and ${loaded.settings.length} settings`
     );
   } catch (err) {
     console.error('Failed to load data', (err as Error).message);
@@ -65,14 +67,14 @@ async function start() {
       origin: '*',
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type'],
-    }),
+    })
   );
 
   // Register route groups
   registerConfigRoutes(app);
   registerAdminDbRoutes(app);
-  registerProfileRoutes(app, { getLoaded: () => loaded });
-  registerSessionRoutes(app, { getLoaded: () => loaded });
+  registerProfileRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
+  registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port });

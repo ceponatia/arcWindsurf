@@ -4,7 +4,7 @@ This monorepo uses pnpm + Turbo with these packages:
 
 - `packages/schemas` — Zod schemas for domain + prompt config
 - `packages/shared` — shared types and helpers (re-exports schemas)
-- `packages/api` — Hono-based Node API server (Prisma + LLM integration)
+- `packages/api` — Hono-based Node API server (Postgres + LLM integration)
 - `packages/web` — Vite web client
 - `packages/utils` — shared runtime utilities
 - Data at repo root: `data/characters/*.json`, `data/settings/*.json`

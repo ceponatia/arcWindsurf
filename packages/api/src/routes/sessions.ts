@@ -9,7 +9,12 @@ import {
   deleteSession,
   prisma,
 } from '@minimal-rpg/db/node';
-import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
+import {
+  CharacterProfileSchema,
+  SettingProfileSchema,
+  type CharacterProfile,
+  type SettingProfile,
+} from '@minimal-rpg/schemas';
 import {
   getEffectiveProfiles,
   upsertCharacterOverrides,
@@ -18,30 +23,35 @@ import {
   getEffectiveSetting,
 } from '../sessions/instances.js';
 import { buildPrompt } from '../llm/prompt.js';
-import { chatWithOpenRouter } from '../llm/openrouter.js';
+import { generateWithOpenRouter } from '../llm/openrouter.js';
+import type {
+  LoadedDataGetter,
+  CreateSessionRequest,
+  CreateSessionResponse,
+  MessageRequest,
+  MessageResponseBody,
+  SessionListItem,
+  ApiError,
+  EffectiveProfilesResponse,
+  OverridesAudit,
+  LlmResponse,
+  ChatRole,
+} from '../types.js';
+import { mapSessionListItem } from '../mappers/sessionMappers.js';
 import { getConfig } from '../util/config.js';
-import type { LoadedData } from '../data/loader.js';
+import type { LoadedData } from '../types.js';
 
 interface SessionRouteDeps {
-  getLoaded: () => LoadedData | undefined;
+  getLoaded: LoadedDataGetter;
 }
 
-interface MessageRequestBody {
-  content: string;
-}
-
-interface CreateSessionRequestBody {
-  characterId: string;
-  settingId: string;
-}
-
-function isMessageRequest(body: unknown): body is MessageRequestBody {
+function isMessageRequest(body: unknown): body is MessageRequest {
   return Boolean(
     body && typeof body === 'object' && typeof (body as { content?: unknown }).content === 'string'
   );
 }
 
-function isCreateSessionRequest(body: unknown): body is CreateSessionRequestBody {
+function isCreateSessionRequest(body: unknown): body is CreateSessionRequest {
   if (!body || typeof body !== 'object') return false;
   const { characterId, settingId } = body as {
     characterId?: unknown;
@@ -62,7 +72,9 @@ async function findCharacter(loaded: LoadedData, id: string) {
   const fsChar = loaded.characters.find((c) => c.id === id);
   if (fsChar) return fsChar;
 
-  const dbChar = await prisma.characterTemplate.findUnique({ where: { id } });
+  const dbChar = (await prisma.characterTemplate.findUnique({ where: { id } })) as {
+    profileJson: string;
+  } | null;
   if (dbChar) {
     try {
       return CharacterProfileSchema.parse(JSON.parse(dbChar.profileJson));
@@ -77,7 +89,9 @@ async function findSetting(loaded: LoadedData, id: string) {
   const fsSet = loaded.settings.find((s) => s.id === id);
   if (fsSet) return fsSet;
 
-  const dbSet = await prisma.settingTemplate.findUnique({ where: { id } });
+  const dbSet = (await prisma.settingTemplate.findUnique({ where: { id } })) as {
+    profileJson: string;
+  } | null;
   if (dbSet) {
     try {
       return SettingProfileSchema.parse(JSON.parse(dbSet.profileJson));
@@ -88,17 +102,23 @@ async function findSetting(loaded: LoadedData, id: string) {
   return null;
 }
 
-export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
+export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
   // GET /sessions - list existing sessions with display-friendly names
   app.get('/sessions', async (c) => {
     const sessions = await listSessions();
     const loaded = deps.getLoaded();
     if (!loaded) return c.json(sessions, 200);
 
-    const dbChars = await prisma.characterTemplate.findMany();
-    const dbSettings = await prisma.settingTemplate.findMany();
+    const dbChars = (await prisma.characterTemplate.findMany()) as {
+      id: string;
+      profileJson: string;
+    }[];
+    const dbSettings = (await prisma.settingTemplate.findMany()) as {
+      id: string;
+      profileJson: string;
+    }[];
 
-    const decorated = sessions.map((sess) => {
+    const decorated: SessionListItem[] = sessions.map((sess) => {
       let character = loaded.characters.find((ch) => ch.id === sess.characterId);
       if (!character) {
         const t = dbChars.find((t) => t.id === sess.characterId);
@@ -123,11 +143,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
         }
       }
 
-      return {
-        ...sess,
-        characterName: character?.name,
-        settingName: setting?.name,
-      };
+      return mapSessionListItem(sess, character?.name, setting?.name);
     });
 
     return c.json(decorated, 200);
@@ -137,7 +153,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
   app.get('/sessions/:id', async (c) => {
     const id = c.req.param('id');
     const session = await getSession(id);
-    if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
     // ensure chronological order by createdAt (ISO strings compare lexicographically)
     const sorted = {
@@ -151,34 +167,40 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
   // GET /sessions/:id/effective - merged effective character + setting for the session
   app.get('/sessions/:id/effective', async (c) => {
     const loaded = deps.getLoaded();
-    if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500);
+    if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
 
     const id = c.req.param('id');
     const session = await getSession(id);
-    if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
     const character = await findCharacter(loaded, session.characterId);
     const setting = await findSetting(loaded, session.settingId);
     if (!character || !setting) {
-      return c.json({ ok: false, error: 'character or setting not found for session' }, 500);
+      return c.json(
+        { ok: false, error: 'character or setting not found for session' } satisfies ApiError,
+        500
+      );
     }
 
     const effective = await getEffectiveProfiles(session.id, character, setting);
-    return c.json(effective, 200);
+    return c.json(effective satisfies EffectiveProfilesResponse, 200);
   });
 
   // PUT /sessions/:id/overrides/character - upsert character overrides for the session
   app.put('/sessions/:id/overrides/character', async (c) => {
     const loaded = deps.getLoaded();
-    if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500);
+    if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
 
     const id = c.req.param('id');
     const session = await getSession(id);
-    if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
     const character = await findCharacter(loaded, session.characterId);
     if (!character) {
-      return c.json({ ok: false, error: 'character not found for session' }, 500);
+      return c.json(
+        { ok: false, error: 'character not found for session' } satisfies ApiError,
+        500
+      );
     }
 
     const body: unknown = await c.req.json().catch(() => null);
@@ -186,7 +208,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
       body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
 
     if (!overrides || Array.isArray(overrides)) {
-      return c.json({ ok: false, error: 'overrides must be an object' }, 400);
+      return c.json({ ok: false, error: 'overrides must be an object' } satisfies ApiError, 400);
     }
 
     const audit = await upsertCharacterOverrides({
@@ -197,21 +219,27 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     });
 
     const effective = await getEffectiveCharacter(session.id, character);
-    return c.json({ effective, audit }, 200);
+    return c.json(
+      { effective, audit } satisfies {
+        effective: CharacterProfile;
+        audit: OverridesAudit;
+      },
+      200
+    );
   });
 
   // PUT /sessions/:id/overrides/setting - upsert setting overrides for the session
   app.put('/sessions/:id/overrides/setting', async (c) => {
     const loaded = deps.getLoaded();
-    if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500);
+    if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
 
     const id = c.req.param('id');
     const session = await getSession(id);
-    if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
     const setting = await findSetting(loaded, session.settingId);
     if (!setting) {
-      return c.json({ ok: false, error: 'setting not found for session' }, 500);
+      return c.json({ ok: false, error: 'setting not found for session' } satisfies ApiError, 500);
     }
 
     const body: unknown = await c.req.json().catch(() => null);
@@ -219,7 +247,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
       body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
 
     if (!overrides || Array.isArray(overrides)) {
-      return c.json({ ok: false, error: 'overrides must be an object' }, 400);
+      return c.json({ ok: false, error: 'overrides must be an object' } satisfies ApiError, 400);
     }
 
     const audit = await upsertSettingOverrides({
@@ -230,28 +258,40 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     });
 
     const effective = await getEffectiveSetting(session.id, setting);
-    return c.json({ effective, audit }, 200);
+    return c.json(
+      { effective, audit } satisfies {
+        effective: SettingProfile;
+        audit: OverridesAudit;
+      },
+      200
+    );
   });
 
   // POST /sessions/:id/messages - append a user message and get LLM reply
   app.post('/sessions/:id/messages', async (c) => {
     const loaded = deps.getLoaded();
-    if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500);
+    if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
 
     const id = c.req.param('id');
     const session = await getSession(id);
     if (!session) {
-      return c.json({ ok: false, error: 'session not found' }, 404);
+      return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
     }
 
     const rawBody: unknown = await c.req.json().catch(() => null);
     if (!isMessageRequest(rawBody)) {
-      return c.json({ ok: false, error: 'content must be 1..4000 characters' }, 400);
+      return c.json(
+        { ok: false, error: 'content must be 1..4000 characters' } satisfies ApiError,
+        400
+      );
     }
 
     const { content } = rawBody;
     if (content.length < 1 || content.length > 4000) {
-      return c.json({ ok: false, error: 'content must be 1..4000 characters' }, 400);
+      return c.json(
+        { ok: false, error: 'content must be 1..4000 characters' } satisfies ApiError,
+        400
+      );
     }
 
     await appendMessage(session.id, 'user', content);
@@ -264,7 +304,10 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const setting = await findSetting(loaded2, session.settingId);
 
     if (!character || !setting) {
-      return c.json({ ok: false, error: 'character or setting not found for session' }, 500);
+      return c.json(
+        { ok: false, error: 'character or setting not found for session' } satisfies ApiError,
+        500
+      );
     }
 
     const cfg = getConfig();
@@ -290,21 +333,29 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
       `Session ${session.id}: calling OpenRouter model ${cfg.openrouterModel} with ${messages.length} messages`
     );
 
-    const result = await chatWithOpenRouter({
-      apiKey: cfg.openrouterApiKey,
-      model: cfg.openrouterModel,
-      messages,
-      options: { temperature: cfg.temperature, top_p: cfg.topP },
-    });
+    const result = await generateWithOpenRouter(
+      {
+        apiKey: cfg.openrouterApiKey,
+        model: cfg.openrouterModel,
+        messages,
+      },
+      { temperature: cfg.temperature, top_p: cfg.topP }
+    );
 
-    if (result.error) {
-      console.error(`Session ${session.id}: OpenRouter error -> ${result.error}`);
-      return c.json({ ok: false, error: result.error }, 502);
+    if ('ok' in result && result.ok === false) {
+      const errStr = typeof result.error === 'string' ? result.error : JSON.stringify(result.error);
+      console.error(`Session ${session.id}: OpenRouter error -> ${errStr}`);
+      return c.json({ ok: false, error: result.error } satisfies ApiError, 502);
     }
 
-    const contentReply = result.message?.content ?? '';
-    if (!contentReply.trim()) {
-      return c.json({ ok: false, error: 'Empty assistant response from OpenRouter' }, 502);
+    const llm = result as LlmResponse; // narrowed after error branch
+    const contentReplyRaw = llm.content ?? '';
+    const contentReply = contentReplyRaw.trim();
+    if (!contentReply) {
+      return c.json(
+        { ok: false, error: 'Empty assistant response from OpenRouter' } satisfies ApiError,
+        502
+      );
     }
 
     await appendMessage(session.id, 'assistant', contentReply);
@@ -313,26 +364,24 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
 
     console.info(`Session ${session.id}: assistant reply (${contentReply.length} chars) stored`);
 
-    return c.json(
-      {
-        message: last ?? {
-          role: 'assistant',
-          content: contentReply,
-          createdAt: new Date().toISOString(),
-        },
-      },
-      200
-    );
+    const messageDto: MessageResponseBody['message'] = last
+      ? { role: last.role as ChatRole, content: last.content, createdAt: last.createdAt }
+      : { role: 'assistant', content: contentReply, createdAt: new Date().toISOString() };
+    const body: MessageResponseBody = { message: messageDto };
+    return c.json(body, 200);
   });
 
   // POST /sessions - create a new session for characterId + settingId
   app.post('/sessions', async (c) => {
     const loaded = deps.getLoaded();
-    if (!loaded) return c.json({ ok: false, error: 'data not loaded' }, 500);
+    if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
 
     const rawBody: unknown = await c.req.json().catch(() => null);
     if (!isCreateSessionRequest(rawBody)) {
-      return c.json({ ok: false, error: 'characterId and settingId are required' }, 400);
+      return c.json(
+        { ok: false, error: 'characterId and settingId are required' } satisfies ApiError,
+        400
+      );
     }
 
     const { characterId, settingId } = rawBody;
@@ -340,19 +389,21 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const setting = await findSetting(loaded, settingId);
 
     if (!character || !setting) {
-      return c.json({ ok: false, error: 'characterId or settingId not found' }, 400);
+      return c.json(
+        { ok: false, error: 'characterId or settingId not found' } satisfies ApiError,
+        400
+      );
     }
 
     const id = safeRandomId();
     const session = await createSession(id, characterId, settingId);
 
-    const response = {
+    const response: CreateSessionResponse = {
       id: session.id,
       characterId: session.characterId,
       settingId: session.settingId,
       createdAt: session.createdAt,
     };
-
     return c.json(response, 201);
   });
 
@@ -360,7 +411,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
   app.delete('/sessions/:id', async (c) => {
     const id = c.req.param('id');
     const session = await getSession(id);
-    if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
     await deleteSession(id);
     return c.body(null, 204);

@@ -1,4 +1,5 @@
 import { getErrorMessage, safeJson, safeText } from '@minimal-rpg/utils';
+import type { ChatRole, LlmGenerationOptions, LlmResponse, ApiError } from '../types.js';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -69,4 +70,37 @@ function extractAssistantContent(payload: OllamaMessagePayload | null): string |
     return payload.response;
   }
   return null;
+}
+
+// Normalized provider generate wrapper implementing LlmResponse shape
+export async function generateWithOllama(
+  params: {
+    baseUrl: string;
+    model: string;
+    messages: { role: ChatRole; content: string }[];
+  },
+  options?: LlmGenerationOptions
+): Promise<LlmResponse | ApiError> {
+  const { baseUrl, model, messages } = params;
+  const builtOptions = {
+    ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+    ...(options?.top_p !== undefined ? { top_p: options.top_p } : {}),
+    ...(options?.max_tokens !== undefined ? { max_tokens: options.max_tokens } : {}),
+  };
+  const result = await chatWithOllama({
+    baseUrl,
+    model,
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    ...(Object.keys(builtOptions).length ? { options: builtOptions } : {}),
+  });
+  if (result.error) {
+    return { ok: false, error: result.error };
+  }
+  return {
+    role: 'assistant',
+    content: result.message?.content ?? '',
+    model,
+    createdAt: new Date().toISOString(),
+    ollamaMeta: {},
+  };
 }

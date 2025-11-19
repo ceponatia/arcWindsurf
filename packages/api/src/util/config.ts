@@ -1,11 +1,4 @@
-export interface RuntimeConfig {
-  port: number;
-  contextWindow: number;
-  temperature: number;
-  topP: number;
-  openrouterApiKey: string;
-  openrouterModel: string;
-}
+import type { RuntimeConfig } from '../types.js';
 
 // Narrowed view of process.env for this app
 interface AppEnv extends NodeJS.ProcessEnv {

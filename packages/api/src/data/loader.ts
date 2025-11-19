@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
+import type { LoadedData } from '../types.js';
 
 // Narrowed view of process.env for this loader
 interface LoaderEnv extends NodeJS.ProcessEnv {
@@ -71,7 +72,7 @@ export async function deleteCharacterFile(id: string, dataDir?: string): Promise
   return false;
 }
 
-export async function loadData(dataDir?: string) {
+export async function loadData(dataDir?: string): Promise<LoadedData> {
   const base = resolveDataDir(dataDir);
 
   const charactersDir = path.join(base, 'characters');
@@ -122,7 +123,6 @@ export async function loadData(dataDir?: string) {
   console.info(
     `Loaded ${characters.length} characters and ${settings.length} settings from ${base}`
   );
-  return { characters, settings };
+  const loaded: LoadedData = { characters, settings };
+  return loaded;
 }
-
-export type LoadedData = Awaited<ReturnType<typeof loadData>>;
