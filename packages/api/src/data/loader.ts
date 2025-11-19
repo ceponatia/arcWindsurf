@@ -1,5 +1,5 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 
@@ -11,12 +11,12 @@ interface LoaderEnv extends NodeJS.ProcessEnv {
 const env = process.env as LoaderEnv;
 
 // Returns the closest ancestor folder that contains a `data` directory
-async function findNearestDataDir(startDir: string): Promise<string | null> {
+function findNearestDataDir(startDir: string): string | null {
   let current = path.resolve(startDir);
   while (true) {
     const candidate = path.join(current, 'data');
     try {
-      const stat = await fs.stat(candidate);
+      const stat = fs.statSync(candidate);
       if (stat.isDirectory()) return candidate;
     } catch {
       // ignore - candidate does not exist
@@ -29,17 +29,50 @@ async function findNearestDataDir(startDir: string): Promise<string | null> {
 }
 
 // Default base: try to find nearest ancestor `data` directory (monorepo root)
-const DEFAULT_DATA_DIR = await (async () => {
-  const repoData = await findNearestDataDir(process.cwd());
+const DEFAULT_DATA_DIR = (() => {
+  const repoData = findNearestDataDir(process.cwd());
   return repoData ?? path.resolve(process.cwd(), 'data');
 })();
 
-export async function loadData(dataDir?: string) {
-  const base = dataDir
+export function resolveDataDir(dataDir?: string): string {
+  return dataDir
     ? path.resolve(dataDir)
     : env.DATA_DIR
       ? path.resolve(env.DATA_DIR)
       : DEFAULT_DATA_DIR;
+}
+
+export async function deleteCharacterFile(id: string, dataDir?: string): Promise<boolean> {
+  const base = resolveDataDir(dataDir);
+  const charactersDir = path.join(base, 'characters');
+  try {
+    const files = await fs.promises.readdir(charactersDir);
+    for (const f of files) {
+      if (!f.endsWith('.json')) continue;
+      const p = path.join(charactersDir, f);
+      const raw = await fs.promises.readFile(p, 'utf-8');
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (
+          typeof parsed === 'object' &&
+          parsed !== null &&
+          (parsed as { id?: unknown }).id === id
+        ) {
+          await fs.promises.unlink(p);
+          return true;
+        }
+      } catch {
+        // ignore invalid json during search
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to delete character file for id ${id}: ${(err as Error).message}`);
+  }
+  return false;
+}
+
+export async function loadData(dataDir?: string) {
+  const base = resolveDataDir(dataDir);
 
   const charactersDir = path.join(base, 'characters');
   const settingsDir = path.join(base, 'settings');
@@ -53,11 +86,11 @@ export async function loadData(dataDir?: string) {
   async function loadFiles<T>(folder: string, schema: Validator<T>) {
     const results: T[] = [];
     try {
-      const files = await fs.readdir(folder);
+      const files = await fs.promises.readdir(folder);
       for (const f of files) {
         if (!f.endsWith('.json')) continue;
         const p = path.join(folder, f);
-        const raw = await fs.readFile(p, 'utf-8');
+        const raw = await fs.promises.readFile(p, 'utf-8');
         let parsed: unknown;
         try {
           parsed = JSON.parse(raw);

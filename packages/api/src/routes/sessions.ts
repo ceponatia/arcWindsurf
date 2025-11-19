@@ -7,7 +7,9 @@ import {
   appendMessage,
   listSessions,
   deleteSession,
+  prisma,
 } from '@minimal-rpg/db/node';
+import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
 import {
   getEffectiveProfiles,
   upsertCharacterOverrides,
@@ -56,6 +58,36 @@ function safeRandomId(): string {
   }
 }
 
+async function findCharacter(loaded: LoadedData, id: string) {
+  const fsChar = loaded.characters.find((c) => c.id === id);
+  if (fsChar) return fsChar;
+
+  const dbChar = await prisma.characterTemplate.findUnique({ where: { id } });
+  if (dbChar) {
+    try {
+      return CharacterProfileSchema.parse(JSON.parse(dbChar.profileJson));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+async function findSetting(loaded: LoadedData, id: string) {
+  const fsSet = loaded.settings.find((s) => s.id === id);
+  if (fsSet) return fsSet;
+
+  const dbSet = await prisma.settingTemplate.findUnique({ where: { id } });
+  if (dbSet) {
+    try {
+      return SettingProfileSchema.parse(JSON.parse(dbSet.profileJson));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
   // GET /sessions - list existing sessions with display-friendly names
   app.get('/sessions', async (c) => {
@@ -63,9 +95,34 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const loaded = deps.getLoaded();
     if (!loaded) return c.json(sessions, 200);
 
+    const dbChars = await prisma.characterTemplate.findMany();
+    const dbSettings = await prisma.settingTemplate.findMany();
+
     const decorated = sessions.map((sess) => {
-      const character = loaded.characters.find((ch) => ch.id === sess.characterId);
-      const setting = loaded.settings.find((s) => s.id === sess.settingId);
+      let character = loaded.characters.find((ch) => ch.id === sess.characterId);
+      if (!character) {
+        const t = dbChars.find((t) => t.id === sess.characterId);
+        if (t) {
+          try {
+            character = CharacterProfileSchema.parse(JSON.parse(t.profileJson));
+          } catch {
+            // ignore invalid profile
+          }
+        }
+      }
+
+      let setting = loaded.settings.find((s) => s.id === sess.settingId);
+      if (!setting) {
+        const t = dbSettings.find((t) => t.id === sess.settingId);
+        if (t) {
+          try {
+            setting = SettingProfileSchema.parse(JSON.parse(t.profileJson));
+          } catch {
+            // ignore invalid profile
+          }
+        }
+      }
+
       return {
         ...sess,
         characterName: character?.name,
@@ -100,8 +157,8 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const session = await getSession(id);
     if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
 
-    const character = loaded.characters.find((ch) => ch.id === session.characterId);
-    const setting = loaded.settings.find((s) => s.id === session.settingId);
+    const character = await findCharacter(loaded, session.characterId);
+    const setting = await findSetting(loaded, session.settingId);
     if (!character || !setting) {
       return c.json({ ok: false, error: 'character or setting not found for session' }, 500);
     }
@@ -119,7 +176,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const session = await getSession(id);
     if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
 
-    const character = loaded.characters.find((ch) => ch.id === session.characterId);
+    const character = await findCharacter(loaded, session.characterId);
     if (!character) {
       return c.json({ ok: false, error: 'character not found for session' }, 500);
     }
@@ -152,7 +209,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const session = await getSession(id);
     if (!session) return c.json({ ok: false, error: 'session not found' }, 404);
 
-    const setting = loaded.settings.find((s) => s.id === session.settingId);
+    const setting = await findSetting(loaded, session.settingId);
     if (!setting) {
       return c.json({ ok: false, error: 'setting not found for session' }, 500);
     }
@@ -203,8 +260,8 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     const loaded2 = deps.getLoaded();
     if (!loaded2) return c.json({ ok: false, error: 'data not loaded' }, 500);
 
-    const character = loaded2.characters.find((ch) => ch.id === session.characterId);
-    const setting = loaded2.settings.find((s) => s.id === session.settingId);
+    const character = await findCharacter(loaded2, session.characterId);
+    const setting = await findSetting(loaded2, session.settingId);
 
     if (!character || !setting) {
       return c.json({ ok: false, error: 'character or setting not found for session' }, 500);
@@ -279,10 +336,10 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps) {
     }
 
     const { characterId, settingId } = rawBody;
-    const charExists = loaded.characters.some((ch) => ch.id === characterId);
-    const setExists = loaded.settings.some((s) => s.id === settingId);
+    const character = await findCharacter(loaded, characterId);
+    const setting = await findSetting(loaded, settingId);
 
-    if (!charExists || !setExists) {
+    if (!character || !setting) {
       return c.json({ ok: false, error: 'characterId or settingId not found' }, 400);
     }
 

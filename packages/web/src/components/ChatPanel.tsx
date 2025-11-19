@@ -14,14 +14,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const ctrlRef = useRef<AbortController | null>(null);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
 
   const doScrollToBottom = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const refresh = () => {
@@ -67,23 +66,26 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     if (!effectiveSessionId) return;
     const text = draft.trim();
     if (!text || sending) return;
+
+    setDraft('');
     setSending(true);
     setError(null);
+
     const userMsg: Message = { role: 'user', content: text, createdAt: new Date().toISOString() };
     setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : prev));
+
     try {
       const res = await sendMessage(effectiveSessionId, text);
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
-      setDraft('');
     } catch (e) {
+      setDraft(text);
       const msg = getErrorMessage(e, 'Failed to send message');
       setError(msg);
       // revert optimistic append by reloading session
       refresh();
     } finally {
       setSending(false);
-      setTimeout(doScrollToBottom, 0);
     }
   };
 
@@ -144,6 +146,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
                 )}
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

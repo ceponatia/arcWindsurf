@@ -285,266 +285,282 @@ export const CharacterBuilder: React.FC = () => {
   const disabled = saving;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {/* Left: Form */}
-      <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
-        <div className="border border-slate-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Basics</div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">ID</span>
-              <input
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.id}
-                onChange={(e) => update('id', e.target.value)}
-                {...getInlineErrorProps('id', fieldErrors.id)}
-              />
-              {fieldErrors.id && (
-                <span id="id-error" className="text-sm text-red-400">
-                  {fieldErrors.id}
-                </span>
-              )}
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Name</span>
-              <input
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.name}
-                onChange={(e) => update('name', e.target.value)}
-                {...getInlineErrorProps('name', fieldErrors.name)}
-              />
-              {fieldErrors.name && (
-                <span id="name-error" className="text-sm text-red-400">
-                  {fieldErrors.name}
-                </span>
-              )}
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Age</span>
-              <input
-                type="number"
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.age}
-                onChange={(e) => update('age', e.target.value)}
-                {...getInlineErrorProps('age', fieldErrors.age)}
-              />
-              {fieldErrors.age && (
-                <span id="age-error" className="text-sm text-red-400">
-                  {fieldErrors.age}
-                </span>
-              )}
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Tags (comma)</span>
-              <input
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.tags}
-                onChange={(e) => update('tags', e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1 md:col-span-2">
-              <span className="text-xs text-slate-400">Summary</span>
-              <textarea
-                className="min-h-[100px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.summary}
-                onChange={(e) => update('summary', e.target.value)}
-                {...getInlineErrorProps('summary', fieldErrors.summary)}
-              />
-              {fieldErrors.summary && (
-                <span id="summary-error" className="text-sm text-red-400">
-                  {fieldErrors.summary}
-                </span>
-              )}
-            </label>
-            <label className="flex flex-col gap-1 md:col-span-2">
-              <span className="text-xs text-slate-400">Backstory</span>
-              <textarea
-                className="min-h-[100px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.backstory}
-                onChange={(e) => update('backstory', e.target.value)}
-                {...getInlineErrorProps('backstory', fieldErrors.backstory)}
-              />
-              {fieldErrors.backstory && (
-                <span id="backstory-error" className="text-sm text-red-400">
-                  {fieldErrors.backstory}
-                </span>
-              )}
-            </label>
-          </div>
-        </div>
-
-        <div className="border border-slate-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Personality</div>
-          <div className="p-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Traits (string or comma list)</span>
-              <input
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.personality}
-                onChange={(e) => update('personality', e.target.value)}
-                {...getInlineErrorProps('personality', fieldErrors.personality)}
-              />
-              {fieldErrors.personality && (
-                <span id="personality-error" className="text-sm text-red-400">
-                  {fieldErrors.personality}
-                </span>
-              )}
-            </label>
-          </div>
-        </div>
-
-        {/* Appearance section temporarily disabled pending syntax fix */}
-
-        {/* Scent (optional) temporarily disabled pending syntax fix */}
-
-        <div className="border border-slate-800 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Goals & Style</div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Goals (comma)</span>
-              <input
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.goals}
-                onChange={(e) => update('goals', e.target.value)}
-                {...getInlineErrorProps('goals', fieldErrors.goals)}
-              />
-              {fieldErrors.goals && (
-                <span id="goals-error" className="text-sm text-red-400">
-                  {fieldErrors.goals}
-                </span>
-              )}
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Speaking Style</span>
-              <textarea
-                className="min-h-[100px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.speakingStyle}
-                onChange={(e) => update('speakingStyle', e.target.value)}
-                {...getInlineErrorProps('speakingStyle', fieldErrors.speakingStyle)}
-              />
-              {fieldErrors.speakingStyle && (
-                <span id="speakingStyle-error" className="text-sm text-red-400">
-                  {fieldErrors.speakingStyle}
-                </span>
-              )}
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Sentence Length</span>
-              <select
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.styleSentenceLength}
-                onChange={(e) => update('styleSentenceLength', e.target.value)}
-              >
-                <option value=""></option>
-                <option value="terse">terse</option>
-                <option value="balanced">balanced</option>
-                <option value="long">long</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Humor</span>
-              <select
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.styleHumor}
-                onChange={(e) => update('styleHumor', e.target.value)}
-              >
-                <option value=""></option>
-                <option value="none">none</option>
-                <option value="light">light</option>
-                <option value="wry">wry</option>
-                <option value="dark">dark</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Darkness</span>
-              <select
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.styleDarkness}
-                onChange={(e) => update('styleDarkness', e.target.value)}
-              >
-                <option value=""></option>
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Pacing</span>
-              <select
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.stylePacing}
-                onChange={(e) => update('stylePacing', e.target.value)}
-              >
-                <option value=""></option>
-                <option value="slow">slow</option>
-                <option value="balanced">balanced</option>
-                <option value="fast">fast</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Formality</span>
-              <select
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.styleFormality}
-                onChange={(e) => update('styleFormality', e.target.value)}
-              >
-                <option value=""></option>
-                <option value="casual">casual</option>
-                <option value="neutral">neutral</option>
-                <option value="formal">formal</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">Verbosity</span>
-              <select
-                className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                value={form.styleVerbosity}
-                onChange={(e) => update('styleVerbosity', e.target.value)}
-              >
-                <option value=""></option>
-                <option value="terse">terse</option>
-                <option value="balanced">balanced</option>
-                <option value="lavish">lavish</option>
-              </select>
-            </label>
-          </div>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-slate-200">Character Builder</h2>
+        <a
+          href="#"
+          className="px-3 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors text-sm font-medium"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.hash = '';
+          }}
+        >
+          Back to Chat
+        </a>
       </div>
 
-      {/* Right: Preview */}
-      <div className="lg:col-span-1">
-        <div className="sticky top-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: Form */}
+        <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
           <div className="border border-slate-800 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Preview</div>
-            <div className="p-4 space-y-2">
-              <div className="text-lg font-semibold">{form.name || 'Unnamed Character'}</div>
-              <div className="text-sm text-slate-400">ID: {form.id || '—'}</div>
-              <div className="text-sm text-slate-400">Age: {String(form.age || '')}</div>
-              <div className="text-sm text-slate-300">{form.summary || 'No summary yet.'}</div>
-              {form.personality && (
-                <div className="text-sm text-slate-300">Personality: {form.personality}</div>
-              )}
-              {form.appearanceMode === 'free' && form.appearance && (
-                <div className="text-sm text-slate-300">Appearance: {form.appearance}</div>
-              )}
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Basics</div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">ID</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.id}
+                  onChange={(e) => update('id', e.target.value)}
+                  {...getInlineErrorProps('id', fieldErrors.id)}
+                />
+                {fieldErrors.id && (
+                  <span id="id-error" className="text-sm text-red-400">
+                    {fieldErrors.id}
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Name</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.name}
+                  onChange={(e) => update('name', e.target.value)}
+                  {...getInlineErrorProps('name', fieldErrors.name)}
+                />
+                {fieldErrors.name && (
+                  <span id="name-error" className="text-sm text-red-400">
+                    {fieldErrors.name}
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Age</span>
+                <input
+                  type="number"
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.age}
+                  onChange={(e) => update('age', e.target.value)}
+                  {...getInlineErrorProps('age', fieldErrors.age)}
+                />
+                {fieldErrors.age && (
+                  <span id="age-error" className="text-sm text-red-400">
+                    {fieldErrors.age}
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Tags (comma)</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.tags}
+                  onChange={(e) => update('tags', e.target.value)}
+                />
+              </label>
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className="text-xs text-slate-400">Summary</span>
+                <textarea
+                  className="min-h-[100px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.summary}
+                  onChange={(e) => update('summary', e.target.value)}
+                  {...getInlineErrorProps('summary', fieldErrors.summary)}
+                />
+                {fieldErrors.summary && (
+                  <span id="summary-error" className="text-sm text-red-400">
+                    {fieldErrors.summary}
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className="text-xs text-slate-400">Backstory</span>
+                <textarea
+                  className="min-h-[100px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.backstory}
+                  onChange={(e) => update('backstory', e.target.value)}
+                  {...getInlineErrorProps('backstory', fieldErrors.backstory)}
+                />
+                {fieldErrors.backstory && (
+                  <span id="backstory-error" className="text-sm text-red-400">
+                    {fieldErrors.backstory}
+                  </span>
+                )}
+              </label>
             </div>
           </div>
-          <div className="mt-4">
-            <button
-              className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
-                disabled
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              }`}
-              disabled={disabled}
-              onClick={() => {
-                void onSave();
-              }}
-            >
-              {saving ? 'Saving…' : 'Save Character'}
-            </button>
-            {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
-            {success && <p className="mt-2 text-sm text-emerald-400">{success}</p>}
+
+          <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Personality</div>
+            <div className="p-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Traits (string or comma list)</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.personality}
+                  onChange={(e) => update('personality', e.target.value)}
+                  {...getInlineErrorProps('personality', fieldErrors.personality)}
+                />
+                {fieldErrors.personality && (
+                  <span id="personality-error" className="text-sm text-red-400">
+                    {fieldErrors.personality}
+                  </span>
+                )}
+              </label>
+            </div>
+          </div>
+
+          {/* Appearance section temporarily disabled pending syntax fix */}
+
+          {/* Scent (optional) temporarily disabled pending syntax fix */}
+
+          <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Goals & Style</div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Goals (comma)</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.goals}
+                  onChange={(e) => update('goals', e.target.value)}
+                  {...getInlineErrorProps('goals', fieldErrors.goals)}
+                />
+                {fieldErrors.goals && (
+                  <span id="goals-error" className="text-sm text-red-400">
+                    {fieldErrors.goals}
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Speaking Style</span>
+                <textarea
+                  className="min-h-[100px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.speakingStyle}
+                  onChange={(e) => update('speakingStyle', e.target.value)}
+                  {...getInlineErrorProps('speakingStyle', fieldErrors.speakingStyle)}
+                />
+                {fieldErrors.speakingStyle && (
+                  <span id="speakingStyle-error" className="text-sm text-red-400">
+                    {fieldErrors.speakingStyle}
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Sentence Length</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.styleSentenceLength}
+                  onChange={(e) => update('styleSentenceLength', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="terse">terse</option>
+                  <option value="balanced">balanced</option>
+                  <option value="long">long</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Humor</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.styleHumor}
+                  onChange={(e) => update('styleHumor', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="none">none</option>
+                  <option value="light">light</option>
+                  <option value="wry">wry</option>
+                  <option value="dark">dark</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Darkness</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.styleDarkness}
+                  onChange={(e) => update('styleDarkness', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Pacing</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.stylePacing}
+                  onChange={(e) => update('stylePacing', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="slow">slow</option>
+                  <option value="balanced">balanced</option>
+                  <option value="fast">fast</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Formality</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.styleFormality}
+                  onChange={(e) => update('styleFormality', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="casual">casual</option>
+                  <option value="neutral">neutral</option>
+                  <option value="formal">formal</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Verbosity</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.styleVerbosity}
+                  onChange={(e) => update('styleVerbosity', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="terse">terse</option>
+                  <option value="balanced">balanced</option>
+                  <option value="lavish">lavish</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Preview */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-0">
+            <div className="border border-slate-800 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Preview</div>
+              <div className="p-4 space-y-2">
+                <div className="text-lg font-semibold">{form.name || 'Unnamed Character'}</div>
+                <div className="text-sm text-slate-400">ID: {form.id || '—'}</div>
+                <div className="text-sm text-slate-400">Age: {String(form.age || '')}</div>
+                <div className="text-sm text-slate-300">{form.summary || 'No summary yet.'}</div>
+                {form.personality && (
+                  <div className="text-sm text-slate-300">Personality: {form.personality}</div>
+                )}
+                {form.appearanceMode === 'free' && form.appearance && (
+                  <div className="text-sm text-slate-300">Appearance: {form.appearance}</div>
+                )}
+              </div>
+            </div>
+            <div className="mt-4">
+              <button
+                className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
+                  disabled
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+                disabled={disabled}
+                onClick={() => {
+                  void onSave();
+                }}
+              >
+                {saving ? 'Saving…' : 'Save Character'}
+              </button>
+              {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
+              {success && <p className="mt-2 text-sm text-emerald-400">{success}</p>}
+            </div>
           </div>
         </div>
       </div>

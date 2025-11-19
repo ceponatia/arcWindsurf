@@ -3,6 +3,7 @@ export interface CharacterSummary {
   name: string;
   summary: string;
   tags?: string[];
+  source?: 'fs' | 'db';
 }
 
 export interface SettingSummary {

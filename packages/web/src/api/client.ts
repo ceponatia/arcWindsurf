@@ -196,6 +196,13 @@ export async function deleteSession(sessionId: string, signal?: AbortSignal): Pr
   });
 }
 
+export async function deleteCharacter(characterId: string, signal?: AbortSignal): Promise<void> {
+  await http<void>(`/characters/${encodeURIComponent(characterId)}`, {
+    method: 'DELETE',
+    ...(signal && { signal }),
+  });
+}
+
 export async function getDbOverview(signal?: AbortSignal): Promise<DbOverview> {
   return http<DbOverview>('/admin/db/overview', signal ? { signal } : undefined);
 }

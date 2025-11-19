@@ -7,7 +7,7 @@ import {
   type SettingProfile,
 } from '@minimal-rpg/schemas';
 import { prisma } from '@minimal-rpg/db/node';
-import type { LoadedData } from '../data/loader.js';
+import { deleteCharacterFile, type LoadedData } from '../data/loader.js';
 
 interface ProfilesRouteDeps {
   getLoaded: () => LoadedData | undefined;
@@ -21,10 +21,17 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps) {
 
     // Filesystem characters
     const fsMapped = loaded.characters.map((ch: CharacterProfile) => {
-      const base: { id: string; name: string; summary: string; tags?: string[] } = {
+      const base: {
+        id: string;
+        name: string;
+        summary: string;
+        tags?: string[];
+        source: 'fs' | 'db';
+      } = {
         id: ch.id,
         name: ch.name,
         summary: ch.summary,
+        source: 'fs',
       };
       if (ch.tags && ch.tags.length > 0) base.tags = ch.tags;
       return base;
@@ -42,10 +49,17 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps) {
       }
     }
     const dbMapped = dbProfiles.map((ch) => {
-      const base: { id: string; name: string; summary: string; tags?: string[] } = {
+      const base: {
+        id: string;
+        name: string;
+        summary: string;
+        tags?: string[];
+        source: 'fs' | 'db';
+      } = {
         id: ch.id,
         name: ch.name,
         summary: ch.summary,
+        source: 'db',
       };
       if (ch.tags && ch.tags.length > 0) base.tags = ch.tags;
       return base;
@@ -91,6 +105,28 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps) {
       },
       201
     );
+  });
+
+  // DELETE /characters/:id — delete a dynamic character template from DB or filesystem
+  app.delete('/characters/:id', async (c) => {
+    const id = c.req.param('id');
+    const loaded = deps.getLoaded();
+
+    // Check filesystem first
+    const fsCharIndex = loaded?.characters.findIndex((ch) => ch.id === id);
+    if (fsCharIndex !== undefined && fsCharIndex !== -1) {
+      const deleted = await deleteCharacterFile(id);
+      if (deleted) {
+        loaded?.characters.splice(fsCharIndex, 1);
+        return c.body(null, 204);
+      }
+      return c.json({ ok: false, error: 'failed to delete filesystem character' }, 500);
+    }
+
+    const existing = await prisma.characterTemplate.findUnique({ where: { id } });
+    if (!existing) return c.json({ ok: false, error: 'not found' }, 404);
+    await prisma.characterTemplate.delete({ where: { id } });
+    return c.body(null, 204);
   });
 
   // GET /settings - summarized setting profiles

@@ -204,10 +204,20 @@ export const DbView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4">
-      <h2 className="text-lg font-semibold mt-0">Database Overview</h2>
-      <p className="text-slate-400 mt-0">
-        Showing tables, columns, and up to 50 most recent rows per table.
-      </p>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-semibold mt-0">Database Overview</h2>
+          <p className="text-slate-400 mt-0">
+            Showing tables, columns, and up to 50 most recent rows per table.
+          </p>
+        </div>
+        <a
+          href="/"
+          className="px-3 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors text-sm font-medium"
+        >
+          Back to App
+        </a>
+      </div>
       {data.tables.map((t) => (
         <TableCard key={t.name} table={t} />
       ))}
