@@ -1,4 +1,4 @@
-import type { CharacterProfile, SettingProfile, Appearance } from '@minimal-rpg/schemas';
+import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import type { Message } from '@minimal-rpg/db/node';
 import type { BuildPromptOptions, BuildPromptResult } from '../types.js';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
@@ -80,30 +80,43 @@ function serializeStyle(c: CharacterProfile) {
 function serializeAppearance(a: CharacterProfile['appearance']): string {
   if (!a) return '';
   if (typeof a === 'string') return truncate(a, 240);
-  const obj: Appearance = a as Appearance;
+
+  // Structured appearance from `AppearanceSchema`
   const parts: string[] = [];
-  if (obj.hair) {
-    const hairBits = [obj.hair.color, obj.hair.length, obj.hair.style].filter(Boolean).join(' ');
+
+  const hair = a.hair;
+  if (hair) {
+    const hairBits = [hair.color, hair.length, hair.style].filter(Boolean).join(' ');
     if (hairBits) parts.push(`Hair: ${hairBits}`);
   }
-  if (obj.eyes?.color) parts.push(`Eyes: ${obj.eyes.color}`);
-  if (obj.height) parts.push(`Height: ${obj.height}`);
-  if (obj.skinTone) parts.push(`Skin: ${obj.skinTone}`);
-  // Build is encoded within torso/arms/legs; pull representative values
-  if (obj.torso) parts.push(`Torso: ${obj.torso}`);
-  if (obj.arms) {
-    const armBits = [obj.arms.build, obj.arms.length ? `length=${obj.arms.length}` : '']
+
+  const eyes = a.eyes;
+  if (eyes?.color) parts.push(`Eyes: ${eyes.color}`);
+
+  if (a.height) parts.push(`Height: ${a.height}`);
+  if (a.skinTone) parts.push(`Skin: ${a.skinTone}`);
+
+  if (a.torso) parts.push(`Torso: ${a.torso}`);
+
+  const arms = a.arms;
+  if (arms) {
+    const armBits = [arms.build, arms.length ? `length=${arms.length}` : '']
       .filter(Boolean)
       .join(', ');
     if (armBits) parts.push(`Arms: ${armBits}`);
   }
-  if (obj.legs) {
-    const legBits = [obj.legs.build, obj.legs.length ? `length=${obj.legs.length}` : '']
+
+  const legs = a.legs;
+  if (legs) {
+    const legBits = [legs.build, legs.length ? `length=${legs.length}` : '']
       .filter(Boolean)
       .join(', ');
     if (legBits) parts.push(`Legs: ${legBits}`);
   }
-  if (obj.features?.length) parts.push(`Features: ${obj.features.join(', ')}`);
+
+  const features = a.features;
+  if (Array.isArray(features) && features.length) parts.push(`Features: ${features.join(', ')}`);
+
   return parts.join('; ');
 }
 

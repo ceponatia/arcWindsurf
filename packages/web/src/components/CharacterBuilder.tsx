@@ -408,9 +408,312 @@ export const CharacterBuilder: React.FC = () => {
             </div>
           </div>
 
-          {/* Appearance section temporarily disabled pending syntax fix */}
+          <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+              <span>Appearance</span>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span>Mode:</span>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded-md border text-xs ${
+                    form.appearanceMode === 'free'
+                      ? 'bg-violet-600 text-white border-violet-500'
+                      : 'bg-slate-900 text-slate-300 border-slate-700'
+                  }`}
+                  onClick={() => update('appearanceMode', 'free')}
+                >
+                  Free Text
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded-md border text-xs ${
+                    form.appearanceMode === 'structured'
+                      ? 'bg-violet-600 text-white border-violet-500'
+                      : 'bg-slate-900 text-slate-300 border-slate-700'
+                  }`}
+                  onClick={() => update('appearanceMode', 'structured')}
+                >
+                  Structured
+                </button>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              {form.appearanceMode === 'free' ? (
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Appearance (free text)</span>
+                  <textarea
+                    className="min-h-[80px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.appearance}
+                    onChange={(e) => update('appearance', e.target.value)}
+                    {...getInlineErrorProps('appearance', fieldErrors.appearance)}
+                  />
+                  {fieldErrors.appearance && (
+                    <span id="appearance-error" className="text-sm text-red-400">
+                      {fieldErrors.appearance}
+                    </span>
+                  )}
+                </label>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Hair Color</span>
+                    <input
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apHairColor}
+                      onChange={(e) => update('apHairColor', e.target.value)}
+                      {...getInlineErrorProps('apHairColor', fieldErrors.apHairColor)}
+                    />
+                    {fieldErrors.apHairColor && (
+                      <span id="apHairColor-error" className="text-sm text-red-400">
+                        {fieldErrors.apHairColor}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Hair Style</span>
+                    <input
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apHairStyle}
+                      onChange={(e) => update('apHairStyle', e.target.value)}
+                      {...getInlineErrorProps('apHairStyle', fieldErrors.apHairStyle)}
+                    />
+                    {fieldErrors.apHairStyle && (
+                      <span id="apHairStyle-error" className="text-sm text-red-400">
+                        {fieldErrors.apHairStyle}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Hair Length</span>
+                    <input
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apHairLength}
+                      onChange={(e) => update('apHairLength', e.target.value)}
+                      {...getInlineErrorProps('apHairLength', fieldErrors.apHairLength)}
+                    />
+                    {fieldErrors.apHairLength && (
+                      <span id="apHairLength-error" className="text-sm text-red-400">
+                        {fieldErrors.apHairLength}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Eye Color</span>
+                    <input
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apEyesColor}
+                      onChange={(e) => update('apEyesColor', e.target.value)}
+                      {...getInlineErrorProps('apEyesColor', fieldErrors.apEyesColor)}
+                    />
+                    {fieldErrors.apEyesColor && (
+                      <span id="apEyesColor-error" className="text-sm text-red-400">
+                        {fieldErrors.apEyesColor}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Height</span>
+                    <select
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apHeight}
+                      onChange={(e) => update('apHeight', e.target.value as FormState['apHeight'])}
+                      {...getInlineErrorProps('apHeight', fieldErrors.apHeight)}
+                    >
+                      <option value=""></option>
+                      <option value="short">short</option>
+                      <option value="average">average</option>
+                      <option value="tall">tall</option>
+                    </select>
+                    {fieldErrors.apHeight && (
+                      <span id="apHeight-error" className="text-sm text-red-400">
+                        {fieldErrors.apHeight}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Torso Build</span>
+                    <select
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apTorso}
+                      onChange={(e) => update('apTorso', e.target.value as FormState['apTorso'])}
+                      {...getInlineErrorProps('apTorso', fieldErrors.apTorso)}
+                    >
+                      <option value=""></option>
+                      <option value="slight">slight</option>
+                      <option value="average">average</option>
+                      <option value="athletic">athletic</option>
+                      <option value="heavy">heavy</option>
+                    </select>
+                    {fieldErrors.apTorso && (
+                      <span id="apTorso-error" className="text-sm text-red-400">
+                        {fieldErrors.apTorso}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-xs text-slate-400">Skin Tone</span>
+                    <input
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apSkinTone}
+                      onChange={(e) => update('apSkinTone', e.target.value)}
+                      {...getInlineErrorProps('apSkinTone', fieldErrors.apSkinTone)}
+                    />
+                    {fieldErrors.apSkinTone && (
+                      <span id="apSkinTone-error" className="text-sm text-red-400">
+                        {fieldErrors.apSkinTone}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-xs text-slate-400">Features (comma)</span>
+                    <input
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apFeatures}
+                      onChange={(e) => update('apFeatures', e.target.value)}
+                      {...getInlineErrorProps('apFeatures', fieldErrors.apFeatures)}
+                    />
+                    {fieldErrors.apFeatures && (
+                      <span id="apFeatures-error" className="text-sm text-red-400">
+                        {fieldErrors.apFeatures}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Arms Build</span>
+                    <select
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apArmsBuild}
+                      onChange={(e) =>
+                        update('apArmsBuild', e.target.value as FormState['apArmsBuild'])
+                      }
+                      {...getInlineErrorProps('apArmsBuild', fieldErrors.apArmsBuild)}
+                    >
+                      <option value=""></option>
+                      <option value="average">average</option>
+                      <option value="muscular">muscular</option>
+                      <option value="slender">slender</option>
+                    </select>
+                    {fieldErrors.apArmsBuild && (
+                      <span id="apArmsBuild-error" className="text-sm text-red-400">
+                        {fieldErrors.apArmsBuild}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Arms Length</span>
+                    <select
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apArmsLength}
+                      onChange={(e) =>
+                        update('apArmsLength', e.target.value as FormState['apArmsLength'])
+                      }
+                      {...getInlineErrorProps('apArmsLength', fieldErrors.apArmsLength)}
+                    >
+                      <option value=""></option>
+                      <option value="average">average</option>
+                      <option value="long">long</option>
+                      <option value="short">short</option>
+                    </select>
+                    {fieldErrors.apArmsLength && (
+                      <span id="apArmsLength-error" className="text-sm text-red-400">
+                        {fieldErrors.apArmsLength}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Legs Build</span>
+                    <select
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apLegsBuild}
+                      onChange={(e) =>
+                        update('apLegsBuild', e.target.value as FormState['apLegsBuild'])
+                      }
+                      {...getInlineErrorProps('apLegsBuild', fieldErrors.apLegsBuild)}
+                    >
+                      <option value=""></option>
+                      <option value="very skinny">very skinny</option>
+                      <option value="slender">slender</option>
+                      <option value="average">average</option>
+                      <option value="toned">toned</option>
+                      <option value="muscular">muscular</option>
+                    </select>
+                    {fieldErrors.apLegsBuild && (
+                      <span id="apLegsBuild-error" className="text-sm text-red-400">
+                        {fieldErrors.apLegsBuild}
+                      </span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400">Legs Length</span>
+                    <select
+                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                      value={form.apLegsLength}
+                      onChange={(e) =>
+                        update('apLegsLength', e.target.value as FormState['apLegsLength'])
+                      }
+                      {...getInlineErrorProps('apLegsLength', fieldErrors.apLegsLength)}
+                    >
+                      <option value=""></option>
+                      <option value="average">average</option>
+                      <option value="long">long</option>
+                      <option value="short">short</option>
+                    </select>
+                    {fieldErrors.apLegsLength && (
+                      <span id="apLegsLength-error" className="text-sm text-red-400">
+                        {fieldErrors.apLegsLength}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
 
-          {/* Scent (optional) temporarily disabled pending syntax fix */}
+          <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">
+              Scent (optional)
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Hair Scent</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.scentHair}
+                  onChange={(e) => update('scentHair', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="floral">floral</option>
+                  <option value="citrus">citrus</option>
+                  <option value="fresh">fresh</option>
+                  <option value="herbal">herbal</option>
+                  <option value="neutral">neutral</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Body Scent</span>
+                <select
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.scentBody}
+                  onChange={(e) => update('scentBody', e.target.value)}
+                >
+                  <option value=""></option>
+                  <option value="clean">clean</option>
+                  <option value="fresh">fresh</option>
+                  <option value="neutral">neutral</option>
+                  <option value="light musk">light musk</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Perfume (max 40 chars)</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  value={form.scentPerfume}
+                  maxLength={40}
+                  onChange={(e) => update('scentPerfume', e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
 
           <div className="border border-slate-800 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Goals & Style</div>

@@ -266,6 +266,20 @@ Legacy local Ollama support was removed; OpenRouter is now the sole provider. Se
 
 The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is implemented and ready to use.
 
+## Schema Change Checklist
+
+When you add or change Zod schemas (for characters, settings, or prompt config), keep these pieces in sync:
+
+- `packages/schemas/src` — Define/modify the Zod schema and ensure it is exported from the relevant barrel files (for characters: `character/*.ts` and `character/index.ts`, then `src/index.ts`).
+- `data/characters/*.json`, `data/settings/*.json` — Update example JSON and any real data to satisfy the new schema requirements (run `node ./scripts/validate-data.js` to confirm).
+- `packages/api/src/types.ts` — If API DTOs or `BuildPromptOptions` need new fields, add them here so routes and LLM code stay type-safe.
+- `packages/api/src/llm/prompt.ts` — Update `serializeCharacter`, `serializeSetting`, and related helpers to surface new schema fields in the prompt (for example, new appearance or style facets).
+- `packages/api/src/data/loader.ts` — Ensure the loader validates and surfaces any new schema-driven fields from JSON/DB into in-memory data.
+- `packages/web/src` — Adjust UI components (e.g., Character Builder, Settings UI) and client-side validation to match the updated schemas.
+- `dev-docs/*.md` — Update any docs that describe schemas or prompt wiring (notably `dev-docs/api-zod.md` and `dev-docs/character-profile-llm-integration.md`).
+
+After making schema changes, run `pnpm check` and `node ./scripts/validate-data.js` to catch type or data validation issues early.
+
 ## Troubleshooting
 
 ### LLM Provider Issues

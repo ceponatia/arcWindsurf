@@ -10,14 +10,24 @@ export const resolvedDbUrl =
   env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5432/minirpg';
 export const resolvedDbPath = resolvedDbUrl;
 
-// Create a shared connection pool without relying on pg typings
 function createPool(url: string): unknown {
   const Ctor = Pool as unknown as new (config: { connectionString: string }) => unknown;
   return new Ctor({ connectionString: url });
 }
-const rawPool = createPool(resolvedDbUrl);
-(registerType as (p: unknown) => void)(rawPool);
-export const pool: PgPoolStrict = rawPool as PgPoolStrict;
+
+// Create the pool and treat it as a strict Pg pool
+const rawPool = createPool(resolvedDbUrl) as PgPoolStrict;
+
+// Register pgvector types for each new client from the pool
+// We cast to any here so we don't have to add `on` to PgPoolStrict
+(rawPool as unknown as { on?: (event: string, listener: (client: unknown) => void) => void }).on?.(
+  'connect',
+  (client: unknown) => {
+    (registerType as (client: unknown) => void)(client);
+  }
+);
+
+export const pool: PgPoolStrict = rawPool;
 
 async function query<T = DbRow>(text: string, params?: SqlParams): Promise<QueryResult<T>> {
   const client: PgClientLike = await pool.connect();

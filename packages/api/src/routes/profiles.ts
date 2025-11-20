@@ -26,7 +26,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     );
 
     // DB dynamic characters
-    const dbRows = await prisma.characterTemplate.findMany({});
+    const dbRows = await prisma.characterTemplate.findMany();
     const dbProfiles: CharacterProfile[] = [];
     for (const t of dbRows) {
       try {
@@ -107,7 +107,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     const fsMapped: SettingSummary[] = loaded.settings.map((s) => mapSettingSummary(s, 'fs'));
 
     // Include dynamic settings from DB if present
-    const dbRows = await prisma.settingTemplate.findMany({});
+    const dbRows = await prisma.settingTemplate.findMany();
     const dbProfiles: SettingProfile[] = [];
     for (const t of dbRows) {
       try {
