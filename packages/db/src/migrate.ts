@@ -1,4 +1,4 @@
-import { pool, resolvedDbUrl } from './prisma.js';
+import { pool, resolvedDbUrl } from './client.js';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FsPromisesLike, PathLike, PgPoolLike, SqlFile, SqlText } from './types.js';

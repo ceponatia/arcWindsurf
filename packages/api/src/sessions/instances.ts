@@ -1,6 +1,6 @@
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import type { OverridesObject, OverridesAudit } from '../types.js';
-import { prisma } from '@minimal-rpg/db/node';
+import { db } from '../db/prismaClient.js';
 import { randomUUID } from 'node:crypto';
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -38,9 +38,9 @@ export async function getCharacterOverrides(
   sessionId: string,
   characterId: string
 ): Promise<OverridesObject | undefined> {
-  const row = (await prisma.characterInstance.findUnique({
+  const row = await db.characterInstance.findUnique({
     where: { sessionId_templateCharacterId: { sessionId, templateCharacterId: characterId } },
-  })) as { overrides: string | null } | null;
+  });
   if (!row) return undefined;
   return parseJson<Record<string, unknown>>(row.overrides, {});
 }
@@ -52,11 +52,11 @@ export async function upsertCharacterOverrides(params: {
   overrides: OverridesObject;
 }): Promise<OverridesAudit> {
   const { sessionId, characterId, baseline, overrides } = params;
-  const existing = (await prisma.characterInstance.findUnique({
+  const existing = await db.characterInstance.findUnique({
     where: { sessionId_templateCharacterId: { sessionId, templateCharacterId: characterId } },
-  })) as { id: string; baseline: string | null; overrides: string | null } | null;
+  });
   if (!existing) {
-    await prisma.characterInstance.create({
+    await db.characterInstance.create({
       data: {
         id: randomUUID(),
         sessionId,
@@ -67,7 +67,7 @@ export async function upsertCharacterOverrides(params: {
     });
     return { baseline: baseline as unknown as Record<string, unknown>, overrides };
   }
-  await prisma.characterInstance.update({
+  await db.characterInstance.update({
     where: { id: existing.id },
     data: { overrides: JSON.stringify(overrides) },
   });
@@ -79,9 +79,9 @@ export async function getSettingOverrides(
   sessionId: string,
   settingId: string
 ): Promise<OverridesObject | undefined> {
-  const row = (await prisma.settingInstance.findUnique({
+  const row = await db.settingInstance.findUnique({
     where: { sessionId_templateSettingId: { sessionId, templateSettingId: settingId } },
-  })) as { overrides: string | null } | null;
+  });
   if (!row) return undefined;
   return parseJson<Record<string, unknown>>(row.overrides, {});
 }
@@ -93,11 +93,11 @@ export async function upsertSettingOverrides(params: {
   overrides: OverridesObject;
 }): Promise<OverridesAudit> {
   const { sessionId, settingId, baseline, overrides } = params;
-  const existing = (await prisma.settingInstance.findUnique({
+  const existing = await db.settingInstance.findUnique({
     where: { sessionId_templateSettingId: { sessionId, templateSettingId: settingId } },
-  })) as { id: string; baseline: string | null; overrides: string | null } | null;
+  });
   if (!existing) {
-    await prisma.settingInstance.create({
+    await db.settingInstance.create({
       data: {
         id: randomUUID(),
         sessionId,
@@ -108,7 +108,7 @@ export async function upsertSettingOverrides(params: {
     });
     return { baseline: baseline as unknown as Record<string, unknown>, overrides };
   }
-  await prisma.settingInstance.update({
+  await db.settingInstance.update({
     where: { id: existing.id },
     data: { overrides: JSON.stringify(overrides) },
   });

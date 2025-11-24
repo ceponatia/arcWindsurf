@@ -1,4 +1,4 @@
-import { pool } from './prisma.js';
+import { pool } from './client.js';
 
 async function run() {
   // No-op seed. Add demo data here if needed.

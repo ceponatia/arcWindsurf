@@ -1,24 +1,16 @@
-import { prisma, resolvedDbUrl, pool } from './prisma.js';
-import type { DbRow as Row, QueryResult } from './types.js';
-
-export interface DbColumn {
-  name: string;
-  type: string;
-  isId: boolean;
-  isRequired: boolean;
-  isList: boolean;
-}
+import { db, resolvedDbUrl, pool } from './client.js';
+import type {
+  DbColumn,
+  DbOverviewResult,
+  DbPathInfo,
+  DbRow as Row,
+  DbTableOverview,
+  QueryResult,
+} from './types.js';
 
 export type DbRow = Row;
 
-export interface DbTableOverview {
-  name: string;
-  columns: DbColumn[];
-  rowCount: number;
-  sample: DbRow[];
-}
-
-export async function getDbOverview(): Promise<{ tables: DbTableOverview[] }> {
+export async function getDbOverview(): Promise<DbOverviewResult> {
   // Introspect selected tables in public schema
   const tableNames = [
     'user_sessions',
@@ -61,7 +53,6 @@ export async function getDbOverview(): Promise<{ tables: DbTableOverview[] }> {
     const sampleRes: QueryResult<DbRow> = await pool.query(`SELECT * FROM ${t} ${order} LIMIT 50`);
     const sample: DbRow[] = sampleRes.rows;
 
-    // Present camelCase table name similar to Prisma model for UI consistency
     const name = t
       .split('_')
       .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
@@ -73,11 +64,11 @@ export async function getDbOverview(): Promise<{ tables: DbTableOverview[] }> {
   return { tables: results };
 }
 
-export async function getDbPathInfo() {
+export async function getDbPathInfo(): Promise<DbPathInfo> {
   // For Postgres, there's no local file path; perform a simple connectivity check
   let exists = false;
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await db.$queryRaw`SELECT 1`;
     exists = true;
   } catch {
     // Connectivity check failed; exists remains false

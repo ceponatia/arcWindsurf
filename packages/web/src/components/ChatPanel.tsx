@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 import type { Message, Session } from '../types.js';
-import { getSession, sendMessage } from '../api/client.js';
+import { getSession, sendMessage, updateMessage } from '../api/client.js';
+import { MessageContent } from './MessageContent.js';
 
 export interface ChatPanelProps {
   sessionId?: string | null;
@@ -13,6 +14,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const ctrlRef = useRef<AbortController | null>(null);
@@ -50,6 +53,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   useEffect(() => {
     setSession(null);
     setDraft('');
+    setEditingIdx(null);
     if (!effectiveSessionId) return;
     refresh();
     return () => {
@@ -86,6 +90,35 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       refresh();
     } finally {
       setSending(false);
+    }
+  };
+
+  const onSaveEdit = async (idx: number) => {
+    if (!effectiveSessionId) return;
+    const text = editDraft.trim();
+    if (!text) return;
+
+    // Optimistic update
+    setSession((prev) => {
+      if (!prev) return prev;
+      const newMessages = [...prev.messages];
+      if (newMessages[idx]) {
+        newMessages[idx] = { ...newMessages[idx], content: text };
+      }
+      return { ...prev, messages: newMessages };
+    });
+    setEditingIdx(null);
+
+    const message = session?.messages[idx];
+    const dbIdx = message?.idx ?? idx + 1;
+
+    try {
+      // Backend uses 1-based index for messages
+      await updateMessage(effectiveSessionId, dbIdx, text);
+    } catch (e) {
+      const msg = getErrorMessage(e, 'Failed to update message');
+      setError(msg);
+      refresh(); // Revert on error
     }
   };
 
@@ -138,11 +171,63 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
         {!loading && !error && (
           <div className="prose prose-invert max-w-none">
             {(session?.messages ?? []).map((m, idx) => (
-              <div key={idx} className="mb-3">
-                {m.role === 'user' ? (
-                  <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans">{m.content}</div>
+              <div key={idx} className="mb-3 group relative">
+                {editingIdx === idx ? (
+                  <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans border border-violet-500/50">
+                    <textarea
+                      className="w-full bg-transparent text-slate-200 outline-none resize-none p-1"
+                      rows={Math.max(3, m.content.split('\n').length)}
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button
+                        className="text-xs text-slate-400 hover:text-slate-300"
+                        onClick={() => setEditingIdx(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="text-xs bg-violet-600 hover:bg-violet-500 text-white px-2 py-1 rounded"
+                        onClick={() => {
+                          void onSaveEdit(idx);
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="font-serif leading-relaxed">{m.content}</div>
+                  <>
+                    <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity pr-2 pt-1">
+                      <button
+                        className="text-slate-400 hover:text-white p-1 rounded"
+                        onClick={() => {
+                          setEditingIdx(idx);
+                          setEditDraft(m.content);
+                        }}
+                        title="Edit message"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                        </svg>
+                      </button>
+                    </div>
+                    {m.role === 'user' ? (
+                      <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans">
+                        <MessageContent content={m.content} />
+                      </div>
+                    ) : (
+                      <div className="font-serif leading-relaxed">
+                        <MessageContent content={m.content} />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}

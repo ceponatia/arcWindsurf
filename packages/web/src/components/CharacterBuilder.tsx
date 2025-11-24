@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config.js';
 import { CharacterProfileSchema, type CharacterProfile, type Scent } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
-
-interface ApiErrorShape {
-  ok: false;
-  error: unknown;
-}
+import type {
+  ApiErrorShape,
+  AppearanceMode,
+  ArmsBuildOption,
+  ArmsLengthOption,
+  CharacterStyleOverrides,
+  HeightOption,
+  LegsBuildOption,
+  LegsLengthOption,
+  SelectOption,
+  TorsoBuildOption,
+} from '../types.js';
 
 interface FormState {
   id: string;
@@ -17,20 +24,20 @@ interface FormState {
   tags: string;
   personality: string;
   appearance: string; // free text appearance
-  appearanceMode: 'free' | 'structured';
+  appearanceMode: AppearanceMode;
   // Structured appearance fields
   apHairColor: string;
   apHairStyle: string;
   apHairLength: string;
   apEyesColor: string;
-  apHeight: '' | 'short' | 'average' | 'tall';
-  apTorso: '' | 'slight' | 'average' | 'athletic' | 'heavy';
+  apHeight: HeightOption;
+  apTorso: TorsoBuildOption;
   apSkinTone: string;
   apFeatures: string; // comma separated
-  apArmsBuild: '' | 'average' | 'muscular' | 'slender';
-  apArmsLength: '' | 'average' | 'long' | 'short';
-  apLegsLength: '' | 'average' | 'long' | 'short';
-  apLegsBuild: '' | 'very skinny' | 'slender' | 'average' | 'toned' | 'muscular';
+  apArmsBuild: ArmsBuildOption;
+  apArmsLength: ArmsLengthOption;
+  apLegsLength: LegsLengthOption;
+  apLegsBuild: LegsBuildOption;
   scentHair: string;
   scentBody: string;
   scentPerfume: string;
@@ -83,12 +90,85 @@ type FormKey = keyof FormState;
 
 type FormFieldErrors = Partial<Record<FormKey, string>>;
 
-export const CharacterBuilder: React.FC = () => {
+type StyleValue<K extends keyof CharacterStyleOverrides> = NonNullable<CharacterStyleOverrides[K]>;
+
+const pickOption = <T extends string>(value: SelectOption<T>, fallback: T): T =>
+  value ? value : fallback;
+
+export const CharacterBuilder: React.FC<{ id?: string | null }> = ({ id }) => {
   const [form, setForm] = useState(initialState);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
+
+  useEffect(() => {
+    if (id) {
+      fetch(`${API_BASE_URL}/characters/${id}`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to load character');
+          return res.json();
+        })
+        .then((data: CharacterProfile) => {
+          const f: FormState = { ...initialState };
+          f.id = data.id;
+          f.name = data.name;
+          f.age = data.age;
+          f.summary = data.summary;
+          f.backstory = data.backstory ?? '';
+          f.tags = (data.tags ?? []).join(', ');
+          f.personality = Array.isArray(data.personality)
+            ? data.personality.join(', ')
+            : data.personality;
+          f.goals = (data.goals ?? []).join(', ');
+          f.speakingStyle = data.speakingStyle ?? '';
+
+          if (data.appearance) {
+            if (typeof data.appearance === 'string') {
+              f.appearanceMode = 'free';
+              f.appearance = data.appearance;
+            } else {
+              f.appearanceMode = 'structured';
+              f.apHairColor = data.appearance.hair?.color ?? '';
+              f.apHairStyle = data.appearance.hair?.style ?? '';
+              f.apHairLength = data.appearance.hair?.length ?? '';
+              f.apEyesColor = data.appearance.eyes?.color ?? '';
+              f.apHeight = data.appearance.height;
+              f.apTorso = data.appearance.torso;
+              f.apSkinTone = data.appearance.skinTone ?? '';
+              f.apFeatures = (data.appearance.features ?? []).join(', ');
+              f.apArmsBuild = data.appearance.arms?.build ?? '';
+              f.apArmsLength = data.appearance.arms?.length ?? '';
+              f.apLegsBuild = data.appearance.legs?.build ?? '';
+              f.apLegsLength = data.appearance.legs?.length ?? '';
+            }
+          }
+
+          if (data.scent) {
+            f.scentHair = data.scent.hairScent ?? '';
+            f.scentBody = data.scent.bodyScent ?? '';
+            f.scentPerfume = data.scent.perfume ?? '';
+          }
+
+          if (data.style) {
+            f.styleSentenceLength = data.style.sentenceLength ?? '';
+            f.styleHumor = data.style.humor ?? '';
+            f.styleDarkness = data.style.darkness ?? '';
+            f.stylePacing = data.style.pacing ?? '';
+            f.styleFormality = data.style.formality ?? '';
+            f.styleVerbosity = data.style.verbosity ?? '';
+          }
+
+          setForm(f);
+        })
+        .catch((err) => {
+          console.error(err);
+          setError('Failed to load character');
+        });
+    } else {
+      setForm(initialState);
+    }
+  }, [id]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -122,38 +202,30 @@ export const CharacterBuilder: React.FC = () => {
       scent.bodyScent = bodyVal as Scent['bodyScent'];
     const perfumeVal = form.scentPerfume.trim();
     if (perfumeVal) scent.perfume = perfumeVal.slice(0, 40);
-    interface StyleOverrides {
-      sentenceLength?: 'terse' | 'balanced' | 'long';
-      humor?: 'none' | 'light' | 'wry' | 'dark';
-      darkness?: 'low' | 'medium' | 'high';
-      pacing?: 'slow' | 'balanced' | 'fast';
-      formality?: 'casual' | 'neutral' | 'formal';
-      verbosity?: 'terse' | 'balanced' | 'lavish';
-    }
-    const style: StyleOverrides = {};
+    const style: CharacterStyleOverrides = {};
     const sl = form.styleSentenceLength.trim();
-    const isSentenceLength = (v: string): v is 'terse' | 'balanced' | 'long' =>
-      ['terse', 'balanced', 'long'].includes(v);
+    const isSentenceLength = (v: string): v is StyleValue<'sentenceLength'> =>
+      ['terse', 'balanced', 'long'].includes(v as StyleValue<'sentenceLength'>);
     if (isSentenceLength(sl)) style.sentenceLength = sl;
     const hum = form.styleHumor.trim();
-    const isHumor = (v: string): v is 'none' | 'light' | 'wry' | 'dark' =>
-      ['none', 'light', 'wry', 'dark'].includes(v);
+    const isHumor = (v: string): v is StyleValue<'humor'> =>
+      ['none', 'light', 'wry', 'dark'].includes(v as StyleValue<'humor'>);
     if (isHumor(hum)) style.humor = hum;
     const dark = form.styleDarkness.trim();
-    const isDarkness = (v: string): v is 'low' | 'medium' | 'high' =>
-      ['low', 'medium', 'high'].includes(v);
+    const isDarkness = (v: string): v is StyleValue<'darkness'> =>
+      ['low', 'medium', 'high'].includes(v as StyleValue<'darkness'>);
     if (isDarkness(dark)) style.darkness = dark;
     const pace = form.stylePacing.trim();
-    const isPacing = (v: string): v is 'slow' | 'balanced' | 'fast' =>
-      ['slow', 'balanced', 'fast'].includes(v);
+    const isPacing = (v: string): v is StyleValue<'pacing'> =>
+      ['slow', 'balanced', 'fast'].includes(v as StyleValue<'pacing'>);
     if (isPacing(pace)) style.pacing = pace;
     const formality = form.styleFormality.trim();
-    const isFormality = (v: string): v is 'casual' | 'neutral' | 'formal' =>
-      ['casual', 'neutral', 'formal'].includes(v);
+    const isFormality = (v: string): v is StyleValue<'formality'> =>
+      ['casual', 'neutral', 'formal'].includes(v as StyleValue<'formality'>);
     if (isFormality(formality)) style.formality = formality;
     const verb = form.styleVerbosity.trim();
-    const isVerbosity = (v: string): v is 'terse' | 'balanced' | 'lavish' =>
-      ['terse', 'balanced', 'lavish'].includes(v);
+    const isVerbosity = (v: string): v is StyleValue<'verbosity'> =>
+      ['terse', 'balanced', 'lavish'].includes(v as StyleValue<'verbosity'>);
     if (isVerbosity(verb)) style.verbosity = verb;
     // Build appearance depending on input mode
     const structuredAppearance =
@@ -182,8 +254,8 @@ export const CharacterBuilder: React.FC = () => {
                 length: form.apHairLength || 'medium',
               },
               eyes: { color: form.apEyesColor || 'brown' },
-              height: form.apHeight || 'average',
-              torso: form.apTorso || 'average',
+              height: pickOption(form.apHeight, 'average'),
+              torso: pickOption(form.apTorso, 'average'),
               skinTone: form.apSkinTone || 'pale',
               features: form.apFeatures
                 ? form.apFeatures
@@ -192,12 +264,12 @@ export const CharacterBuilder: React.FC = () => {
                     .filter(Boolean)
                 : undefined,
               arms: {
-                build: form.apArmsBuild || 'average',
-                length: form.apArmsLength || 'average',
+                build: pickOption(form.apArmsBuild, 'average'),
+                length: pickOption(form.apArmsLength, 'average'),
               },
               legs: {
-                length: form.apLegsLength || 'average',
-                build: form.apLegsBuild || 'toned',
+                length: pickOption(form.apLegsLength, 'average'),
+                build: pickOption(form.apLegsBuild, 'toned'),
               },
             }
           : undefined;

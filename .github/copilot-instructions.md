@@ -11,6 +11,7 @@ This monorepo uses pnpm + Turbo with these packages:
 
 ## Important
 
+- Each package should have a src/types.ts file for shared types. Use existing types in these files when possible, or add a new type there. Make sure types are STRONGLY typed.
 - After finishing a task, update the root `README.md` with any relevant changes and keep it accurate and concise. Do not remove unrelated information.
 - Put requested developer notes or docs in `/dev-docs`.
 - For markdown lint issues, prefer `markdownlint --fix`.

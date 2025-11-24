@@ -7,8 +7,7 @@ import {
   appendMessage,
   listSessions,
   deleteSession,
-  prisma,
-} from '@minimal-rpg/db/node';
+} from '../db/sessionsClient.js';
 import {
   CharacterProfileSchema,
   SettingProfileSchema,
@@ -23,7 +22,8 @@ import {
   getEffectiveSetting,
 } from '../sessions/instances.js';
 import { buildPrompt } from '../llm/prompt.js';
-import { generateWithOpenRouter } from '../llm/openrouter.js';
+import { generateWithOpenRouter as rawGenerateWithOpenRouter } from '../llm/openrouter.js';
+import { db } from '../db/prismaClient.js';
 import type {
   LoadedDataGetter,
   CreateSessionRequest,
@@ -35,11 +35,13 @@ import type {
   EffectiveProfilesResponse,
   OverridesAudit,
   LlmResponse,
-  ChatRole,
+  LoadedData,
+  GenerateWithOpenRouterFn,
 } from '../types.js';
 import { mapSessionListItem } from '../mappers/sessionMappers.js';
 import { getConfig } from '../util/config.js';
-import type { LoadedData } from '../types.js';
+
+const generateWithOpenRouter = rawGenerateWithOpenRouter as GenerateWithOpenRouterFn;
 
 interface SessionRouteDeps {
   getLoaded: LoadedDataGetter;
@@ -72,9 +74,9 @@ async function findCharacter(loaded: LoadedData, id: string) {
   const fsChar = loaded.characters.find((c) => c.id === id);
   if (fsChar) return fsChar;
 
-  const dbChar = (await prisma.characterTemplate.findUnique({ where: { id } })) as {
-    profileJson: string;
-  } | null;
+  const dbChar = await db.characterTemplate.findUnique({
+    where: { id },
+  });
   if (dbChar) {
     try {
       return CharacterProfileSchema.parse(JSON.parse(dbChar.profileJson));
@@ -89,9 +91,9 @@ async function findSetting(loaded: LoadedData, id: string) {
   const fsSet = loaded.settings.find((s) => s.id === id);
   if (fsSet) return fsSet;
 
-  const dbSet = (await prisma.settingTemplate.findUnique({ where: { id } })) as {
-    profileJson: string;
-  } | null;
+  const dbSet = await db.settingTemplate.findUnique({
+    where: { id },
+  });
   if (dbSet) {
     try {
       return SettingProfileSchema.parse(JSON.parse(dbSet.profileJson));
@@ -109,14 +111,8 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const loaded = deps.getLoaded();
     if (!loaded) return c.json(sessions, 200);
 
-    const dbChars = (await prisma.characterTemplate.findMany()) as {
-      id: string;
-      profileJson: string;
-    }[];
-    const dbSettings = (await prisma.settingTemplate.findMany()) as {
-      id: string;
-      profileJson: string;
-    }[];
+    const dbChars = await db.characterTemplate.findMany();
+    const dbSettings = await db.settingTemplate.findMany();
 
     const decorated: SessionListItem[] = sessions.map((sess) => {
       let character = loaded.characters.find((ch) => ch.id === sess.characterId);
@@ -267,6 +263,42 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     );
   });
 
+  // PATCH /sessions/:id/messages/:idx - update a message content
+  app.patch('/sessions/:id/messages/:idx', async (c) => {
+    const id = c.req.param('id');
+    const idx = parseInt(c.req.param('idx'), 10);
+    if (isNaN(idx)) return c.json({ ok: false, error: 'invalid index' } satisfies ApiError, 400);
+
+    const session = await getSession(id);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
+
+    const rawBody: unknown = await c.req.json().catch(() => null);
+    if (!isMessageRequest(rawBody)) {
+      return c.json(
+        { ok: false, error: 'content must be 1..4000 characters' } satisfies ApiError,
+        400
+      );
+    }
+    const { content } = rawBody;
+    if (content.length < 1 || content.length > 4000) {
+      return c.json(
+        { ok: false, error: 'content must be 1..4000 characters' } satisfies ApiError,
+        400
+      );
+    }
+
+    const updated = await db.message.update({
+      where: { sessionId: id, idx },
+      data: { content },
+    });
+
+    if (!updated) {
+      return c.json({ ok: false, error: 'message not found' } satisfies ApiError, 404);
+    }
+
+    return c.body(null, 204);
+  });
+
   // POST /sessions/:id/messages - append a user message and get LLM reply
   app.post('/sessions/:id/messages', async (c) => {
     const loaded = deps.getLoaded();
@@ -365,7 +397,12 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     console.info(`Session ${session.id}: assistant reply (${contentReply.length} chars) stored`);
 
     const messageDto: MessageResponseBody['message'] = last
-      ? { role: last.role as ChatRole, content: last.content, createdAt: last.createdAt }
+      ? {
+          role: last.role,
+          content: last.content,
+          createdAt: last.createdAt,
+          idx: last.idx,
+        }
       : { role: 'assistant', content: contentReply, createdAt: new Date().toISOString() };
     const body: MessageResponseBody = { message: messageDto };
     return c.json(body, 200);

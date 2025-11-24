@@ -29,11 +29,11 @@ export function registerConfigRoutes(app: Hono) {
     const uptime = process.uptime();
     const version = await getVersion();
 
-    // DB check (lazy-import prisma to avoid circular deps)
+    // DB check (lazy-import db client to avoid circular deps)
     let dbOk = false;
     try {
-      const { prisma } = await import('@minimal-rpg/db/node');
-      await prisma.$queryRaw`SELECT 1`;
+      const { db } = await import('@minimal-rpg/db/node');
+      await db.$queryRaw`SELECT 1`;
       dbOk = true;
     } catch (error) {
       console.warn('Database health check failed', error);

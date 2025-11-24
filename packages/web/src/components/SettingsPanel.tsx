@@ -1,74 +1,83 @@
 import React from 'react';
-import { useCharacters } from '../hooks/useCharacters.js';
-import { deleteCharacter } from '../api/client.js';
+import { deleteSetting } from '../api/client.js';
+import type { SettingSummary } from '../types.js';
 
-export interface CharactersPanelProps {
+export interface SettingsPanelProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onEdit?: (id: string) => void;
+  settings: SettingSummary[];
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
 }
 
-export const CharactersPanel: React.FC<CharactersPanelProps> = ({
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   selectedId,
   onSelect,
   onEdit,
+  settings,
+  loading,
+  error,
+  onRefresh,
 }) => {
-  const { loading, error, data, retry } = useCharacters();
-
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this character?')) return;
+    if (!window.confirm('Are you sure you want to delete this setting?')) return;
     try {
-      await deleteCharacter(id);
+      await deleteSetting(id);
       if (selectedId === id) onSelect(null);
-      retry();
+      onRefresh();
     } catch (err) {
-      console.error('Failed to delete character', err);
-      alert('Failed to delete character');
+      console.error('Failed to delete setting', err);
+      alert('Failed to delete setting');
     }
   };
 
   return (
     <section className="border border-slate-800 rounded-lg overflow-hidden">
       <h2 className="px-3 py-2 border-b border-slate-800 bg-slate-900/60 text-sm font-semibold">
-        Characters
+        Settings
       </h2>
       <div className="p-3">
         {loading && <p className="text-slate-400">Loading…</p>}
         {error && (
           <div className="space-y-2">
             <p className="text-red-400">Failed to load: {error}</p>
-            <button className="px-3 py-1.5 rounded-md bg-slate-800 text-slate-200" onClick={retry}>
+            <button
+              className="px-3 py-1.5 rounded-md bg-slate-800 text-slate-200"
+              onClick={onRefresh}
+            >
               Retry
             </button>
           </div>
         )}
         {!loading && !error && (
           <ul className="space-y-2">
-            {(data ?? []).map((c) => (
+            {(settings ?? []).map((s) => (
               <li
-                key={c.id}
+                key={s.id}
                 className={`group flex flex-col p-3 rounded-lg hover:bg-slate-800 border ${
-                  selectedId === c.id
+                  selectedId === s.id
                     ? 'border-violet-700'
                     : 'border-transparent hover:border-slate-700'
                 } cursor-pointer`}
-                onClick={() => onSelect(c.id)}
+                onClick={() => onSelect(s.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') onSelect(c.id);
+                  if (e.key === 'Enter' || e.key === ' ') onSelect(s.id);
                 }}
               >
                 <div className="flex justify-between items-start">
-                  <div className="text-sm font-medium text-slate-200">{c.name}</div>
+                  <div className="text-sm font-medium text-slate-200">{s.name}</div>
                   <div className="flex flex-col items-end -mr-1 -mt-1">
                     <button
                       onClick={(e) => {
-                        void handleDelete(e, c.id);
+                        void handleDelete(e, s.id);
                       }}
                       className="text-slate-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete character"
+                      title="Delete setting"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -87,10 +96,10 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEdit(c.id);
+                          onEdit(s.id);
                         }}
                         className="text-slate-500 hover:text-violet-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Edit character"
+                        title="Edit setting"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -105,21 +114,15 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-xs text-slate-400">{c.summary}</div>
-                {c.tags && c.tags.length > 0 && (
-                  <div className="mt-1 text-[11px] text-slate-500">{c.tags.join(', ')}</div>
-                )}
+                <div className="text-xs text-slate-400 line-clamp-2">{s.tone}</div>
               </li>
             ))}
-            {(data ?? []).length === 0 && (
-              <li className="text-slate-400">No characters available.</li>
+            {(settings ?? []).length === 0 && (
+              <li className="text-slate-400">No settings available.</li>
             )}
             <li className="">
-              <a
-                className="text-violet-400 hover:text-violet-300 text-sm"
-                href="#/character-builder"
-              >
-                Character Builder
+              <a className="text-violet-400 hover:text-violet-300 text-sm" href="#/setting-builder">
+                Setting Builder
               </a>
             </li>
           </ul>

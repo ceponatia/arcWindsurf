@@ -2,21 +2,40 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getErrorMessage } from '@minimal-rpg/utils';
 import { AppHeader } from './components/AppHeader.js';
 import { CharactersPanel } from './components/CharactersPanel.js';
-import { SettingsSelector } from './components/SettingsSelector.js';
+import { SettingsPanel } from './components/SettingsPanel.js';
 
 import { SessionsPanel } from './components/SessionsPanel.js';
 import { ChatPanel } from './components/ChatPanel.js';
 import { CharacterBuilder } from './components/CharacterBuilder.js';
+import { SettingBuilder } from './components/SettingBuilder.js';
 import { createSession, deleteSession } from './api/client.js';
 import { useSessions } from './hooks/useSessions.js';
+import { useSettings } from './hooks/useSettings.js';
+
+type ViewMode = 'chat' | 'character-builder' | 'setting-builder';
 
 export const App: React.FC = () => {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedSettingId, setSelectedSettingId] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [showBuilder, setShowBuilder] = useState<boolean>(
-    typeof window !== 'undefined' && window.location.hash === '#/character-builder'
-  );
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === 'undefined') return 'chat';
+    if (window.location.hash.startsWith('#/character-builder')) return 'character-builder';
+    if (window.location.hash.startsWith('#/setting-builder')) return 'setting-builder';
+    return 'chat';
+  });
+
+  const [builderId, setBuilderId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash;
+    if (hash.startsWith('#/character-builder') || hash.startsWith('#/setting-builder')) {
+      const query = hash.split('?')[1];
+      return new URLSearchParams(query).get('id');
+    }
+    return null;
+  });
+
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const createAbortRef = useRef<AbortController | null>(null);
@@ -28,12 +47,31 @@ export const App: React.FC = () => {
     refresh: refreshSessions,
   } = useSessions();
 
+  const {
+    loading: settingsLoading,
+    error: settingsError,
+    data: settingsData,
+    retry: refreshSettings,
+  } = useSettings();
+
   const sessions = sessionsData ?? [];
   const canStart = !!(selectedCharacterId && selectedSettingId);
 
   useEffect(() => {
     const onHashChange = () => {
-      setShowBuilder(window.location.hash === '#/character-builder');
+      const hash = window.location.hash;
+      if (hash.startsWith('#/character-builder')) {
+        setViewMode('character-builder');
+        const query = hash.split('?')[1];
+        setBuilderId(new URLSearchParams(query).get('id'));
+      } else if (hash.startsWith('#/setting-builder')) {
+        setViewMode('setting-builder');
+        const query = hash.split('?')[1];
+        setBuilderId(new URLSearchParams(query).get('id'));
+      } else {
+        setViewMode('chat');
+        setBuilderId(null);
+      }
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -79,8 +117,24 @@ export const App: React.FC = () => {
         {/* Sidebar */}
         <aside className="w-80 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col p-3 overflow-hidden">
           <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">
-            <CharactersPanel selectedId={selectedCharacterId} onSelect={setSelectedCharacterId} />
-            <SettingsSelector value={selectedSettingId} onChange={setSelectedSettingId} />
+            <CharactersPanel
+              selectedId={selectedCharacterId}
+              onSelect={setSelectedCharacterId}
+              onEdit={(id) => {
+                window.location.hash = `#/character-builder?id=${id}`;
+              }}
+            />
+            <SettingsPanel
+              selectedId={selectedSettingId}
+              onSelect={setSelectedSettingId}
+              onEdit={(id) => {
+                window.location.hash = `#/setting-builder?id=${id}`;
+              }}
+              settings={settingsData ?? []}
+              loading={settingsLoading}
+              error={settingsError}
+              onRefresh={refreshSettings}
+            />
             <div className="border border-slate-800 rounded-lg p-3">
               <button
                 className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
@@ -136,7 +190,13 @@ export const App: React.FC = () => {
           {/* Content Canvas */}
           <section className="pt-16 h-full overflow-y-auto custom-scrollbar">
             <div className="px-4 pb-6">
-              {showBuilder ? <CharacterBuilder /> : <ChatPanel sessionId={currentSessionId} />}
+              {viewMode === 'character-builder' ? (
+                <CharacterBuilder id={builderId} />
+              ) : viewMode === 'setting-builder' ? (
+                <SettingBuilder id={builderId} onSave={refreshSettings} />
+              ) : (
+                <ChatPanel sessionId={currentSessionId} />
+              )}
             </div>
           </section>
         </main>

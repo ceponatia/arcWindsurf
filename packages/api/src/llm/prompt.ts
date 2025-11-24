@@ -1,6 +1,5 @@
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import type { Message } from '@minimal-rpg/db/node';
-import type { BuildPromptOptions, BuildPromptResult } from '../types.js';
+import type { BuildPromptOptions, BuildPromptResult, DbMessage } from '../types.js';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' };
@@ -54,7 +53,7 @@ function serializeSetting(s: SettingProfile) {
     `Setting: ${s.name}`,
     `Tone: ${s.tone}`,
     `Lore: ${truncate(s.lore, 1200)}`,
-    s.constraints?.length ? `Constraints: ${s.constraints.join('; ')}` : undefined,
+    s.themes?.length ? `Themes: ${s.themes.join('; ')}` : undefined,
   ]
     .filter(Boolean)
     .join('\n');
@@ -130,7 +129,7 @@ function serializeScent(s: unknown): string {
   return bits.length ? `Scent Hints: ${bits.join(', ')}` : '';
 }
 
-function summarizeHistory(messages: Message[], keepLast: number, maxChars: number) {
+function summarizeHistory(messages: DbMessage[], keepLast: number, maxChars: number) {
   if (messages.length <= keepLast) return '';
   const older = messages.slice(0, Math.max(0, messages.length - keepLast));
 

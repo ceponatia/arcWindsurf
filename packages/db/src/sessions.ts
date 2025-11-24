@@ -1,32 +1,29 @@
 import { randomUUID } from 'node:crypto';
-import { pool } from './prisma.js';
-import type { DbRow, QueryResult, UUID, RandomUUID } from './types.js';
+import { pool } from './client.js';
+import type {
+  DbRow,
+  MessageRole,
+  QueryResult,
+  RandomUUID,
+  SessionMessage,
+  SessionRecord,
+  SessionSummaryRecord,
+  UUID,
+} from './types.js';
+
+export type { MessageRole } from './types.js';
+export type {
+  SessionMessage as Message,
+  SessionRecord as Session,
+  SessionSummaryRecord as SessionSummary,
+} from './types.js';
 
 // Ensure typed UUID generator in environments without Node types
 const genUUID: RandomUUID = randomUUID as unknown as RandomUUID;
 
-export type MessageRole = 'user' | 'assistant' | 'system';
-
-export interface Message {
-  role: MessageRole;
-  content: string;
-  createdAt: string;
-}
-
-export interface Session {
-  id: UUID;
-  characterId: string;
-  settingId: string;
-  createdAt: string;
-  messages: Message[];
-}
-
-export interface SessionSummary {
-  id: UUID;
-  characterId: string;
-  settingId: string;
-  createdAt: string;
-}
+type Message = SessionMessage;
+type Session = SessionRecord;
+type SessionSummary = SessionSummaryRecord;
 
 function toIsoDate(v: unknown): string {
   if (v instanceof Date)
@@ -85,6 +82,7 @@ export async function getSession(id: UUID): Promise<Session | undefined> {
       role: readStr(rec, 'role') as MessageRole,
       content: readStr(rec, 'content', ''),
       createdAt: created,
+      idx: Number(rec['idx'] ?? 0),
     };
   });
   return {

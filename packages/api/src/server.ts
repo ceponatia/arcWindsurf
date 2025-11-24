@@ -65,7 +65,7 @@ async function start(): Promise<void> {
     '*',
     cors({
       origin: '*',
-      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowHeaders: ['Content-Type'],
     })
   );

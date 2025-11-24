@@ -21,8 +21,10 @@ export interface PathLike {
 export type SqlFile = string;
 export type SqlText = string;
 
-// DB row/params helpers used across prisma.ts
-export type DbRow = Record<string, unknown>;
+// DB row/params helpers used across client.ts
+export interface DbRow {
+  [key: string]: unknown;
+}
 export type DbRows<T = DbRow> = T[];
 export type SqlParams = unknown[];
 export interface QueryResult<T> {
@@ -63,3 +65,99 @@ export interface UserSessionEntity {
   createdAt?: Date;
   messages?: MessageEntity[];
 }
+
+// Admin DB helpers shared with the API package
+export interface DbColumn {
+  name: string;
+  type: string;
+  isId: boolean;
+  isRequired: boolean;
+  isList: boolean;
+}
+
+export interface DbTableOverview {
+  name: string;
+  columns: DbColumn[];
+  rowCount: number;
+  sample: DbRow[];
+}
+
+export interface DbOverviewResult {
+  tables: DbTableOverview[];
+}
+
+export interface DbPathInfo {
+  url: string;
+  path: string;
+  exists: boolean;
+}
+
+// Prisma-style camelized rows returned from client.ts
+export interface TemplateProfileRow extends DbRow {
+  id: string;
+  profileJson: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type CharacterTemplateRow = TemplateProfileRow;
+export type SettingTemplateRow = TemplateProfileRow;
+
+interface InstanceRowBase extends DbRow {
+  id: string;
+  sessionId: string;
+  baseline: string | null;
+  overrides: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface CharacterInstanceRow extends InstanceRowBase {
+  templateCharacterId: string;
+}
+
+export interface SettingInstanceRow extends InstanceRowBase {
+  templateSettingId: string;
+}
+
+export interface MessageRow extends DbRow {
+  id: string;
+  sessionId: string;
+  idx: number;
+  role: string;
+  content: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface UserSessionRow extends DbRow {
+  id: string;
+  characterId: string;
+  settingId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  messages?: MessageRow[];
+}
+
+// Session helpers exposed by sessions.ts
+export type MessageRole = 'user' | 'assistant' | 'system';
+
+export interface SessionMessage {
+  role: MessageRole;
+  content: string;
+  createdAt: string;
+  idx: number;
+}
+
+export interface SessionRecord {
+  id: UUID;
+  characterId: string;
+  settingId: string;
+  createdAt: string;
+  messages: SessionMessage[];
+}
+
+export type SessionSummaryRecord = Pick<
+  SessionRecord,
+  'id' | 'characterId' | 'settingId' | 'createdAt'
+>;

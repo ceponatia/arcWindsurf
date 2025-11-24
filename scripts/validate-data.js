@@ -139,11 +139,10 @@ function validateSetting(obj, file) {
   if (!obj.tone || typeof obj.tone !== 'string' || obj.tone.length === 0)
     errs.push('tone must be non-empty string');
   if (
-    obj.constraints &&
-    (!Array.isArray(obj.constraints) ||
-      obj.constraints.some((t) => typeof t !== 'string' || t.length === 0))
+    obj.themes &&
+    (!Array.isArray(obj.themes) || obj.themes.some((t) => typeof t !== 'string' || t.length === 0))
   )
-    errs.push('constraints must be an array of non-empty strings');
+    errs.push('themes must be an array of non-empty strings');
   if (errs.length) {
     console.error(`Validation errors in ${file}:`);
     errs.forEach((e) => console.error('-', e));

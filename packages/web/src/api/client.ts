@@ -6,6 +6,7 @@ import type {
   Session,
   SessionSummary,
 } from '../types.js';
+import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../config.js';
 
 export interface DbColumn {
@@ -166,6 +167,20 @@ export async function sendMessage(
   });
 }
 
+export async function updateMessage(
+  sessionId: string,
+  idx: number,
+  content: string,
+  signal?: AbortSignal
+): Promise<void> {
+  await http<void>(`/sessions/${encodeURIComponent(sessionId)}/messages/${idx}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+    ...(signal && { signal }),
+  });
+}
+
 export async function getSessionMessages(
   sessionId: string,
   signal?: AbortSignal
@@ -203,6 +218,13 @@ export async function deleteCharacter(characterId: string, signal?: AbortSignal)
   });
 }
 
+export async function deleteSetting(settingId: string, signal?: AbortSignal): Promise<void> {
+  await http<void>(`/settings/${encodeURIComponent(settingId)}`, {
+    method: 'DELETE',
+    ...(signal && { signal }),
+  });
+}
+
 export async function getDbOverview(signal?: AbortSignal): Promise<DbOverview> {
   return http<DbOverview>('/admin/db/overview', signal ? { signal } : undefined);
 }
@@ -212,5 +234,46 @@ export async function deleteDbRow(model: string, id: string, signal?: AbortSigna
     method: 'DELETE',
     ...(signal && { signal }),
     timeoutMs: 15000,
+  });
+}
+
+export async function getCharacter(
+  characterId: string,
+  signal?: AbortSignal
+): Promise<CharacterProfile> {
+  return http<CharacterProfile>(
+    `/characters/${encodeURIComponent(characterId)}`,
+    signal ? { signal } : undefined
+  );
+}
+
+export async function getSetting(settingId: string, signal?: AbortSignal): Promise<SettingProfile> {
+  return http<SettingProfile>(
+    `/settings/${encodeURIComponent(settingId)}`,
+    signal ? { signal } : undefined
+  );
+}
+
+export async function saveCharacter(
+  profile: CharacterProfile,
+  signal?: AbortSignal
+): Promise<{ character: CharacterSummary }> {
+  return http<{ character: CharacterSummary }>('/characters', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+    ...(signal && { signal }),
+  });
+}
+
+export async function saveSetting(
+  profile: SettingProfile,
+  signal?: AbortSignal
+): Promise<{ setting: SettingSummary }> {
+  return http<{ setting: SettingSummary }>('/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+    ...(signal && { signal }),
   });
 }

@@ -1,5 +1,4 @@
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import type { Message, Session } from '@minimal-rpg/db/node';
 import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
 
 // Errors & API status
@@ -59,11 +58,29 @@ export interface SessionListItem {
   settingName?: string;
 }
 
+export interface DbMessage {
+  role: ChatRole;
+  content: string;
+  createdAt: string;
+  idx: number;
+}
+
+export interface DbSession {
+  id: string;
+  characterId: string;
+  settingId: string;
+  createdAt: string;
+  messages: DbMessage[];
+}
+
+export type DbSessionSummary = Pick<DbSession, 'id' | 'characterId' | 'settingId' | 'createdAt'>;
+
 // Message DTO
 export interface MessageResponse {
   role: ChatRole;
   content: string;
   createdAt: string;
+  idx?: number;
 }
 
 // Session creation
@@ -139,11 +156,16 @@ export interface LlmProvider {
   ): Promise<LlmResponse | ApiError>;
 }
 
+export type GenerateWithOpenRouterFn = (
+  params: { apiKey: string; model: string; messages: { role: ChatRole; content: string }[] },
+  options?: LlmGenerationOptions
+) => Promise<LlmResponse | ApiError>;
+
 // Prompt building
 export interface BuildPromptOptions {
   character: CharacterProfile;
   setting: SettingProfile;
-  history: Message[];
+  history: DbMessage[];
   historyWindow?: number;
   summaryMaxChars?: number;
 }
@@ -172,16 +194,117 @@ export interface HealthResponse {
 }
 export type RuntimeConfigResponse = RuntimeConfigPublic;
 
-// Mapper input helpers (narrowing session to exported shape)
-export type DbSession = Session;
-export type DbMessage = Message;
-
 // Mapper function signatures for discoverability
 export type MapCharacterSummary = (c: CharacterProfile, source: 'fs' | 'db') => CharacterSummary;
 export type MapSettingSummary = (s: SettingProfile, source: 'fs' | 'db') => SettingSummary;
 export type MapSessionListItem = (
-  s: Pick<DbSession, 'id' | 'characterId' | 'settingId' | 'createdAt'>,
+  s: DbSessionSummary,
   characterName?: string,
   settingName?: string
 ) => SessionListItem;
 export type MapMessageResponse = (m: DbMessage) => MessageResponse;
+
+// DB rows returned from @minimal-rpg/db prisma-like helpers
+export interface TemplateProfileRow {
+  id: string;
+  profileJson: string;
+}
+export type CharacterTemplateRow = TemplateProfileRow;
+export type SettingTemplateRow = TemplateProfileRow;
+
+interface InstanceRowBase {
+  id: string;
+  sessionId: string;
+  baseline: string | null;
+  overrides: string | null;
+}
+
+export interface CharacterInstanceRow extends InstanceRowBase {
+  templateCharacterId: string;
+}
+
+export interface SettingInstanceRow extends InstanceRowBase {
+  templateSettingId: string;
+}
+
+export interface MessageRow {
+  id: string;
+  sessionId: string;
+  idx: number;
+  role: ChatRole;
+  content: string;
+  createdAt?: string | Date | null;
+}
+
+interface TemplateTable<T extends TemplateProfileRow> {
+  findMany(): Promise<T[]>;
+  findUnique(args: { where: { id: string } }): Promise<T | null>;
+  create(args: { data: { id: string; profileJson: string } }): Promise<T>;
+  update(args: { where: { id: string }; data: { profileJson: string } }): Promise<T>;
+  delete(args: { where: { id: string } }): Promise<void>;
+}
+
+interface CharacterInstanceTable {
+  findUnique(args: {
+    where: {
+      sessionId_templateCharacterId?: { sessionId: string; templateCharacterId: string };
+      id?: string;
+    };
+  }): Promise<CharacterInstanceRow | null>;
+  create(args: {
+    data: {
+      id: string;
+      sessionId: string;
+      templateCharacterId: string;
+      baseline: string;
+      overrides: string;
+    };
+  }): Promise<CharacterInstanceRow>;
+  update(args: {
+    where: { id: string };
+    data: { overrides?: string };
+  }): Promise<CharacterInstanceRow>;
+}
+
+interface SettingInstanceTable {
+  findUnique(args: {
+    where: {
+      sessionId_templateSettingId?: { sessionId: string; templateSettingId: string };
+      id?: string;
+    };
+  }): Promise<SettingInstanceRow | null>;
+  create(args: {
+    data: {
+      id: string;
+      sessionId: string;
+      templateSettingId: string;
+      baseline: string;
+      overrides: string;
+    };
+  }): Promise<SettingInstanceRow>;
+  update(args: {
+    where: { id: string };
+    data: { overrides?: string };
+  }): Promise<SettingInstanceRow>;
+}
+
+export interface PrismaClientLike {
+  characterTemplate: TemplateTable<CharacterTemplateRow>;
+  settingTemplate: TemplateTable<SettingTemplateRow>;
+  message: {
+    update(args: {
+      where: { sessionId: string; idx: number };
+      data: { content: string };
+    }): Promise<MessageRow | null>;
+  };
+  characterInstance: CharacterInstanceTable;
+  settingInstance: SettingInstanceTable;
+}
+
+export interface SessionsClientLike {
+  createSession(id: string, characterId: string, settingId: string): Promise<DbSession>;
+  getSession(id: string): Promise<DbSession | undefined>;
+  listSessions(): Promise<DbSessionSummary[]>;
+  deleteSession(id: string): Promise<void>;
+  appendMessage(sessionId: string, role: ChatRole, content: string): Promise<void>;
+}

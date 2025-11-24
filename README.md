@@ -191,6 +191,8 @@ The OpenRouter provider exposes a normalized `LlmResponse` shape via `generateWi
 
 Overrides logic uses typed `OverridesObject` and `OverridesAudit` to keep merging/auditing explicit.
 
+- DB row helper types such as `CharacterTemplateRow`, `SettingTemplateRow`, and the per-session instance rows also live in `packages/api/src/types.ts` so routes can hydrate Prisma records without ad-hoc structural casts.
+
 ## Configuration
 
 The API reads environment variables with sensible defaults for local development.

@@ -1,6 +1,19 @@
 import { Pool } from 'pg';
 import { registerType } from './pgvector.js';
-import type { DbRow, DbRows, QueryResult, SqlParams, PgPoolStrict, PgClientLike } from './types.js';
+import type {
+  CharacterInstanceRow,
+  CharacterTemplateRow,
+  DbRow,
+  DbRows,
+  MessageRow,
+  PgClientLike,
+  PgPoolStrict,
+  QueryResult,
+  SettingInstanceRow,
+  SettingTemplateRow,
+  SqlParams,
+  UserSessionRow,
+} from './types.js';
 
 const env: Record<string, string | undefined> =
   (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
@@ -69,7 +82,7 @@ function asDate(v: unknown): Date | null {
   return null;
 }
 
-function camelizeRow(row: DbRow): DbRow {
+function camelizeRow<T extends DbRow>(row: DbRow): T {
   const out: DbRow = {};
   for (const k of Object.keys(row)) {
     const v = (row as Record<string, unknown>)[k];
@@ -83,10 +96,10 @@ function camelizeRow(row: DbRow): DbRow {
       (out as Record<string, unknown>)[ck] = v;
     }
   }
-  return out;
+  return out as T;
 }
 
-export const prisma = {
+export const db = {
   async $queryRaw(strings: TemplateStringsArray, ...values: unknown[]): Promise<DbRows> {
     const { text, params } = buildQuery(strings, values);
     const { rows } = await query(text, params as SqlParams);
@@ -104,7 +117,7 @@ export const prisma = {
       where: { id: string };
       create: { id: string; characterId: string; settingId: string };
       update: { characterId: string; settingId: string };
-    }) {
+    }): Promise<UserSessionRow> {
       const { id } = args.where;
       const { characterId, settingId } = args.create;
       const { rows } = await query(
@@ -113,30 +126,30 @@ export const prisma = {
          RETURNING *`,
         [id, characterId, settingId]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<UserSessionRow>(rows[0]!);
     },
     async findUnique(args: {
       where: { id: string };
       include?: { messages?: { orderBy?: { idx?: 'asc' | 'desc' } } };
-    }) {
+    }): Promise<UserSessionRow | null> {
       const { id } = args.where;
       const { rows } = await query('SELECT * FROM user_sessions WHERE id = $1 LIMIT 1', [id]);
       if (rows.length === 0) return null;
-      const base = camelizeRow(rows[0]!);
+      const base = camelizeRow<UserSessionRow>(rows[0]!);
       if (args.include?.messages) {
         const order = args.include.messages.orderBy?.idx === 'asc' ? 'ASC' : 'DESC';
         const mres = await query(
           'SELECT * FROM messages WHERE session_id = $1 ORDER BY idx ' + order,
           [id]
         );
-        base['messages'] = mres.rows.map((r) => camelizeRow(r));
+        base.messages = mres.rows.map((r) => camelizeRow<MessageRow>(r));
       }
       return base;
     },
-    async findMany(args?: { orderBy?: { createdAt?: 'asc' | 'desc' } }) {
+    async findMany(args?: { orderBy?: { createdAt?: 'asc' | 'desc' } }): Promise<UserSessionRow[]> {
       const order = args?.orderBy?.createdAt === 'asc' ? 'ASC' : 'DESC';
       const { rows } = await query('SELECT * FROM user_sessions ORDER BY created_at ' + order);
-      return rows.map((r) => camelizeRow(r));
+      return rows.map((r) => camelizeRow<UserSessionRow>(r));
     },
     async delete(args: { where: { id: string } }) {
       await query('DELETE FROM user_sessions WHERE id = $1', [args.where.id]);
@@ -156,13 +169,13 @@ export const prisma = {
     },
     async create(args: {
       data: { id: string; sessionId: string; idx: number; role: string; content: string };
-    }) {
+    }): Promise<MessageRow> {
       const { id, sessionId, idx, role, content } = args.data;
       const { rows } = await query(
         'INSERT INTO messages (id, session_id, idx, role, content) VALUES ($1, $2, $3, $4, $5) RETURNING *',
         [id, sessionId, idx, role, content]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<MessageRow>(rows[0]!);
     },
     async createMany(args: {
       data: { id: string; sessionId: string; idx: number; role: string; content: string }[];
@@ -175,13 +188,16 @@ export const prisma = {
       }
       return { count: args.data.length };
     },
-    async findFirst(args: { where: { sessionId: string }; orderBy?: { idx?: 'asc' | 'desc' } }) {
+    async findFirst(args: {
+      where: { sessionId: string };
+      orderBy?: { idx?: 'asc' | 'desc' };
+    }): Promise<MessageRow | null> {
       const order = args.orderBy?.idx === 'asc' ? 'ASC' : 'DESC';
       const { rows } = await query(
         'SELECT * FROM messages WHERE session_id = $1 ORDER BY idx ' + order + ' LIMIT 1',
         [args.where.sessionId]
       );
-      return rows[0] ? camelizeRow(rows[0]) : null;
+      return rows[0] ? camelizeRow<MessageRow>(rows[0]) : null;
     },
     async deleteMany(args?: { where?: { sessionId?: string } }) {
       if (args?.where?.sessionId) {
@@ -190,26 +206,49 @@ export const prisma = {
         await query('TRUNCATE TABLE messages');
       }
     },
+    async update(args: { where: { sessionId: string; idx: number }; data: { content: string } }) {
+      const { sessionId, idx } = args.where;
+      const { content } = args.data;
+      const { rows } = await query(
+        'UPDATE messages SET content = $3 WHERE session_id = $1 AND idx = $2 RETURNING *',
+        [sessionId, idx, content]
+      );
+      return rows[0] ? camelizeRow<MessageRow>(rows[0]) : null;
+    },
   },
 
   characterTemplate: {
-    async findMany(): Promise<DbRows> {
+    async findMany(): Promise<CharacterTemplateRow[]> {
       const { rows } = await query('SELECT * FROM character_templates ORDER BY created_at DESC');
-      return rows.map((r) => camelizeRow(r));
+      return rows.map((r) => camelizeRow<CharacterTemplateRow>(r));
     },
-    async findUnique(args: { where: { id: string } }): Promise<DbRow | null> {
+    async findUnique(args: { where: { id: string } }): Promise<CharacterTemplateRow | null> {
       const { rows } = await query('SELECT * FROM character_templates WHERE id = $1 LIMIT 1', [
         args.where.id,
       ]);
-      return rows[0] ? camelizeRow(rows[0]) : null;
+      return rows[0] ? camelizeRow<CharacterTemplateRow>(rows[0]) : null;
     },
-    async create(args: { data: { id: string; profileJson: string } }): Promise<DbRow> {
+    async create(args: {
+      data: { id: string; profileJson: string };
+    }): Promise<CharacterTemplateRow> {
       const { id, profileJson } = args.data;
       const { rows } = await query(
         'INSERT INTO character_templates (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
         [id, profileJson]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<CharacterTemplateRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { id: string };
+      data: { profileJson: string };
+    }): Promise<CharacterTemplateRow> {
+      const { id } = args.where;
+      const { profileJson } = args.data;
+      const { rows } = await query(
+        'UPDATE character_templates SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
+        [id, profileJson]
+      );
+      return camelizeRow<CharacterTemplateRow>(rows[0]!);
     },
     async delete(args: { where: { id: string } }): Promise<void> {
       await query('DELETE FROM character_templates WHERE id = $1', [args.where.id]);
@@ -217,23 +256,35 @@ export const prisma = {
   },
 
   settingTemplate: {
-    async findMany(): Promise<DbRows> {
+    async findMany(): Promise<SettingTemplateRow[]> {
       const { rows } = await query('SELECT * FROM setting_templates ORDER BY created_at DESC');
-      return rows.map((r) => camelizeRow(r));
+      return rows.map((r) => camelizeRow<SettingTemplateRow>(r));
     },
-    async findUnique(args: { where: { id: string } }): Promise<DbRow | null> {
+    async findUnique(args: { where: { id: string } }): Promise<SettingTemplateRow | null> {
       const { rows } = await query('SELECT * FROM setting_templates WHERE id = $1 LIMIT 1', [
         args.where.id,
       ]);
-      return rows[0] ? camelizeRow(rows[0]) : null;
+      return rows[0] ? camelizeRow<SettingTemplateRow>(rows[0]) : null;
     },
-    async create(args: { data: { id: string; profileJson: string } }): Promise<DbRow> {
+    async create(args: { data: { id: string; profileJson: string } }): Promise<SettingTemplateRow> {
       const { id, profileJson } = args.data;
       const { rows } = await query(
         'INSERT INTO setting_templates (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
         [id, profileJson]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<SettingTemplateRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { id: string };
+      data: { profileJson: string };
+    }): Promise<SettingTemplateRow> {
+      const { id } = args.where;
+      const { profileJson } = args.data;
+      const { rows } = await query(
+        'UPDATE setting_templates SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
+        [id, profileJson]
+      );
+      return camelizeRow<SettingTemplateRow>(rows[0]!);
     },
     async delete(args: { where: { id: string } }): Promise<void> {
       await query('DELETE FROM setting_templates WHERE id = $1', [args.where.id]);
@@ -246,19 +297,19 @@ export const prisma = {
         sessionId_templateCharacterId?: { sessionId: string; templateCharacterId: string };
         id?: string;
       };
-    }): Promise<DbRow | null> {
+    }): Promise<CharacterInstanceRow | null> {
       if (args.where.id) {
         const { rows } = await query('SELECT * FROM character_instances WHERE id = $1 LIMIT 1', [
           args.where.id,
         ]);
-        return rows[0] ? camelizeRow(rows[0]) : null;
+        return rows[0] ? camelizeRow<CharacterInstanceRow>(rows[0]) : null;
       }
       const key = args.where.sessionId_templateCharacterId!;
       const { rows } = await query(
         'SELECT * FROM character_instances WHERE session_id = $1 AND template_character_id = $2 LIMIT 1',
         [key.sessionId, key.templateCharacterId]
       );
-      return rows[0] ? camelizeRow(rows[0]) : null;
+      return rows[0] ? camelizeRow<CharacterInstanceRow>(rows[0]) : null;
     },
     async create(args: {
       data: {
@@ -268,22 +319,25 @@ export const prisma = {
         baseline: string;
         overrides: string;
       };
-    }): Promise<DbRow> {
+    }): Promise<CharacterInstanceRow> {
       const d = args.data;
       const { rows } = await query(
         'INSERT INTO character_instances (id, session_id, template_character_id, baseline, overrides) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb) RETURNING *',
         [d.id, d.sessionId, d.templateCharacterId, d.baseline, d.overrides]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<CharacterInstanceRow>(rows[0]!);
     },
-    async update(args: { where: { id: string }; data: { overrides?: string } }): Promise<DbRow> {
+    async update(args: {
+      where: { id: string };
+      data: { overrides?: string };
+    }): Promise<CharacterInstanceRow> {
       const { id } = args.where;
       const { overrides } = args.data;
       const { rows } = await query(
         'UPDATE character_instances SET overrides = COALESCE($2::jsonb, overrides), updated_at = now() WHERE id = $1 RETURNING *',
         [id, overrides ?? null]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<CharacterInstanceRow>(rows[0]!);
     },
   },
 
@@ -293,19 +347,19 @@ export const prisma = {
         sessionId_templateSettingId?: { sessionId: string; templateSettingId: string };
         id?: string;
       };
-    }): Promise<DbRow | null> {
+    }): Promise<SettingInstanceRow | null> {
       if (args.where.id) {
         const { rows } = await query('SELECT * FROM setting_instances WHERE id = $1 LIMIT 1', [
           args.where.id,
         ]);
-        return rows[0] ? camelizeRow(rows[0]) : null;
+        return rows[0] ? camelizeRow<SettingInstanceRow>(rows[0]) : null;
       }
       const key = args.where.sessionId_templateSettingId!;
       const { rows } = await query(
         'SELECT * FROM setting_instances WHERE session_id = $1 AND template_setting_id = $2 LIMIT 1',
         [key.sessionId, key.templateSettingId]
       );
-      return rows[0] ? camelizeRow(rows[0]) : null;
+      return rows[0] ? camelizeRow<SettingInstanceRow>(rows[0]) : null;
     },
     async create(args: {
       data: {
@@ -315,22 +369,25 @@ export const prisma = {
         baseline: string;
         overrides: string;
       };
-    }): Promise<DbRow> {
+    }): Promise<SettingInstanceRow> {
       const d = args.data;
       const { rows } = await query(
         'INSERT INTO setting_instances (id, session_id, template_setting_id, baseline, overrides) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb) RETURNING *',
         [d.id, d.sessionId, d.templateSettingId, d.baseline, d.overrides]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<SettingInstanceRow>(rows[0]!);
     },
-    async update(args: { where: { id: string }; data: { overrides?: string } }): Promise<DbRow> {
+    async update(args: {
+      where: { id: string };
+      data: { overrides?: string };
+    }): Promise<SettingInstanceRow> {
       const { id } = args.where;
       const { overrides } = args.data;
       const { rows } = await query(
         'UPDATE setting_instances SET overrides = COALESCE($2::jsonb, overrides), updated_at = now() WHERE id = $1 RETURNING *',
         [id, overrides ?? null]
       );
-      return camelizeRow(rows[0]!);
+      return camelizeRow<SettingInstanceRow>(rows[0]!);
     },
   },
 };
