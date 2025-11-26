@@ -95,7 +95,10 @@ type StyleValue<K extends keyof CharacterStyleOverrides> = NonNullable<Character
 const pickOption = <T extends string>(value: SelectOption<T>, fallback: T): T =>
   value ? value : fallback;
 
-export const CharacterBuilder: React.FC<{ id?: string | null }> = ({ id }) => {
+export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => void }> = ({
+  id,
+  onSave: onSaveCallback,
+}) => {
   const [form, setForm] = useState(initialState);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -346,6 +349,7 @@ export const CharacterBuilder: React.FC<{ id?: string | null }> = ({ id }) => {
         setError(errMsg || 'Failed');
       } else {
         setSuccess('Character saved.');
+        if (onSaveCallback) onSaveCallback();
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Network error');

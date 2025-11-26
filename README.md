@@ -113,6 +113,11 @@ Defaults:
 
 To change model/runtime params, set env vars (see `packages/api/.env.example`).
 
+Notes:
+
+- Postgres data persists in the named `pgdata` volume. Run `docker compose down -v` (or `pnpm docker:down && docker volume rm minimal-rpg_pgdata`) if you want a clean database.
+- The Postgres container is initialized with `POSTGRES_INITDB_ARGS=--locale=C` to avoid collation version mismatches when the base image updates. After pulling a new image, recreate the database volume once so the locale setting takes effect.
+
 ## Health
 
 - `GET /health` returns `{ status, uptime, version, db, llm }`.

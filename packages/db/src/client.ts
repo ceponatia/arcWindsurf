@@ -189,9 +189,17 @@ export const db = {
       return { count: args.data.length };
     },
     async findFirst(args: {
-      where: { sessionId: string };
+      where: { sessionId: string; idx?: number };
       orderBy?: { idx?: 'asc' | 'desc' };
     }): Promise<MessageRow | null> {
+      const { sessionId, idx } = args.where;
+      if (typeof idx === 'number') {
+        const { rows } = await query(
+          'SELECT * FROM messages WHERE session_id = $1 AND idx = $2 LIMIT 1',
+          [sessionId, idx]
+        );
+        return rows[0] ? camelizeRow<MessageRow>(rows[0]) : null;
+      }
       const order = args.orderBy?.idx === 'asc' ? 'ASC' : 'DESC';
       const { rows } = await query(
         'SELECT * FROM messages WHERE session_id = $1 ORDER BY idx ' + order + ' LIMIT 1',
@@ -199,10 +207,22 @@ export const db = {
       );
       return rows[0] ? camelizeRow<MessageRow>(rows[0]) : null;
     },
-    async deleteMany(args?: { where?: { sessionId?: string } }) {
+    async deleteMany(args?: { where?: { sessionId?: string; idx?: number } }) {
       if (args?.where?.sessionId) {
-        await query('DELETE FROM messages WHERE session_id = $1', [args.where.sessionId]);
+        if (typeof args.where.idx === 'number') {
+          console.log(
+            `[DB] Deleting single message: sessionId=${args.where.sessionId}, idx=${args.where.idx}`
+          );
+          await query('DELETE FROM messages WHERE session_id = $1 AND idx = $2', [
+            args.where.sessionId,
+            args.where.idx,
+          ]);
+        } else {
+          console.log(`[DB] Deleting all messages for session: sessionId=${args.where.sessionId}`);
+          await query('DELETE FROM messages WHERE session_id = $1', [args.where.sessionId]);
+        }
       } else {
+        console.log('[DB] Truncating messages table');
         await query('TRUNCATE TABLE messages');
       }
     },

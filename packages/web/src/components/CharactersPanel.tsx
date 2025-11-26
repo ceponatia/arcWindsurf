@@ -1,19 +1,26 @@
 import React from 'react';
-import { useCharacters } from '../hooks/useCharacters.js';
 import { deleteCharacter } from '../api/client.js';
 
 export interface CharactersPanelProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onEdit?: (id: string) => void;
+  characters?: import('../types.js').CharacterSummary[] | null;
+  loading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
 }
 
 export const CharactersPanel: React.FC<CharactersPanelProps> = ({
   selectedId,
   onSelect,
   onEdit,
+  characters,
+  loading,
+  error,
+  onRefresh,
 }) => {
-  const { loading, error, data, retry } = useCharacters();
+  const data = characters;
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -21,7 +28,7 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
     try {
       await deleteCharacter(id);
       if (selectedId === id) onSelect(null);
-      retry();
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Failed to delete character', err);
       alert('Failed to delete character');
@@ -38,7 +45,10 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
         {error && (
           <div className="space-y-2">
             <p className="text-red-400">Failed to load: {error}</p>
-            <button className="px-3 py-1.5 rounded-md bg-slate-800 text-slate-200" onClick={retry}>
+            <button
+              className="px-3 py-1.5 rounded-md bg-slate-800 text-slate-200"
+              onClick={onRefresh}
+            >
               Retry
             </button>
           </div>

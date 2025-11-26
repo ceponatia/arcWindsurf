@@ -11,6 +11,7 @@ import { SettingBuilder } from './components/SettingBuilder.js';
 import { createSession, deleteSession } from './api/client.js';
 import { useSessions } from './hooks/useSessions.js';
 import { useSettings } from './hooks/useSettings.js';
+import { useCharacters } from './hooks/useCharacters.js';
 
 type ViewMode = 'chat' | 'character-builder' | 'setting-builder';
 
@@ -46,6 +47,13 @@ export const App: React.FC = () => {
     data: sessionsData,
     refresh: refreshSessions,
   } = useSessions();
+
+  const {
+    loading: charactersLoading,
+    error: charactersError,
+    data: charactersData,
+    retry: refreshCharacters,
+  } = useCharacters();
 
   const {
     loading: settingsLoading,
@@ -123,6 +131,10 @@ export const App: React.FC = () => {
               onEdit={(id) => {
                 window.location.hash = `#/character-builder?id=${id}`;
               }}
+              characters={charactersData ?? []}
+              loading={charactersLoading}
+              error={charactersError}
+              onRefresh={refreshCharacters}
             />
             <SettingsPanel
               selectedId={selectedSettingId}
@@ -191,7 +203,7 @@ export const App: React.FC = () => {
           <section className="pt-16 h-full overflow-y-auto custom-scrollbar">
             <div className="px-4 pb-6">
               {viewMode === 'character-builder' ? (
-                <CharacterBuilder id={builderId} />
+                <CharacterBuilder id={builderId} onSave={refreshCharacters} />
               ) : viewMode === 'setting-builder' ? (
                 <SettingBuilder id={builderId} onSave={refreshSettings} />
               ) : (

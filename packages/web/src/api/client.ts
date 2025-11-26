@@ -181,6 +181,17 @@ export async function updateMessage(
   });
 }
 
+export async function deleteMessage(
+  sessionId: string,
+  idx: number,
+  signal?: AbortSignal
+): Promise<void> {
+  await http<void>(`/sessions/${encodeURIComponent(sessionId)}/messages/${idx}`, {
+    method: 'DELETE',
+    ...(signal && { signal }),
+  });
+}
+
 export async function getSessionMessages(
   sessionId: string,
   signal?: AbortSignal

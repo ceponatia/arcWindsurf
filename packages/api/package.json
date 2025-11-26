@@ -23,8 +23,7 @@
     "@minimal-rpg/shared": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",
     "dotenv": "^17.2.3",
-    "hono": "^4.10.6",
-    "zod": "^4.1.12"
+    "hono": "^4.10.6"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

@@ -1,0 +1,25 @@
+FROM node:20
+
+WORKDIR /app
+
+# 1. Copy workspace metadata first for layer caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Optionally, copy just the package manifests we care about
+COPY packages/api/package.json ./packages/api/package.json
+COPY packages/web/package.json ./packages/web/package.json
+COPY packages/db/package.json ./packages/db/package.json
+COPY packages/schemas/package.json ./packages/schemas/package.json
+
+# 2. Install dependencies at build time, non-interactive
+RUN corepack enable \
+  && CI=true pnpm install --frozen-lockfile
+
+# 3. Copy the rest of the repo
+COPY . .
+
+# 4. Build shared pieces you always want up to date
+RUN pnpm -F @minimal-rpg/schemas build
+
+# 5. Default command is a no-op; docker-compose services will override it
+CMD ["node", "-e", "console.log('Base image ready')"]

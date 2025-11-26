@@ -66,9 +66,6 @@ importers:
       hono:
         specifier: ^4.10.6
         version: 4.10.6
-      zod:
-        specifier: ^4.1.12
-        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: ^24.10.1

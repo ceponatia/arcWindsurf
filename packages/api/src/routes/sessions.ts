@@ -299,6 +299,26 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     return c.body(null, 204);
   });
 
+  // DELETE /sessions/:id/messages/:idx - delete a single message
+  app.delete('/sessions/:id/messages/:idx', async (c) => {
+    const id = c.req.param('id');
+    const idx = parseInt(c.req.param('idx'), 10);
+    if (isNaN(idx)) return c.json({ ok: false, error: 'invalid index' } satisfies ApiError, 400);
+
+    console.info(`[API] Request to delete message: session=${id}, idx=${idx}`);
+
+    const session = await getSession(id);
+    if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
+
+    const existing = await db.message.findFirst({ where: { sessionId: id, idx } });
+    if (!existing) {
+      return c.json({ ok: false, error: 'message not found' } satisfies ApiError, 404);
+    }
+
+    await db.message.deleteMany({ where: { sessionId: id, idx } });
+    return c.body(null, 204);
+  });
+
   // POST /sessions/:id/messages - append a user message and get LLM reply
   app.post('/sessions/:id/messages', async (c) => {
     const loaded = deps.getLoaded();

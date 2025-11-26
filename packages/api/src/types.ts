@@ -296,6 +296,11 @@ export interface PrismaClientLike {
       where: { sessionId: string; idx: number };
       data: { content: string };
     }): Promise<MessageRow | null>;
+    findFirst(args: {
+      where: { sessionId: string; idx?: number };
+      orderBy?: { idx?: 'asc' | 'desc' };
+    }): Promise<MessageRow | null>;
+    deleteMany(args?: { where?: { sessionId?: string; idx?: number } }): Promise<void>;
   };
   characterInstance: CharacterInstanceTable;
   settingInstance: SettingInstanceTable;
