@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config.js';
-import { CharacterProfileSchema, type CharacterProfile, type Scent } from '@minimal-rpg/schemas';
+import {
+  CharacterProfileSchema,
+  type CharacterProfile,
+  type Scent,
+  APPEARANCE_ARMS_BUILD,
+  APPEARANCE_ARMS_LENGTH,
+  APPEARANCE_HEIGHTS,
+  APPEARANCE_LEGS_BUILD,
+  APPEARANCE_LEGS_LENGTH,
+  APPEARANCE_TORSOS,
+  SPEECH_DARKNESS_LEVELS,
+  SPEECH_FORMALITY_LEVELS,
+  SPEECH_HUMOR_LEVELS,
+  SPEECH_PACING_LEVELS,
+  SPEECH_SENTENCE_LENGTHS,
+  SPEECH_VERBOSITY_LEVELS,
+} from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
 import type {
   ApiErrorShape,
-  AppearanceMode,
   ArmsBuildOption,
   ArmsLengthOption,
   CharacterStyleOverrides,
@@ -24,7 +39,6 @@ interface FormState {
   tags: string;
   personality: string;
   appearance: string; // free text appearance
-  appearanceMode: AppearanceMode;
   // Structured appearance fields
   apHairColor: string;
   apHairStyle: string;
@@ -60,7 +74,6 @@ const initialState: FormState = {
   tags: '',
   personality: '',
   appearance: '',
-  appearanceMode: 'free',
   apHairColor: '',
   apHairStyle: '',
   apHairLength: '',
@@ -126,25 +139,19 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
           f.goals = (data.goals ?? []).join(', ');
           f.speakingStyle = data.speakingStyle ?? '';
 
-          if (data.appearance) {
-            if (typeof data.appearance === 'string') {
-              f.appearanceMode = 'free';
-              f.appearance = data.appearance;
-            } else {
-              f.appearanceMode = 'structured';
-              f.apHairColor = data.appearance.hair?.color ?? '';
-              f.apHairStyle = data.appearance.hair?.style ?? '';
-              f.apHairLength = data.appearance.hair?.length ?? '';
-              f.apEyesColor = data.appearance.eyes?.color ?? '';
-              f.apHeight = data.appearance.height;
-              f.apTorso = data.appearance.torso;
-              f.apSkinTone = data.appearance.skinTone ?? '';
-              f.apFeatures = (data.appearance.features ?? []).join(', ');
-              f.apArmsBuild = data.appearance.arms?.build ?? '';
-              f.apArmsLength = data.appearance.arms?.length ?? '';
-              f.apLegsBuild = data.appearance.legs?.build ?? '';
-              f.apLegsLength = data.appearance.legs?.length ?? '';
-            }
+          if (data.appearance && typeof data.appearance !== 'string') {
+            f.apHairColor = data.appearance.hair?.color ?? '';
+            f.apHairStyle = data.appearance.hair?.style ?? '';
+            f.apHairLength = data.appearance.hair?.length ?? '';
+            f.apEyesColor = data.appearance.eyes?.color ?? '';
+            f.apHeight = data.appearance.height;
+            f.apTorso = data.appearance.torso;
+            f.apSkinTone = data.appearance.skinTone ?? '';
+            f.apFeatures = (data.appearance.features ?? []).join(', ');
+            f.apArmsBuild = data.appearance.arms?.build ?? '';
+            f.apArmsLength = data.appearance.arms?.length ?? '';
+            f.apLegsBuild = data.appearance.legs?.build ?? '';
+            f.apLegsLength = data.appearance.legs?.length ?? '';
           }
 
           if (data.scent) {
@@ -208,27 +215,27 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
     const style: CharacterStyleOverrides = {};
     const sl = form.styleSentenceLength.trim();
     const isSentenceLength = (v: string): v is StyleValue<'sentenceLength'> =>
-      ['terse', 'balanced', 'long'].includes(v as StyleValue<'sentenceLength'>);
+      (SPEECH_SENTENCE_LENGTHS as readonly string[]).includes(v);
     if (isSentenceLength(sl)) style.sentenceLength = sl;
     const hum = form.styleHumor.trim();
     const isHumor = (v: string): v is StyleValue<'humor'> =>
-      ['none', 'light', 'wry', 'dark'].includes(v as StyleValue<'humor'>);
+      (SPEECH_HUMOR_LEVELS as readonly string[]).includes(v);
     if (isHumor(hum)) style.humor = hum;
     const dark = form.styleDarkness.trim();
     const isDarkness = (v: string): v is StyleValue<'darkness'> =>
-      ['low', 'medium', 'high'].includes(v as StyleValue<'darkness'>);
+      (SPEECH_DARKNESS_LEVELS as readonly string[]).includes(v);
     if (isDarkness(dark)) style.darkness = dark;
     const pace = form.stylePacing.trim();
     const isPacing = (v: string): v is StyleValue<'pacing'> =>
-      ['slow', 'balanced', 'fast'].includes(v as StyleValue<'pacing'>);
+      (SPEECH_PACING_LEVELS as readonly string[]).includes(v);
     if (isPacing(pace)) style.pacing = pace;
     const formality = form.styleFormality.trim();
     const isFormality = (v: string): v is StyleValue<'formality'> =>
-      ['casual', 'neutral', 'formal'].includes(v as StyleValue<'formality'>);
+      (SPEECH_FORMALITY_LEVELS as readonly string[]).includes(v);
     if (isFormality(formality)) style.formality = formality;
     const verb = form.styleVerbosity.trim();
     const isVerbosity = (v: string): v is StyleValue<'verbosity'> =>
-      ['terse', 'balanced', 'lavish'].includes(v as StyleValue<'verbosity'>);
+      (SPEECH_VERBOSITY_LEVELS as readonly string[]).includes(v);
     if (isVerbosity(verb)) style.verbosity = verb;
     // Build appearance depending on input mode
     const structuredAppearance =
@@ -244,38 +251,33 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
       form.apArmsLength ||
       form.apLegsBuild ||
       form.apLegsLength;
-    const appearance =
-      form.appearanceMode === 'free'
-        ? form.appearance.trim()
-          ? form.appearance.trim()
-          : undefined
-        : structuredAppearance
-          ? {
-              hair: {
-                color: form.apHairColor || 'brown',
-                style: form.apHairStyle || 'straight',
-                length: form.apHairLength || 'medium',
-              },
-              eyes: { color: form.apEyesColor || 'brown' },
-              height: pickOption(form.apHeight, 'average'),
-              torso: pickOption(form.apTorso, 'average'),
-              skinTone: form.apSkinTone || 'pale',
-              features: form.apFeatures
-                ? form.apFeatures
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                : undefined,
-              arms: {
-                build: pickOption(form.apArmsBuild, 'average'),
-                length: pickOption(form.apArmsLength, 'average'),
-              },
-              legs: {
-                length: pickOption(form.apLegsLength, 'average'),
-                build: pickOption(form.apLegsBuild, 'toned'),
-              },
-            }
-          : undefined;
+    const appearance = structuredAppearance
+      ? {
+          hair: {
+            color: form.apHairColor || 'brown',
+            style: form.apHairStyle || 'straight',
+            length: form.apHairLength || 'medium',
+          },
+          eyes: { color: form.apEyesColor || 'brown' },
+          height: pickOption(form.apHeight, 'average'),
+          torso: pickOption(form.apTorso, 'average'),
+          skinTone: form.apSkinTone || 'pale',
+          features: form.apFeatures
+            ? form.apFeatures
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : undefined,
+          arms: {
+            build: pickOption(form.apArmsBuild, 'average'),
+            length: pickOption(form.apArmsLength, 'average'),
+          },
+          legs: {
+            length: pickOption(form.apLegsLength, 'average'),
+            build: pickOption(form.apLegsBuild, 'toned'),
+          },
+        }
+      : undefined;
 
     const profile: CharacterProfile = {
       id: form.id.trim(),
@@ -298,7 +300,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
         pathToField: (path: (string | number)[]) => {
           const p = path.map(String);
           if (p[0] === 'appearance') {
-            if (form.appearanceMode === 'free') return 'appearance';
             const map: Record<string, FormKey> = {
               'hair.color': 'apHairColor',
               'hair.style': 'apHairStyle',
@@ -350,6 +351,7 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
       } else {
         setSuccess('Character saved.');
         if (onSaveCallback) onSaveCallback();
+        window.location.hash = '';
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Network error');
@@ -485,263 +487,228 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
           </div>
 
           <div className="border border-slate-800 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
-              <span>Appearance</span>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span>Mode:</span>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded-md border text-xs ${
-                    form.appearanceMode === 'free'
-                      ? 'bg-violet-600 text-white border-violet-500'
-                      : 'bg-slate-900 text-slate-300 border-slate-700'
-                  }`}
-                  onClick={() => update('appearanceMode', 'free')}
-                >
-                  Free Text
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded-md border text-xs ${
-                    form.appearanceMode === 'structured'
-                      ? 'bg-violet-600 text-white border-violet-500'
-                      : 'bg-slate-900 text-slate-300 border-slate-700'
-                  }`}
-                  onClick={() => update('appearanceMode', 'structured')}
-                >
-                  Structured
-                </button>
-              </div>
-            </div>
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Appearance</div>
             <div className="p-4 space-y-3">
-              {form.appearanceMode === 'free' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs text-slate-400">Appearance (free text)</span>
-                  <textarea
-                    className="min-h-[80px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                    value={form.appearance}
-                    onChange={(e) => update('appearance', e.target.value)}
-                    {...getInlineErrorProps('appearance', fieldErrors.appearance)}
+                  <span className="text-xs text-slate-400">Hair Color</span>
+                  <input
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apHairColor}
+                    onChange={(e) => update('apHairColor', e.target.value)}
+                    {...getInlineErrorProps('apHairColor', fieldErrors.apHairColor)}
                   />
-                  {fieldErrors.appearance && (
-                    <span id="appearance-error" className="text-sm text-red-400">
-                      {fieldErrors.appearance}
+                  {fieldErrors.apHairColor && (
+                    <span id="apHairColor-error" className="text-sm text-red-400">
+                      {fieldErrors.apHairColor}
                     </span>
                   )}
                 </label>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Hair Color</span>
-                    <input
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apHairColor}
-                      onChange={(e) => update('apHairColor', e.target.value)}
-                      {...getInlineErrorProps('apHairColor', fieldErrors.apHairColor)}
-                    />
-                    {fieldErrors.apHairColor && (
-                      <span id="apHairColor-error" className="text-sm text-red-400">
-                        {fieldErrors.apHairColor}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Hair Style</span>
-                    <input
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apHairStyle}
-                      onChange={(e) => update('apHairStyle', e.target.value)}
-                      {...getInlineErrorProps('apHairStyle', fieldErrors.apHairStyle)}
-                    />
-                    {fieldErrors.apHairStyle && (
-                      <span id="apHairStyle-error" className="text-sm text-red-400">
-                        {fieldErrors.apHairStyle}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Hair Length</span>
-                    <input
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apHairLength}
-                      onChange={(e) => update('apHairLength', e.target.value)}
-                      {...getInlineErrorProps('apHairLength', fieldErrors.apHairLength)}
-                    />
-                    {fieldErrors.apHairLength && (
-                      <span id="apHairLength-error" className="text-sm text-red-400">
-                        {fieldErrors.apHairLength}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Eye Color</span>
-                    <input
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apEyesColor}
-                      onChange={(e) => update('apEyesColor', e.target.value)}
-                      {...getInlineErrorProps('apEyesColor', fieldErrors.apEyesColor)}
-                    />
-                    {fieldErrors.apEyesColor && (
-                      <span id="apEyesColor-error" className="text-sm text-red-400">
-                        {fieldErrors.apEyesColor}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Height</span>
-                    <select
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apHeight}
-                      onChange={(e) => update('apHeight', e.target.value as FormState['apHeight'])}
-                      {...getInlineErrorProps('apHeight', fieldErrors.apHeight)}
-                    >
-                      <option value=""></option>
-                      <option value="short">short</option>
-                      <option value="average">average</option>
-                      <option value="tall">tall</option>
-                    </select>
-                    {fieldErrors.apHeight && (
-                      <span id="apHeight-error" className="text-sm text-red-400">
-                        {fieldErrors.apHeight}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Torso Build</span>
-                    <select
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apTorso}
-                      onChange={(e) => update('apTorso', e.target.value as FormState['apTorso'])}
-                      {...getInlineErrorProps('apTorso', fieldErrors.apTorso)}
-                    >
-                      <option value=""></option>
-                      <option value="slight">slight</option>
-                      <option value="average">average</option>
-                      <option value="athletic">athletic</option>
-                      <option value="heavy">heavy</option>
-                    </select>
-                    {fieldErrors.apTorso && (
-                      <span id="apTorso-error" className="text-sm text-red-400">
-                        {fieldErrors.apTorso}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-xs text-slate-400">Skin Tone</span>
-                    <input
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apSkinTone}
-                      onChange={(e) => update('apSkinTone', e.target.value)}
-                      {...getInlineErrorProps('apSkinTone', fieldErrors.apSkinTone)}
-                    />
-                    {fieldErrors.apSkinTone && (
-                      <span id="apSkinTone-error" className="text-sm text-red-400">
-                        {fieldErrors.apSkinTone}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-xs text-slate-400">Features (comma)</span>
-                    <input
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apFeatures}
-                      onChange={(e) => update('apFeatures', e.target.value)}
-                      {...getInlineErrorProps('apFeatures', fieldErrors.apFeatures)}
-                    />
-                    {fieldErrors.apFeatures && (
-                      <span id="apFeatures-error" className="text-sm text-red-400">
-                        {fieldErrors.apFeatures}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Arms Build</span>
-                    <select
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apArmsBuild}
-                      onChange={(e) =>
-                        update('apArmsBuild', e.target.value as FormState['apArmsBuild'])
-                      }
-                      {...getInlineErrorProps('apArmsBuild', fieldErrors.apArmsBuild)}
-                    >
-                      <option value=""></option>
-                      <option value="average">average</option>
-                      <option value="muscular">muscular</option>
-                      <option value="slender">slender</option>
-                    </select>
-                    {fieldErrors.apArmsBuild && (
-                      <span id="apArmsBuild-error" className="text-sm text-red-400">
-                        {fieldErrors.apArmsBuild}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Arms Length</span>
-                    <select
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apArmsLength}
-                      onChange={(e) =>
-                        update('apArmsLength', e.target.value as FormState['apArmsLength'])
-                      }
-                      {...getInlineErrorProps('apArmsLength', fieldErrors.apArmsLength)}
-                    >
-                      <option value=""></option>
-                      <option value="average">average</option>
-                      <option value="long">long</option>
-                      <option value="short">short</option>
-                    </select>
-                    {fieldErrors.apArmsLength && (
-                      <span id="apArmsLength-error" className="text-sm text-red-400">
-                        {fieldErrors.apArmsLength}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Legs Build</span>
-                    <select
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apLegsBuild}
-                      onChange={(e) =>
-                        update('apLegsBuild', e.target.value as FormState['apLegsBuild'])
-                      }
-                      {...getInlineErrorProps('apLegsBuild', fieldErrors.apLegsBuild)}
-                    >
-                      <option value=""></option>
-                      <option value="very skinny">very skinny</option>
-                      <option value="slender">slender</option>
-                      <option value="average">average</option>
-                      <option value="toned">toned</option>
-                      <option value="muscular">muscular</option>
-                    </select>
-                    {fieldErrors.apLegsBuild && (
-                      <span id="apLegsBuild-error" className="text-sm text-red-400">
-                        {fieldErrors.apLegsBuild}
-                      </span>
-                    )}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-400">Legs Length</span>
-                    <select
-                      className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                      value={form.apLegsLength}
-                      onChange={(e) =>
-                        update('apLegsLength', e.target.value as FormState['apLegsLength'])
-                      }
-                      {...getInlineErrorProps('apLegsLength', fieldErrors.apLegsLength)}
-                    >
-                      <option value=""></option>
-                      <option value="average">average</option>
-                      <option value="long">long</option>
-                      <option value="short">short</option>
-                    </select>
-                    {fieldErrors.apLegsLength && (
-                      <span id="apLegsLength-error" className="text-sm text-red-400">
-                        {fieldErrors.apLegsLength}
-                      </span>
-                    )}
-                  </label>
-                </div>
-              )}
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Hair Style</span>
+                  <input
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apHairStyle}
+                    onChange={(e) => update('apHairStyle', e.target.value)}
+                    {...getInlineErrorProps('apHairStyle', fieldErrors.apHairStyle)}
+                  />
+                  {fieldErrors.apHairStyle && (
+                    <span id="apHairStyle-error" className="text-sm text-red-400">
+                      {fieldErrors.apHairStyle}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Hair Length</span>
+                  <input
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apHairLength}
+                    onChange={(e) => update('apHairLength', e.target.value)}
+                    {...getInlineErrorProps('apHairLength', fieldErrors.apHairLength)}
+                  />
+                  {fieldErrors.apHairLength && (
+                    <span id="apHairLength-error" className="text-sm text-red-400">
+                      {fieldErrors.apHairLength}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Eye Color</span>
+                  <input
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apEyesColor}
+                    onChange={(e) => update('apEyesColor', e.target.value)}
+                    {...getInlineErrorProps('apEyesColor', fieldErrors.apEyesColor)}
+                  />
+                  {fieldErrors.apEyesColor && (
+                    <span id="apEyesColor-error" className="text-sm text-red-400">
+                      {fieldErrors.apEyesColor}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Height</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apHeight}
+                    onChange={(e) => update('apHeight', e.target.value as FormState['apHeight'])}
+                    {...getInlineErrorProps('apHeight', fieldErrors.apHeight)}
+                  >
+                    <option value=""></option>
+                    {APPEARANCE_HEIGHTS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.apHeight && (
+                    <span id="apHeight-error" className="text-sm text-red-400">
+                      {fieldErrors.apHeight}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Torso Build</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apTorso}
+                    onChange={(e) => update('apTorso', e.target.value as FormState['apTorso'])}
+                    {...getInlineErrorProps('apTorso', fieldErrors.apTorso)}
+                  >
+                    <option value=""></option>
+                    {APPEARANCE_TORSOS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.apTorso && (
+                    <span id="apTorso-error" className="text-sm text-red-400">
+                      {fieldErrors.apTorso}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1 md:col-span-2">
+                  <span className="text-xs text-slate-400">Skin Tone</span>
+                  <input
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apSkinTone}
+                    onChange={(e) => update('apSkinTone', e.target.value)}
+                    {...getInlineErrorProps('apSkinTone', fieldErrors.apSkinTone)}
+                  />
+                  {fieldErrors.apSkinTone && (
+                    <span id="apSkinTone-error" className="text-sm text-red-400">
+                      {fieldErrors.apSkinTone}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1 md:col-span-2">
+                  <span className="text-xs text-slate-400">Features (comma)</span>
+                  <input
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apFeatures}
+                    onChange={(e) => update('apFeatures', e.target.value)}
+                    {...getInlineErrorProps('apFeatures', fieldErrors.apFeatures)}
+                  />
+                  {fieldErrors.apFeatures && (
+                    <span id="apFeatures-error" className="text-sm text-red-400">
+                      {fieldErrors.apFeatures}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Arms Build</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apArmsBuild}
+                    onChange={(e) =>
+                      update('apArmsBuild', e.target.value as FormState['apArmsBuild'])
+                    }
+                    {...getInlineErrorProps('apArmsBuild', fieldErrors.apArmsBuild)}
+                  >
+                    <option value=""></option>
+                    {APPEARANCE_ARMS_BUILD.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.apArmsBuild && (
+                    <span id="apArmsBuild-error" className="text-sm text-red-400">
+                      {fieldErrors.apArmsBuild}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Arms Length</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apArmsLength}
+                    onChange={(e) =>
+                      update('apArmsLength', e.target.value as FormState['apArmsLength'])
+                    }
+                    {...getInlineErrorProps('apArmsLength', fieldErrors.apArmsLength)}
+                  >
+                    <option value=""></option>
+                    {APPEARANCE_ARMS_LENGTH.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.apArmsLength && (
+                    <span id="apArmsLength-error" className="text-sm text-red-400">
+                      {fieldErrors.apArmsLength}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Legs Build</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apLegsBuild}
+                    onChange={(e) =>
+                      update('apLegsBuild', e.target.value as FormState['apLegsBuild'])
+                    }
+                    {...getInlineErrorProps('apLegsBuild', fieldErrors.apLegsBuild)}
+                  >
+                    <option value=""></option>
+                    {APPEARANCE_LEGS_BUILD.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.apLegsBuild && (
+                    <span id="apLegsBuild-error" className="text-sm text-red-400">
+                      {fieldErrors.apLegsBuild}
+                    </span>
+                  )}
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Legs Length</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={form.apLegsLength}
+                    onChange={(e) =>
+                      update('apLegsLength', e.target.value as FormState['apLegsLength'])
+                    }
+                    {...getInlineErrorProps('apLegsLength', fieldErrors.apLegsLength)}
+                  >
+                    <option value=""></option>
+                    {APPEARANCE_LEGS_LENGTH.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.apLegsLength && (
+                    <span id="apLegsLength-error" className="text-sm text-red-400">
+                      {fieldErrors.apLegsLength}
+                    </span>
+                  )}
+                </label>
+              </div>
             </div>
           </div>
 
@@ -830,9 +797,11 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                   onChange={(e) => update('styleSentenceLength', e.target.value)}
                 >
                   <option value=""></option>
-                  <option value="terse">terse</option>
-                  <option value="balanced">balanced</option>
-                  <option value="long">long</option>
+                  {SPEECH_SENTENCE_LENGTHS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
@@ -843,10 +812,11 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                   onChange={(e) => update('styleHumor', e.target.value)}
                 >
                   <option value=""></option>
-                  <option value="none">none</option>
-                  <option value="light">light</option>
-                  <option value="wry">wry</option>
-                  <option value="dark">dark</option>
+                  {SPEECH_HUMOR_LEVELS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
@@ -857,9 +827,11 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                   onChange={(e) => update('styleDarkness', e.target.value)}
                 >
                   <option value=""></option>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
+                  {SPEECH_DARKNESS_LEVELS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
@@ -870,9 +842,11 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                   onChange={(e) => update('stylePacing', e.target.value)}
                 >
                   <option value=""></option>
-                  <option value="slow">slow</option>
-                  <option value="balanced">balanced</option>
-                  <option value="fast">fast</option>
+                  {SPEECH_PACING_LEVELS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
@@ -883,9 +857,11 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                   onChange={(e) => update('styleFormality', e.target.value)}
                 >
                   <option value=""></option>
-                  <option value="casual">casual</option>
-                  <option value="neutral">neutral</option>
-                  <option value="formal">formal</option>
+                  {SPEECH_FORMALITY_LEVELS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
@@ -896,9 +872,11 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                   onChange={(e) => update('styleVerbosity', e.target.value)}
                 >
                   <option value=""></option>
-                  <option value="terse">terse</option>
-                  <option value="balanced">balanced</option>
-                  <option value="lavish">lavish</option>
+                  {SPEECH_VERBOSITY_LEVELS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -917,9 +895,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
                 <div className="text-sm text-slate-300">{form.summary || 'No summary yet.'}</div>
                 {form.personality && (
                   <div className="text-sm text-slate-300">Personality: {form.personality}</div>
-                )}
-                {form.appearanceMode === 'free' && form.appearance && (
-                  <div className="text-sm text-slate-300">Appearance: {form.appearance}</div>
                 )}
               </div>
             </div>

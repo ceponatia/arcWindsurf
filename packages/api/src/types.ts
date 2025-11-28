@@ -44,7 +44,6 @@ export interface CharacterSummary {
 export interface SettingSummary {
   id: string;
   name: string;
-  tone: string;
   source: 'fs' | 'db';
 }
 

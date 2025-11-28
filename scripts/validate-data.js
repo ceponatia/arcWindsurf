@@ -2,6 +2,16 @@
 // Quick validation script to ensure data JSON files conform to expected shape
 import fs from 'fs';
 import path from 'path';
+import {
+  APPEARANCE_HEIGHTS,
+  APPEARANCE_TORSOS,
+  SPEECH_DARKNESS_LEVELS,
+  SPEECH_FORMALITY_LEVELS,
+  SPEECH_HUMOR_LEVELS,
+  SPEECH_PACING_LEVELS,
+  SPEECH_SENTENCE_LENGTHS,
+  SPEECH_VERBOSITY_LEVELS,
+} from '@minimal-rpg/schemas';
 
 const base = path.resolve(process.cwd(), 'data');
 
@@ -58,12 +68,12 @@ function validateCharacter(obj, file) {
     const style = obj.style;
     if (typeof style !== 'object' || Array.isArray(style)) errs.push('style must be an object');
     const enums = {
-      sentenceLength: ['terse', 'balanced', 'long'],
-      humor: ['none', 'light', 'wry', 'dark'],
-      darkness: ['low', 'medium', 'high'],
-      pacing: ['slow', 'balanced', 'fast'],
-      formality: ['casual', 'neutral', 'formal'],
-      verbosity: ['terse', 'balanced', 'lavish'],
+      sentenceLength: SPEECH_SENTENCE_LENGTHS,
+      humor: SPEECH_HUMOR_LEVELS,
+      darkness: SPEECH_DARKNESS_LEVELS,
+      pacing: SPEECH_PACING_LEVELS,
+      formality: SPEECH_FORMALITY_LEVELS,
+      verbosity: SPEECH_VERBOSITY_LEVELS,
     };
     for (const [key, allowed] of Object.entries(enums)) {
       if (style[key] && !allowed.includes(style[key]))
@@ -76,11 +86,15 @@ function validateCharacter(obj, file) {
       if (obj.appearance.length === 0) errs.push('appearance string must be non-empty');
     } else if (typeof obj.appearance === 'object' && !Array.isArray(obj.appearance)) {
       const ap = obj.appearance;
-      // height categorical
-      if (ap.height && !['short', 'average', 'tall'].includes(ap.height))
-        errs.push(`appearance.height invalid (${ap.height}) must be short|average|tall`);
-      if (ap.build && !['slight', 'average', 'athletic', 'heavy'].includes(ap.build))
-        errs.push(`appearance.build invalid (${ap.build}) must be slight|average|athletic|heavy`);
+      // height / build categorical (aligned with AppearanceSchema)
+      if (ap.height && !APPEARANCE_HEIGHTS.includes(ap.height))
+        errs.push(
+          `appearance.height invalid (${ap.height}) must be one of ${APPEARANCE_HEIGHTS.join('|')}`
+        );
+      if (ap.build && !APPEARANCE_TORSOS.includes(ap.build))
+        errs.push(
+          `appearance.build invalid (${ap.build}) must be one of ${APPEARANCE_TORSOS.join('|')}`
+        );
       if (
         ap.features &&
         (!Array.isArray(ap.features) ||

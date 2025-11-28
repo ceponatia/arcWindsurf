@@ -4,6 +4,8 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
 ## What's New
 
+**November 2025:** Mobile responsive UI added. The web app now detects mobile devices and displays a mobile-optimized interface with a collapsible sidebar drawer for session/character/setting management and a full-screen chat interface.
+
 **November 2025:** OpenRouter is now the default and required LLM path. Configure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
 **Utilities:** The `deleteSettingFromDb(settingId, baseUrl?)` helper now lives in `@minimal-rpg/utils` and calls `DELETE /settings/:id`. Filesystem-backed settings return 405 and cannot be deleted.
 
@@ -120,16 +122,12 @@ Notes:
 
 ## Health
 
-- `GET /health` returns `{ status, uptime, version, db, llm }`.
-  - Checks Postgres connectivity and LLM configuration (`provider`, `model`, `configured`).
-
 ## API Endpoints (Overview)
 
 Base URL defaults to `http://localhost:3001`.
 
 - `GET /characters` — List available characters (id, name, summary, tags)
 - `POST /characters` — Create a new dynamic character (body: CharacterProfile JSON). Persists to Postgres and is merged into subsequent `GET /characters` responses.
-- `GET /settings` — List available settings (id, name, tone)
 - `GET /sessions` — List existing sessions (most recent first, includes character/setting names)
 - `POST /sessions` — Create a chat session
   - Body: `{ "characterId": string, "settingId": string }`
@@ -137,8 +135,7 @@ Base URL defaults to `http://localhost:3001`.
 - `GET /sessions/:id` — Get session details and messages
 - `POST /sessions/:id/messages` — Send a message
   - Body: `{ "content": string }`
-  - Returns: `{ message }` (the assistant reply)
-- `GET /sessions/:id/effective` — Get effective merged `character` and `setting` for the session (template + overrides)
+  - Required: non-empty `id`, `name`, and `lore`.
 - `PUT /sessions/:id/overrides/character` — Upsert character overrides for the session
   - Body: JSON object with partial fields to override (arrays replace)
   - Audited: persists a baseline JSON snapshot of the template on first write
@@ -178,7 +175,7 @@ const ok = Character.CharacterProfileSchema.safeParse(obj);
 
 The package continues to export flat named types (`CharacterProfile`, `SettingProfile`, `Appearance`, ...), so existing imports remain valid.
 
-Prefer importing directly from `@minimal-rpg/schemas`. The `@minimal-rpg/shared` package no longer exports these schemas.
+Prefer importing directly from `@minimal-rpg/schemas`. The former `@minimal-rpg/shared` package has been removed.
 
 Additional design & optimization details for character profile → prompt integration (including RAG roadmap) are documented in `dev-docs/character-profile-llm-integration.md`.
 

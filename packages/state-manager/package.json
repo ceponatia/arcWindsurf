@@ -1,0 +1,25 @@
+{
+  "name": "@minimal-rpg/state-manager",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build:wip": "tsc -p tsconfig.json",
+    "lint": "echo 'skipping lint for @minimal-rpg/state-manager (skeleton)'",
+    "typecheck": "echo 'skipping typecheck for @minimal-rpg/state-manager (skeleton)'"
+  },
+  "dependencies": {
+    "@minimal-rpg/schemas": "workspace:*",
+    "@minimal-rpg/shared": "workspace:*",
+    "fast-json-patch": "^3.1.1",
+    "zod": "^3.22.4"
+  }
+}

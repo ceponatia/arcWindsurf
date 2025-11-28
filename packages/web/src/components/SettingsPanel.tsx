@@ -114,7 +114,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-xs text-slate-400 line-clamp-2">{s.tone}</div>
               </li>
             ))}
             {(settings ?? []).length === 0 && (

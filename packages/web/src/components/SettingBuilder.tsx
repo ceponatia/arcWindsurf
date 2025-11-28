@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { SettingProfileSchema, type SettingProfile } from '@minimal-rpg/schemas';
+import {
+  SettingProfileSchema,
+  type SettingProfile,
+  SETTING_TAGS,
+  type SettingTag,
+} from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
 import { getSetting, saveSetting } from '../api/client.js';
 
@@ -7,16 +12,16 @@ interface FormState {
   id: string;
   name: string;
   lore: string;
-  tone: string;
   themes: string;
+  tags: SettingTag[];
 }
 
 const initialState: FormState = {
   id: '',
   name: '',
   lore: '',
-  tone: '',
   themes: '',
+  tags: [],
 };
 
 type FormKey = keyof FormState;
@@ -40,8 +45,8 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
             id: data.id,
             name: data.name,
             lore: data.lore,
-            tone: data.tone,
             themes: (data.themes ?? []).join(', '),
+            tags: data.tags ?? [],
           });
         })
         .catch((err) => {
@@ -55,6 +60,18 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleTag(tag: SettingTag) {
+    setForm((f) => {
+      const tags = new Set(f.tags);
+      if (tags.has(tag)) {
+        tags.delete(tag);
+      } else {
+        tags.add(tag);
+      }
+      return { ...f, tags: Array.from(tags) };
+    });
   }
 
   async function onSave() {
@@ -72,8 +89,8 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
       id: form.id.trim(),
       name: form.name.trim(),
       lore: form.lore.trim(),
-      tone: form.tone.trim(),
       themes: themes.length > 0 ? themes : undefined,
+      tags: form.tags.length > 0 ? form.tags : undefined,
     };
 
     // Client-side validation
@@ -96,6 +113,7 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
       await saveSetting(profile);
       setSuccess('Setting saved.');
       if (onSaveCallback) onSaveCallback();
+      window.location.hash = '';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
@@ -156,20 +174,6 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
                 )}
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Tone</span>
-                <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  value={form.tone}
-                  onChange={(e) => update('tone', e.target.value)}
-                  {...getInlineErrorProps('tone', fieldErrors.tone)}
-                />
-                {fieldErrors.tone && (
-                  <span id="tone-error" className="text-sm text-red-400">
-                    {fieldErrors.tone}
-                  </span>
-                )}
-              </label>
-              <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">Themes (comma separated)</span>
                 <input
                   className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
@@ -177,6 +181,25 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
                   onChange={(e) => update('themes', e.target.value)}
                 />
               </label>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Tags</span>
+                <div className="flex flex-wrap gap-2">
+                  {SETTING_TAGS.map((tag) => (
+                    <label
+                      key={tag}
+                      className="flex items-center gap-2 bg-slate-900 px-2 py-1 rounded border border-slate-800 cursor-pointer hover:border-slate-600"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.tags.includes(tag)}
+                        onChange={() => toggleTag(tag)}
+                        className="rounded border-slate-700 bg-slate-800 text-violet-600 focus:ring-violet-500"
+                      />
+                      <span className="text-sm text-slate-300 capitalize">{tag}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">Lore</span>
                 <textarea
@@ -203,7 +226,6 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
               <div className="p-4 space-y-2">
                 <div className="text-lg font-semibold">{form.name || 'Unnamed Setting'}</div>
                 <div className="text-sm text-slate-400">ID: {form.id || '—'}</div>
-                <div className="text-sm text-slate-400">Tone: {form.tone || '—'}</div>
                 <div className="text-sm text-slate-300 whitespace-pre-wrap">
                   {form.lore || 'No lore yet.'}
                 </div>

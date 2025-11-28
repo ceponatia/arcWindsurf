@@ -10,6 +10,10 @@ COPY packages/api/package.json ./packages/api/package.json
 COPY packages/web/package.json ./packages/web/package.json
 COPY packages/db/package.json ./packages/db/package.json
 COPY packages/schemas/package.json ./packages/schemas/package.json
+COPY packages/ui/package.json ./packages/ui/package.json
+COPY packages/utils/package.json ./packages/utils/package.json
+COPY packages/governor/package.json ./packages/governor/package.json
+COPY packages/state-manager/package.json ./packages/state-manager/package.json
 
 # 2. Install dependencies at build time, non-interactive
 RUN corepack enable \

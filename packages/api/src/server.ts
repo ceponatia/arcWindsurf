@@ -77,8 +77,8 @@ async function start(): Promise<void> {
   registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
 
   const port = cfg.port;
-  serve({ fetch: app.fetch, port });
-  console.log(`API server listening on http://localhost:${port}`);
+  serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
+  console.log(`API server listening on http://0.0.0.0:${port}`);
 }
 
 void start();

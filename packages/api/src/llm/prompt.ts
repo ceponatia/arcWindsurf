@@ -1,13 +1,19 @@
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
+import type { CharacterProfile, SettingProfile, SettingTag } from '@minimal-rpg/schemas';
 import type { BuildPromptOptions, BuildPromptResult, DbMessage } from '../types.js';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' };
+import systemPromptRomanceJson from './prompts/system-prompt-romance.json' with { type: 'json' };
+import systemPromptAdventureJson from './prompts/system-prompt-adventure.json' with { type: 'json' };
+import systemPromptMysteryJson from './prompts/system-prompt-mystery.json' with { type: 'json' };
 import { SystemPromptSchema, SafetyRulesSchema, SafetyModeSchema } from '@minimal-rpg/schemas';
 
 export function assertPromptConfigValid(): void {
   try {
     SystemPromptSchema.parse(systemPromptJson);
+    SystemPromptSchema.parse(systemPromptRomanceJson);
+    SystemPromptSchema.parse(systemPromptAdventureJson);
+    SystemPromptSchema.parse(systemPromptMysteryJson);
     SafetyRulesSchema.parse(safetyRulesJson);
     SafetyModeSchema.parse(safetyModeJson);
   } catch (err) {
@@ -18,6 +24,11 @@ export function assertPromptConfigValid(): void {
 }
 
 const BASE_RULES: string[] = SystemPromptSchema.parse(systemPromptJson).rules;
+const TAG_RULES_BY_TAG: Partial<Record<SettingTag, string[]>> = {
+  romance: SystemPromptSchema.parse(systemPromptRomanceJson).rules,
+  adventure: SystemPromptSchema.parse(systemPromptAdventureJson).rules,
+  mystery: SystemPromptSchema.parse(systemPromptMysteryJson).rules,
+};
 // const SAFETY_RULES: string[] = SafetyRulesSchema.parse(safetyRulesJson).rules;
 
 function serializeCharacter(c: CharacterProfile) {
@@ -51,12 +62,30 @@ function serializeCharacter(c: CharacterProfile) {
 function serializeSetting(s: SettingProfile) {
   return [
     `Setting: ${s.name}`,
-    `Tone: ${s.tone}`,
     `Lore: ${truncate(s.lore, 1200)}`,
     s.themes?.length ? `Themes: ${s.themes.join('; ')}` : undefined,
+    s.tags?.length ? `Tags: ${s.tags.join(', ')}` : undefined,
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+function buildTagSpecificRules(setting: SettingProfile): string[] {
+  const tags: SettingTag[] = setting.tags ?? [];
+  const seenRules = new Set<string>();
+  const out: string[] = [];
+
+  for (const tag of tags) {
+    const rules = TAG_RULES_BY_TAG[tag];
+    if (!rules) continue;
+    for (const rule of rules) {
+      if (seenRules.has(rule)) continue;
+      seenRules.add(rule);
+      out.push(rule);
+    }
+  }
+
+  return out;
 }
 
 function truncate(text: string, max: number) {
@@ -190,6 +219,10 @@ export function buildPrompt(opts: BuildPromptOptions): BuildPromptResult {
 
   const systemMessages = [
     { role: 'system' as const, content: BASE_RULES.join(' ') },
+    (() => {
+      const rules = buildTagSpecificRules(setting);
+      return rules.length ? { role: 'system' as const, content: rules.join(' ') } : undefined;
+    })(),
     // { role: 'system' as const, content: SAFETY_RULES.join(' ') },
     { role: 'system' as const, content: serializeCharacter(character) },
     { role: 'system' as const, content: serializeSetting(setting) },

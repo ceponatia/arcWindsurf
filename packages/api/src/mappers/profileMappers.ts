@@ -15,6 +15,5 @@ export const mapCharacterSummary: MapCharacterSummary = (c: CharacterProfile, so
 export const mapSettingSummary: MapSettingSummary = (s: SettingProfile, source) => ({
   id: s.id,
   name: s.name,
-  tone: s.tone,
   source,
 });
