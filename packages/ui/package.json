@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@minimal-rpg/schemas": "workspace:*",
-    "@minimal-rpg/shared": "workspace:*",
     "clsx": "^2.1.0",
+    "react-markdown": "^10.1.0",
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {

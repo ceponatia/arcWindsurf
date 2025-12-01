@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "@minimal-rpg/schemas": "workspace:*",
-    "@minimal-rpg/shared": "workspace:*",
     "@minimal-rpg/state-manager": "workspace:*"
   }
 }

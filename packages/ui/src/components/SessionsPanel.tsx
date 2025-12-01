@@ -95,7 +95,7 @@ export const SessionsPanel: React.FC<SessionsPanelProps> = ({
                   </div>
                   {onDelete && (
                     <button
-                      className="absolute top-2 right-2 p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 p-1 text-slate-500 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDelete(s.id);

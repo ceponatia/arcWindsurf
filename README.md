@@ -112,6 +112,9 @@ Defaults:
 
 - API: `http://localhost:3001`
 - Web (Vite dev): `http://localhost:5173`
+- Frontend API base: `http://localhost:3001` (baked into Vite via `VITE_API_BASE_URL`).
+  - Keep this on `localhost` when running Compose locally so the browser can reach the API without relying on a LAN IP that may not resolve on the host OS.
+  - If you really need to hit a remote API host, change `VITE_API_BASE_URL` in `docker-compose.yml` and rebuild the `web` service.
 
 To change model/runtime params, set env vars (see `packages/api/.env.example`).
 
@@ -254,6 +257,7 @@ See `dev-docs/web-architecture.md` for the web package structure, routing, compo
 - Edit theme tokens and variants in `packages/web/tailwind.config.js`.
 - Global styles live in `packages/web/src/styles/app.css` and use `@tailwind base/components/utilities` plus a small custom scrollbar.
 - Class names are embedded directly in components. No CSS Modules are used.
+- Shared UI components under `packages/ui/src` are included in the Tailwind content paths so any new classes added there (like session action buttons) stay compiled.
 
 ### Character Builder UI
 

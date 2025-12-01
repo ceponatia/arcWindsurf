@@ -452,8 +452,29 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
       );
     }
 
+    // Create mutable copies for the session
+    const sessionCharacterId = safeRandomId();
+    const sessionSettingId = safeRandomId();
+
+    const characterCopy = { ...character, id: sessionCharacterId };
+    const settingCopy = { ...setting, id: sessionSettingId };
+
+    await db.characterTemplate.create({
+      data: {
+        id: sessionCharacterId,
+        profileJson: JSON.stringify(characterCopy),
+      },
+    });
+
+    await db.settingTemplate.create({
+      data: {
+        id: sessionSettingId,
+        profileJson: JSON.stringify(settingCopy),
+      },
+    });
+
     const id = safeRandomId();
-    const session = await createSession(id, characterId, settingId);
+    const session = await createSession(id, sessionCharacterId, sessionSettingId);
 
     const response: CreateSessionResponse = {
       id: session.id,
