@@ -107,20 +107,31 @@ Several retrieval flows can be layered together.
 
 1. Build a query from the latest user input + recent messages.
 2. Retrieve and score knowledge nodes for the active character and setting.
-3. Select the top K nodes and render them into a concise `Knowledge Context:` section.
+3. Select the top K nodes and render them into a concise `Knowledge Context:` section, for example:
 
-This supplements (or eventually replaces parts of) the raw character/setting text in the prompt.
+   ```text
+   Knowledge Context:
+   - Legs: Long, slender legs with a faint scar across the left ankle.
+   - Personality Traits: Shy and sarcastic; anxious in crowds.
+   ```
+
+This supplements (or eventually replaces parts of) the raw character/setting text in the prompt. The **always-on** character block remains compact (core identity + minimal appearance), while turn-local `Knowledge Context` bullets supply detailed physical or historical information only when relevant to what the player just asked (for example, examining a character’s body or asking about their past).
 
 ### 4.2 Item-aware retrieval
 
-For items (see [dev-docs/04-items-inventory-and-outfits.md](dev-docs/04-items-inventory-and-outfits.md)):
+For items (see [dev-docs/06-items-inventory-and-outfits.md](dev-docs/06-items-inventory-and-outfits.md)):
 
-1. Limit the search space to items owned by the current character/session.
-2. Build query strings such as "something to cut the rope" or "formal clothing".
-3. Run vector search over the item embeddings.
-4. Return a few high-scoring items to include under an `Item Context:` section.
+1. Limit the search space to items owned by the current character/session (via `item_owners` and `items`, resolved into an `EffectiveOutfit`).
+2. Build query strings such as "something to cut the rope", "formal clothing", or direct examination lines like "I look at her boots".
+3. Run vector search over item embeddings and/or simple keyword filters on the resolved outfit.
+4. Return a few high-scoring items to include under an `Item Context:` section, for example:
 
-This allows the system to surface relevant gear without always listing the entire inventory.
+   ```text
+   Item Context:
+   - Feet: Worn leather boots (adventurer style, scuffed but well-kept).
+   ```
+
+This allows the system to surface relevant gear and clothing **only** on turns where the player interacts with them, instead of always listing the entire inventory in the prompt.
 
 ### 4.3 Global lookup (optional)
 

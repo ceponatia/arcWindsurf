@@ -186,8 +186,8 @@ Several packages and designs relate to state but are **not** currently in the ma
 
 - `@minimal-rpg/governor` – contains prototypes for multi-agent orchestration and richer state management but is not invoked by the API.
 - `@minimal-rpg/state-manager` – contains JSON Patch helpers and state management scaffolding; current overrides logic in the API uses its own merge utilities.
-- Vector-based knowledge nodes – archived docs describe splitting profiles into nodes and storing embeddings, but there is no `profile_nodes` (or similar) table or retrieval code in the live prompt builder.
-- Items, inventory, and outfits – see [dev-docs/04-items-inventory-and-outfits.md](dev-docs/04-items-inventory-and-outfits.md); no item tables or item state are present in the DB schema.
+- Vector-based knowledge nodes – archived docs describe splitting profiles into nodes and storing embeddings, but there is no `profile_nodes` (or similar) table or retrieval code in the live prompt builder. The forward-looking design assumes `character_instances.profile_json` and `setting_instances.profile_json` are decomposed into nodes (for example, `appearance.hair`, `appearance.legs`, `personality.traits`) that can later be used to build `Knowledge Context` blocks for the LLM.
+- Items, inventory, and outfits – see [dev-docs/06-items-inventory-and-outfits.md](dev-docs/06-items-inventory-and-outfits.md); no item tables or item state are present in the DB schema yet, but future RAG flows will treat outfit state plus `profile_json` as inputs to turn-local `Item Context` blocks instead of permanently embedding full inventories in `profile_json`.
 
 These should be treated as future extensions to the state model rather than current behavior.
 

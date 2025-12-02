@@ -140,25 +140,25 @@ The LLM prompt code can then work only with `EffectiveOutfit` instead of raw tab
 The current prompt builder in [packages/api/src/llm/prompt.ts](packages/api/src/llm/prompt.ts) does **not** include any explicit notion of items or outfits. Once items exist, we plan to:
 
 1. Resolve an `EffectiveOutfit` for the active character (and optionally the player) from the database.
-2. Serialize a concise "Outfit" section into the character context.
+2. Use that outfit data in two ways:
 
-Example text layout:
+- A compact **always-on** summary, if needed, for extremely iconic items.
+- Primarily as input to **RAG-style retrieval**, producing small, turn-local `Item Context` sections when the player interacts with clothing or gear.
+
+Example contextual text layout:
 
 ```text
-Outfit:
-- Torso: long crimson coat (formal, wool, pristine)
-- Legs: fitted black trousers (casual)
-- Feet: worn leather boots (adventurer style)
-
-Carried:
-- Spare cloak (dark gray)
+Item Context:
+- Torso: long crimson coat (formal, wool, pristine).
+- Feet: worn leather boots (adventurer style, scuffed but well-kept).
 ```
 
-Guidelines for the serializer (once implemented):
+Guidelines for the serializer and retrieval (once implemented):
 
-- Treat the Outfit section as the **source of truth** for current clothing, even if appearance text also mentions clothes.
+- Treat `EffectiveOutfit` as the source of truth for current clothing, even if appearance text also mentions clothes.
 - Keep descriptions short and structured: `Slot: name (key properties)`.
-- Limit the number of items to avoid bloating the prompt (for example, at most 4–6 equipped and 3–4 carried items).
+- Only include outfit bullets when they score as relevant to the current user message (for example, "I look at her boots"), so most turns carry **no** `Item Context` at all.
+- Limit the number of items per turn to avoid bloating the prompt (for example, at most 3–4 contextual outfit bullets).
 
 ## 5. Future: item-aware RAG (Proposed)
 

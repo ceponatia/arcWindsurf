@@ -135,15 +135,18 @@ After scoring, we can:
 - Take the top **K** nodes (for example, 10), or
 - Include all nodes above a fixed threshold.
 
-These nodes are then serialized into a compact text block such as:
+These nodes are then serialized into compact **context blocks** that sit alongside the core character and setting summaries, for example:
 
 ```text
-[Character Context]
+Knowledge Context:
 - Eyes: Piercing blue eyes with a slight shimmer.
-- Curse: Touch turns gold to lead.
+- Legs: Long, slender legs with a faint scar across the left ankle.
+
+Item Context:
+- Feet: Worn leather boots (adventurer style, scuffed but well-kept).
 ```
 
-and injected into the prompt alongside the usual character/setting summaries.
+Only the top‑scoring nodes for the **current turn** (for example, those related to `appearance.legs` / `appearance.feet` or equipped items in slot `feet` when the player says “I look at her feet”) are included, keeping the always‑on character block small while still giving the narrative LLM detailed, situational context when needed.
 
 ## 6. Dynamic salience (Proposed)
 

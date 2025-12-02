@@ -4,6 +4,8 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
 ## What's New
 
+**December 2025:** Character profiles now support flexible `details` entries (label/value pairs with area, importance, and tags). The Character Builder exposes these through a new Profile Details section, and the prompt serializer now surfaces the saved facts directly while laying groundwork for future RAG scoring.
+
 **November 2025:** Mobile responsive UI added. The web app now detects mobile devices and displays a mobile-optimized interface with a collapsible sidebar drawer for session/character/setting management and a full-screen chat interface.
 
 **November 2025:** Session management now uses immutable templates plus per-session snapshots. Creating a session stores the template IDs alongside freshly cloned `character_instance` and `setting_instance` records. These snapshots capture the entire template JSON so templates can change (or be deleted) without breaking in-flight sessions. Override updates mutate the stored snapshot directly, keeping the template pristine.
@@ -182,6 +184,8 @@ The package continues to export flat named types (`CharacterProfile`, `SettingPr
 
 Prefer importing directly from `@minimal-rpg/schemas`. The former `@minimal-rpg/shared` package has been removed.
 
+Character profiles also expose optional `details` entries via `Character.CharacterDetailSchema`. Each detail stores a label/value pair plus an `area`, `importance` (0-1), optional `notes`, and `tags`. Until RAG-backed retrieval ships, every saved detail is serialized into the prompt so nothing is lost.
+
 Additional design & optimization details for character profile → prompt integration (including RAG roadmap) are documented in `dev-docs/character-profile-llm-integration.md`.
 
 ### API Types & Mappers
@@ -253,6 +257,13 @@ Example env file: `packages/api/.env.example`
 
 See `dev-docs/web-architecture.md` for the web package structure, routing, components, hooks, API client, and data flow.
 
+### Web Feature Modules
+
+- The web package now follows a feature-first layout under `packages/web/src/features/*`.
+- Each feature folder exports its public surface via an `index.ts` barrel so top-level apps can import from `features/<name>` instead of deep relative paths.
+- Shared HTTP helpers and hooks live under `packages/web/src/shared/` (`shared/api`, `shared/hooks`, etc.) to keep cross-feature logic consistent.
+- The old `components/` and `hooks/` folders have been removed; update local imports accordingly when editing web UI code.
+
 ### Frontend Styling (Tailwind)
 
 - The web UI uses Tailwind CSS with dark theme defaults and the Typography plugin.
@@ -263,9 +274,10 @@ See `dev-docs/web-architecture.md` for the web package structure, routing, compo
 
 ### Character Builder UI
 
-- The web Character Builder now supports both free-text and structured appearance input. Use the toggle in the Appearance section to switch modes. Structured mode maps 1:1 to the `AppearanceSchema` (hair, eyes, height, torso, skinTone, arms/legs, features).
-- Scent fields use selects constrained by the schema enums; `perfume` is limited to 40 chars.
-- Client-side validation uses `CharacterProfileSchema.safeParse` before sending to the API. Invalid fields are reported inline on save.
+- The builder is split into focused sections (Basics, Personality, Appearance, Details, Scent, Goals & Style) under `features/character-builder/components/*` for easier maintenance.
+- A persistent preview sidebar now shows the character summary and drive-by details while exposing a single Save action and status messaging.
+- Structured appearance inputs still map directly to `AppearanceSchema`, but you can also paste free-text appearance notes. Scent selects remain constrained to the schema enums and `perfume` stays capped at 40 chars.
+- Client-side validation runs `CharacterProfileSchema.safeParse` before calling the API; invalid fields highlight inline via the new hook-driven form state (`useCharacterBuilderForm`).
 
 ### LLM Migration Notes
 

@@ -1,15 +1,17 @@
 // Character submodule barrel + composite profile schema
 import { z } from 'zod';
-import { AppearanceSchema, type Appearance } from './appearance';
-import { CharacterPersonalitySchema } from './personality';
-import { ScentSchema, type Scent } from './scent';
-import { CharacterBasicsSchema, type CharacterBasics } from './basics';
+import { AppearanceSchema, type Appearance } from './appearance.js';
+import { CharacterPersonalitySchema } from './personality.js';
+import { ScentSchema, type Scent } from './scent.js';
+import { CharacterBasicsSchema, type CharacterBasics } from './basics.js';
+import { CharacterDetailSchema, type CharacterDetail } from './details.js';
 
 // Re-export leaf schemas/types for flat imports
-export * from './appearance';
-export * from './personality';
-export * from './scent';
-export * from './basics';
+export * from './appearance.js';
+export * from './personality.js';
+export * from './scent.js';
+export * from './basics.js';
+export * from './details.js';
 
 // Composite character profile schema and type used across the app
 export const CharacterProfileSchema = CharacterBasicsSchema.extend({
@@ -21,9 +23,11 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
   speakingStyle: z.string().min(1),
   // style hints mirror the personality speechStyle keys; all optional
   style: CharacterPersonalitySchema.shape.speechStyle.optional(),
+  // flexible facts for future knowledge-node/RAG experiments
+  details: z.array(CharacterDetailSchema).max(32).optional(),
 });
 
 export type CharacterProfile = z.infer<typeof CharacterProfileSchema>;
 
 // Useful named re-exports for consumers
-export type { Appearance, Scent, CharacterBasics };
+export type { Appearance, Scent, CharacterBasics, CharacterDetail };

@@ -4,8 +4,8 @@ import {
   deleteDbRow,
   type DbOverview,
   type DbTableOverview,
-} from '../api/client.js';
-import { DB_TOOLS } from '../config.js';
+} from '../../shared/api/client.js';
+import { DB_TOOLS } from '../../config.js';
 
 function toDisplay(v: unknown): string {
   if (v === null || v === undefined) return '';

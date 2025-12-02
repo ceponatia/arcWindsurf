@@ -68,15 +68,16 @@ We serialize `CharacterProfile` into a compact, human‑readable block:
 - Name and (optional) age.
 - Summary and backstory (truncated to avoid overlong context).
 - Personality traits or description.
-- Appearance (string or structured representation from `AppearanceSchema`).
+- A **minimal appearance slice** (string or structured representation from `AppearanceSchema`) focused on stable, high‑value attributes such as hair color/style, eye color, height, build, and 2–3 key features.
 - Speaking style and optional tags.
 - Optional `scent` hints and `style` sliders (sentence length, humor, darkness, pacing, formality, verbosity).
 
 Conventions:
 
 - The serialized block is emitted as a single `system` message.
-- Truncation limits are conservative (e.g., 1200 characters for backstory) to keep room for history.
+- Truncation limits are conservative (e.g., 1200 characters for backstory) to keep room for history and any retrieval‑driven context blocks.
 - When extending `CharacterProfile`, prefer to add new fields to the serializer rather than embedding raw JSON.
+- Detailed and highly granular appearance or outfit information (for example, specific scars, jewelry, or footwear) should **not** be stuffed into the always‑on block; instead, it should live in structured `profile_json` / item data and surface via RAG‑style context blocks when specifically relevant to the current turn.
 
 ### 3.4 Setting System Block
 
@@ -166,15 +167,16 @@ When introducing a new tag:
 - Create or extend a corresponding JSON system‑prompt file.
 - Document the narrative intent of the tag in [dev-docs/04-settings-schema.md](dev-docs/04-settings-schema.md) or related docs.
 
-## 7. Building Prompts from Profiles and History
+## 7. Building Prompts from Profiles, Retrieval, and History
 
 At a high level, `buildPrompt` is responsible for:
 
 1. Validating prompt JSON via `assertPromptConfigValid` during startup/test.
-2. Serializing the active character and setting into system messages.
-3. Computing the history summary and recent window.
-4. Appending safety mode messages when needed.
-5. Returning a fully ordered message list ready to send to the LLM.
+2. Serializing the active character and setting into compact **core** system messages.
+3. (Planned) Injecting optional retrieval‑driven context blocks such as `Knowledge Context` and `Item Context`, built from knowledge nodes and outfit data for the active character/setting. These blocks are **turn‑local** and only include attributes that score as relevant to the latest user message (for example, legs/feet appearance and equipped boots when the player examines a character).
+4. Computing the history summary and recent window.
+5. Appending safety mode messages when needed.
+6. Returning a fully ordered message list ready to send to the LLM.
 
 Caller requirements (API/governor):
 

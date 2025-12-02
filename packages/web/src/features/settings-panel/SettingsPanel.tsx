@@ -1,6 +1,6 @@
 import React from 'react';
-import { deleteSetting } from '../api/client.js';
-import type { SettingSummary } from '../types.js';
+import { deleteSetting } from '../../shared/api/client.js';
+import type { SettingSummary } from '../../types.js';
 
 export interface SettingsPanelProps {
   selectedId: string | null;

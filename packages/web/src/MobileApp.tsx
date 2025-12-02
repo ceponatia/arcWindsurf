@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useAppController } from './hooks/useAppController.js';
-import { MobileHeader } from './components/MobileHeader.js';
-import { MobileSidebar } from './components/MobileSidebar.js';
-import { ChatPanel } from './components/ChatPanel.js';
-import { CharacterBuilder } from './components/CharacterBuilder.js';
-import { SettingBuilder } from './components/SettingBuilder.js';
+import { useAppController } from './features/app-shell/hooks/useAppController.js';
+import { MobileHeader, MobileSidebar } from './features/mobile-shell/index.js';
+import { ChatPanel } from './features/chat-panel/index.js';
+import { CharacterBuilder } from './features/character-builder/index.js';
+import { SettingBuilder } from './features/setting-builder/index.js';
 
 export const MobileApp: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

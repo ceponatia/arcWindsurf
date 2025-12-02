@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MobileHeaderProps } from '../types.js';
+import type { MobileHeaderProps } from '../../../types.js';
 
 const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg

@@ -1,13 +1,13 @@
 import React from 'react';
 import { CharactersPanel as CharactersPanelView } from '@minimal-rpg/ui';
 import type { CharactersPanelProps as CharactersPanelViewProps } from '@minimal-rpg/ui';
-import { deleteCharacter } from '../api/client.js';
+import { deleteCharacter } from '../../shared/api/client.js';
 
 export interface CharactersPanelProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onEdit?: (id: string) => void;
-  characters?: import('../types.js').CharacterSummary[] | null;
+  characters?: import('../../types.js').CharacterSummary[] | null;
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;

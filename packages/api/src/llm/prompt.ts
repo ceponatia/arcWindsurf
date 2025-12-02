@@ -53,6 +53,7 @@ function serializeCharacter(c: CharacterProfile) {
       ? serializeScent((c as { scent?: unknown }).scent)
       : undefined,
     serializeStyle(c) || undefined,
+    serializeDetails(c.details),
   ]
     .filter(Boolean)
     .join('\n');
@@ -145,6 +146,16 @@ function serializeAppearance(a: CharacterProfile['appearance']): string {
   if (Array.isArray(features) && features.length) parts.push(`Features: ${features.join(', ')}`);
 
   return parts.join('; ');
+}
+
+function serializeDetails(details: CharacterProfile['details'] | undefined) {
+  if (!details || !details.length) return '';
+  const sorted = [...details].sort((a, b) => (b.importance ?? 0.5) - (a.importance ?? 0.5));
+  const lines = sorted.map((detail) => {
+    const areaPrefix = detail.area && detail.area !== 'custom' ? `${detail.area}: ` : '';
+    return `${areaPrefix}${detail.label}: ${truncate(detail.value, 200)}`;
+  });
+  return lines.length ? `Profile Details:\n- ${lines.join('\n- ')}` : '';
 }
 
 function serializeScent(s: unknown): string {

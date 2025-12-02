@@ -1,12 +1,11 @@
 import React from 'react';
-import { AppHeader } from './components/AppHeader.js';
-import { CharactersPanel } from './components/CharactersPanel.js';
-import { SettingsPanel } from './components/SettingsPanel.js';
-import { SessionsPanel } from './components/SessionsPanel.js';
-import { ChatPanel } from './components/ChatPanel.js';
-import { CharacterBuilder } from './components/CharacterBuilder.js';
-import { SettingBuilder } from './components/SettingBuilder.js';
-import { useAppController } from './hooks/useAppController.js';
+import { AppHeader, useAppController } from './features/app-shell/index.js';
+import { CharactersPanel } from './features/characters-panel/index.js';
+import { SettingsPanel } from './features/settings-panel/index.js';
+import { SessionsPanel } from './features/sessions-panel/index.js';
+import { ChatPanel } from './features/chat-panel/index.js';
+import { CharacterBuilder } from './features/character-builder/index.js';
+import { SettingBuilder } from './features/setting-builder/index.js';
 
 export const DesktopApp: React.FC = () => {
   const {

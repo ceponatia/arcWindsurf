@@ -14,10 +14,10 @@ Where behavior is not yet implemented or is still evolving, we call it out expli
 
 The prompt builder turns `CharacterProfile` and `SettingProfile` into two main `system` messages:
 
-1. A **Character block** from `serializeCharacter(character)`.
-2. A **Setting block** from `serializeSetting(setting)`.
+1. A **core Character block** from `serializeCharacter(character)`, containing identity, personality, and a minimal appearance slice.
+2. A **core Setting block** from `serializeSetting(setting)`.
 
-These blocks are always included, along with base rules, tag-specific rules, history summary, and safety messages.
+These core blocks are always included, along with base rules, tag-specific rules, history summary, and safety messages. Rich, granular details (for example, specific scars, jewelry, or exact boots) are instead expected to surface via **retrieval-driven context blocks** such as `Knowledge Context` and `Item Context` that are injected only when relevant to the current turn.
 
 Because these blocks are plain text, you should treat character and setting JSON as **prompt authoring inputs**, not just data storage.
 
@@ -171,6 +171,8 @@ Example input and output (informal):
   ```
 
 The resulting partial profile is validated and then deep-merged into `profile_json`. Arrays in the extracted object (such as `traits`) replace existing arrays in `profile_json`, while nested objects are merged recursively.
+
+In the planned RAG-style pipeline, this structured `appearance` data (including more granular parts such as `legs`, `feet`, or distinctive features) is combined with outfit/item data to produce **knowledge nodes** and an `EffectiveOutfit` view. When the player explicitly examines a character (for example, “I look at her feet” or “Describe his coat in detail”), retrieval uses the latest user text plus these nodes to build small `Knowledge Context` / `Item Context` blocks (such as legs/feet appearance and currently equipped boots) that are added ahead of history in the prompt, while the always-on character block stays compact.
 
 ### 2.5 Common Anti-Patterns to Avoid
 

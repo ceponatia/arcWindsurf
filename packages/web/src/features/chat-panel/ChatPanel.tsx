@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
-import type { Message, Session } from '../types.js';
-import { getSession, sendMessage, updateMessage, deleteMessage } from '../api/client.js';
+import type { Message, Session } from '../../types.js';
+import { getSession, sendMessage, updateMessage, deleteMessage } from '../../shared/api/client.js';
 import { ChatView } from '@minimal-rpg/ui';
 
 export interface ChatPanelProps {

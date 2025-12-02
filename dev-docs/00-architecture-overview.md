@@ -69,10 +69,11 @@ This pipeline is not yet implemented in the live API; it is documented here to g
 ## Prompting & LLM Integration
 
 - Prompt builder: `packages/api/src/llm/prompt.ts`
-  - Serializes character + setting from effective profiles.
+  - Serializes a compact **core character block** and **core setting block** from effective profiles (name, summary, key personality traits, and a minimal appearance slice such as hair color, eye color, height, build), keeping this slice intentionally small to conserve context.
   - Summarizes older history (keep-last + compact recap) before sending to LLM.
   - Applies base system rules plus tag-specific rules (romance/adventure/mystery variants).
   - Simple content filter flagging certain user text before sending.
+  - In future RAG-style flows, will prepend optional `Knowledge Context` / `Item Context` system blocks built from knowledge nodes and outfit data so that **granular appearance and item details are only injected when relevant to the current turn** (for example, when the player examines a character’s body or clothing).
 - OpenRouter adapter: `packages/api/src/llm/openrouter.ts` (OpenAI-compatible chat completions with retries/timeouts).
 - No RAG/vector retrieval is wired in yet despite pgvector being enabled.
 

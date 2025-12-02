@@ -6,7 +6,7 @@ import {
   type SettingTag,
 } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
-import { getSetting, saveSetting } from '../api/client.js';
+import { getSetting, saveSetting } from '../../shared/api/client.js';
 
 interface FormState {
   id: string;

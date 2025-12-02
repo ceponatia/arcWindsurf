@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
-import type { MobileSidebarProps } from '../types.js';
-import { CharactersPanel } from './CharactersPanel.js';
-import { SettingsPanel } from './SettingsPanel.js';
+import type { MobileSidebarProps } from '../../../types.js';
+import { CharactersPanel } from '../../characters-panel/CharactersPanel.js';
+import { SettingsPanel } from '../../settings-panel/SettingsPanel.js';
 import { SessionsPanel } from '@minimal-rpg/ui';
 
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (
