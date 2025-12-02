@@ -3,7 +3,11 @@
 import fs from 'fs';
 import path from 'path';
 import {
+  APPEARANCE_ARMS_BUILD,
+  APPEARANCE_ARMS_LENGTH,
   APPEARANCE_HEIGHTS,
+  APPEARANCE_LEGS_BUILD,
+  APPEARANCE_LEGS_LENGTH,
   APPEARANCE_TORSOS,
   SPEECH_DARKNESS_LEVELS,
   SPEECH_FORMALITY_LEVELS,
@@ -11,7 +15,7 @@ import {
   SPEECH_PACING_LEVELS,
   SPEECH_SENTENCE_LENGTHS,
   SPEECH_VERBOSITY_LEVELS,
-} from '@minimal-rpg/schemas';
+} from '../packages/schemas/dist/index.js';
 
 const base = path.resolve(process.cwd(), 'data');
 
@@ -80,44 +84,106 @@ function validateCharacter(obj, file) {
         errs.push(`style.${key} invalid (${style[key]}) must be one of ${allowed.join('|')}`);
     }
   }
-  // Appearance (optional string or object)
-  if (obj.appearance) {
-    if (typeof obj.appearance === 'string') {
-      if (obj.appearance.length === 0) errs.push('appearance string must be non-empty');
-    } else if (typeof obj.appearance === 'object' && !Array.isArray(obj.appearance)) {
-      const ap = obj.appearance;
-      // height / build categorical (aligned with AppearanceSchema)
-      if (ap.height && !APPEARANCE_HEIGHTS.includes(ap.height))
-        errs.push(
-          `appearance.height invalid (${ap.height}) must be one of ${APPEARANCE_HEIGHTS.join('|')}`
-        );
-      if (ap.build && !APPEARANCE_TORSOS.includes(ap.build))
-        errs.push(
-          `appearance.build invalid (${ap.build}) must be one of ${APPEARANCE_TORSOS.join('|')}`
-        );
-      if (
-        ap.features &&
-        (!Array.isArray(ap.features) ||
-          ap.features.some((f) => typeof f !== 'string' || f.length === 0))
-      )
-        errs.push('appearance.features must be array of non-empty strings');
-      if (ap.skinTone && (typeof ap.skinTone !== 'string' || ap.skinTone.length === 0))
-        errs.push('appearance.skinTone must be non-empty string');
-      if (ap.description && (typeof ap.description !== 'string' || ap.description.length === 0))
-        errs.push('appearance.description must be non-empty string');
-      // Deprecated / disallowed fields
-      const deprecated = [
-        'heightCm',
-        'nubile',
-        'breastSize',
-        'clothingStyle',
-        'distinguishingFeatures',
-      ];
-      for (const d of deprecated) {
-        if (d in ap) errs.push(`appearance.${d} is deprecated/disallowed`);
+  // Physique (optional string or object: build + appearance buckets)
+  if (obj.physique) {
+    if (typeof obj.physique === 'string') {
+      if (obj.physique.length === 0) errs.push('physique string must be non-empty');
+    } else if (typeof obj.physique === 'object' && !Array.isArray(obj.physique)) {
+      const ph = obj.physique;
+      const build = ph.build;
+      const appearance = ph.appearance;
+
+      if (build) {
+        if (build.height && !APPEARANCE_HEIGHTS.includes(build.height)) {
+          errs.push(
+            `physique.build.height invalid (${build.height}) must be one of ${APPEARANCE_HEIGHTS.join(
+              '|'
+            )}`
+          );
+        }
+        if (build.torso && !APPEARANCE_TORSOS.includes(build.torso)) {
+          errs.push(
+            `physique.build.torso invalid (${build.torso}) must be one of ${APPEARANCE_TORSOS.join(
+              '|'
+            )}`
+          );
+        }
+        if (build.skinTone && (typeof build.skinTone !== 'string' || build.skinTone.length === 0)) {
+          errs.push('physique.build.skinTone must be non-empty string');
+        }
+        if (build.arms) {
+          if (build.arms.build && !APPEARANCE_ARMS_BUILD.includes(build.arms.build)) {
+            errs.push(
+              `physique.build.arms.build invalid (${build.arms.build}) must be one of ${APPEARANCE_ARMS_BUILD.join(
+                '|'
+              )}`
+            );
+          }
+          if (build.arms.length && !APPEARANCE_ARMS_LENGTH.includes(build.arms.length)) {
+            errs.push(
+              `physique.build.arms.length invalid (${build.arms.length}) must be one of ${APPEARANCE_ARMS_LENGTH.join(
+                '|'
+              )}`
+            );
+          }
+        }
+        if (build.legs) {
+          if (build.legs.length && !APPEARANCE_LEGS_LENGTH.includes(build.legs.length)) {
+            errs.push(
+              `physique.build.legs.length invalid (${build.legs.length}) must be one of ${APPEARANCE_LEGS_LENGTH.join(
+                '|'
+              )}`
+            );
+          }
+          if (build.legs.build && !APPEARANCE_LEGS_BUILD.includes(build.legs.build)) {
+            errs.push(
+              `physique.build.legs.build invalid (${build.legs.build}) must be one of ${APPEARANCE_LEGS_BUILD.join(
+                '|'
+              )}`
+            );
+          }
+        }
+      }
+
+      if (appearance) {
+        if (appearance.hair) {
+          if (
+            appearance.hair.color &&
+            (typeof appearance.hair.color !== 'string' || appearance.hair.color.length === 0)
+          ) {
+            errs.push('physique.appearance.hair.color must be non-empty string');
+          }
+          if (
+            appearance.hair.style &&
+            (typeof appearance.hair.style !== 'string' || appearance.hair.style.length === 0)
+          ) {
+            errs.push('physique.appearance.hair.style must be non-empty string');
+          }
+          if (
+            appearance.hair.length &&
+            (typeof appearance.hair.length !== 'string' || appearance.hair.length.length === 0)
+          ) {
+            errs.push('physique.appearance.hair.length must be non-empty string');
+          }
+        }
+        if (appearance.eyes) {
+          if (
+            appearance.eyes.color &&
+            (typeof appearance.eyes.color !== 'string' || appearance.eyes.color.length === 0)
+          ) {
+            errs.push('physique.appearance.eyes.color must be non-empty string');
+          }
+        }
+        if (
+          appearance.features &&
+          (!Array.isArray(appearance.features) ||
+            appearance.features.some((f) => typeof f !== 'string' || f.length === 0))
+        ) {
+          errs.push('physique.appearance.features must be array of non-empty strings');
+        }
       }
     } else {
-      errs.push('appearance must be a string or object');
+      errs.push('physique must be a string or object');
     }
   }
   // Scent (optional)

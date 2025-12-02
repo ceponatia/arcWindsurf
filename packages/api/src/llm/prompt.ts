@@ -45,7 +45,9 @@ function serializeCharacter(c: CharacterProfile) {
     `Summary: ${c.summary}`,
     `Backstory: ${truncate(c.backstory, 1200)}`,
     personalityLine,
-    c.appearance ? `Appearance: ${serializeAppearance(c.appearance)}` : undefined,
+    'physique' in c && (c as { physique?: unknown }).physique
+      ? `Appearance: ${serializePhysique((c as { physique?: unknown }).physique)}`
+      : undefined,
     `Speaking Style: ${c.speakingStyle}`,
     c.tags?.length ? `Tags: ${c.tags.join(', ')}` : undefined,
     // scent is optional; guard via in-operator for forward/backward compat
@@ -105,45 +107,63 @@ function serializeStyle(c: CharacterProfile) {
   return pairs.length ? `Style Hints: ${pairs.join(', ')}` : '';
 }
 
-function serializeAppearance(a: CharacterProfile['appearance']): string {
-  if (!a) return '';
-  if (typeof a === 'string') return truncate(a, 240);
+function serializePhysique(physique: unknown): string {
+  if (!physique) return '';
+  if (typeof physique === 'string') return truncate(physique, 240);
 
-  // Structured appearance from `AppearanceSchema`
+  const p = physique as {
+    build?: {
+      height?: string;
+      torso?: string;
+      skinTone?: string;
+      arms?: { build?: string; length?: string };
+      legs?: { build?: string; length?: string };
+    };
+    appearance?: {
+      hair?: { color?: string; style?: string; length?: string };
+      eyes?: { color?: string };
+      features?: string[];
+    };
+  };
+
   const parts: string[] = [];
 
-  const hair = a.hair;
+  const hair = p.appearance?.hair;
   if (hair) {
     const hairBits = [hair.color, hair.length, hair.style].filter(Boolean).join(' ');
     if (hairBits) parts.push(`Hair: ${hairBits}`);
   }
 
-  const eyes = a.eyes;
+  const eyes = p.appearance?.eyes;
   if (eyes?.color) parts.push(`Eyes: ${eyes.color}`);
 
-  if (a.height) parts.push(`Height: ${a.height}`);
-  if (a.skinTone) parts.push(`Skin: ${a.skinTone}`);
+  const build = p.build;
+  if (build) {
+    if (build.height) parts.push(`Height: ${build.height}`);
+    if (build.skinTone) parts.push(`Skin: ${build.skinTone}`);
+    if (build.torso) parts.push(`Torso: ${build.torso}`);
 
-  if (a.torso) parts.push(`Torso: ${a.torso}`);
+    const arms = build.arms;
+    if (arms) {
+      const armBits = [arms.build, arms.length ? `length=${arms.length}` : '']
+        .filter(Boolean)
+        .join(', ');
+      if (armBits) parts.push(`Arms: ${armBits}`);
+    }
 
-  const arms = a.arms;
-  if (arms) {
-    const armBits = [arms.build, arms.length ? `length=${arms.length}` : '']
-      .filter(Boolean)
-      .join(', ');
-    if (armBits) parts.push(`Arms: ${armBits}`);
+    const legs = build.legs;
+    if (legs) {
+      const legBits = [legs.build, legs.length ? `length=${legs.length}` : '']
+        .filter(Boolean)
+        .join(', ');
+      if (legBits) parts.push(`Legs: ${legBits}`);
+    }
   }
 
-  const legs = a.legs;
-  if (legs) {
-    const legBits = [legs.build, legs.length ? `length=${legs.length}` : '']
-      .filter(Boolean)
-      .join(', ');
-    if (legBits) parts.push(`Legs: ${legBits}`);
+  const features = p.appearance?.features;
+  if (Array.isArray(features) && features.length) {
+    parts.push(`Features: ${features.join(', ')}`);
   }
-
-  const features = a.features;
-  if (Array.isArray(features) && features.length) parts.push(`Features: ${features.join(', ')}`);
 
   return parts.join('; ');
 }
