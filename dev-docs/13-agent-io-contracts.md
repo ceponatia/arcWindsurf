@@ -34,6 +34,13 @@ Conceptually, one player turn will eventually follow this path:
    - Updated overrides are written back to the DB.
    - The aggregated narrative result is returned to the client.
 
+In addition to turn handling, there is a separate class of **profile normalization** flows that are not directly tied to a user chat turn but use the same building blocks:
+
+- API receives a create/update request for a character profile that may include free-text fields such as `appearanceText`.
+- A normalization/parsing job (potentially modeled as its own Governor intent) invokes regex and LLM-based parsers to produce structured attributes (for example, the `appearance` object and, later, other parsed-attribute maps).
+- The State Manager is used to merge these parsed attributes into the existing profile JSON without requiring callers to send the full structured view.
+- API persists the updated `profile_json` back to Postgres.
+
 Only a small part of this pipeline is implemented today (Governor scaffold + State Manager helpers). The rest is design intent.
 
 ---
@@ -223,6 +230,15 @@ Per‑turn, per‑agent inputs are expected to include:
 - **Retrieved knowledge (future)**
   - Ranked knowledge nodes or contextual snippets derived from embeddings and retrieval.
   - Not present in any current code paths.
+
+Parsing/normalization agents (for example, an "attribute parser" for appearance) have a narrower input/output surface:
+
+- Inputs:
+  - The current profile JSON (or a slice) including raw text fields such as `appearanceText`.
+  - The target schema description for the parsed attributes (for example, the `Appearance` shape).
+- Outputs:
+  - A partial JSON object containing only the parsed attribute keys that could be inferred from the text (for example, `appearance.hair.color`, `appearance.hair.style`).
+  - No requirement to fill every possible key; missing keys mean "no signal", not error.
 
 ### 4.2 Conceptual Agent Output
 

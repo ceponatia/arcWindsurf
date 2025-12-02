@@ -46,6 +46,17 @@ This is the current, factual architecture based on the live code (not the archiv
 - **Overrides**: PUT `/sessions/:id/overrides/{character|setting}` deep-merges overrides into `profile_json` (arrays replace). Effective profile = instance `profile_json`.
 - **Messages**: `POST /sessions/:id/messages` appends user message, builds prompt, calls OpenRouter, stores assistant reply. Messages persisted in `messages` with incremental `idx`.
 
+### Attribute Parsing Pipeline (planned)
+
+Some character fields are designed to be authored as free text and then normalized into **parsed attributes** stored as structured JSON (for example, `appearanceText` → `appearance.hair.color/style`). The planned pipeline is:
+
+1. **Input capture** – character creation and update flows accept both raw text fields (such as `appearanceText`) and structured fields (such as `appearance`).
+2. **Syntactic parsing** – a lightweight regex/heuristic layer extracts obvious patterns from the raw text (for example, "dark hair", "green eyes") into candidate key/value pairs.
+3. **LLM-based parsing** – an LLM parser is invoked (server-side) with strict instructions to return JSON matching the `Appearance` schema (and future parsed-attribute schemas) and only fill keys it can infer from the text.
+4. **Merge and persist** – parsed attributes are merged into the character profile JSON. The top-level attribute objects (for example, `appearance`) are always present as objects in `profile_json`, but all nested keys are optional. When no parser is run, or parsing fails, the structured view may remain partially or entirely empty.
+
+This pipeline is not yet implemented in the live API; it is documented here to guide future work and keep the schema, state, and prompting docs aligned.
+
 ## Prompting & LLM Integration
 
 - Prompt builder: `packages/api/src/llm/prompt.ts`

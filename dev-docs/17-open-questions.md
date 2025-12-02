@@ -10,6 +10,7 @@ This document aggregates open questions and TBD design decisions from the other 
 - Location hierarchy — what is the concrete relationship between SettingProfile and Region / Building / Room (IDs, containment, or something else)?
 - Location persistence — should locations be stored as JSON files, DB tables, or a hybrid, and how is per-session location state tracked?
 - Inventory model — how do we represent items, ownership, and equipment in schemas (definitions vs owners, clothing slots, etc.), and which parts become part of CharacterProfile vs. separate item tables?
+- Parsed attributes — which character and setting fields should support the parsed-attribute pattern (for example, appearance, body/health, personality blurbs), and how do we name and scope the corresponding raw-text vs structured fields (for example, `appearanceText` vs `appearance` vs `physicalAttributes`)?
 
 ## State & Persistence
 
@@ -27,6 +28,7 @@ This document aggregates open questions and TBD design decisions from the other 
 - Patch format and normalization — do agents emit raw JSON Patch, higher-level events, or both, and should StateManager.applyPatches eventually compute minimal overrides vs. full-document replacements?
 - Governor ↔ StateManager ↔ DB wiring — what are the exact contracts and helper layers for loading baseline/overrides, applying patches, validating, and persisting state?
 - Session lifecycle from Governor’s view — how are sessions created, resumed, and terminated at the orchestration layer, and how much historical context does the Governor keep vs. reconstruct on demand?
+- Attribute parsing orchestration — should attribute parsing/normalization be modeled as dedicated Governor intents, background jobs, or synchronous steps on profile create/update, and how do we avoid double-parsing or race conditions when updates arrive quickly?
 
 ## Prompting & Safety
 
@@ -34,6 +36,7 @@ This document aggregates open questions and TBD design decisions from the other 
 - Multi-agent prompting — if we introduce specialized agents, do they each receive their own system prompts/configs, and how are those maintained alongside the current single-prompt path?
 - Token budgeting — do we move from fixed historyWindow/summaryMaxChars to fully token-budgeted prompt construction per model and use case?
 - Localization and style variants — how do we express language/locale and global style preferences (beyond per-character style) in prompts?
+- Parsing prompts — what exact prompt templates, output formats, and safety constraints should we use for LLM-based attribute parsers so they reliably return partial structured JSON (no hallucinated keys, no over-eager filling) even under adversarial or noisy input?
 
 ## RAG, Knowledge Nodes & Embeddings
 

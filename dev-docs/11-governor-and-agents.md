@@ -52,6 +52,18 @@ The intended per-turn flow for the Governor is:
    - Combine the agent narratives and system messages into a single TurnResult.
    - For now, the scaffold simply returns an echo-style message.
 
+In addition to turns initiated by player input, the Governor (or a closely related orchestration layer) is a natural place to trigger **in-session profile normalization/parsing** jobs when character attributes change during the course of a game session (for example, state updates emitted by agents). Those flows are defined as separate intents (for example, "normalizeCharacterProfileForSession") that:
+
+- Load the latest per-session profile JSON (including any mutated fields).
+- Invoke regex and LLM-based parsers to refresh parsed attributes (for example, `appearance` fields) when in-session text fields change.
+- Commit the resulting JSON back to persistence via the State Manager and DB APIs.
+
+By contrast, when characters are initially **created or updated** in the builder UI, parsing is initiated directly from the character builder page:
+
+- The builder sends the authored data to a parsing endpoint that fans out to both the regex system and the LLM parser.
+- The regex system only handles simple, explicitly-labeled inputs (for example, `Hair color: brown`) and maps them directly to keys like `appearance.hair.color`.
+- Freer natural-language descriptions (for example, "he has messy dark hair and bright green eyes") are sent to the LLM parser with instructions to return structured key/value pairs (for example, `appearance.hair.style`, `appearance.hair.color`, `appearance.eyes.color`).
+
 ## 3. Governor Configuration and Dependencies
 
 The Governor is instantiated with a GovernorConfig object. In code today it looks like:

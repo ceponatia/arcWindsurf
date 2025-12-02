@@ -149,23 +149,23 @@ Embeddings and knowledge nodes are therefore a **future concern**. The State Man
 
 Based on the design docs and comments in the governor/state-manager scaffolding, the planned (but not yet implemented) relationship to embeddings looks roughly like this:
 
-1. **Source of truth**
-   - The State Manager operates over structured JSON documents (for example, character and setting profiles).
-   - These documents will eventually be decomposed into knowledge nodes for embedding and retrieval.
+### Source of truth
 
-2. **Triggers for embedding updates**
+The State Manager operates over structured JSON documents (for example, character and setting profiles). These documents will eventually be decomposed into knowledge nodes for embedding and retrieval. Parsed attribute fields (for example, `appearance` derived from `appearanceText`) are part of the same JSON document and are treated just like any other structured fields; the State Manager does not distinguish between "hand-authored" and "parsed" keys.
+
+1. **Triggers for embedding updates**
    - When `applyPatches` produces `newOverrides` that materially change important fields (goals, relationships, backstory, etc.), higher layers may:
      - Recompute one or more embeddings for affected nodes.
      - Write updated vectors to Postgres.
    - This triggering logic does **not** exist in code yet and is expected to live outside the State Manager.
 
-3. **Recall path**
+2. **Recall path**
    - A future retrieval layer would:
      - Use current effective state and recent input to construct a retrieval query.
      - Fetch relevant knowledge nodes (via similarity search) to include as context for agents.
    - The State Manager itself only provides the structured base state used to derive or validate those nodes.
 
-4. **Consistency guarantees**
+3. **Consistency guarantees**
    - Once embeddings are wired in, there will be design questions about how quickly they must track changes in `newOverrides` and how to handle stale vectors.
    - None of those policies are implemented yet; see TBD section.
 

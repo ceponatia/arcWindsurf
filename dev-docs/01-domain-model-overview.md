@@ -26,11 +26,18 @@ Key fields (non-exhaustive, based on usages in the API and prompt builder):
 - `summary: string` – short overview of who the character is.
 - `backstory: string` – longer narrative background, truncated for prompts when needed.
 - `personality: string | string[]` – free text or list of traits.
-- `appearance: string | AppearanceObject` – optional; may be a single description string or a structured object with subfields such as `hair`, `eyes`, `height`, `skinTone`, `torso`, `arms`, `legs`, `features`.
+- `appearanceText?: string` – optional free-text appearance description as authored by the user.
+- `appearance: string | AppearanceObject` – optional; may be a single description string or a structured object with subfields such as `hair`, `eyes`, `height`, `skinTone`, `torso`, `arms`, `legs`, `features`. In the future, this will be the **parsed attribute** view derived from `appearanceText` and other inputs.
 - `speakingStyle: string` – guidance on tone/voice.
 - `tags?: string[]` – free-form tags used for UI and future routing.
 - `style?` – optional structured style hints used in prompts (e.g. `sentenceLength`, `humor`, `darkness`, `pacing`, `formality`, `verbosity`).
 - `scent?` – optional structured hints serialized into prompts when present.
+
+Parsed attributes follow these rules at the domain level:
+
+- The top-level `appearance` object is intended to exist in persisted profiles (as an object), but all nested keys (for example, `appearance.hair.color`) are optional.
+- Missing nested keys must not cause validation or persistence errors; they simply indicate that parsing did not extract that attribute.
+- Over time, the same pattern is expected to apply to other semi-structured fields (for example, personality blurbs → `personalityAttributes`, body/health text → `physicalAttributes`).
 
 Authoritative definition:
 

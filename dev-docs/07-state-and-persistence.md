@@ -30,6 +30,12 @@ Dynamic templates live in Postgres and mirror the filesystem shapes:
 
 The API exposes CRUD endpoints under `/characters` and `/settings` that can create or update these DB-backed templates. On read and write, `profile_json` is validated with the same Zod schemas used for filesystem templates to ensure a single source of truth for shapes and constraints.
 
+For characters, `profile_json` is also the home for **parsed attributes** derived from free-text fields:
+
+- Raw text fields (for example, `appearanceText`) are stored alongside structured fields.
+- Parsed views (for example, `appearance.hair.color`, `appearance.hair.style`) are stored as optional nested keys in the same JSON document.
+- The top-level attribute object (for example, `appearance`) is expected to be present as an object, but its nested keys are optional and may be missing when parsing does not produce values.
+
 Filesystem and DB templates coexist:
 
 - Filesystem templates are loaded into memory at startup and surfaced with a `source` flag like `fs`.
