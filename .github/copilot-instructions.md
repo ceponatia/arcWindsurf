@@ -15,6 +15,7 @@ This monorepo uses pnpm + Turbo with these packages:
 - After finishing a task, update the root `README.md` with any relevant changes and keep it accurate and concise. Do not remove unrelated information.
 - Put requested developer notes or docs in `/dev-docs`.
 - For markdown lint issues, prefer `markdownlint --fix`.
+- When running terminal commands such as curl and node scripts, either configure the script to return an error or quit after a period of time, or use a sleep command to avoid infinite loops.
 
 ## Architecture & Conventions
 

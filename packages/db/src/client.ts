@@ -3,6 +3,8 @@ import { registerType } from './pgvector.js';
 import type {
   CharacterInstanceRow,
   CharacterTemplateRow,
+  CharacterProfileRow,
+  SettingProfileRow,
   DbRow,
   DbRows,
   MessageRow,
@@ -89,7 +91,11 @@ function camelizeRow<T extends DbRow>(row: DbRow): T {
     const ck = k.replace(/_[a-z]/g, (m) => m[1]!.toUpperCase());
     if (ck === 'createdAt' || ck === 'updatedAt') {
       (out as Record<string, unknown>)[ck] = asDate(v) ?? undefined;
-    } else if (ck === 'profileJson' && typeof v === 'object' && v !== null) {
+    } else if (
+      (ck === 'profileJson' || ck === 'templateSnapshot') &&
+      typeof v === 'object' &&
+      v !== null
+    ) {
       // return stringified JSON to match previous Prisma shape
       (out as Record<string, unknown>)[ck] = JSON.stringify(v);
     } else {
@@ -115,16 +121,16 @@ export const db = {
     },
     async upsert(args: {
       where: { id: string };
-      create: { id: string; characterId: string; settingId: string };
-      update: { characterId: string; settingId: string };
+      create: { id: string; characterTemplateId: string; settingTemplateId: string };
+      update: { characterTemplateId: string; settingTemplateId: string };
     }): Promise<UserSessionRow> {
       const { id } = args.where;
-      const { characterId, settingId } = args.create;
+      const { characterTemplateId, settingTemplateId } = args.create;
       const { rows } = await query(
-        `INSERT INTO user_sessions (id, character_id, setting_id) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET character_id = EXCLUDED.character_id, setting_id = EXCLUDED.setting_id, updated_at = now()
+        `INSERT INTO user_sessions (id, character_template_id, setting_template_id) VALUES ($1, $2, $3)
+         ON CONFLICT (id) DO UPDATE SET character_template_id = EXCLUDED.character_template_id, setting_template_id = EXCLUDED.setting_template_id, updated_at = now()
          RETURNING *`,
-        [id, characterId, settingId]
+        [id, characterTemplateId, settingTemplateId]
       );
       return camelizeRow<UserSessionRow>(rows[0]!);
     },
@@ -237,86 +243,93 @@ export const db = {
     },
   },
 
-  characterTemplate: {
-    async findMany(): Promise<CharacterTemplateRow[]> {
-      const { rows } = await query('SELECT * FROM character_templates ORDER BY created_at DESC');
-      return rows.map((r) => camelizeRow<CharacterTemplateRow>(r));
+  characterProfile: {
+    async findMany(): Promise<CharacterProfileRow[]> {
+      const { rows } = await query('SELECT * FROM character_profiles ORDER BY created_at DESC');
+      return rows.map((r) => camelizeRow<CharacterProfileRow>(r));
     },
-    async findUnique(args: { where: { id: string } }): Promise<CharacterTemplateRow | null> {
-      const { rows } = await query('SELECT * FROM character_templates WHERE id = $1 LIMIT 1', [
+    async findUnique(args: { where: { id: string } }): Promise<CharacterProfileRow | null> {
+      const { rows } = await query('SELECT * FROM character_profiles WHERE id = $1 LIMIT 1', [
         args.where.id,
       ]);
-      return rows[0] ? camelizeRow<CharacterTemplateRow>(rows[0]) : null;
+      return rows[0] ? camelizeRow<CharacterProfileRow>(rows[0]) : null;
     },
     async create(args: {
       data: { id: string; profileJson: string };
-    }): Promise<CharacterTemplateRow> {
+    }): Promise<CharacterProfileRow> {
       const { id, profileJson } = args.data;
       const { rows } = await query(
-        'INSERT INTO character_templates (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
+        'INSERT INTO character_profiles (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
         [id, profileJson]
       );
-      return camelizeRow<CharacterTemplateRow>(rows[0]!);
+      return camelizeRow<CharacterProfileRow>(rows[0]!);
     },
     async update(args: {
       where: { id: string };
       data: { profileJson: string };
-    }): Promise<CharacterTemplateRow> {
+    }): Promise<CharacterProfileRow> {
       const { id } = args.where;
       const { profileJson } = args.data;
       const { rows } = await query(
-        'UPDATE character_templates SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
+        'UPDATE character_profiles SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
         [id, profileJson]
       );
-      return camelizeRow<CharacterTemplateRow>(rows[0]!);
+      return camelizeRow<CharacterProfileRow>(rows[0]!);
     },
     async delete(args: { where: { id: string } }): Promise<void> {
-      await query('DELETE FROM character_templates WHERE id = $1', [args.where.id]);
+      await query('DELETE FROM character_profiles WHERE id = $1', [args.where.id]);
     },
   },
 
-  settingTemplate: {
-    async findMany(): Promise<SettingTemplateRow[]> {
-      const { rows } = await query('SELECT * FROM setting_templates ORDER BY created_at DESC');
-      return rows.map((r) => camelizeRow<SettingTemplateRow>(r));
+  // Deprecated alias
+  get characterTemplate() {
+    return this.characterProfile;
+  },
+
+  settingProfile: {
+    async findMany(): Promise<SettingProfileRow[]> {
+      const { rows } = await query('SELECT * FROM setting_profiles ORDER BY created_at DESC');
+      return rows.map((r) => camelizeRow<SettingProfileRow>(r));
     },
-    async findUnique(args: { where: { id: string } }): Promise<SettingTemplateRow | null> {
-      const { rows } = await query('SELECT * FROM setting_templates WHERE id = $1 LIMIT 1', [
+    async findUnique(args: { where: { id: string } }): Promise<SettingProfileRow | null> {
+      const { rows } = await query('SELECT * FROM setting_profiles WHERE id = $1 LIMIT 1', [
         args.where.id,
       ]);
-      return rows[0] ? camelizeRow<SettingTemplateRow>(rows[0]) : null;
+      return rows[0] ? camelizeRow<SettingProfileRow>(rows[0]) : null;
     },
-    async create(args: { data: { id: string; profileJson: string } }): Promise<SettingTemplateRow> {
+    async create(args: { data: { id: string; profileJson: string } }): Promise<SettingProfileRow> {
       const { id, profileJson } = args.data;
       const { rows } = await query(
-        'INSERT INTO setting_templates (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
+        'INSERT INTO setting_profiles (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
         [id, profileJson]
       );
-      return camelizeRow<SettingTemplateRow>(rows[0]!);
+      return camelizeRow<SettingProfileRow>(rows[0]!);
     },
     async update(args: {
       where: { id: string };
       data: { profileJson: string };
-    }): Promise<SettingTemplateRow> {
+    }): Promise<SettingProfileRow> {
       const { id } = args.where;
       const { profileJson } = args.data;
       const { rows } = await query(
-        'UPDATE setting_templates SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
+        'UPDATE setting_profiles SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
         [id, profileJson]
       );
-      return camelizeRow<SettingTemplateRow>(rows[0]!);
+      return camelizeRow<SettingProfileRow>(rows[0]!);
     },
     async delete(args: { where: { id: string } }): Promise<void> {
-      await query('DELETE FROM setting_templates WHERE id = $1', [args.where.id]);
+      await query('DELETE FROM setting_profiles WHERE id = $1', [args.where.id]);
     },
+  },
+
+  // Deprecated alias
+  get settingTemplate() {
+    return this.settingProfile;
   },
 
   characterInstance: {
     async findUnique(args: {
-      where: {
-        sessionId_templateCharacterId?: { sessionId: string; templateCharacterId: string };
-        id?: string;
-      };
+      where: { id?: string; sessionId?: string };
     }): Promise<CharacterInstanceRow | null> {
       if (args.where.id) {
         const { rows } = await query('SELECT * FROM character_instances WHERE id = $1 LIMIT 1', [
@@ -324,49 +337,56 @@ export const db = {
         ]);
         return rows[0] ? camelizeRow<CharacterInstanceRow>(rows[0]) : null;
       }
-      const key = args.where.sessionId_templateCharacterId!;
-      const { rows } = await query(
-        'SELECT * FROM character_instances WHERE session_id = $1 AND template_character_id = $2 LIMIT 1',
-        [key.sessionId, key.templateCharacterId]
-      );
-      return rows[0] ? camelizeRow<CharacterInstanceRow>(rows[0]) : null;
+      if (args.where.sessionId) {
+        const { rows } = await query(
+          'SELECT * FROM character_instances WHERE session_id = $1 LIMIT 1',
+          [args.where.sessionId]
+        );
+        return rows[0] ? camelizeRow<CharacterInstanceRow>(rows[0]) : null;
+      }
+      return null;
     },
     async create(args: {
       data: {
         id: string;
         sessionId: string;
-        templateCharacterId: string;
-        baseline: string;
-        overrides: string;
+        templateId: string;
+        templateSnapshot: string;
+        profileJson: string;
       };
     }): Promise<CharacterInstanceRow> {
       const d = args.data;
       const { rows } = await query(
-        'INSERT INTO character_instances (id, session_id, template_character_id, baseline, overrides) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb) RETURNING *',
-        [d.id, d.sessionId, d.templateCharacterId, d.baseline, d.overrides]
+        `INSERT INTO character_instances (id, session_id, template_id, template_snapshot, profile_json)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
+         RETURNING *`,
+        [d.id, d.sessionId, d.templateId, d.templateSnapshot, d.profileJson]
       );
       return camelizeRow<CharacterInstanceRow>(rows[0]!);
     },
     async update(args: {
       where: { id: string };
-      data: { overrides?: string };
+      data: { profileJson?: string };
     }): Promise<CharacterInstanceRow> {
       const { id } = args.where;
-      const { overrides } = args.data;
+      const { profileJson } = args.data;
       const { rows } = await query(
-        'UPDATE character_instances SET overrides = COALESCE($2::jsonb, overrides), updated_at = now() WHERE id = $1 RETURNING *',
-        [id, overrides ?? null]
+        `UPDATE character_instances
+         SET profile_json = COALESCE($2::jsonb, profile_json), updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [id, profileJson ?? null]
       );
       return camelizeRow<CharacterInstanceRow>(rows[0]!);
+    },
+    async delete(args: { where: { id: string } }): Promise<void> {
+      await query('DELETE FROM character_instances WHERE id = $1', [args.where.id]);
     },
   },
 
   settingInstance: {
     async findUnique(args: {
-      where: {
-        sessionId_templateSettingId?: { sessionId: string; templateSettingId: string };
-        id?: string;
-      };
+      where: { id?: string; sessionId?: string };
     }): Promise<SettingInstanceRow | null> {
       if (args.where.id) {
         const { rows } = await query('SELECT * FROM setting_instances WHERE id = $1 LIMIT 1', [
@@ -374,40 +394,50 @@ export const db = {
         ]);
         return rows[0] ? camelizeRow<SettingInstanceRow>(rows[0]) : null;
       }
-      const key = args.where.sessionId_templateSettingId!;
-      const { rows } = await query(
-        'SELECT * FROM setting_instances WHERE session_id = $1 AND template_setting_id = $2 LIMIT 1',
-        [key.sessionId, key.templateSettingId]
-      );
-      return rows[0] ? camelizeRow<SettingInstanceRow>(rows[0]) : null;
+      if (args.where.sessionId) {
+        const { rows } = await query(
+          'SELECT * FROM setting_instances WHERE session_id = $1 LIMIT 1',
+          [args.where.sessionId]
+        );
+        return rows[0] ? camelizeRow<SettingInstanceRow>(rows[0]) : null;
+      }
+      return null;
     },
     async create(args: {
       data: {
         id: string;
         sessionId: string;
-        templateSettingId: string;
-        baseline: string;
-        overrides: string;
+        templateId: string;
+        templateSnapshot: string;
+        profileJson: string;
       };
     }): Promise<SettingInstanceRow> {
       const d = args.data;
       const { rows } = await query(
-        'INSERT INTO setting_instances (id, session_id, template_setting_id, baseline, overrides) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb) RETURNING *',
-        [d.id, d.sessionId, d.templateSettingId, d.baseline, d.overrides]
+        `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
+         RETURNING *`,
+        [d.id, d.sessionId, d.templateId, d.templateSnapshot, d.profileJson]
       );
       return camelizeRow<SettingInstanceRow>(rows[0]!);
     },
     async update(args: {
       where: { id: string };
-      data: { overrides?: string };
+      data: { profileJson?: string };
     }): Promise<SettingInstanceRow> {
       const { id } = args.where;
-      const { overrides } = args.data;
+      const { profileJson } = args.data;
       const { rows } = await query(
-        'UPDATE setting_instances SET overrides = COALESCE($2::jsonb, overrides), updated_at = now() WHERE id = $1 RETURNING *',
-        [id, overrides ?? null]
+        `UPDATE setting_instances
+         SET profile_json = COALESCE($2::jsonb, profile_json), updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [id, profileJson ?? null]
       );
       return camelizeRow<SettingInstanceRow>(rows[0]!);
+    },
+    async delete(args: { where: { id: string } }): Promise<void> {
+      await query('DELETE FROM setting_instances WHERE id = $1', [args.where.id]);
     },
   },
 };

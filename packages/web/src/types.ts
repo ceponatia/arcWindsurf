@@ -25,16 +25,20 @@ export interface Message {
 
 export interface Session {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   createdAt: string; // ISO timestamp
   messages: Message[];
 }
 
 export interface SessionSummary {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   createdAt: string;
   characterName?: string | null;
   settingName?: string | null;

@@ -58,8 +58,8 @@ export function useAppController() {
   const canStart = !!(selectedCharacterId && selectedSettingId);
 
   const activeSession = sessions.find((s) => s.id === currentSessionId) ?? null;
-  const activeCharacterId = activeSession?.characterId ?? selectedCharacterId;
-  const activeSettingId = activeSession?.settingId ?? selectedSettingId;
+  const activeCharacterId = activeSession?.characterTemplateId ?? selectedCharacterId;
+  const activeSettingId = activeSession?.settingTemplateId ?? selectedSettingId;
 
   useEffect(() => {
     const onHashChange = () => {

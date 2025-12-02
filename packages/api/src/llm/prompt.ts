@@ -46,7 +46,6 @@ function serializeCharacter(c: CharacterProfile) {
     `Backstory: ${truncate(c.backstory, 1200)}`,
     personalityLine,
     c.appearance ? `Appearance: ${serializeAppearance(c.appearance)}` : undefined,
-    `Goals: ${c.goals.join('; ')}`,
     `Speaking Style: ${c.speakingStyle}`,
     c.tags?.length ? `Tags: ${c.tags.join(', ')}` : undefined,
     // scent is optional; guard via in-operator for forward/backward compat

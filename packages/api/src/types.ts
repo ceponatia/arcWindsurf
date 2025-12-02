@@ -50,8 +50,10 @@ export interface SettingSummary {
 // Sessions list item decoration
 export interface SessionListItem {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   createdAt: string;
   characterName?: string;
   settingName?: string;
@@ -66,13 +68,23 @@ export interface DbMessage {
 
 export interface DbSession {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   createdAt: string;
   messages: DbMessage[];
 }
 
-export type DbSessionSummary = Pick<DbSession, 'id' | 'characterId' | 'settingId' | 'createdAt'>;
+export type DbSessionSummary = Pick<
+  DbSession,
+  | 'id'
+  | 'characterTemplateId'
+  | 'characterInstanceId'
+  | 'settingTemplateId'
+  | 'settingInstanceId'
+  | 'createdAt'
+>;
 
 // Message DTO
 export interface MessageResponse {
@@ -89,8 +101,10 @@ export interface CreateSessionRequest {
 }
 export interface CreateSessionResponse {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   createdAt: string;
 }
 
@@ -113,6 +127,7 @@ export type OverridesObject = Record<string, unknown>;
 export interface OverridesAudit {
   baseline: Record<string, unknown>;
   overrides: Record<string, unknown>;
+  previous?: Record<string, unknown>;
 }
 
 // LLM chat roles
@@ -204,26 +219,31 @@ export type MapSessionListItem = (
 export type MapMessageResponse = (m: DbMessage) => MessageResponse;
 
 // DB rows returned from @minimal-rpg/db prisma-like helpers
-export interface TemplateProfileRow {
+export interface ProfileRow {
   id: string;
   profileJson: string;
 }
-export type CharacterTemplateRow = TemplateProfileRow;
-export type SettingTemplateRow = TemplateProfileRow;
+export type CharacterProfileRow = ProfileRow;
+export type SettingProfileRow = ProfileRow;
 
-interface InstanceRowBase {
+// Deprecated aliases
+export type CharacterTemplateRow = CharacterProfileRow;
+export type SettingTemplateRow = SettingProfileRow;
+
+export interface CharacterInstanceRow {
   id: string;
   sessionId: string;
-  baseline: string | null;
-  overrides: string | null;
+  templateId: string;
+  templateSnapshot: string;
+  profileJson: string;
 }
 
-export interface CharacterInstanceRow extends InstanceRowBase {
-  templateCharacterId: string;
-}
-
-export interface SettingInstanceRow extends InstanceRowBase {
-  templateSettingId: string;
+export interface SettingInstanceRow {
+  id: string;
+  sessionId: string;
+  templateId: string;
+  templateSnapshot: string;
+  profileJson: string;
 }
 
 export interface MessageRow {
@@ -235,7 +255,7 @@ export interface MessageRow {
   createdAt?: string | Date | null;
 }
 
-interface TemplateTable<T extends TemplateProfileRow> {
+interface ProfileTable<T extends ProfileRow> {
   findMany(): Promise<T[]>;
   findUnique(args: { where: { id: string } }): Promise<T | null>;
   create(args: { data: { id: string; profileJson: string } }): Promise<T>;
@@ -243,53 +263,51 @@ interface TemplateTable<T extends TemplateProfileRow> {
   delete(args: { where: { id: string } }): Promise<void>;
 }
 
+// Deprecated alias
+type TemplateTable<T extends ProfileRow> = ProfileTable<T>;
 interface CharacterInstanceTable {
   findUnique(args: {
-    where: {
-      sessionId_templateCharacterId?: { sessionId: string; templateCharacterId: string };
-      id?: string;
-    };
+    where: { id?: string; sessionId?: string };
   }): Promise<CharacterInstanceRow | null>;
   create(args: {
     data: {
       id: string;
       sessionId: string;
-      templateCharacterId: string;
-      baseline: string;
-      overrides: string;
+      templateId: string;
+      templateSnapshot: string;
+      profileJson: string;
     };
   }): Promise<CharacterInstanceRow>;
   update(args: {
     where: { id: string };
-    data: { overrides?: string };
+    data: { profileJson?: string };
   }): Promise<CharacterInstanceRow>;
+  delete(args: { where: { id: string } }): Promise<void>;
 }
 
 interface SettingInstanceTable {
   findUnique(args: {
-    where: {
-      sessionId_templateSettingId?: { sessionId: string; templateSettingId: string };
-      id?: string;
-    };
+    where: { id?: string; sessionId?: string };
   }): Promise<SettingInstanceRow | null>;
   create(args: {
     data: {
       id: string;
       sessionId: string;
-      templateSettingId: string;
-      baseline: string;
-      overrides: string;
+      templateId: string;
+      templateSnapshot: string;
+      profileJson: string;
     };
   }): Promise<SettingInstanceRow>;
   update(args: {
     where: { id: string };
-    data: { overrides?: string };
+    data: { profileJson?: string };
   }): Promise<SettingInstanceRow>;
+  delete(args: { where: { id: string } }): Promise<void>;
 }
 
 export interface PrismaClientLike {
-  characterTemplate: TemplateTable<CharacterTemplateRow>;
-  settingTemplate: TemplateTable<SettingTemplateRow>;
+  characterProfile: ProfileTable<CharacterProfileRow>;
+  settingProfile: ProfileTable<SettingProfileRow>;
   message: {
     update(args: {
       where: { sessionId: string; idx: number };
@@ -301,12 +319,18 @@ export interface PrismaClientLike {
     }): Promise<MessageRow | null>;
     deleteMany(args?: { where?: { sessionId?: string; idx?: number } }): Promise<void>;
   };
+  characterTemplate: TemplateTable<CharacterTemplateRow>;
+  settingTemplate: TemplateTable<SettingTemplateRow>;
   characterInstance: CharacterInstanceTable;
   settingInstance: SettingInstanceTable;
 }
 
 export interface SessionsClientLike {
-  createSession(id: string, characterId: string, settingId: string): Promise<DbSession>;
+  createSession(
+    id: string,
+    characterTemplateId: string,
+    settingTemplateId: string
+  ): Promise<DbSession>;
   getSession(id: string): Promise<DbSession | undefined>;
   listSessions(): Promise<DbSessionSummary[]>;
   deleteSession(id: string): Promise<void>;

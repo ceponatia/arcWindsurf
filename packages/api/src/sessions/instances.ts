@@ -1,7 +1,11 @@
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
+import {
+  CharacterProfileSchema,
+  SettingProfileSchema,
+  type CharacterProfile,
+  type SettingProfile,
+} from '@minimal-rpg/schemas';
 import type { OverridesObject, OverridesAudit } from '../types.js';
 import { db } from '../db/prismaClient.js';
-import { randomUUID } from 'node:crypto';
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return Boolean(v && typeof v === 'object' && !Array.isArray(v));
@@ -34,56 +38,34 @@ function parseJson<T>(text: string | null | undefined, fallback: T): T {
   }
 }
 
-export async function getCharacterOverrides(
-  sessionId: string,
-  characterId: string
-): Promise<OverridesObject | undefined> {
-  const row = await db.characterInstance.findUnique({
-    where: { sessionId_templateCharacterId: { sessionId, templateCharacterId: characterId } },
-  });
-  if (!row) return undefined;
-  return parseJson<Record<string, unknown>>(row.overrides, {});
-}
-
 export async function upsertCharacterOverrides(params: {
   sessionId: string;
   characterId: string;
   baseline: CharacterProfile;
   overrides: OverridesObject;
 }): Promise<OverridesAudit> {
-  const { sessionId, characterId, baseline, overrides } = params;
-  const existing = await db.characterInstance.findUnique({
-    where: { sessionId_templateCharacterId: { sessionId, templateCharacterId: characterId } },
-  });
-  if (!existing) {
-    await db.characterInstance.create({
-      data: {
-        id: randomUUID(),
-        sessionId,
-        templateCharacterId: characterId,
-        baseline: JSON.stringify(baseline),
-        overrides: JSON.stringify(overrides),
-      },
-    });
-    return { baseline: baseline as unknown as Record<string, unknown>, overrides };
+  const { sessionId, baseline, overrides } = params;
+  const instance = await db.characterInstance.findUnique({ where: { sessionId } });
+  if (!instance) {
+    throw new Error(`character instance not found for session ${sessionId}`);
   }
-  await db.characterInstance.update({
-    where: { id: existing.id },
-    data: { overrides: JSON.stringify(overrides) },
-  });
-  const baseObj = parseJson<Record<string, unknown>>(existing.baseline, {});
-  return { baseline: baseObj, overrides };
-}
 
-export async function getSettingOverrides(
-  sessionId: string,
-  settingId: string
-): Promise<OverridesObject | undefined> {
-  const row = await db.settingInstance.findUnique({
-    where: { sessionId_templateSettingId: { sessionId, templateSettingId: settingId } },
+  const baselineObj = parseJson<Record<string, unknown>>(instance.templateSnapshot, {});
+  const currentProfile = parseJson<CharacterProfile>(instance.profileJson, baseline);
+  const previous = { ...(currentProfile as unknown as Record<string, unknown>) };
+  const nextProfile = deepMergeReplaceArrays<CharacterProfile>(currentProfile, overrides);
+  const parsedNext = CharacterProfileSchema.safeParse(nextProfile);
+
+  await db.characterInstance.update({
+    where: { id: instance.id },
+    data: { profileJson: JSON.stringify(parsedNext.success ? parsedNext.data : nextProfile) },
   });
-  if (!row) return undefined;
-  return parseJson<Record<string, unknown>>(row.overrides, {});
+
+  return {
+    baseline: baselineObj,
+    overrides,
+    previous,
+  };
 }
 
 export async function upsertSettingOverrides(params: {
@@ -92,46 +74,50 @@ export async function upsertSettingOverrides(params: {
   baseline: SettingProfile;
   overrides: OverridesObject;
 }): Promise<OverridesAudit> {
-  const { sessionId, settingId, baseline, overrides } = params;
-  const existing = await db.settingInstance.findUnique({
-    where: { sessionId_templateSettingId: { sessionId, templateSettingId: settingId } },
-  });
-  if (!existing) {
-    await db.settingInstance.create({
-      data: {
-        id: randomUUID(),
-        sessionId,
-        templateSettingId: settingId,
-        baseline: JSON.stringify(baseline),
-        overrides: JSON.stringify(overrides),
-      },
-    });
-    return { baseline: baseline as unknown as Record<string, unknown>, overrides };
+  const { sessionId, baseline, overrides } = params;
+  const instance = await db.settingInstance.findUnique({ where: { sessionId } });
+  if (!instance) {
+    throw new Error(`setting instance not found for session ${sessionId}`);
   }
+
+  const baselineObj = parseJson<Record<string, unknown>>(instance.templateSnapshot, {});
+  const currentProfile = parseJson<SettingProfile>(instance.profileJson, baseline);
+  const previous = { ...(currentProfile as unknown as Record<string, unknown>) };
+  const nextProfile = deepMergeReplaceArrays<SettingProfile>(currentProfile, overrides);
+  const parsedNext = SettingProfileSchema.safeParse(nextProfile);
+
   await db.settingInstance.update({
-    where: { id: existing.id },
-    data: { overrides: JSON.stringify(overrides) },
+    where: { id: instance.id },
+    data: { profileJson: JSON.stringify(parsedNext.success ? parsedNext.data : nextProfile) },
   });
-  const baseObj = parseJson<Record<string, unknown>>(existing.baseline, {});
-  return { baseline: baseObj, overrides };
+
+  return {
+    baseline: baselineObj,
+    overrides,
+    previous,
+  };
 }
 
 export async function getEffectiveCharacter(
   sessionId: string,
   character: CharacterProfile
 ): Promise<CharacterProfile> {
-  const overrides = await getCharacterOverrides(sessionId, character.id);
-  if (!overrides) return character;
-  return deepMergeReplaceArrays<CharacterProfile>(character, overrides);
+  const instance = await db.characterInstance.findUnique({ where: { sessionId } });
+  if (!instance) return character;
+  const parsed = parseJson<CharacterProfile>(instance.profileJson, character);
+  const refined = CharacterProfileSchema.safeParse(parsed);
+  return refined.success ? refined.data : character;
 }
 
 export async function getEffectiveSetting(
   sessionId: string,
   setting: SettingProfile
 ): Promise<SettingProfile> {
-  const overrides = await getSettingOverrides(sessionId, setting.id);
-  if (!overrides) return setting;
-  return deepMergeReplaceArrays<SettingProfile>(setting, overrides);
+  const instance = await db.settingInstance.findUnique({ where: { sessionId } });
+  if (!instance) return setting;
+  const parsed = parseJson<SettingProfile>(instance.profileJson, setting);
+  const refined = SettingProfileSchema.safeParse(parsed);
+  return refined.success ? refined.data : setting;
 }
 
 export async function getEffectiveProfiles(

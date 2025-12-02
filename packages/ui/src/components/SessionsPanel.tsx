@@ -2,8 +2,10 @@ import React from 'react';
 
 export interface SessionsPanelSessionSummary {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   characterName?: string | null;
   settingName?: string | null;
   createdAt: string;
@@ -73,8 +75,10 @@ export const SessionsPanel: React.FC<SessionsPanelProps> = ({
           <ul className="space-y-2">
             {sessions.map((s) => {
               const isActive = s.id === activeId;
-              const characterLabel = s.characterName ?? s.characterId;
-              const settingLabel = s.settingName ?? s.settingId;
+              const characterLabel =
+                s.characterName ?? s.characterTemplateId ?? s.characterInstanceId ?? 'Character';
+              const settingLabel =
+                s.settingName ?? s.settingTemplateId ?? s.settingInstanceId ?? 'Setting';
               return (
                 <li
                   key={s.id}

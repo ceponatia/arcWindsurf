@@ -144,8 +144,28 @@ export async function createSession(
   characterId: string,
   settingId: string,
   signal?: AbortSignal
-): Promise<Pick<Session, 'id' | 'characterId' | 'settingId' | 'createdAt'>> {
-  return http<Pick<Session, 'id' | 'characterId' | 'settingId' | 'createdAt'>>('/sessions', {
+): Promise<
+  Pick<
+    Session,
+    | 'id'
+    | 'characterTemplateId'
+    | 'characterInstanceId'
+    | 'settingTemplateId'
+    | 'settingInstanceId'
+    | 'createdAt'
+  >
+> {
+  return http<
+    Pick<
+      Session,
+      | 'id'
+      | 'characterTemplateId'
+      | 'characterInstanceId'
+      | 'settingTemplateId'
+      | 'settingInstanceId'
+      | 'createdAt'
+    >
+  >('/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ characterId, settingId }),

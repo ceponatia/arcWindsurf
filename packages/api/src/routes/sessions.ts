@@ -74,7 +74,7 @@ async function findCharacter(loaded: LoadedData, id: string) {
   const fsChar = loaded.characters.find((c) => c.id === id);
   if (fsChar) return fsChar;
 
-  const dbChar = await db.characterTemplate.findUnique({
+  const dbChar = await db.characterProfile.findUnique({
     where: { id },
   });
   if (dbChar) {
@@ -91,7 +91,7 @@ async function findSetting(loaded: LoadedData, id: string) {
   const fsSet = loaded.settings.find((s) => s.id === id);
   if (fsSet) return fsSet;
 
-  const dbSet = await db.settingTemplate.findUnique({
+  const dbSet = await db.settingProfile.findUnique({
     where: { id },
   });
   if (dbSet) {
@@ -111,36 +111,67 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const loaded = deps.getLoaded();
     if (!loaded) return c.json(sessions, 200);
 
-    const dbChars = await db.characterTemplate.findMany();
-    const dbSettings = await db.settingTemplate.findMany();
+    const dbChars = await db.characterProfile.findMany();
+    const dbSettings = await db.settingProfile.findMany();
 
-    const decorated: SessionListItem[] = sessions.map((sess) => {
-      let character = loaded.characters.find((ch) => ch.id === sess.characterId);
-      if (!character) {
-        const t = dbChars.find((t) => t.id === sess.characterId);
-        if (t) {
-          try {
-            character = CharacterProfileSchema.parse(JSON.parse(t.profileJson));
-          } catch {
-            // ignore invalid profile
+    const decorated: SessionListItem[] = await Promise.all(
+      sessions.map(async (sess) => {
+        let characterName: string | undefined;
+        let settingName: string | undefined;
+
+        const fsCharacter = loaded.characters.find((ch) => ch.id === sess.characterTemplateId);
+        if (fsCharacter) {
+          characterName = fsCharacter.name;
+        } else {
+          const t = dbChars.find((t) => t.id === sess.characterTemplateId);
+          if (t) {
+            try {
+              characterName = CharacterProfileSchema.parse(JSON.parse(t.profileJson)).name;
+            } catch {
+              // ignore invalid profile
+            }
+          } else if (sess.characterInstanceId) {
+            const instance = await db.characterInstance.findUnique({
+              where: { sessionId: sess.id },
+            });
+            if (instance) {
+              try {
+                const parsed = CharacterProfileSchema.parse(JSON.parse(instance.profileJson));
+                characterName = parsed.name;
+              } catch {
+                // ignore invalid profile
+              }
+            }
           }
         }
-      }
 
-      let setting = loaded.settings.find((s) => s.id === sess.settingId);
-      if (!setting) {
-        const t = dbSettings.find((t) => t.id === sess.settingId);
-        if (t) {
-          try {
-            setting = SettingProfileSchema.parse(JSON.parse(t.profileJson));
-          } catch {
-            // ignore invalid profile
+        const fsSetting = loaded.settings.find((s) => s.id === sess.settingTemplateId);
+        if (fsSetting) {
+          settingName = fsSetting.name;
+        } else {
+          const t = dbSettings.find((t) => t.id === sess.settingTemplateId);
+          if (t) {
+            try {
+              settingName = SettingProfileSchema.parse(JSON.parse(t.profileJson)).name;
+            } catch {
+              // ignore invalid profile
+            }
+          } else if (sess.settingInstanceId) {
+            const instance = await db.settingInstance.findUnique({ where: { sessionId: sess.id } });
+            if (instance) {
+              try {
+                const parsed = SettingProfileSchema.parse(JSON.parse(instance.profileJson));
+                settingName = parsed.name;
+              } catch {
+                // ignore invalid profile
+              }
+            }
           }
         }
-      }
 
-      return mapSessionListItem(sess, character?.name, setting?.name);
-    });
+        return mapSessionListItem(sess, characterName, settingName);
+      })
+    );
 
     return c.json(decorated, 200);
   });
@@ -169,8 +200,8 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const session = await getSession(id);
     if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
-    const character = await findCharacter(loaded, session.characterId);
-    const setting = await findSetting(loaded, session.settingId);
+    const character = await findCharacter(loaded, session.characterTemplateId);
+    const setting = await findSetting(loaded, session.settingTemplateId);
     if (!character || !setting) {
       return c.json(
         { ok: false, error: 'character or setting not found for session' } satisfies ApiError,
@@ -191,7 +222,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const session = await getSession(id);
     if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
-    const character = await findCharacter(loaded, session.characterId);
+    const character = await findCharacter(loaded, session.characterTemplateId);
     if (!character) {
       return c.json(
         { ok: false, error: 'character not found for session' } satisfies ApiError,
@@ -233,7 +264,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const session = await getSession(id);
     if (!session) return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
 
-    const setting = await findSetting(loaded, session.settingId);
+    const setting = await findSetting(loaded, session.settingTemplateId);
     if (!setting) {
       return c.json({ ok: false, error: 'setting not found for session' } satisfies ApiError, 500);
     }
@@ -352,8 +383,8 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const loaded2 = deps.getLoaded();
     if (!loaded2) return c.json({ ok: false, error: 'data not loaded' }, 500);
 
-    const character = await findCharacter(loaded2, session.characterId);
-    const setting = await findSetting(loaded2, session.settingId);
+    const character = await findCharacter(loaded2, session.characterTemplateId);
+    const setting = await findSetting(loaded2, session.settingTemplateId);
 
     if (!character || !setting) {
       return c.json(
@@ -430,10 +461,15 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
 
   // POST /sessions - create a new session for characterId + settingId
   app.post('/sessions', async (c) => {
+    console.log('[API] POST /sessions request received');
     const loaded = deps.getLoaded();
-    if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
+    if (!loaded) {
+      console.error('[API] Data not loaded');
+      return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
+    }
 
     const rawBody: unknown = await c.req.json().catch(() => null);
+    console.log('[API] Request body:', rawBody);
     if (!isCreateSessionRequest(rawBody)) {
       return c.json(
         { ok: false, error: 'characterId and settingId are required' } satisfies ApiError,
@@ -446,42 +482,60 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const setting = await findSetting(loaded, settingId);
 
     if (!character || !setting) {
+      console.error('[API] Character or setting not found:', { characterId, settingId });
       return c.json(
         { ok: false, error: 'characterId or settingId not found' } satisfies ApiError,
         400
       );
     }
 
-    // Create mutable copies for the session
-    const sessionCharacterId = safeRandomId();
-    const sessionSettingId = safeRandomId();
+    const sessionId = safeRandomId();
+    const characterInstanceId = `${character.id}-${safeRandomId()}`;
+    const settingInstanceId = `${setting.id}-${safeRandomId()}`;
 
-    const characterCopy = { ...character, id: sessionCharacterId };
-    const settingCopy = { ...setting, id: sessionSettingId };
+    console.log('[API] Creating session:', sessionId);
+    const sessionRecord = await createSession(sessionId, character.id, setting.id);
 
-    await db.characterTemplate.create({
-      data: {
-        id: sessionCharacterId,
-        profileJson: JSON.stringify(characterCopy),
-      },
-    });
+    try {
+      console.log('[API] Creating character instance:', characterInstanceId);
+      await db.characterInstance.create({
+        data: {
+          id: characterInstanceId,
+          sessionId: sessionRecord.id,
+          templateId: character.id,
+          templateSnapshot: JSON.stringify(character),
+          profileJson: JSON.stringify(character),
+        },
+      });
 
-    await db.settingTemplate.create({
-      data: {
-        id: sessionSettingId,
-        profileJson: JSON.stringify(settingCopy),
-      },
-    });
-
-    const id = safeRandomId();
-    const session = await createSession(id, sessionCharacterId, sessionSettingId);
+      console.log('[API] Creating setting instance:', settingInstanceId);
+      await db.settingInstance.create({
+        data: {
+          id: settingInstanceId,
+          sessionId: sessionRecord.id,
+          templateId: setting.id,
+          templateSnapshot: JSON.stringify(setting),
+          profileJson: JSON.stringify(setting),
+        },
+      });
+    } catch (err) {
+      console.error('[API] Failed to create session instances, rolling back session', err);
+      await deleteSession(sessionRecord.id).catch(() => undefined);
+      return c.json(
+        { ok: false, error: 'failed to create session instances' } satisfies ApiError,
+        500
+      );
+    }
 
     const response: CreateSessionResponse = {
-      id: session.id,
-      characterId: session.characterId,
-      settingId: session.settingId,
-      createdAt: session.createdAt,
+      id: sessionRecord.id,
+      characterTemplateId: sessionRecord.characterTemplateId,
+      characterInstanceId,
+      settingTemplateId: sessionRecord.settingTemplateId,
+      settingInstanceId,
+      createdAt: sessionRecord.createdAt,
     };
+    console.log('[API] Session created successfully');
     return c.json(response, 201);
   });
 

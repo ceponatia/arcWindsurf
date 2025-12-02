@@ -55,7 +55,6 @@ interface FormState {
   scentHair: string;
   scentBody: string;
   scentPerfume: string;
-  goals: string;
   speakingStyle: string;
   styleSentenceLength: string;
   styleHumor: string;
@@ -89,7 +88,6 @@ const initialState: FormState = {
   scentHair: '',
   scentBody: '',
   scentPerfume: '',
-  goals: '',
   speakingStyle: '',
   styleSentenceLength: '',
   styleHumor: '',
@@ -136,7 +134,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
           f.personality = Array.isArray(data.personality)
             ? data.personality.join(', ')
             : data.personality;
-          f.goals = (data.goals ?? []).join(', ');
           f.speakingStyle = data.speakingStyle ?? '';
 
           if (data.appearance && typeof data.appearance !== 'string') {
@@ -190,10 +187,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
     setSuccess(null);
     setFieldErrors({});
     const tags = form.tags
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const goals = form.goals
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
@@ -287,7 +280,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
       backstory: form.backstory.trim(),
       tags,
       personality: personalityValue,
-      goals,
       speakingStyle: form.speakingStyle.trim(),
       ...(appearance ? { appearance } : {}),
       ...(Object.keys(scent).length ? { scent } : {}),
@@ -323,7 +315,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
             summary: 'summary',
             backstory: 'backstory',
             personality: 'personality',
-            goals: 'goals',
             speakingStyle: 'speakingStyle',
           };
           const key = p[0];
@@ -761,20 +752,6 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
           <div className="border border-slate-800 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Goals & Style</div>
             <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Goals (comma)</span>
-                <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  value={form.goals}
-                  onChange={(e) => update('goals', e.target.value)}
-                  {...getInlineErrorProps('goals', fieldErrors.goals)}
-                />
-                {fieldErrors.goals && (
-                  <span id="goals-error" className="text-sm text-red-400">
-                    {fieldErrors.goals}
-                  </span>
-                )}
-              </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">Speaking Style</span>
                 <textarea

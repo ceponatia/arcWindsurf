@@ -60,8 +60,8 @@ export interface MessageEntity {
 
 export interface UserSessionEntity {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  settingTemplateId: string;
   createdAt?: Date;
   messages?: MessageEntity[];
 }
@@ -93,31 +93,38 @@ export interface DbPathInfo {
 }
 
 // Prisma-style camelized rows returned from client.ts
-export interface TemplateProfileRow extends DbRow {
+export interface ProfileRow extends DbRow {
   id: string;
   profileJson: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-export type CharacterTemplateRow = TemplateProfileRow;
-export type SettingTemplateRow = TemplateProfileRow;
+export type CharacterProfileRow = ProfileRow;
+export type SettingProfileRow = ProfileRow;
 
-interface InstanceRowBase extends DbRow {
+// Deprecated aliases for backward compatibility during refactor
+export type CharacterTemplateRow = CharacterProfileRow;
+export type SettingTemplateRow = SettingProfileRow;
+
+export interface CharacterInstanceRow extends DbRow {
   id: string;
   sessionId: string;
-  baseline: string | null;
-  overrides: string | null;
+  templateId: string;
+  templateSnapshot: string;
+  profileJson: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-export interface CharacterInstanceRow extends InstanceRowBase {
-  templateCharacterId: string;
-}
-
-export interface SettingInstanceRow extends InstanceRowBase {
-  templateSettingId: string;
+export interface SettingInstanceRow extends DbRow {
+  id: string;
+  sessionId: string;
+  templateId: string;
+  templateSnapshot: string;
+  profileJson: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface MessageRow extends DbRow {
@@ -132,8 +139,8 @@ export interface MessageRow extends DbRow {
 
 export interface UserSessionRow extends DbRow {
   id: string;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  settingTemplateId: string;
   createdAt?: Date;
   updatedAt?: Date;
   messages?: MessageRow[];
@@ -151,13 +158,20 @@ export interface SessionMessage {
 
 export interface SessionRecord {
   id: UUID;
-  characterId: string;
-  settingId: string;
+  characterTemplateId: string;
+  characterInstanceId: string | null;
+  settingTemplateId: string;
+  settingInstanceId: string | null;
   createdAt: string;
   messages: SessionMessage[];
 }
 
 export type SessionSummaryRecord = Pick<
   SessionRecord,
-  'id' | 'characterId' | 'settingId' | 'createdAt'
+  | 'id'
+  | 'characterTemplateId'
+  | 'characterInstanceId'
+  | 'settingTemplateId'
+  | 'settingInstanceId'
+  | 'createdAt'
 >;

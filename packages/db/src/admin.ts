@@ -17,8 +17,8 @@ export async function getDbOverview(): Promise<DbOverviewResult> {
     'messages',
     'character_instances',
     'setting_instances',
-    'character_templates',
-    'setting_templates',
+    'character_profiles',
+    'setting_profiles',
   ];
 
   const results: DbTableOverview[] = [];
@@ -86,10 +86,15 @@ export async function deleteDbRow(modelName: string, id: string): Promise<void> 
     characterinstances: 'character_instances',
     settinginstance: 'setting_instances',
     settinginstances: 'setting_instances',
-    charactertemplate: 'character_templates',
-    charactertemplates: 'character_templates',
-    settingtemplate: 'setting_templates',
-    settingtemplates: 'setting_templates',
+    characterprofile: 'character_profiles',
+    characterprofiles: 'character_profiles',
+    settingprofile: 'setting_profiles',
+    settingprofiles: 'setting_profiles',
+    // Legacy mappings
+    charactertemplate: 'character_profiles',
+    charactertemplates: 'character_profiles',
+    settingtemplate: 'setting_profiles',
+    settingtemplates: 'setting_profiles',
   };
   const key = modelName.toLowerCase();
   const table = map[key];

@@ -4,8 +4,8 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- User sessions
 CREATE TABLE IF NOT EXISTS user_sessions (
   id TEXT PRIMARY KEY,
-  character_id TEXT NOT NULL,
-  setting_id TEXT NOT NULL,
+  character_template_id TEXT NOT NULL,
+  setting_template_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -23,34 +23,36 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_session_idx ON messages(session_id, idx);
 
--- Character instances (per-session overrides)
+-- Character instances (per-session snapshots)
 CREATE TABLE IF NOT EXISTS character_instances (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL REFERENCES user_sessions(id) ON DELETE CASCADE,
-  template_character_id TEXT NOT NULL,
-  baseline JSONB NOT NULL,
-  overrides JSONB NOT NULL DEFAULT '{}',
+  template_id TEXT NOT NULL,
+  template_snapshot JSONB NOT NULL,
+  profile_json JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(session_id, template_character_id)
+  UNIQUE(session_id)
 );
 CREATE INDEX IF NOT EXISTS idx_character_instances_session ON character_instances(session_id);
+CREATE INDEX IF NOT EXISTS idx_character_instances_template ON character_instances(template_id);
 
--- Setting instances (per-session overrides)
+-- Setting instances (per-session snapshots)
 CREATE TABLE IF NOT EXISTS setting_instances (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL REFERENCES user_sessions(id) ON DELETE CASCADE,
-  template_setting_id TEXT NOT NULL,
-  baseline JSONB NOT NULL,
-  overrides JSONB NOT NULL DEFAULT '{}',
+  template_id TEXT NOT NULL,
+  template_snapshot JSONB NOT NULL,
+  profile_json JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(session_id, template_setting_id)
+  UNIQUE(session_id)
 );
 CREATE INDEX IF NOT EXISTS idx_setting_instances_session ON setting_instances(session_id);
+CREATE INDEX IF NOT EXISTS idx_setting_instances_template ON setting_instances(template_id);
 
 -- Dynamic character templates
-CREATE TABLE IF NOT EXISTS character_templates (
+CREATE TABLE IF NOT EXISTS character_profiles (
   id TEXT PRIMARY KEY,
   profile_json JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS character_templates (
 );
 
 -- Dynamic setting templates
-CREATE TABLE IF NOT EXISTS setting_templates (
+CREATE TABLE IF NOT EXISTS setting_profiles (
   id TEXT PRIMARY KEY,
   profile_json JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

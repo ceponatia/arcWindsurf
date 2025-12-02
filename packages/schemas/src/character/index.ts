@@ -18,8 +18,6 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
   // appearance can be machine-readable object or free-text
   appearance: z.union([z.string().min(1), AppearanceSchema]).optional(),
   scent: ScentSchema.optional(),
-  // goals are required non-empty strings
-  goals: z.array(z.string().min(1)).nonempty(),
   speakingStyle: z.string().min(1),
   // style hints mirror the personality speechStyle keys; all optional
   style: CharacterPersonalitySchema.shape.speechStyle.optional(),

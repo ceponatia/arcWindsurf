@@ -13,7 +13,7 @@ We need a system that:
 
 ## 2. Data Structure: Profile Nodes
 
-We treat the character profile (Baseline + Overrides) not as a monolithic JSON, but as a collection of **Knowledge Nodes**.
+We treat the character snapshot (`template_snapshot` + live `profile_json`) not as a monolithic JSON, but as a collection of **Knowledge Nodes**.
 
 ### 2.1. Schema Proposal
 
@@ -51,7 +51,7 @@ When a `CharacterInstance` is created or updated, we decompose the JSON into nod
   - `appearance.eyes` -> Node
   - `personality.traits` -> Node (list items might be grouped or split)
   - `history.background` -> Chunked by paragraph if long.
-- **Updates**: When `overrides` change (via `StateManager`), we identify which paths were modified and re-embed only those nodes.
+- **Updates**: When the session snapshot changes (via `StateManager`), we identify which paths were modified and re-embed only those nodes.
 
 ## 3. Retrieval Logic: The Hybrid Score
 

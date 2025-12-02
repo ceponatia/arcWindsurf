@@ -6,6 +6,8 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
 **November 2025:** Mobile responsive UI added. The web app now detects mobile devices and displays a mobile-optimized interface with a collapsible sidebar drawer for session/character/setting management and a full-screen chat interface.
 
+**November 2025:** Session management now uses immutable templates plus per-session snapshots. Creating a session stores the template IDs alongside freshly cloned `character_instance` and `setting_instance` records. These snapshots capture the entire template JSON so templates can change (or be deleted) without breaking in-flight sessions. Override updates mutate the stored snapshot directly, keeping the template pristine.
+
 **November 2025:** OpenRouter is now the default and required LLM path. Configure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
 **Utilities:** The `deleteSettingFromDb(settingId, baseUrl?)` helper now lives in `@minimal-rpg/utils` and calls `DELETE /settings/:id`. Filesystem-backed settings return 405 and cannot be deleted.
 
@@ -134,7 +136,7 @@ Base URL defaults to `http://localhost:3001`.
 - `GET /sessions` — List existing sessions (most recent first, includes character/setting names)
 - `POST /sessions` — Create a chat session
   - Body: `{ "characterId": string, "settingId": string }`
-  - Returns: `{ id, characterId, settingId, createdAt }`
+  - Returns: `{ id, characterTemplateId, characterInstanceId, settingTemplateId, settingInstanceId, createdAt }`
 - `GET /sessions/:id` — Get session details and messages
 - `POST /sessions/:id/messages` — Send a message
   - Body: `{ "content": string }`
@@ -152,8 +154,8 @@ Tip: Characters and settings are defined in JSON files under `data/characters` a
 
 ### Per-Session Overrides
 
-- Overrides are stored in Postgres tables (`character_instances`, `setting_instances`) keyed by `(sessionId, templateId)` with `overrides` and an auditable `baseline` JSON snapshot (captured on first write).
-- The chat prompt uses the merged effective profiles (template + overrides). Arrays in overrides replace the template arrays; objects merge deeply.
+- Overrides mutate the per-session snapshot stored in `character_instances` and `setting_instances`. Each instance keeps the original template JSON in `template_snapshot` plus the current, fully merged profile in `profile_json`.
+- The chat prompt loads the template, applies any instance mutations, and passes the resulting effective profiles to the LLM. Arrays in overrides still replace the template arrays; objects merge deeply before being written back to the snapshot.
 
 ## Schemas
 

@@ -1,18 +1,18 @@
 # Governor State Management & Orchestration
 
-This document outlines how the **Governor** architecture manages persistent game state (character attributes, setting details, relationships) using the existing `baseline` + `overrides` database pattern.
+This document outlines how the **Governor** architecture manages persistent game state (character attributes, setting details, relationships) using the template + snapshot instance pattern.
 
-## 1. Core Concept: Baseline vs. Overrides
+## 1. Core Concept: Template Snapshots + Mutable Profiles
 
-The database (`packages/db`) already supports a split between static data and dynamic state:
+The database (`packages/db`) now separates immutable templates from per-session state:
 
-- **Templates** (`character_templates`, `setting_templates`): Static, immutable source data (JSON).
-- **Instances** (`character_instances`, `setting_instances`): Session-specific data.
-  - `baseline`: A copy of the template data at instantiation.
-  - `overrides`: A JSON blob containing _only_ the fields that have changed during the session.
+- **Templates** (`character_profiles`, `setting_profiles`): Static, canonical JSON stored once per template.
+- **Instances** (`character_instances`, `setting_instances`): Session-specific snapshots.
+  - `template_snapshot`: The template JSON captured when the session starts (never mutated).
+  - `profile_json`: The current, fully merged profile for the session. Override operations update this document in place.
 
 **The Governor's Role:**
-The Governor is responsible for computing the **Effective State** (Baseline + Overrides) for agents and committing new **State Deltas** (updates to Overrides) back to the database.
+The Governor computes the **Effective State** (using the `profile_json` snapshot) for agents and commits new deltas back into `profile_json`. Templates remain pristine, so new sessions always start from the latest template while in-flight sessions retain their snapshot.
 
 ## 2. Orchestration Flow
 
@@ -23,11 +23,12 @@ Before invoking a specialized agent (e.g., NPC Agent, Map Agent), the Governor m
 1. **Identify Entities:** Based on the player's intent (e.g., "Talk to Eldrin"), identify which `characterInstance` or `settingInstance` is needed.
 2. **Fetch & Merge:**
    - Load the `characterInstance` from the DB.
-   - Compute `EffectiveProfile = deepMerge(instance.baseline, instance.overrides)`.
-   - _Note: This merging should happen in a utility layer (e.g., `StateService`), not inside the LLM prompt._
+   - Compute `EffectiveProfile = deepMerge(templateSnapshot, profileJson)` if you need to reconcile with updated templates, otherwise use `profileJson` directly (it already reflects all mutations).
+   - _Note: This reconciliation should happen in a utility layer (e.g., `StateService`), not inside the LLM prompt._
+
 3. **Prompt Construction:**
    - Pass the `EffectiveProfile` to the agent.
-   - This ensures the agent sees the _current_ state (e.g., `trust: 5` instead of the baseline `trust: 0`).
+   - This ensures the agent sees the _current_ state (e.g., `trust: 5` instead of the template `trust: 0`).
 
 ### Step 2: Agent Execution & Delta Generation
 
@@ -42,10 +43,11 @@ Agents should not write to the DB directly. Instead, they return **Structured St
 
 The Governor receives the `state_updates` and applies them.
 
-1. **Load Current Overrides:** Fetch the current `overrides` JSON for the target entity.
-2. **Apply Delta:** Apply the JSON Patch operations to the `overrides` object.
-   - _Example:_ If `overrides` was `{}` and patch is `replace /relationships/player/trust` with `5`, new `overrides` is `{ "relationships": { "player": { "trust": 5 } } }`.
-3. **Persist:** Write the new `overrides` JSON back to the `character_instances` table via `db.characterInstance.update`.
+1. **Load Current Snapshot:** Fetch the current `profile_json` for the target entity.
+2. **Apply Delta:** Apply the JSON Patch operations to the snapshot object.
+   - _Example:_ If `profile_json` was `{...}` and patch is `replace /relationships/player/trust` with `5`, the updated snapshot carries the new value while leaving untouched fields as-is.
+
+3. **Persist:** Write the updated `profile_json` back to the `character_instances` table via `db.characterInstance.update`.
 
 ## 3. Detailed Architecture
 
@@ -63,7 +65,7 @@ We should introduce a `StateService` to handle the logic. This could live in `pa
 import { Operation } from 'fast-json-patch';
 
 interface StateManager {
-  // Returns Baseline + Overrides merged
+  // Returns template snapshot + live profile merged
   getEffectiveCharacter(sessionId: string, charId: string): Promise<CharacterProfile>;
 
   // Updates specific fields in the overrides using JSON Patch
@@ -98,16 +100,14 @@ async function handleTurn(sessionId: string, input: string) {
 
 ### Arrays (Inventory, Tags)
 
-Updating arrays in a JSONB `overrides` column can be tricky.
+Updating arrays within the JSONB `profile_json` snapshot can be tricky.
 
 - **Strategy:** The LLM should return the _entire new array_ if it changes, or we support specific operations like `push`/`remove` in the `state_updates` structure.
 - **Recommendation:** Start with "replace whole array" for simplicity. If the agent adds an item, it returns the full new inventory list.
 
 ### Nested Fields
 
-Use a deep merge strategy (like `lodash.merge` or a custom recursive merge) when combining `baseline` and `overrides`.
-
-- When updating, ensure we don't overwrite unrelated siblings in the `overrides` JSON.
+Use a deep merge strategy (like `lodash.merge` or a custom recursive merge) when combining the immutable snapshot with incremental updates. When updating, ensure we don't overwrite unrelated siblings in the stored `profile_json`.
 
 ## 5. Future Optimizations
 
