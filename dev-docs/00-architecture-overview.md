@@ -59,7 +59,7 @@ This is the current, factual architecture based on the live code (not the archiv
 ## Packages Not Yet in the Request Path
 
 - `@minimal-rpg/governor` and `@minimal-rpg/state-manager` exist as scaffolds (logging echo-turns, naive JSON Patch helper) and are not invoked by the API or Web clients.
-- No item/inventory system is implemented in code yet; related docs in `dev-docs/archive` are aspirational.
+- No item/inventory system is implemented in code yet.
 
 ## Operational Notes
 
