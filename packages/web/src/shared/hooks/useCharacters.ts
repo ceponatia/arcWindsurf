@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
-import type { CharacterSummary } from '../types.js';
+import type { CharacterSummary, CharactersState, UseCharactersResult } from '../../types.js';
 import { getCharacters } from '../api/client.js';
 
-export interface CharactersState {
-  loading: boolean;
-  error: string | null;
-  data: CharacterSummary[] | null;
-}
-
-export function useCharacters() {
+export function useCharacters(): UseCharactersResult {
   const [state, setState] = useState<CharactersState>({ loading: true, error: null, data: null });
   const controllerRef = useRef<AbortController | null>(null);
   const fetchedRef = useRef(false);

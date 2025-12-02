@@ -6,6 +6,8 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
 **December 2025:** Character profiles now support flexible `details` entries (label/value pairs with area, importance, and tags). The Character Builder exposes these through a new Profile Details section, and the prompt serializer now surfaces the saved facts directly while laying groundwork for future RAG scoring.
 
+**December 2025:** The web UI now renders through a single responsive `AppShell` (`packages/web/src/features/app-shell/AppShell.tsx`, re-exported via `src/layouts/AppShell.tsx`). Desktop and mobile layouts share controller/state logic, and breakpoint detection lives in the new `packages/web/src/hooks/useIsMobile.ts` helper.
+
 **November 2025:** Mobile responsive UI added. The web app now detects mobile devices and displays a mobile-optimized interface with a collapsible sidebar drawer for session/character/setting management and a full-screen chat interface.
 
 **November 2025:** Session management now uses immutable templates plus per-session snapshots. Creating a session stores the template IDs alongside freshly cloned `character_instance` and `setting_instance` records. These snapshots capture the entire template JSON so templates can change (or be deleted) without breaking in-flight sessions. Override updates mutate the stored snapshot directly, keeping the template pristine.
@@ -261,8 +263,8 @@ See `dev-docs/web-architecture.md` for the web package structure, routing, compo
 
 - The web package now follows a feature-first layout under `packages/web/src/features/*`.
 - Each feature folder exports its public surface via an `index.ts` barrel so top-level apps can import from `features/<name>` instead of deep relative paths.
-- Shared HTTP helpers and hooks live under `packages/web/src/shared/` (`shared/api`, `shared/hooks`, etc.) to keep cross-feature logic consistent.
-- The old `components/` and `hooks/` folders have been removed; update local imports accordingly when editing web UI code.
+- Shared HTTP helpers live under `packages/web/src/shared/` (`shared/api`, `shared/hooks`, etc.) while UI/platform hooks (for example `useIsMobile`) live under `packages/web/src/hooks`.
+- A single responsive `AppShell` sits in `packages/web/src/features/app-shell/AppShell.tsx` and is re-exported through `packages/web/src/layouts/AppShell.tsx` so `src/App.tsx` can stay minimal.
 
 ### Frontend Styling (Tailwind)
 

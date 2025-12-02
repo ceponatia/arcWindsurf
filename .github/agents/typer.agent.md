@@ -10,12 +10,18 @@ tools:
     'vscode/openSimpleBrowser',
     'vscode/vscodeAPI',
     'web',
-    'runCommands',
-    'runTasks',
+    'execute/getTerminalOutput',
+    'execute/runInTerminal',
+    'read/terminalLastCommand',
+    'read/terminalSelection',
+    'execute/createAndRunTask',
+    'execute/getTaskOutput',
+    'execute/runTask',
     'sequentialthinking/*',
-    'extensions',
-    'todos',
-    'runSubagent',
+    'vscode/extensions',
+    'todo',
+    'agent',
+    'agent/runSubagent',
   ]
 ---
 
@@ -49,7 +55,7 @@ tools:
 
 ## Workflow
 
-1. Package to analyze: ${input:package}
+1. Package to analyze: ${input:package}. Run `pnpm check` for that package to ensure it currently typechecks without errors. Address any errors while going through the remaining steps so that types are correctly added.
 2. Discover candidate TypeScript sources:
    - Recursively scan only within the selected package for `*.ts` and `*.tsx` files inside `src/`.
    - Exclude generated output (e.g. `dist`, `.turbo`, `node_modules`, SQL, config, and test files) from analysis.

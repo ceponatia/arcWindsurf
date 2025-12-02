@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import type { Appearance, SpeechStyle } from '@minimal-rpg/schemas';
 
 export interface CharacterSummary {
@@ -42,6 +43,82 @@ export interface SessionSummary {
   createdAt: string;
   characterName?: string | null;
   settingName?: string | null;
+}
+
+export type ViewMode = 'chat' | 'character-builder' | 'setting-builder';
+
+export interface AppControllerStateSlice {
+  selectedCharacterId: string | null;
+  selectedSettingId: string | null;
+  currentSessionId: string | null;
+  builderId: string | null;
+  viewMode: ViewMode;
+  creating: boolean;
+  createError: string | null;
+  sessionsLoading: boolean;
+  sessionsError: string | null;
+  sessionsData: SessionSummary[] | null;
+  charactersLoading: boolean;
+  charactersError: string | null;
+  charactersData: CharacterSummary[] | null;
+  settingsLoading: boolean;
+  settingsError: string | null;
+  settingsData: SettingSummary[] | null;
+}
+
+export interface AppControllerComputedState {
+  sessions: SessionSummary[];
+  canStart: boolean;
+  activeCharacterId: string | null;
+  activeSettingId: string | null;
+}
+
+export interface AppControllerActions {
+  setSelectedCharacterId: Dispatch<SetStateAction<string | null>>;
+  setSelectedSettingId: Dispatch<SetStateAction<string | null>>;
+  setCurrentSessionId: Dispatch<SetStateAction<string | null>>;
+  refreshSessions: () => void;
+  refreshCharacters: () => void;
+  refreshSettings: () => void;
+  onStartSession: () => Promise<void>;
+  handleDeleteSession: (sessionId: string) => Promise<void>;
+  navigateToCharacterBuilder: (id: string) => void;
+  navigateToSettingBuilder: (id: string) => void;
+  selectSession: (id: string) => void;
+}
+
+export type AppControllerValue = AppControllerStateSlice &
+  AppControllerComputedState &
+  AppControllerActions;
+
+export interface CharactersState {
+  loading: boolean;
+  error: string | null;
+  data: CharacterSummary[] | null;
+}
+
+export interface UseCharactersResult extends CharactersState {
+  retry: () => void;
+}
+
+export interface SettingsState {
+  loading: boolean;
+  error: string | null;
+  data: SettingSummary[] | null;
+}
+
+export interface UseSettingsResult extends SettingsState {
+  retry: () => void;
+}
+
+export interface SessionsState {
+  loading: boolean;
+  error: string | null;
+  data: SessionSummary[] | null;
+}
+
+export interface UseSessionsResult extends SessionsState {
+  refresh: () => void;
 }
 
 export type SelectOption<T extends string> = '' | T;

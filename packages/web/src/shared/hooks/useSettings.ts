@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
-import type { SettingSummary } from '../types.js';
+import type { SettingSummary, SettingsState, UseSettingsResult } from '../../types.js';
 import { getSettings } from '../api/client.js';
 
-export interface SettingsState {
-  loading: boolean;
-  error: string | null;
-  data: SettingSummary[] | null;
-}
-
-export function useSettings() {
+export function useSettings(): UseSettingsResult {
   const [state, setState] = useState<SettingsState>({ loading: true, error: null, data: null });
   const controllerRef = useRef<AbortController | null>(null);
   const fetchedRef = useRef(false);

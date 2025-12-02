@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { getErrorMessage } from '@minimal-rpg/utils';
-import { createSession, deleteSession } from '../api/client.js';
-import { useSessions } from '../hooks/useSessions.js';
-import { useSettings } from '../hooks/useSettings.js';
-import { useCharacters } from '../hooks/useCharacters.js';
+import { createSession, deleteSession } from '../../shared/api/client.js';
+import { useSessions } from '../../shared/hooks/useSessions.js';
+import { useSettings } from '../../shared/hooks/useSettings.js';
+import { useCharacters } from '../../shared/hooks/useCharacters.js';
+import type { AppControllerValue, ViewMode } from '../../types.js';
 
-export type ViewMode = 'chat' | 'character-builder' | 'setting-builder';
-
-export function useAppController() {
+export function useAppController(): AppControllerValue {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedSettingId, setSelectedSettingId] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);

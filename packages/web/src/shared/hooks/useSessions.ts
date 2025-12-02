@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
-import type { SessionSummary } from '../types.js';
+import type { SessionSummary, SessionsState, UseSessionsResult } from '../../types.js';
 import { getSessions } from '../api/client.js';
 
-export interface SessionsState {
-  loading: boolean;
-  error: string | null;
-  data: SessionSummary[] | null;
-}
-
-export function useSessions() {
+export function useSessions(): UseSessionsResult {
   const [state, setState] = useState<SessionsState>({ loading: true, error: null, data: null });
   const controllerRef = useRef<AbortController | null>(null);
 

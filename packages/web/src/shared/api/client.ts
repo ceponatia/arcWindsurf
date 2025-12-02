@@ -5,9 +5,9 @@ import type {
   Message,
   Session,
   SessionSummary,
-} from '../types.js';
+} from '../../types.js';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../config.js';
+import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
 
 export interface DbColumn {
   name: string;
