@@ -109,6 +109,69 @@ Authoring tips:
 - Use `features` for 2–5 distinctive details that make the character easy to visualize.
 - Only specify `scent` when it meaningfully contributes to the scene (e.g. perfumes, smoke, herbs).
 
+#### 2.4.1 Free-text appearance/personality notes and LLM extraction (planned)
+
+In the planned character-editing flow, the UI exposes **free-text fields** such as `appearanceNotes` and `personalityNotes` alongside the structured `appearance` and `personality` fields. On submit, the API can call an LLM-based extractor that turns those notes into a **partial `CharacterProfile`** and deep-merges it into the existing `profile_json` JSONB document for that character.
+
+The extractor prompt is conceptually:
+
+```text
+You are a strict JSON extractor. You receive free-text notes about a character's appearance and personality.
+
+Return a JSON object that matches a partial CharacterProfile. All fields are optional. Only include fields you can infer with high confidence.
+
+Valid top-level keys include: "appearance", "personality", and "meta".
+
+If you include "appearance", it should be an object with optional nested keys like:
+- hair: { color?: string; style?: string; length?: string }
+- eyes: { color?: string }
+- height?: "short" | "average" | "tall" | string
+- torso?: string
+
+If you include "personality", it should be an object with optional nested keys:
+- traits?: string | string[]
+- speechStyle?: {
+  formality?: "casual" | "neutral" | "formal";
+  verbosity?: "terse" | "balanced" | "lavish";
+}
+
+If you include "meta", you may copy the raw notes into
+- meta.appearanceNotesRaw
+- meta.personalityNotesRaw
+
+Input:
+<APPEARANCE_NOTES>
+<PERSONALITY_NOTES>
+
+Output JSON:
+{ ...partial CharacterProfile... }
+```
+
+Example input and output (informal):
+
+- Input notes: "He has messy brown hair and green eyes, very tall and skinny. She's shy but sarcastic and speaks very formally."
+- Extracted JSON (before merge):
+
+  ```jsonc
+  {
+    "appearance": {
+      "hair": { "color": "brown", "style": "messy" },
+      "eyes": { "color": "green" },
+      "height": "tall",
+      "torso": "slight",
+    },
+    "personality": {
+      "traits": ["shy", "sarcastic"],
+      "speechStyle": {
+        "formality": "formal",
+        "verbosity": "balanced",
+      },
+    },
+  }
+  ```
+
+The resulting partial profile is validated and then deep-merged into `profile_json`. Arrays in the extracted object (such as `traits`) replace existing arrays in `profile_json`, while nested objects are merged recursively.
+
 ### 2.5 Common Anti-Patterns to Avoid
 
 - Overloading `summary` with multi-paragraph backstory.

@@ -26,10 +26,11 @@ A knowledge node model aims to:
 
 Instead of treating a character or setting profile as a single JSON blob, we decompose it into a collection of **nodes**, each representing a focused piece of information.
 
-Examples for a character:
+Examples for a character (derived from `profile_json` fields):
 
-- `appearance.eyes` → "Piercing blue eyes with a slight shimmer."
-- `personality.traits` → "Stoic but deeply loyal to close friends."
+- `appearance.hair` → "Messy brown medium-length hair."
+- `appearance.eyes` → "Bright green eyes."
+- `personality.traits` → "Shy and sarcastic, anxious in crowds."
 - `history.childhood` → "Raised in a remote mountain village..." (possibly chunked by paragraph).
 
 Each node would carry:
@@ -81,20 +82,20 @@ Knowledge nodes would be derived from the same per-session state described in [d
 
 When a `character_instances` or `setting_instances` row is created or first ingested into the node system:
 
-1. Load the full `profile_json` for that instance.
-2. Walk the schema and map selected paths to node candidates (for example, appearance, personality, key backstory sections).
+1. Load the full `profile_json` for that instance (this is the canonical structured state, including `appearance`, `personality`, and any notes-derived fields).
+2. Walk the schema and map selected paths to node candidates (for example, `appearance.hair`, `appearance.eyes`, `personality.traits`, and key backstory sections).
 3. For each candidate:
-   - Render a concise `content` string.
+   - Render a concise `content` string based on the structured value (for example, `appearance.hair` → "Messy brown medium-length hair.").
    - Compute an embedding for `content`.
    - Insert a row into `profile_nodes` with a reasonable `base_importance`.
 
 ### 4.2 Incremental updates
 
-When per-session state changes (for example via overrides):
+When per-session state changes (for example via overrides or free-text-driven updates to `profile_json`):
 
-1. Detect which JSON paths have changed (either by explicit patch metadata or by diffing old/new profiles).
+1. Detect which JSON paths have changed (either by explicit patch metadata or by diffing old/new profiles). This includes paths like `appearance.hair` or `personality.traits` that may be populated by the extraction pipeline.
 2. For each affected path:
-   - Re-render the `content` string.
+   - Re-render the `content` string from the updated structured value.
    - Recompute the embedding.
    - Update or insert the corresponding `profile_nodes` row.
 

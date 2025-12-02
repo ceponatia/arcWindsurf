@@ -46,6 +46,15 @@ This is the current, factual architecture based on the live code (not the archiv
 - **Overrides**: PUT `/sessions/:id/overrides/{character|setting}` deep-merges overrides into `profile_json` (arrays replace). Effective profile = instance `profile_json`.
 - **Messages**: `POST /sessions/:id/messages` appends user message, builds prompt, calls OpenRouter, stores assistant reply. Messages persisted in `messages` with incremental `idx`.
 
+### Free-text notes → JSONB profiles → knowledge nodes (planned)
+
+For characters, `profile_json` in both `character_profiles` and `character_instances` is the canonical `JSONB` representation of the `CharacterProfile` schema, including structured `appearance` and `personality` fields. The planned character-editing flow is:
+
+1. **UI capture** – the web UI exposes free-text fields such as `appearanceNotes` and `personalityNotes` alongside any manually edited structured fields.
+2. **Extraction** – on submit, the API runs an extraction step (regex + LLM) that turns these notes into a **partial `CharacterProfile`** (for example, only `appearance.hair.color`, `appearance.eyes.color`, `personality.traits`, `personality.speechStyle.formality`). Raw notes may be stored under `profile_json.meta.appearanceNotesRaw` / `profile_json.meta.personalityNotesRaw`.
+3. **Merge into JSONB** – the extracted partial profile is validated against a partial `CharacterProfile` schema and then deep-merged into the existing `profile_json` (objects merge recursively; arrays in the overrides replace existing arrays).
+4. **Vector/knowledge-node ingestion (future)** – downstream, the vector / knowledge-node layer treats `profile_json` as the source of truth, deriving focused nodes from structured paths such as `appearance.hair` and `personality.traits` and generating embeddings from their text content.
+
 ### Attribute Parsing Pipeline (planned)
 
 Some character fields are designed to be authored as free text and then normalized into **parsed attributes** stored as structured JSON (for example, `appearanceText` → `appearance.hair.color/style`). The planned pipeline is:

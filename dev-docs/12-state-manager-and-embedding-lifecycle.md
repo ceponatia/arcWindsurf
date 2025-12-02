@@ -151,23 +151,27 @@ Based on the design docs and comments in the governor/state-manager scaffolding,
 
 ### Source of truth
 
-The State Manager operates over structured JSON documents (for example, character and setting profiles). These documents will eventually be decomposed into knowledge nodes for embedding and retrieval. Parsed attribute fields (for example, `appearance` derived from `appearanceText`) are part of the same JSON document and are treated just like any other structured fields; the State Manager does not distinguish between "hand-authored" and "parsed" keys.
+The State Manager operates over structured JSON documents (for example, character and setting profiles). These documents will eventually be decomposed into knowledge nodes for embedding and retrieval. Parsed attribute fields (for example, structured `appearance` and `personality` derived from free-text notes such as `appearanceNotes` / `personalityNotes`) are part of the same JSON document and are treated just like any other structured fields; the State Manager does not distinguish between "hand-authored" and "parsed" keys.
 
 1. **Triggers for embedding updates**
-   - When `applyPatches` produces `newOverrides` that materially change important fields (goals, relationships, backstory, etc.), higher layers may:
-     - Recompute one or more embeddings for affected nodes.
-     - Write updated vectors to Postgres.
-   - This triggering logic does **not** exist in code yet and is expected to live outside the State Manager.
 
-2. **Recall path**
-   - A future retrieval layer would:
-     - Use current effective state and recent input to construct a retrieval query.
-     - Fetch relevant knowledge nodes (via similarity search) to include as context for agents.
-   - The State Manager itself only provides the structured base state used to derive or validate those nodes.
+- When `applyPatches` or other write paths produce `newOverrides` that materially change important fields (appearance, personality, goals, relationships, backstory, etc.), higher layers may:
+  - Recompute one or more embeddings for affected nodes.
+  - Write updated vectors to Postgres.
+- Updates to `profile_json` are the primary trigger. This includes edits that come from the **free-text → partial profile** extraction pipeline (for example, inferring `appearance.hair.color` or `personality.traits` from `appearanceNotes` / `personalityNotes`).
+- This triggering logic does **not** exist in code yet and is expected to live outside the State Manager.
 
-3. **Consistency guarantees**
-   - Once embeddings are wired in, there will be design questions about how quickly they must track changes in `newOverrides` and how to handle stale vectors.
-   - None of those policies are implemented yet; see TBD section.
+1. **Recall path**
+
+- A future retrieval layer would:
+  - Use current effective state and recent input to construct a retrieval query.
+  - Fetch relevant knowledge nodes (via similarity search) to include as context for agents.
+- The State Manager itself only provides the structured base state used to derive or validate those nodes.
+
+1. **Consistency guarantees**
+
+- Once embeddings are wired in, there will be design questions about how quickly they must track changes in `newOverrides` and how to handle stale vectors.
+- None of those policies are implemented yet; see TBD section.
 
 ---
 

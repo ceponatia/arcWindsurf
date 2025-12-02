@@ -32,9 +32,11 @@ The API exposes CRUD endpoints under `/characters` and `/settings` that can crea
 
 For characters, `profile_json` is also the home for **parsed attributes** derived from free-text fields:
 
-- Raw text fields (for example, `appearanceText`) are stored alongside structured fields.
-- Parsed views (for example, `appearance.hair.color`, `appearance.hair.style`) are stored as optional nested keys in the same JSON document.
-- The top-level attribute object (for example, `appearance`) is expected to be present as an object, but its nested keys are optional and may be missing when parsing does not produce values.
+- Structured `appearance` and `personality` fields (for example, `appearance.hair.color`, `appearance.eyes.color`, `personality.traits`, `personality.speechStyle.formality`) are stored as nested keys that match the `CharacterProfile` schema.
+- When authors edit appearance/personality via the UI, they can provide free-text notes such as `appearanceNotes` and `personalityNotes`. The backend extracts a **partial CharacterProfile** from these notes and deep-merges it into the existing `profile_json` for that template.
+- Raw notes may be stored inside `profile_json.meta`, using keys like `appearanceNotesRaw` and `personalityNotesRaw`, so that future re-parsing or debugging can refer back to the original text.
+
+This JSONB-centric approach is the preferred way to extend appearance and personality over time; new details are added as nested fields inside `profile_json` rather than introducing additional relational columns.
 
 Filesystem and DB templates coexist:
 
@@ -148,6 +150,16 @@ Per-session state changes for characters and settings are expressed as **overrid
   - Deep-merges overrides into `profile_json` with the rule that arrays in overrides **replace** arrays in the existing profile.
   - Persists the updated `profile_json` back to `character_instances`.
   - Returns the new effective character profile plus an audit object showing `baseline`, `overrides`, and `previous` state.
+
+When appearance or personality is edited via **free-text** in the UI for a running session, the write path follows the same pattern but with an extraction step:
+
+1. Load the existing `profile_json` for the relevant row in `character_instances`.
+2. Run the extraction pipeline over `appearanceNotes` / `personalityNotes` to produce a **partial CharacterProfile** that only includes confidently inferred fields (for example, `appearance.hair.color`, `appearance.height`, `personality.traits`, `personality.speechStyle.formality`).
+3. Optionally stash the raw notes under `profile_json.meta.appearanceNotesRaw` / `profile_json.meta.personalityNotesRaw`.
+4. Deep-merge the extracted partial into the current `profile_json` (objects merged recursively, arrays replaced by overrides).
+5. Persist the updated `profile_json` JSONB back to the `character_instances` row.
+
+The same JSONB-first approach applies when editing DB-backed character templates (`character_profiles`): changes are expressed as partial `CharacterProfile` documents and merged into `profile_json`, rather than adding new columns for each appearance or personality attribute.
 
 ### 4.2 Setting overrides
 

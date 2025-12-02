@@ -42,31 +42,40 @@ If structured, it includes:
 | `arms`     | object   | -         | `build` (average/muscular/slender), `length` (average/long/short) |
 | `legs`     | object   | -         | `length` (average/long/short), `build` (very skinny...muscular)   |
 
-#### 2.1 Free-text input and parsed attributes (planned)
+#### 2.1 Free-text appearance notes → structured appearance
 
-In the future character-creation UX, authors may provide **free-text appearance descriptions** instead of (or in addition to) fully specifying the structured `Appearance` object.
+Authors can either fill `appearance` manually or provide **free-text appearance notes** in the UI (for example, `appearanceNotes`). On submit, the backend runs an extraction step that converts those notes into a **partial `Appearance` object** and merges it into `profile_json` (a `JSONB` column that stores the full `CharacterProfile`).
 
-Examples:
+Examples of free text:
 
-- "Tall, wiry build, messy dark hair, bright green eyes."
-- "Short, stocky, with close-cropped grey hair and deep laugh lines."
+- "He has messy brown hair and bright green eyes, very tall and skinny."
 
-To support this, the character schema design assumes two conceptual layers:
+Example of the corresponding partial structured appearance written into `profile_json.appearance`:
 
-- `appearanceText?: string` – raw free-text as entered by the user (authoring convenience).
-- `appearance: Appearance` – structured, parsed attributes derived from that text.
+```jsonc
+{
+  "appearance": {
+    "hair": { "color": "brown", "style": "messy" },
+    "eyes": { "color": "green" },
+    "height": "tall",
+    "torso": "slight",
+  },
+  "meta": {
+    "appearanceNotesRaw": "He has messy brown hair and bright green eyes, very tall and skinny.",
+  },
+}
+```
 
-Key rules for parsed appearance attributes:
+Key rules for extracted appearance attributes:
 
-- `appearance` is intended to be **present in persisted profiles at all times** as an object, but its nested properties are optional.
-- Missing subfields (for example, no `hair` at all, or `hair` without `color`) **must not** cause validation errors or block character creation.
-- When parsers cannot confidently extract a value, the corresponding key is simply omitted; the system never fabricates required values just to satisfy the schema.
+- The extractor only fills fields it can infer with high confidence; everything else is omitted.
+- Nested properties (for example, `appearance.hair.color`) are optional and may be missing when parsing does not produce values.
+- The raw notes can be stored under `meta.appearanceNotesRaw` inside `profile_json` for provenance and possible re-parsing.
 
-At a type level, this looks like:
+Implementation-wise, the extractor can combine:
 
-- `appearance: { hair?: { color?: string; style?: string; length?: string }; eyes?: { color?: string }; height?: 'short' | 'average' | 'tall' | string; torso?: string; arms?: string; legs?: string; skinTone?: string; features?: string[]; /* ... */ }`
-
-The parser pipeline (regex + LLM) is described at a higher level in the architecture and agent docs; this section only specifies that the **schema must tolerate partial data** while still encouraging normalized, structured attributes wherever possible.
+- A heuristic/regex layer for obvious patterns (for example, "brown hair" → `appearance.hair.color = "brown"`).
+- An LLM-based extractor that returns a **partial `CharacterProfile`** (all fields optional) that is deep-merged into the existing `profile_json` for that character.
 
 ### 3. Personality (`CharacterPersonality`)
 
@@ -82,6 +91,37 @@ Defines how the character behaves and speaks.
   - `pacing`: `slow`, `balanced`, `fast`
   - `formality`: `casual`, `neutral`, `formal`
   - `verbosity`: `terse`, `balanced`, `lavish`
+
+#### 3.1 Free-text personality notes → structured personality
+
+As with appearance, authors may provide **free-text personality notes** in the UI (for example, `personalityNotes`) instead of hand-authoring every field. On submit, the backend extracts a **partial personality structure** and merges it into `profile_json.personality`.
+
+Example free-text input:
+
+- "She's shy but sarcastic and speaks very formally."
+
+Example of the corresponding partial structured personality merged into `profile_json`:
+
+```jsonc
+{
+  "personality": {
+    "traits": ["shy", "sarcastic"],
+    "speechStyle": {
+      "formality": "formal",
+      "verbosity": "balanced",
+    },
+  },
+  "meta": {
+    "personalityNotesRaw": "She's shy but sarcastic and speaks very formally.",
+  },
+}
+```
+
+As with appearance:
+
+- The extractor only sets `traits` and `speechStyle` fields it can infer confidently.
+- Arrays such as `traits` in the extracted partial **replace** existing arrays when merged into `profile_json`.
+- Raw notes are optionally stored under `meta.personalityNotesRaw` for debugging, auditing, or future re-extraction.
 
 ### 4. Other Attributes
 
