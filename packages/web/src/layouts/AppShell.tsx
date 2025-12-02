@@ -6,7 +6,8 @@ import { ChatPanel } from '../features/chat-panel/index.js';
 import { CharacterBuilder } from '../features/character-builder/index.js';
 import { SettingBuilder } from '../features/setting-builder/index.js';
 import { MobileHeader, MobileSidebar } from '../features/mobile-shell/index.js';
-import { AppHeader, useAppController } from '../features/app-shell/index.js';
+import { AppHeader } from './AppHeader.js';
+import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import type { AppControllerValue } from '../types.js';
 

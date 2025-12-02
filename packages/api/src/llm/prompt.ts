@@ -149,7 +149,7 @@ function serializeAppearance(a: CharacterProfile['appearance']): string {
 }
 
 function serializeDetails(details: CharacterProfile['details'] | undefined) {
-  if (!details || !details.length) return '';
+  if (!details?.length) return '';
   const sorted = [...details].sort((a, b) => (b.importance ?? 0.5) - (a.importance ?? 0.5));
   const lines = sorted.map((detail) => {
     const areaPrefix = detail.area && detail.area !== 'custom' ? `${detail.area}: ` : '';
