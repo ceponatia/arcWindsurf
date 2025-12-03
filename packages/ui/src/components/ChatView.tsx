@@ -74,9 +74,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-full flex flex-col">
+    <div className="w-full max-w-4xl mx-auto h-full flex flex-col overflow-hidden">
       <div
-        className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-0 py-4 space-y-3"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-2 sm:px-4 py-4 space-y-3"
         ref={scrollRef}
       >
         {loading && (
@@ -84,9 +84,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
         )}
         {error && <div className="text-center text-sm text-red-400 font-mono">{error}</div>}
         {!loading && !error && (
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-hidden">
             {messages.map((m, idx) => (
-              <div key={idx} className="group relative">
+              <div key={idx} className="group relative overflow-hidden">
                 {editingIdx === idx ? (
                   <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans border border-violet-500/50">
                     <textarea
@@ -137,11 +137,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <EditIcon className="w-4 h-4" />
                     </button>
                     {m.role === 'user' ? (
-                      <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans pr-8">
+                      <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans mr-6 overflow-hidden min-w-0">
                         <MessageContent content={m.content} />
                       </div>
                     ) : (
-                      <div className="font-serif leading-relaxed pr-6">
+                      <div className="rounded-lg bg-violet-950/40 border border-violet-900/30 px-3 py-2 font-serif leading-relaxed mr-6 overflow-hidden min-w-0">
                         <MessageContent content={m.content} />
                       </div>
                     )}
@@ -153,7 +153,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         )}
       </div>
-      <div className="px-2 sm:px-0 py-3">
+      <div className="shrink-0 px-2 sm:px-4 py-3">
         <div className="mx-auto max-w-3xl rounded-xl bg-slate-900/70 border border-slate-800 shadow-sm p-2">
           <div className="flex gap-2">
             <input

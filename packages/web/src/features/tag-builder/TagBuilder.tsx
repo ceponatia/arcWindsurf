@@ -13,6 +13,7 @@ export const TagBuilder: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [editingTag, setEditingTag] = useState<TagSummarySafe | null>(null);
+  const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
 
   const loadTags = async () => {
     setLoading(true);
@@ -63,6 +64,7 @@ export const TagBuilder: React.FC = () => {
         await createTag(data);
       }
       setEditingTag(null);
+      setIsFormVisible(false);
       await loadTags();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save tag');
@@ -125,23 +127,30 @@ export const TagBuilder: React.FC = () => {
             </ul>
           )}
           <button
-            onClick={() => setEditingTag(null)}
+            onClick={() => {
+              setEditingTag(null);
+              setIsFormVisible(true);
+            }}
             className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded"
           >
             Create New Tag
           </button>
         </div>
-
-        <div className="bg-slate-800 p-4 rounded h-fit">
-          <h2 className="text-xl font-semibold text-slate-300 mb-4">
-            {editingTag ? 'Edit Tag' : 'New Tag'}
-          </h2>
-          <TagForm
-            initialData={editingTag}
-            onSave={(data) => void handleSave(data)}
-            onCancel={() => setEditingTag(null)}
-          />
-        </div>
+        {isFormVisible && (
+          <div className="bg-slate-800 p-4 rounded h-fit">
+            <h2 className="text-xl font-semibold text-slate-300 mb-4">
+              {editingTag ? 'Edit Tag' : 'New Tag'}
+            </h2>
+            <TagForm
+              initialData={editingTag}
+              onSave={(data) => void handleSave(data)}
+              onCancel={() => {
+                setEditingTag(null);
+                setIsFormVisible(false);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -9,7 +9,12 @@ export interface MessageContentProps {
 
 export const MessageContent: React.FC<MessageContentProps> = ({ content, className }) => {
   return (
-    <div className={cn('prose prose-invert prose-sm max-w-none', className)}>
+    <div
+      className={cn(
+        'prose prose-invert prose-sm max-w-full break-words overflow-hidden',
+        className
+      )}
+    >
       <Markdown
         components={{
           // Ensure paragraphs have proper spacing

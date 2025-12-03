@@ -19,6 +19,8 @@ export async function getDbOverview(): Promise<DbOverviewResult> {
     'setting_instances',
     'character_profiles',
     'setting_profiles',
+    'prompt_tags',
+    'session_tag_instances',
   ];
 
   const results: DbTableOverview[] = [];
@@ -53,12 +55,12 @@ export async function getDbOverview(): Promise<DbOverviewResult> {
     const sampleRes: QueryResult<DbRow> = await pool.query(`SELECT * FROM ${t} ${order} LIMIT 50`);
     const sample: DbRow[] = sampleRes.rows;
 
-    const name = t
+    const displayName = t
       .split('_')
       .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
       .join('');
 
-    results.push({ name, columns, rowCount, sample });
+    results.push({ name: displayName, columns, rowCount, sample });
   }
 
   return { tables: results };
@@ -95,6 +97,10 @@ export async function deleteDbRow(modelName: string, id: string): Promise<void> 
     charactertemplates: 'character_profiles',
     settingtemplate: 'setting_profiles',
     settingtemplates: 'setting_profiles',
+    prompttag: 'prompt_tags',
+    prompttags: 'prompt_tags',
+    sessiontaginstance: 'session_tag_instances',
+    sessiontaginstances: 'session_tag_instances',
   };
   const key = modelName.toLowerCase();
   const table = map[key];
