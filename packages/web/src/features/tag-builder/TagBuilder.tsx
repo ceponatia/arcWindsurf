@@ -81,85 +81,97 @@ export const TagBuilder: React.FC<TagBuilderProps> = ({ id, onCancel }) => {
   const disabled = saving || loading;
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-200">{id ? 'Edit Tag' : 'New Tag'}</h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-3 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors text-sm font-medium"
-        >
-          Cancel
-        </button>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold text-slate-200">{id ? 'Edit Tag' : 'New Tag'}</h2>
 
       {loading && <p className="text-sm text-slate-400">Loading tag…</p>}
       {loadError && !loading && <p className="text-sm text-amber-300">{loadError}</p>}
 
-      <div className="border border-slate-800 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Tag Details</div>
-        <div className="p-4 space-y-4">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400">Name *</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-              disabled={disabled}
-              required
-            />
-          </label>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: Form */}
+        <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
+          <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Tag Details</div>
+            <div className="p-4 grid grid-cols-1 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Name *</span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  disabled={disabled}
+                  required
+                />
+              </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400">Short Description</span>
-            <input
-              type="text"
-              value={shortDescription}
-              onChange={(e) => setShortDescription(e.target.value)}
-              className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-              disabled={disabled}
-            />
-          </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Short Description</span>
+                <input
+                  type="text"
+                  value={shortDescription}
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  disabled={disabled}
+                />
+              </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400">Prompt Text *</span>
-            <textarea
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              className="min-h-[200px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-              disabled={disabled}
-              required
-            />
-          </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Prompt Text *</span>
+                <textarea
+                  value={promptText}
+                  onChange={(e) => setPromptText(e.target.value)}
+                  className="min-h-[200px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  disabled={disabled}
+                  required
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Preview */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-0">
+            <div className="border border-slate-800 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Preview</div>
+              <div className="p-4 space-y-2">
+                <div className="text-lg font-semibold">{name || 'Unnamed Tag'}</div>
+                {shortDescription && (
+                  <div className="text-sm text-slate-400">{shortDescription}</div>
+                )}
+                <div className="text-sm text-slate-300 whitespace-pre-wrap">
+                  {promptText || 'No prompt text yet.'}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
+                  disabled
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+                disabled={disabled}
+              >
+                {saving ? 'Saving…' : 'Save Tag'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                disabled={disabled}
+              >
+                Cancel
+              </button>
+              {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
+              {success && <p className="mt-2 text-sm text-emerald-400">{success}</p>}
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors text-sm font-medium"
-          disabled={disabled}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            disabled
-              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-          }`}
-          disabled={disabled}
-        >
-          {saving ? 'Saving…' : 'Save Tag'}
-        </button>
-      </div>
-
-      {error && <p className="text-sm text-red-400">Error: {error}</p>}
-      {success && <p className="text-sm text-emerald-400">{success}</p>}
     </div>
   );
 };

@@ -124,16 +124,7 @@ export const SettingBuilder: React.FC<{
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-200">Setting Builder</h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-3 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors text-sm font-medium"
-        >
-          Cancel
-        </button>
-      </div>
+      <h2 className="text-xl font-semibold text-slate-200">Setting Builder</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left: Form */}
@@ -230,7 +221,7 @@ export const SettingBuilder: React.FC<{
                 )}
               </div>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <button
                 className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
                   disabled
@@ -243,6 +234,14 @@ export const SettingBuilder: React.FC<{
                 }}
               >
                 {saving ? 'Saving…' : 'Save Setting'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                disabled={disabled}
+              >
+                Cancel
               </button>
               {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
               {success && <p className="mt-2 text-sm text-emerald-400">{success}</p>}

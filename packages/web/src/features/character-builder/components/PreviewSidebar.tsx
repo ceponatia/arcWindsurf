@@ -9,6 +9,7 @@ interface PreviewSidebarProps {
   success: string | null;
   loadError: string | null;
   onSave: () => void;
+  onCancel?: () => void;
 }
 
 export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
@@ -19,6 +20,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
   success,
   loadError,
   onSave,
+  onCancel,
 }) => (
   <div className="lg:col-span-1">
     <div className="sticky top-0">
@@ -50,7 +52,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
           )}
         </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-4 space-y-2">
         <button
           className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
             disabled
@@ -61,6 +63,14 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
           onClick={onSave}
         >
           {saving ? 'Saving…' : 'Save Character'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+          disabled={disabled}
+        >
+          Cancel
         </button>
         {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
         {loadError && !error && <p className="mt-2 text-sm text-amber-300">{loadError}</p>}
