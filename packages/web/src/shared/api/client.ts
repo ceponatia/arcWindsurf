@@ -13,7 +13,7 @@ import type {
   CreateTagRequest,
   UpdateTagRequest,
 } from '@minimal-rpg/schemas';
-import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
+import { API_BASE_URL, MESSAGE_TIMEOUT_MS, USE_TURNS_API } from '../../config.js';
 
 export interface DbColumn {
   name: string;
@@ -185,6 +185,30 @@ export async function sendMessage(
   content: string,
   signal?: AbortSignal
 ): Promise<{ message: Message }> {
+  if (USE_TURNS_API) {
+    const result = await http<{
+      message: string;
+      events: unknown[];
+      stateChanges?: unknown;
+      metadata?: unknown;
+      success: boolean;
+    }>(`/sessions/${encodeURIComponent(sessionId)}/turns`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: content }),
+      timeoutMs: MESSAGE_TIMEOUT_MS,
+      ...(signal && { signal }),
+    });
+
+    const assistant: Message = {
+      role: 'assistant',
+      content: result.message,
+      createdAt: new Date().toISOString(),
+    };
+
+    return { message: assistant };
+  }
+
   return http<{ message: Message }>(`/sessions/${encodeURIComponent(sessionId)}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
