@@ -4,20 +4,22 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
 ## Packages
 
-| Package                      | Description                                             | Status   |
-| ---------------------------- | ------------------------------------------------------- | -------- |
-| `@minimal-rpg/api`           | Hono-based HTTP API server                              | Active   |
-| `@minimal-rpg/web`           | React 19 + Vite SPA client                              | Active   |
-| `@minimal-rpg/db`            | PostgreSQL access layer + migrations (pgvector enabled) | Active   |
-| `@minimal-rpg/schemas`       | Zod schemas/types for characters and settings           | Active   |
-| `@minimal-rpg/utils`         | Shared runtime utilities                                | Active   |
-| `@minimal-rpg/ui`            | Shared UI primitives                                    | Active   |
-| `@minimal-rpg/governor`      | Turn orchestration layer                                | Skeleton |
-| `@minimal-rpg/state-manager` | Baseline + overrides merging, JSON Patch                | Active   |
-| `@minimal-rpg/agents`        | Specialized agents (Map, NPC, Rules, Parser)            | Active   |
-| `@minimal-rpg/retrieval`     | Knowledge node retrieval and scoring                    | Active   |
+| Package                      | Description                                                      | Status   |
+| ---------------------------- | ---------------------------------------------------------------- | -------- |
+| `@minimal-rpg/api`           | Hono-based HTTP API server                                       | Active   |
+| `@minimal-rpg/web`           | React 19 + Vite SPA client                                       | Active   |
+| `@minimal-rpg/db`            | PostgreSQL access layer + migrations (pgvector enabled)          | Active   |
+| `@minimal-rpg/schemas`       | Zod schemas/types for characters, settings, locations, inventory | Active   |
+| `@minimal-rpg/utils`         | Shared runtime utilities                                         | Active   |
+| `@minimal-rpg/ui`            | Shared UI primitives                                             | Active   |
+| `@minimal-rpg/governor`      | Turn orchestration layer                                         | Skeleton |
+| `@minimal-rpg/state-manager` | Baseline + overrides merging, JSON Patch                         | Active   |
+| `@minimal-rpg/agents`        | Specialized agents (Map, NPC, Rules, Parser)                     | Active   |
+| `@minimal-rpg/retrieval`     | Knowledge node retrieval and scoring                             | Active   |
 
 ## What's New
+
+**December 2025:** Location and inventory slices now ship with `BuiltLocationSchema` and `InventoryStateSchema` from `@minimal-rpg/schemas`, so the StateManager can validate navigation graphs and lightweight item metadata before persisting session overrides.
 
 **December 2025:** Character profiles now support flexible `details` entries (label/value pairs with area, importance, and tags). The Character Builder exposes these through a new Profile Details section, and the prompt serializer now surfaces the saved facts directly while laying groundwork for future RAG scoring.
 
@@ -181,22 +183,33 @@ Tip: Characters and settings are defined in JSON files under `data/characters` a
 ## Schemas
 
 - Source package: `@minimal-rpg/schemas` (in `packages/schemas`)
-- Provides Zod schemas and types for characters and settings.
+- Provides Zod schemas/types for characters, settings, locations, and inventory slices.
 - Example usage:
 
 ```ts
-import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas';
-const parsed = CharacterProfileSchema.parse(obj);
-const character: CharacterProfile = parsed;
+import {
+  CharacterProfileSchema,
+  InventoryStateSchema,
+  BuiltLocationSchema,
+  type CharacterProfile,
+  type InventoryState,
+  type BuiltLocation,
+} from '@minimal-rpg/schemas';
+
+const character = CharacterProfileSchema.parse(obj.character) satisfies CharacterProfile;
+const location = BuiltLocationSchema.parse(obj.location) satisfies BuiltLocation;
+const inventory = InventoryStateSchema.parse(obj.inventory) satisfies InventoryState;
 ```
 
 - Namespaced access is also available:
 
 ```ts
-import { Character, Setting } from '@minimal-rpg/schemas';
+import { Character, Setting, Location, Inventory } from '@minimal-rpg/schemas';
 
 // Character.* includes leaf schemas like AppearanceSchema, ScentSchema, etc.
 const ok = Character.CharacterProfileSchema.safeParse(obj);
+const exitsOk = Location.BuiltLocationSchema.safeParse(obj.location);
+const packOk = Inventory.InventoryStateSchema.safeParse(obj.inventory);
 ```
 
 The package continues to export flat named types (`CharacterProfile`, `SettingProfile`, `Appearance`, ...), so existing imports remain valid.

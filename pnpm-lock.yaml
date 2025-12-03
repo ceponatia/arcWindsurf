@@ -64,12 +64,24 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.6
         version: 1.19.6(hono@4.10.6)
+      '@minimal-rpg/agents':
+        specifier: workspace:*
+        version: link:../agents
       '@minimal-rpg/db':
         specifier: workspace:*
         version: link:../db
+      '@minimal-rpg/governor':
+        specifier: workspace:*
+        version: link:../governor
+      '@minimal-rpg/retrieval':
+        specifier: workspace:*
+        version: link:../retrieval
       '@minimal-rpg/schemas':
         specifier: workspace:*
         version: link:../schemas
+      '@minimal-rpg/state-manager':
+        specifier: workspace:*
+        version: link:../state-manager
       '@minimal-rpg/utils':
         specifier: workspace:*
         version: link:../utils

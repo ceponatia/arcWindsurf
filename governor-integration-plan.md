@@ -8,7 +8,7 @@ right now are explicitly marked as TBD.
 
 ## Blocking Work
 
-- Must finish schemas for locations and inventory
+- [x] Must finish schemas for locations and inventory (DONE)
 
 ## 1. Define and Implement Minimal End-to-End Turn Flow
 

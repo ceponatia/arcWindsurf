@@ -18,6 +18,7 @@ import { getConfig } from './util/config.js';
 import { registerConfigRoutes } from './routes/config.js';
 import { registerAdminDbRoutes } from './routes/adminDb.js';
 import { registerSessionRoutes } from './routes/sessions.js';
+import { registerTurnRoutes } from './routes/turns.js';
 import { registerProfileRoutes } from './routes/profiles.js';
 import { registerTagRoutes } from './routes/tags.js';
 
@@ -76,6 +77,7 @@ async function start(): Promise<void> {
   registerAdminDbRoutes(app);
   registerProfileRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
+  registerTurnRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerTagRoutes(app);
 
   const port = cfg.port;

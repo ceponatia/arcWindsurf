@@ -1,4 +1,5 @@
 import type { CharacterProfile, SettingProfile, SessionTagInstance } from '@minimal-rpg/schemas';
+import type { TurnResult } from '@minimal-rpg/governor';
 import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
 
 // Errors & API status
@@ -190,6 +191,15 @@ export type BuildPromptResult = { role: 'system' | 'user' | 'assistant'; content
 export interface ContentFilterResult {
   flagged: boolean;
   note: string;
+}
+
+// Governor-backed turn DTO (subset of TurnResult that is safe to expose)
+export interface TurnResultDto {
+  message: string;
+  events: TurnResult['events'];
+  stateChanges?: TurnResult['stateChanges'];
+  metadata?: TurnResult['metadata'];
+  success: boolean;
 }
 
 // Admin DB types (aliases to external return shapes)

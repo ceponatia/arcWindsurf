@@ -18,8 +18,12 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
+    "@minimal-rpg/agents": "workspace:*",
     "@minimal-rpg/db": "workspace:*",
+    "@minimal-rpg/governor": "workspace:*",
+    "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
+    "@minimal-rpg/state-manager": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",
     "dotenv": "^17.2.3",
     "hono": "^4.10.6"
