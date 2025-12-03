@@ -240,17 +240,9 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     return c.json({ ok: true, setting: summary }, 201);
   });
 
-  // DELETE /settings/:id — delete a dynamic setting template from DB (filesystem settings are read-only)
+  // DELETE /settings/:id — delete a setting template from DB
   app.delete('/settings/:id', async (c) => {
     const id = c.req.param('id');
-    // If this id exists in filesystem-loaded settings, disallow deletion here
-    const loaded = deps.getLoaded();
-    if (loaded?.settings.some((s) => s.id === id)) {
-      return c.json(
-        { ok: false, error: 'filesystem settings cannot be deleted' } satisfies ApiError,
-        405
-      );
-    }
     const existing = await db.settingTemplate.findUnique({
       where: { id },
     });

@@ -253,6 +253,11 @@ export function buildPrompt(opts: BuildPromptOptions): BuildPromptResult {
       const rules = buildTagSpecificRules(setting);
       return rules.length ? { role: 'system' as const, content: rules.join(' ') } : undefined;
     })(),
+    (() => {
+      if (!opts.tagInstances?.length) return undefined;
+      const tagPrompts = opts.tagInstances.map((t) => t.promptText).join('\n\n');
+      return { role: 'system' as const, content: `Additional Style Rules:\n${tagPrompts}` };
+    })(),
     // { role: 'system' as const, content: SAFETY_RULES.join(' ') },
     { role: 'system' as const, content: serializeCharacter(character) },
     { role: 'system' as const, content: serializeSetting(setting) },

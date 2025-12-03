@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { Appearance, SpeechStyle } from '@minimal-rpg/schemas';
+import type { Build, SpeechStyle } from '@minimal-rpg/schemas';
 
 export interface CharacterSummary {
   id: string;
@@ -45,11 +45,12 @@ export interface SessionSummary {
   settingName?: string | null;
 }
 
-export type ViewMode = 'chat' | 'character-builder' | 'setting-builder';
+export type ViewMode = 'chat' | 'character-builder' | 'setting-builder' | 'tag-builder';
 
 export interface AppControllerStateSlice {
   selectedCharacterId: string | null;
   selectedSettingId: string | null;
+  selectedTagIds: string[];
   currentSessionId: string | null;
   builderId: string | null;
   viewMode: ViewMode;
@@ -76,6 +77,7 @@ export interface AppControllerComputedState {
 export interface AppControllerActions {
   setSelectedCharacterId: Dispatch<SetStateAction<string | null>>;
   setSelectedSettingId: Dispatch<SetStateAction<string | null>>;
+  setSelectedTagIds: Dispatch<SetStateAction<string[]>>;
   setCurrentSessionId: Dispatch<SetStateAction<string | null>>;
   refreshSessions: () => void;
   refreshCharacters: () => void;
@@ -84,6 +86,7 @@ export interface AppControllerActions {
   handleDeleteSession: (sessionId: string) => Promise<void>;
   navigateToCharacterBuilder: (id: string) => void;
   navigateToSettingBuilder: (id: string) => void;
+  navigateToTagBuilder: () => void;
   selectSession: (id: string) => void;
 }
 
@@ -111,6 +114,23 @@ export interface UseSettingsResult extends SettingsState {
   retry: () => void;
 }
 
+export interface TagSummary {
+  id: string;
+  name: string;
+  shortDescription: string | null;
+  promptText: string;
+}
+
+export interface TagsState {
+  loading: boolean;
+  error: string | null;
+  data: TagSummary[] | null;
+}
+
+export interface UseTagsResult extends TagsState {
+  retry: () => void;
+}
+
 export interface SessionsState {
   loading: boolean;
   error: string | null;
@@ -123,12 +143,12 @@ export interface UseSessionsResult extends SessionsState {
 
 export type SelectOption<T extends string> = '' | T;
 
-export type HeightOption = SelectOption<Appearance['height']>;
-export type TorsoBuildOption = SelectOption<Appearance['torso']>;
-export type ArmsBuildOption = SelectOption<Appearance['arms']['build']>;
-export type ArmsLengthOption = SelectOption<Appearance['arms']['length']>;
-export type LegsLengthOption = SelectOption<Appearance['legs']['length']>;
-export type LegsBuildOption = SelectOption<Appearance['legs']['build']>;
+export type HeightOption = SelectOption<Build['height']>;
+export type TorsoBuildOption = SelectOption<Build['torso']>;
+export type ArmsBuildOption = SelectOption<Build['arms']['build']>;
+export type ArmsLengthOption = SelectOption<Build['arms']['length']>;
+export type LegsLengthOption = SelectOption<Build['legs']['length']>;
+export type LegsBuildOption = SelectOption<Build['legs']['build']>;
 
 export type CharacterStyleOverrides = Partial<SpeechStyle>;
 
@@ -164,6 +184,10 @@ export interface MobileSidebarProps {
   settingsLoading: boolean;
   settingsError: string | null;
   onRefreshSettings: () => void;
+  // Tags panel
+  selectedTagIds: string[];
+  onToggleTag: (id: string) => void;
+  onEditTags: () => void;
   // Session controls
   canStartSession: boolean;
   onStartSession: () => void;

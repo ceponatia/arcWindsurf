@@ -146,6 +146,26 @@ export interface UserSessionRow extends DbRow {
   messages?: MessageRow[];
 }
 
+export interface PromptTagRow extends DbRow {
+  id: string;
+  owner: string;
+  name: string;
+  short_description: string;
+  prompt_text: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface SessionTagInstanceRow extends DbRow {
+  id: string;
+  session_id: string;
+  tag_id: string | null;
+  name: string;
+  short_description: string;
+  prompt_text: string;
+  created_at?: Date;
+}
+
 // Session helpers exposed by sessions.ts
 export type MessageRole = 'user' | 'assistant' | 'system';
 

@@ -6,6 +6,7 @@ import {
   type SettingTag,
 } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
+import { splitList } from '../shared/stringLists.js';
 import { getSetting, saveSetting } from '../../shared/api/client.js';
 
 interface FormState {
@@ -80,10 +81,7 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
     setSuccess(null);
     setFieldErrors({});
 
-    const themes = form.themes
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const themes = splitList(form.themes);
 
     const profile: SettingProfile = {
       id: form.id.trim(),

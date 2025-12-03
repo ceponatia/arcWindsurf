@@ -1,4 +1,4 @@
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
+import type { CharacterProfile, SettingProfile, SessionTagInstance } from '@minimal-rpg/schemas';
 import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
 
 // Errors & API status
@@ -98,6 +98,7 @@ export interface MessageResponse {
 export interface CreateSessionRequest {
   characterId: string;
   settingId: string;
+  tagIds?: string[];
 }
 export interface CreateSessionResponse {
   id: string;
@@ -182,6 +183,7 @@ export interface BuildPromptOptions {
   history: DbMessage[];
   historyWindow?: number;
   summaryMaxChars?: number;
+  tagInstances?: SessionTagInstance[];
 }
 export type BuildPromptResult = { role: 'system' | 'user' | 'assistant'; content: string }[];
 

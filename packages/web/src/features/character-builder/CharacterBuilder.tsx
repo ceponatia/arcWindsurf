@@ -8,11 +8,13 @@ import {
   SPEECH_SENTENCE_LENGTHS,
   SPEECH_VERBOSITY_LEVELS,
   type CharacterDetail,
-  type CharacterProfile,
   type Scent,
+  type Physique,
+  type CharacterProfile,
 } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields } from '@minimal-rpg/utils';
 import type { CharacterStyleOverrides, SelectOption } from '../../types.js';
+import { splitList } from '../shared/stringLists.js';
 import { persistCharacter } from './api.js';
 import { AppearanceSection } from './components/AppearanceSection.js';
 import { BasicsSection } from './components/BasicsSection.js';
@@ -34,18 +36,12 @@ const HAIR_SCENTS = ['floral', 'citrus', 'fresh', 'herbal', 'neutral'] as const;
 const BODY_SCENTS = ['clean', 'fresh', 'neutral', 'light musk'] as const;
 
 const pickOption = <T extends string>(value: SelectOption<T>, fallback: T): T =>
-  value ? value : fallback;
+  (value ?? fallback) as T;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const splitInputList = (value: string): string[] =>
-  value
-    .split(/[\n,]/)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-
 const parsePersonality = (value: string): string | string[] => {
-  const parts = splitInputList(value);
+  const parts = splitList(value);
   if (parts.length <= 1) {
     return parts[0] ?? '';
   }
@@ -54,52 +50,46 @@ const parsePersonality = (value: string): string | string[] => {
 
 const shouldUseStructuredAppearance = (form: FormState) =>
   Boolean(
-    form.apHeight ||
-      form.apTorso ||
-      form.apSkinTone ||
-      form.apFeatures ||
-      form.apHairColor ||
-      form.apHairStyle ||
-      form.apHairLength ||
-      form.apEyesColor ||
-      form.apArmsBuild ||
-      form.apArmsLength ||
-      form.apLegsBuild ||
+    form.apHeight ??
+      form.apTorso ??
+      form.apSkinTone ??
+      form.apFeatures ??
+      form.apHairColor ??
+      form.apHairStyle ??
+      form.apHairLength ??
+      form.apEyesColor ??
+      form.apArmsBuild ??
+      form.apArmsLength ??
+      form.apLegsBuild ??
       form.apLegsLength
   );
 
-const buildAppearance = (form: FormState): CharacterProfile['appearance'] | undefined => {
+type AppearanceShape = Physique['appearance'];
+
+const buildAppearance = (form: FormState): AppearanceShape | undefined => {
   const textAppearance = form.appearance.trim();
   if (textAppearance) {
-    return textAppearance;
+    // When free-text appearance is provided, we represent it via the
+    // CharacterProfile.physique string branch instead of structured appearance.
+    return undefined;
   }
 
   if (!shouldUseStructuredAppearance(form)) {
     return undefined;
   }
 
-  const features = splitInputList(form.apFeatures);
+  const features = splitList(form.apFeatures);
 
-  return {
+  const appearance: AppearanceShape = {
     hair: {
       color: form.apHairColor || 'brown',
       style: form.apHairStyle || 'straight',
       length: form.apHairLength || 'medium',
     },
     eyes: { color: form.apEyesColor || 'brown' },
-    height: pickOption(form.apHeight, 'average'),
-    torso: pickOption(form.apTorso, 'average'),
-    skinTone: form.apSkinTone || 'pale',
-    features: features.length ? features : undefined,
-    arms: {
-      build: pickOption(form.apArmsBuild, 'average'),
-      length: pickOption(form.apArmsLength, 'average'),
-    },
-    legs: {
-      length: pickOption(form.apLegsLength, 'average'),
-      build: pickOption(form.apLegsBuild, 'toned'),
-    },
+    ...(features.length ? { features } : {}),
   };
+  return appearance;
 };
 
 const buildScent = (form: FormState): Partial<Scent> => {
@@ -164,7 +154,7 @@ const mapDetailEntries = (entries: DetailFormEntry[]): CharacterDetail[] => {
     if (!label || !value) continue;
     const parsedImportance = Number.parseFloat(entry.importance);
     const importance = Number.isFinite(parsedImportance) ? clamp(parsedImportance, 0, 1) : 0.5;
-    const tags = splitInputList(entry.tags);
+    const tags = splitList(entry.tags);
     const notes = entry.notes.trim();
     const detail: CharacterDetail = {
       label,
@@ -180,13 +170,36 @@ const mapDetailEntries = (entries: DetailFormEntry[]): CharacterDetail[] => {
 };
 
 const buildProfile = (form: FormState): CharacterProfile => {
-  const tags = splitInputList(form.tags);
+  const tags = splitList(form.tags);
   const appearance = buildAppearance(form);
   const scent = buildScent(form);
   const style = buildStyle(form);
   const details = mapDetailEntries(form.details);
 
-  return {
+  const physique: CharacterProfile['physique'] | undefined = appearance
+    ? {
+        build: {
+          height: pickOption(form.apHeight, 'average'),
+          torso: pickOption(form.apTorso, 'average'),
+          skinTone: form.apSkinTone || 'pale',
+          arms: {
+            build: pickOption(form.apArmsBuild, 'average'),
+            length: pickOption(form.apArmsLength, 'average'),
+          },
+          legs: {
+            length: pickOption(form.apLegsLength, 'average'),
+            build: pickOption(form.apLegsBuild, 'toned'),
+          },
+          feet: {
+            size: 'small',
+            shape: 'average',
+          },
+        },
+        appearance,
+      }
+    : form.appearance.trim() || undefined;
+
+  const profile: CharacterProfile = {
     id: form.id.trim(),
     name: form.name.trim(),
     age: Number.parseInt(String(form.age), 10),
@@ -195,11 +208,13 @@ const buildProfile = (form: FormState): CharacterProfile => {
     tags,
     personality: parsePersonality(form.personality),
     speakingStyle: form.speakingStyle.trim(),
-    ...(appearance ? { appearance } : {}),
+    ...(physique ? { physique } : {}),
     ...(Object.keys(scent).length ? { scent } : {}),
     ...(Object.keys(style).length ? { style } : {}),
     ...(details.length ? { details } : {}),
-  } satisfies CharacterProfile;
+  };
+
+  return profile;
 };
 
 export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => void }> = ({

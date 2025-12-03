@@ -15,6 +15,8 @@ Monorepo for a minimal roleplaying chat app powered by advanced language models.
 **November 2025:** OpenRouter is now the default and required LLM path. Configure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
 **Utilities:** The `deleteSettingFromDb(settingId, baseUrl?)` helper now lives in `@minimal-rpg/utils` and calls `DELETE /settings/:id`. Filesystem-backed settings return 405 and cannot be deleted.
 
+**Builder UX:** Character and Setting builders now share a common `splitList` helper at `packages/web/src/features/shared/stringLists.ts` for parsing comma/newline-separated text fields (tags, themes, etc.).
+
 ## Quick Start
 
 Prerequisites:

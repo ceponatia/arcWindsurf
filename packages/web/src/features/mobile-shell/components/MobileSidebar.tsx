@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import type { MobileSidebarProps } from '../../../types.js';
 import { CharactersPanel } from '../../characters-panel/CharactersPanel.js';
 import { SettingsPanel } from '../../settings-panel/SettingsPanel.js';
+import { TagsPanel } from '../../tags-panel/index.js';
 import { SessionsPanel } from '@minimal-rpg/ui';
 
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -39,6 +40,9 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
   settingsLoading,
   settingsError,
   onRefreshSettings,
+  selectedTagIds,
+  onToggleTag,
+  onEditTags,
   canStartSession,
   onStartSession,
   creating,
@@ -139,6 +143,8 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
             error={settingsError}
             onRefresh={onRefreshSettings}
           />
+
+          <TagsPanel selectedIds={selectedTagIds} onToggle={onToggleTag} onEdit={onEditTags} />
 
           {/* Start Session Button */}
           <div className="border border-slate-800 rounded-lg p-3">

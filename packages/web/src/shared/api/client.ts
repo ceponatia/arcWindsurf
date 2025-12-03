@@ -6,7 +6,13 @@ import type {
   Session,
   SessionSummary,
 } from '../../types.js';
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
+import type {
+  CharacterProfile,
+  SettingProfile,
+  TagResponse,
+  CreateTagRequest,
+  UpdateTagRequest,
+} from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
 
 export interface DbColumn {
@@ -143,6 +149,7 @@ export async function getSession(sessionId: string, signal?: AbortSignal): Promi
 export async function createSession(
   characterId: string,
   settingId: string,
+  tagIds?: string[],
   signal?: AbortSignal
 ): Promise<
   Pick<
@@ -168,7 +175,7 @@ export async function createSession(
   >('/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ characterId, settingId }),
+    body: JSON.stringify({ characterId, settingId, tagIds }),
     ...(signal && { signal }),
   });
 }
@@ -305,6 +312,42 @@ export async function saveSetting(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(profile),
+    ...(signal && { signal }),
+  });
+}
+
+export async function getTags(signal?: AbortSignal): Promise<TagResponse[]> {
+  return http<TagResponse[]>('/tags', signal ? { signal } : undefined);
+}
+
+export async function createTag(
+  data: CreateTagRequest,
+  signal?: AbortSignal
+): Promise<TagResponse> {
+  return http<TagResponse>('/tags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    ...(signal && { signal }),
+  });
+}
+
+export async function updateTag(
+  id: string,
+  data: UpdateTagRequest,
+  signal?: AbortSignal
+): Promise<TagResponse> {
+  return http<TagResponse>(`/tags/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    ...(signal && { signal }),
+  });
+}
+
+export async function deleteTag(id: string, signal?: AbortSignal): Promise<void> {
+  await http<void>(`/tags/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
     ...(signal && { signal }),
   });
 }

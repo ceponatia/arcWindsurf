@@ -7,6 +7,9 @@ import {
   appendMessage,
   listSessions,
   deleteSession,
+  createSessionTagInstances,
+  getSessionTagInstances,
+  getPromptTag,
 } from '../db/sessionsClient.js';
 import {
   CharacterProfileSchema,
@@ -404,12 +407,24 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const sessAfterUser = await getSession(session.id);
     const history = sessAfterUser?.messages ?? session.messages;
 
+    const tagInstancesRaw = await getSessionTagInstances(session.id);
+    const tagInstances = tagInstancesRaw.map((t) => ({
+      id: t.id,
+      sessionId: t.session_id,
+      tagId: t.tag_id,
+      name: t.name,
+      promptText: t.prompt_text,
+      shortDescription: t.short_description,
+      createdAt: t.created_at,
+    }));
+
     const effective = await getEffectiveProfiles(session.id, character, setting);
     const messages = buildPrompt({
       character: effective.character,
       setting: effective.setting,
       history,
       historyWindow: cfg.contextWindow,
+      tagInstances,
     });
 
     console.info(
@@ -477,7 +492,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
       );
     }
 
-    const { characterId, settingId } = rawBody;
+    const { characterId, settingId, tagIds } = rawBody;
     const character = await findCharacter(loaded, characterId);
     const setting = await findSetting(loaded, settingId);
 
@@ -518,6 +533,18 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
           profileJson: JSON.stringify(setting),
         },
       });
+
+      if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
+        console.log('[API] Creating tag instances:', tagIds.length);
+        const tags = [];
+        for (const tid of tagIds) {
+          if (typeof tid === 'string') {
+            const t = await getPromptTag(tid, 'admin');
+            if (t) tags.push(t);
+          }
+        }
+        await createSessionTagInstances(sessionRecord.id, tags);
+      }
     } catch (err) {
       console.error('[API] Failed to create session instances, rolling back session', err);
       await deleteSession(sessionRecord.id).catch(() => undefined);

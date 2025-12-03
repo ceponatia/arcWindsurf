@@ -7,7 +7,7 @@ async function runTest() {
 
   const payload = {
     characterId: 'char-aria-1',
-    settingId: 'setting-mistshore',
+    settingId: 'setting-mistshore', // legacy ID from example data (no longer used in UI)
   };
 
   console.log('Creating session with:', payload);

@@ -5,6 +5,8 @@ import { SessionsPanel } from '../features/sessions-panel/index.js';
 import { ChatPanel } from '../features/chat-panel/index.js';
 import { CharacterBuilder } from '../features/character-builder/index.js';
 import { SettingBuilder } from '../features/setting-builder/index.js';
+import { TagBuilder } from '../features/tag-builder/TagBuilder.js';
+import { TagsPanel } from '../features/tags-panel/index.js';
 import { MobileHeader, MobileSidebar } from '../features/mobile-shell/index.js';
 import { AppHeader } from './AppHeader.js';
 import { useAppController } from './hooks/useAppController.js';
@@ -56,7 +58,10 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     activeSettingId,
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
+    navigateToTagBuilder,
     selectSession,
+    selectedTagIds,
+    setSelectedTagIds,
   } = controller;
 
   return (
@@ -81,6 +86,15 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               loading={settingsLoading}
               error={settingsError}
               onRefresh={refreshSettings}
+            />
+            <TagsPanel
+              selectedIds={selectedTagIds}
+              onToggle={(id) => {
+                setSelectedTagIds((prev) =>
+                  prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+                );
+              }}
+              onEdit={navigateToTagBuilder}
             />
             <div className="border border-slate-800 rounded-lg p-3">
               <button
@@ -171,6 +185,9 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
     selectSession,
+    selectedTagIds,
+    setSelectedTagIds,
+    navigateToTagBuilder,
   } = controller;
 
   const handleMenuToggle = () => setSidebarOpen((prev) => !prev);
@@ -205,6 +222,13 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
         settingsLoading={settingsLoading}
         settingsError={settingsError}
         onRefreshSettings={refreshSettings}
+        selectedTagIds={selectedTagIds}
+        onToggleTag={(id) => {
+          setSelectedTagIds((prev) =>
+            prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+          );
+        }}
+        onEditTags={navigateToTagBuilder}
         canStartSession={canStart}
         onStartSession={() => void onStartSession()}
         creating={creating}
@@ -226,6 +250,10 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
         ) : viewMode === 'setting-builder' ? (
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
             <SettingBuilder id={builderId} onSave={refreshSettings} />
+          </div>
+        ) : viewMode === 'tag-builder' ? (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+            <TagBuilder />
           </div>
         ) : (
           <div className="flex-1 overflow-hidden">
@@ -258,6 +286,10 @@ const MainContent: React.FC<MainContentProps> = ({
 
   if (viewMode === 'setting-builder') {
     return <SettingBuilder id={builderId} onSave={refreshSettings} />;
+  }
+
+  if (viewMode === 'tag-builder') {
+    return <TagBuilder />;
   }
 
   return <ChatPanel sessionId={currentSessionId} />;

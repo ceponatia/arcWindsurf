@@ -19,6 +19,7 @@ import { registerConfigRoutes } from './routes/config.js';
 import { registerAdminDbRoutes } from './routes/adminDb.js';
 import { registerSessionRoutes } from './routes/sessions.js';
 import { registerProfileRoutes } from './routes/profiles.js';
+import { registerTagRoutes } from './routes/tags.js';
 
 const app = new Hono();
 
@@ -75,6 +76,7 @@ async function start(): Promise<void> {
   registerAdminDbRoutes(app);
   registerProfileRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
+  registerTagRoutes(app);
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });

@@ -1,3 +1,4 @@
 export * from './client.js';
 export * from './sessions.js';
+export * from './tags.js';
 export * from './admin.js';

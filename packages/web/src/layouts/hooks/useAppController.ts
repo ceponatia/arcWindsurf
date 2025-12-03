@@ -9,12 +9,14 @@ import type { AppControllerValue, ViewMode } from '../../types.js';
 export function useAppController(): AppControllerValue {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedSettingId, setSelectedSettingId] = useState<string | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window === 'undefined') return 'chat';
     if (window.location.hash.startsWith('#/character-builder')) return 'character-builder';
     if (window.location.hash.startsWith('#/setting-builder')) return 'setting-builder';
+    if (window.location.hash.startsWith('#/tag-builder')) return 'tag-builder';
     return 'chat';
   });
 
@@ -71,6 +73,9 @@ export function useAppController(): AppControllerValue {
         setViewMode('setting-builder');
         const query = hash.split('?')[1];
         setBuilderId(new URLSearchParams(query).get('id'));
+      } else if (hash.startsWith('#/tag-builder')) {
+        setViewMode('tag-builder');
+        setBuilderId(null);
       } else {
         setViewMode('chat');
         setBuilderId(null);
@@ -88,6 +93,10 @@ export function useAppController(): AppControllerValue {
     window.location.hash = `#/setting-builder?id=${id}`;
   };
 
+  const navigateToTagBuilder = () => {
+    window.location.hash = '#/tag-builder';
+  };
+
   const navigateToChat = () => {
     window.location.hash = '';
   };
@@ -100,7 +109,12 @@ export function useAppController(): AppControllerValue {
     const ctrl = new AbortController();
     createAbortRef.current = ctrl;
     try {
-      const newSession = await createSession(selectedCharacterId, selectedSettingId, ctrl.signal);
+      const newSession = await createSession(
+        selectedCharacterId,
+        selectedSettingId,
+        selectedTagIds,
+        ctrl.signal
+      );
       setCurrentSessionId(newSession.id);
       navigateToChat();
       refreshSessions();
@@ -136,6 +150,8 @@ export function useAppController(): AppControllerValue {
     setSelectedCharacterId,
     selectedSettingId,
     setSelectedSettingId,
+    selectedTagIds,
+    setSelectedTagIds,
     currentSessionId,
     setCurrentSessionId,
     viewMode,
@@ -162,6 +178,7 @@ export function useAppController(): AppControllerValue {
     activeSettingId,
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
+    navigateToTagBuilder,
     selectSession,
   };
 }

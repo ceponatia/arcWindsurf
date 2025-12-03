@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CharacterProfile } from '@minimal-rpg/schemas';
+import type { CharacterProfile, Physique } from '@minimal-rpg/schemas';
 import { loadCharacter } from '../api.js';
 import {
   createDetailEntry,
@@ -22,19 +22,24 @@ function mapProfileToForm(profile: CharacterProfile): FormState {
     : (profile.personality ?? '');
   next.speakingStyle = profile.speakingStyle ?? '';
 
-  if (profile.appearance && typeof profile.appearance !== 'string') {
-    next.apHairColor = profile.appearance.hair?.color ?? '';
-    next.apHairStyle = profile.appearance.hair?.style ?? '';
-    next.apHairLength = profile.appearance.hair?.length ?? '';
-    next.apEyesColor = profile.appearance.eyes?.color ?? '';
-    next.apHeight = profile.appearance.height ?? '';
-    next.apTorso = profile.appearance.torso ?? '';
-    next.apSkinTone = profile.appearance.skinTone ?? '';
-    next.apFeatures = (profile.appearance.features ?? []).join(', ');
-    next.apArmsBuild = profile.appearance.arms?.build ?? '';
-    next.apArmsLength = profile.appearance.arms?.length ?? '';
-    next.apLegsBuild = profile.appearance.legs?.build ?? '';
-    next.apLegsLength = profile.appearance.legs?.length ?? '';
+  const physique = profile.physique;
+  if (typeof physique === 'string') {
+    next.appearance = physique;
+  } else if (physique && typeof physique === 'object') {
+    const typedPhysique = physique as Physique;
+    const appearance = typedPhysique.appearance;
+    next.apHairColor = appearance.hair.color;
+    next.apHairStyle = appearance.hair.style;
+    next.apHairLength = appearance.hair.length;
+    next.apEyesColor = appearance.eyes.color;
+    next.apHeight = typedPhysique.build.height;
+    next.apTorso = typedPhysique.build.torso;
+    next.apSkinTone = typedPhysique.build.skinTone;
+    next.apFeatures = (appearance.features ?? []).join(', ');
+    next.apArmsBuild = typedPhysique.build.arms.build;
+    next.apArmsLength = typedPhysique.build.arms.length;
+    next.apLegsBuild = typedPhysique.build.legs.build;
+    next.apLegsLength = typedPhysique.build.legs.length;
   }
 
   if (profile.scent) {
