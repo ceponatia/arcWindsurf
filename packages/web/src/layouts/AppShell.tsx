@@ -234,6 +234,9 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                 navigateToCharacterBuilder={navigateToCharacterBuilder}
                 navigateToSettingBuilder={navigateToSettingBuilder}
                 navigateToTagBuilder={navigateToTagBuilder}
+                navigateToCharacterLibrary={navigateToCharacterLibrary}
+                navigateToSettingLibrary={navigateToSettingLibrary}
+                navigateToTagLibrary={navigateToTagLibrary}
                 selectSession={selectSession}
               />
             </div>
@@ -378,6 +381,9 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
           navigateToCharacterBuilder={navigateToCharacterBuilder}
           navigateToSettingBuilder={navigateToSettingBuilder}
           navigateToTagBuilder={navigateToTagBuilder}
+          navigateToCharacterLibrary={navigateToCharacterLibrary}
+          navigateToSettingLibrary={navigateToSettingLibrary}
+          navigateToTagLibrary={navigateToTagLibrary}
           selectSession={selectSession}
         />
       </main>
@@ -405,6 +411,9 @@ interface MainContentProps {
   navigateToCharacterBuilder: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
+  navigateToCharacterLibrary: () => void;
+  navigateToSettingLibrary: () => void;
+  navigateToTagLibrary: () => void;
   selectSession: (id: string) => void;
 }
 
@@ -428,6 +437,9 @@ const MainContent: React.FC<MainContentProps> = ({
   navigateToCharacterBuilder,
   navigateToSettingBuilder,
   navigateToTagBuilder,
+  navigateToCharacterLibrary,
+  navigateToSettingLibrary,
+  navigateToTagLibrary,
   selectSession,
 }) => {
   switch (viewMode) {
@@ -498,13 +510,25 @@ const MainContent: React.FC<MainContentProps> = ({
       );
 
     case 'character-builder':
-      return <CharacterBuilder id={builderId} onSave={refreshCharacters} />;
+      return (
+        <CharacterBuilder
+          id={builderId}
+          onSave={refreshCharacters}
+          onCancel={navigateToCharacterLibrary}
+        />
+      );
 
     case 'setting-builder':
-      return <SettingBuilder id={builderId} onSave={refreshSettings} />;
+      return (
+        <SettingBuilder
+          id={builderId}
+          onSave={refreshSettings}
+          onCancel={navigateToSettingLibrary}
+        />
+      );
 
     case 'tag-builder':
-      return <TagBuilder />;
+      return <TagBuilder id={builderId} onCancel={navigateToTagLibrary} />;
 
     case 'chat':
       return <ChatPanel sessionId={currentSessionId} />;

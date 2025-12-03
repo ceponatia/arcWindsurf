@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import {
   listPromptTags,
+  getPromptTag,
   createPromptTag,
   updatePromptTag,
   deletePromptTag,
@@ -34,6 +35,21 @@ export function registerTagRoutes(app: Hono): void {
   app.get('/tags', async (c) => {
     const tags = await listPromptTags('admin');
     return c.json(tags.map(toTagResponse), 200);
+  });
+
+  // GET /tags/:id - get a single tag
+  app.get('/tags/:id', async (c) => {
+    const id = c.req.param('id');
+    try {
+      const tag = await getPromptTag(id, 'admin');
+      if (!tag) {
+        return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
+      }
+      return c.json(toTagResponse(tag), 200);
+    } catch (err) {
+      console.error('[API] Failed to get tag:', err);
+      return c.json({ ok: false, error: 'Failed to get tag' } satisfies ApiError, 500);
+    }
   });
 
   // POST /tags - create a new tag

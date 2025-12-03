@@ -28,10 +28,11 @@ const initialState: FormState = {
 type FormKey = keyof FormState;
 type FormFieldErrors = Partial<Record<FormKey, string>>;
 
-export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void }> = ({
-  id,
-  onSave: onSaveCallback,
-}) => {
+export const SettingBuilder: React.FC<{
+  id?: string | null;
+  onSave?: () => void;
+  onCancel?: () => void;
+}> = ({ id, onSave: onSaveCallback, onCancel }) => {
   const [form, setForm] = useState(initialState);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,16 +126,13 @@ export const SettingBuilder: React.FC<{ id?: string | null; onSave?: () => void 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-200">Setting Builder</h2>
-        <a
-          href="#"
+        <button
+          type="button"
+          onClick={onCancel}
           className="px-3 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors text-sm font-medium"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.hash = '';
-          }}
         >
-          Back to Chat
-        </a>
+          Cancel
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

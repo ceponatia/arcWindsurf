@@ -320,6 +320,10 @@ export async function getTags(signal?: AbortSignal): Promise<TagResponse[]> {
   return http<TagResponse[]>('/tags', signal ? { signal } : undefined);
 }
 
+export async function getTag(id: string, signal?: AbortSignal): Promise<TagResponse> {
+  return http<TagResponse>(`/tags/${encodeURIComponent(id)}`, signal ? { signal } : undefined);
+}
+
 export async function createTag(
   data: CreateTagRequest,
   signal?: AbortSignal
