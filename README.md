@@ -2,6 +2,21 @@
 
 Monorepo for a minimal roleplaying chat app powered by advanced language models.
 
+## Packages
+
+| Package                      | Description                                             | Status   |
+| ---------------------------- | ------------------------------------------------------- | -------- |
+| `@minimal-rpg/api`           | Hono-based HTTP API server                              | Active   |
+| `@minimal-rpg/web`           | React 19 + Vite SPA client                              | Active   |
+| `@minimal-rpg/db`            | PostgreSQL access layer + migrations (pgvector enabled) | Active   |
+| `@minimal-rpg/schemas`       | Zod schemas/types for characters and settings           | Active   |
+| `@minimal-rpg/utils`         | Shared runtime utilities                                | Active   |
+| `@minimal-rpg/ui`            | Shared UI primitives                                    | Active   |
+| `@minimal-rpg/governor`      | Turn orchestration layer                                | Skeleton |
+| `@minimal-rpg/state-manager` | Baseline + overrides merging, JSON Patch                | Active   |
+| `@minimal-rpg/agents`        | Specialized agents (Map, NPC, Rules, Parser)            | Active   |
+| `@minimal-rpg/retrieval`     | Knowledge node retrieval and scoring                    | Active   |
+
 ## What's New
 
 **December 2025:** Character profiles now support flexible `details` entries (label/value pairs with area, importance, and tags). The Character Builder exposes these through a new Profile Details section, and the prompt serializer now surfaces the saved facts directly while laying groundwork for future RAG scoring.

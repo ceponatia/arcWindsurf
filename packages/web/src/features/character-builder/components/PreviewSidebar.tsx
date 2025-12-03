@@ -9,7 +9,7 @@ interface PreviewSidebarProps {
   success: string | null;
   loadError: string | null;
   onSave: () => void;
-  onCancel?: () => void;
+  onCancel?: (() => void) | undefined;
 }
 
 export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({

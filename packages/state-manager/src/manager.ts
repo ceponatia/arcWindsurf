@@ -1,86 +1,254 @@
-import { applyPatch, type Operation } from 'fast-json-patch';
-import { type StateMergeResult, type StatePatchResult } from './types.js';
+import { applyPatch, type Operation, validate } from 'fast-json-patch';
+import { type ZodSchema, type ZodError } from 'zod';
+import {
+  type StateManagerConfig,
+  type StateMergeResult,
+  type StatePatchResult,
+  type MergeOptions,
+  type PatchOptions,
+  type DeepPartial,
+  type DiffResult,
+  type ValidationResult,
+  type ValidationError,
+  type FailedPatch,
+  DEFAULT_STATE_MANAGER_CONFIG,
+} from './types.js';
+import { deepMerge, deepDiff, deepClone, extractPathsFromPatches } from './utils.js';
 
-// Simple deep merge helper (or use lodash.merge if added)
-function deepMerge<T>(target: T, source: Partial<T>): T {
-  // This is a naive implementation for scaffolding.
-  // In production, use a robust library like deepmerge or lodash.merge
-  const output = Object.assign({}, target);
-  if (isObject(target) && isObject(source)) {
-    Object.keys(source).forEach((key) => {
-      const k = key as keyof T;
-      if (isObject(source[k])) {
-        if (!(k in target)) {
-          Object.assign(output, { [k]: source[k] });
-        } else {
-          output[k] = deepMerge(target[k], source[k]);
-        }
-      } else {
-        Object.assign(output, { [k]: source[k] });
-      }
-    });
-  }
-  return output;
-}
-
-function isObject(item: unknown): item is object {
-  return !!(item && typeof item === 'object' && !Array.isArray(item));
-}
-
+/**
+ * StateManager handles the merging of baseline state with overrides,
+ * and the application of JSON Patch operations.
+ *
+ * It is a pure in-memory utility with no database or network dependencies.
+ * Higher layers are responsible for loading/persisting state.
+ */
 export class StateManager {
-  /**
-   * Computes the effective state by merging baseline and overrides.
-   */
-  getEffectiveState<T>(baseline: T, overrides: Partial<T>): StateMergeResult<T> {
-    // In a real implementation, we might want to clone baseline first to avoid mutation
-    // For now, we assume baseline is immutable JSON
-    const effective = deepMerge(baseline, overrides);
-    return { effective };
+  private readonly config: Required<StateManagerConfig>;
+
+  constructor(config: StateManagerConfig = {}) {
+    this.config = { ...DEFAULT_STATE_MANAGER_CONFIG, ...config };
   }
 
   /**
-   * Applies JSON patches to the overrides object to generate a new overrides object.
-   * Note: We apply patches to the *overrides*, not the effective state,
-   * because we only persist the diffs.
+   * Compute the effective state by merging baseline with overrides.
    *
-   * However, sometimes the agent sees the *effective* state and generates a patch for that.
-   * If the patch is against effective state, we might need to calculate the diff.
-   *
-   * For this scaffold, we assume the agent generates patches intended for the overrides layer
-   * OR we apply the patch to a clone of effective state and then diff it against baseline?
-   *
-   * Simpler approach for v1:
-   * The agent generates patches. We apply them to the *current overrides*.
-   * If a path doesn't exist in overrides (because it's still baseline),
-   * we might need to copy it from baseline to overrides first?
-   *
-   * Actually, standard JSON Patch might fail if the path doesn't exist.
-   *
-   * Alternative:
-   * 1. Construct Effective State (Baseline + Overrides).
-   * 2. Apply Patch to Effective State -> New Effective State.
-   * 3. Diff (New Effective State, Baseline) -> New Overrides.
-   *
-   * This "Diff" approach is robust but requires a diffing library.
-   *
-   * For now, let's just scaffold the method signature.
+   * @param baseline The immutable base state (e.g., template snapshot)
+   * @param overrides Per-session overrides to apply on top of baseline
+   * @param options Optional merge options including schema validation
+   * @returns The merged effective state
    */
-  applyPatches<T>(baseline: T, overrides: Partial<T>, patches: Operation[]): StatePatchResult<T> {
-    // 1. Construct effective
+  getEffectiveState<T>(
+    baseline: T,
+    overrides: DeepPartial<T>,
+    options: MergeOptions<T> = {}
+  ): StateMergeResult<T> {
+    const { schema, cloneBaseline = true } = options;
+
+    // Clone baseline if requested to prevent mutation
+    const base = cloneBaseline ? deepClone(baseline) : baseline;
+
+    // Perform deep merge
+    const { merged, overriddenPaths } = deepMerge(base, overrides, true);
+
+    // Validate if schema provided and validation enabled
+    if (schema && this.config.validateOnMerge) {
+      const validationResult = this.validate(merged, schema);
+      if (!validationResult.success) {
+        throw new StateValidationError(
+          'Merged state failed validation',
+          validationResult.errors ?? []
+        );
+      }
+    }
+
+    return {
+      effective: merged,
+      overriddenPaths,
+    };
+  }
+
+  /**
+   * Apply JSON Patch operations and compute new overrides.
+   *
+   * The patches are applied to the effective state (baseline + current overrides),
+   * then the result is diffed against the baseline to compute minimal new overrides.
+   *
+   * @param baseline The immutable base state
+   * @param overrides Current per-session overrides
+   * @param patches JSON Patch operations to apply
+   * @param options Optional patch options
+   * @returns The new overrides and metadata about the operation
+   */
+  applyPatches<T>(
+    baseline: T,
+    overrides: DeepPartial<T>,
+    patches: Operation[],
+    options: PatchOptions<T> = {}
+  ): StatePatchResult<T> {
+    const {
+      schema,
+      computeMinimalDiff = this.config.computeMinimalDiff,
+      validatePatches = this.config.validatePatches,
+      allowPartialFailure = false,
+    } = options;
+
+    // 1. Compute current effective state
     const { effective } = this.getEffectiveState(baseline, overrides);
 
-    // 2. Clone effective to avoid mutation
-    const nextState = JSON.parse(JSON.stringify(effective)) as T;
+    // 2. Clone effective state for mutation
+    const nextState = deepClone(effective);
 
-    // 3. Apply patch
-    // fast-json-patch mutates the document
-    applyPatch(nextState, patches);
+    // 3. Validate patches if requested
+    if (validatePatches) {
+      const patchErrors = validate(patches, nextState);
+      if (patchErrors) {
+        throw new PatchValidationError('Invalid patch operations', patchErrors.message);
+      }
+    }
 
-    // 4. Calculate new overrides (Diff)
-    // For this scaffold, we'll just return the whole nextState as overrides
-    // (which is inefficient but correct-ish for a scaffold).
-    // TODO: Implement proper diffing to keep overrides minimal.
+    // 4. Apply patches
+    const failedPatches: FailedPatch[] = [];
+    let patchesApplied = 0;
 
-    return { newOverrides: nextState };
+    if (allowPartialFailure) {
+      // Apply patches one by one, collecting failures
+      for (let i = 0; i < patches.length; i++) {
+        const patch = patches[i];
+        if (!patch) continue;
+
+        try {
+          // applyPatch params: document, patch, validateOperation, mutateDocument, banPrototypeModifications
+          applyPatch(nextState, [patch], true, true);
+          patchesApplied++;
+        } catch (error) {
+          failedPatches.push({
+            operation: patch,
+            index: i,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    } else {
+      // Apply all patches at once (will throw on first error)
+      // applyPatch params: document, patch, validateOperation, mutateDocument, banPrototypeModifications
+      applyPatch(nextState, patches, true, true);
+      patchesApplied = patches.length;
+    }
+
+    // 5. Validate result if schema provided
+    if (schema) {
+      const validationResult = this.validate(nextState, schema);
+      if (!validationResult.success) {
+        throw new StateValidationError(
+          'Patched state failed validation',
+          validationResult.errors ?? []
+        );
+      }
+    }
+
+    // 6. Compute new overrides
+    let newOverrides: DeepPartial<T>;
+    let modifiedPaths: string[];
+
+    if (computeMinimalDiff) {
+      // Diff against baseline to get minimal overrides
+      const diffResult = this.diff(baseline, nextState);
+      newOverrides = diffResult.diff;
+      modifiedPaths = [...diffResult.addedPaths, ...diffResult.modifiedPaths];
+    } else {
+      // Return full state as overrides (less efficient)
+      newOverrides = nextState as DeepPartial<T>;
+      modifiedPaths = extractPathsFromPatches(patches);
+    }
+
+    // Build result, only including failedPatches if there are any
+    // (exactOptionalPropertyTypes disallows assigning undefined to optional props)
+    const result: StatePatchResult<T> = {
+      newOverrides,
+      newEffective: nextState,
+      modifiedPaths,
+      patchesApplied,
+    };
+
+    if (failedPatches.length > 0) {
+      result.failedPatches = failedPatches;
+    }
+
+    return result;
+  }
+
+  /**
+   * Compute the diff between two states.
+   *
+   * @param original The original/baseline state
+   * @param modified The modified state
+   * @returns The diff result with paths and minimal diff object
+   */
+  diff<T>(original: T, modified: T): DiffResult<T> {
+    return deepDiff(original, modified);
+  }
+
+  /**
+   * Validate a state object against a Zod schema.
+   *
+   * @param state The state to validate
+   * @param schema The Zod schema to validate against
+   * @returns The validation result
+   */
+  validate<T>(state: unknown, schema: ZodSchema<T>): ValidationResult<T> {
+    const result = schema.safeParse(state);
+
+    if (result.success) {
+      return {
+        success: true,
+        data: result.data,
+      };
+    }
+
+    return {
+      success: false,
+      errors: this.formatZodErrors(result.error),
+    };
+  }
+
+  /**
+   * Format Zod errors into our ValidationError format.
+   */
+  private formatZodErrors(error: ZodError): ValidationError[] {
+    return error.errors.map((e) => ({
+      path: e.path.join('.'),
+      message: e.message,
+      value: undefined, // Zod doesn't include the value in error details
+    }));
+  }
+}
+
+// ============================================================================
+// Error Classes
+// ============================================================================
+
+/**
+ * Error thrown when state validation fails.
+ */
+export class StateValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly errors: ValidationError[]
+  ) {
+    super(message);
+    this.name = 'StateValidationError';
+  }
+}
+
+/**
+ * Error thrown when patch validation fails.
+ */
+export class PatchValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly details: string
+  ) {
+    super(`${message}: ${details}`);
+    this.name = 'PatchValidationError';
   }
 }

@@ -9,7 +9,6 @@ import {
   TagLibrary,
   SessionLibrary,
 } from '../features/library/index.js';
-import { MobileHeader } from '../features/mobile-shell/index.js';
 import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
@@ -142,13 +141,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     selectSession,
   } = controller;
 
-  const isLibraryView = [
-    'character-library',
-    'setting-library',
-    'tag-library',
-    'session-library',
-  ].includes(viewMode);
-  const isBuilderView = ['character-builder', 'setting-builder', 'tag-builder'].includes(viewMode);
+  // local helper flags for future UI tweaks (reserved)
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans">
