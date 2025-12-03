@@ -45,7 +45,16 @@ export interface SessionSummary {
   settingName?: string | null;
 }
 
-export type ViewMode = 'chat' | 'character-builder' | 'setting-builder' | 'tag-builder';
+export type ViewMode =
+  | 'home'
+  | 'chat'
+  | 'character-library'
+  | 'setting-library'
+  | 'tag-library'
+  | 'session-library'
+  | 'character-builder'
+  | 'setting-builder'
+  | 'tag-builder';
 
 export interface AppControllerStateSlice {
   selectedCharacterId: string | null;
@@ -84,9 +93,14 @@ export interface AppControllerActions {
   refreshSettings: () => void;
   onStartSession: () => Promise<void>;
   handleDeleteSession: (sessionId: string) => Promise<void>;
-  navigateToCharacterBuilder: (id: string) => void;
-  navigateToSettingBuilder: (id: string) => void;
-  navigateToTagBuilder: () => void;
+  navigateToCharacterBuilder: (id: string | null) => void;
+  navigateToSettingBuilder: (id: string | null) => void;
+  navigateToTagBuilder: (id?: string | null) => void;
+  navigateToCharacterLibrary: () => void;
+  navigateToSettingLibrary: () => void;
+  navigateToTagLibrary: () => void;
+  navigateToSessionLibrary: () => void;
+  navigateToHome: () => void;
   selectSession: (id: string) => void;
 }
 
