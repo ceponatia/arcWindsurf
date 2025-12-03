@@ -6,29 +6,48 @@ import { useSettings } from '../../shared/hooks/useSettings.js';
 import { useCharacters } from '../../shared/hooks/useCharacters.js';
 import type { AppControllerValue, ViewMode } from '../../types.js';
 
+function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
+  if (typeof window === 'undefined') return { viewMode: 'home', builderId: null };
+  const hash = window.location.hash;
+
+  if (hash.startsWith('#/character-builder')) {
+    const query = hash.split('?')[1];
+    return {
+      viewMode: 'character-builder',
+      builderId: new URLSearchParams(query).get('id'),
+    };
+  }
+  if (hash.startsWith('#/setting-builder')) {
+    const query = hash.split('?')[1];
+    return {
+      viewMode: 'setting-builder',
+      builderId: new URLSearchParams(query).get('id'),
+    };
+  }
+  if (hash.startsWith('#/tag-builder')) {
+    const query = hash.split('?')[1];
+    return {
+      viewMode: 'tag-builder',
+      builderId: new URLSearchParams(query).get('id'),
+    };
+  }
+  if (hash.startsWith('#/characters')) return { viewMode: 'character-library', builderId: null };
+  if (hash.startsWith('#/settings')) return { viewMode: 'setting-library', builderId: null };
+  if (hash.startsWith('#/tags')) return { viewMode: 'tag-library', builderId: null };
+  if (hash.startsWith('#/sessions')) return { viewMode: 'session-library', builderId: null };
+  if (hash.startsWith('#/chat')) return { viewMode: 'chat', builderId: null };
+
+  return { viewMode: 'home', builderId: null };
+}
+
 export function useAppController(): AppControllerValue {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedSettingId, setSelectedSettingId] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === 'undefined') return 'chat';
-    if (window.location.hash.startsWith('#/character-builder')) return 'character-builder';
-    if (window.location.hash.startsWith('#/setting-builder')) return 'setting-builder';
-    if (window.location.hash.startsWith('#/tag-builder')) return 'tag-builder';
-    return 'chat';
-  });
-
-  const [builderId, setBuilderId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const hash = window.location.hash;
-    if (hash.startsWith('#/character-builder') || hash.startsWith('#/setting-builder')) {
-      const query = hash.split('?')[1];
-      return new URLSearchParams(query).get('id');
-    }
-    return null;
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>(() => parseHashRoute().viewMode);
+  const [builderId, setBuilderId] = useState<string | null>(() => parseHashRoute().builderId);
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -64,41 +83,61 @@ export function useAppController(): AppControllerValue {
 
   useEffect(() => {
     const onHashChange = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/character-builder')) {
-        setViewMode('character-builder');
-        const query = hash.split('?')[1];
-        setBuilderId(new URLSearchParams(query).get('id'));
-      } else if (hash.startsWith('#/setting-builder')) {
-        setViewMode('setting-builder');
-        const query = hash.split('?')[1];
-        setBuilderId(new URLSearchParams(query).get('id'));
-      } else if (hash.startsWith('#/tag-builder')) {
-        setViewMode('tag-builder');
-        setBuilderId(null);
-      } else {
-        setViewMode('chat');
-        setBuilderId(null);
-      }
+      const { viewMode: newViewMode, builderId: newBuilderId } = parseHashRoute();
+      setViewMode(newViewMode);
+      setBuilderId(newBuilderId);
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const navigateToCharacterBuilder = (id: string) => {
-    window.location.hash = `#/character-builder?id=${id}`;
+  // Navigation helpers
+  const navigateToHome = () => {
+    window.location.hash = '';
   };
 
-  const navigateToSettingBuilder = (id: string) => {
-    window.location.hash = `#/setting-builder?id=${id}`;
+  const navigateToCharacterLibrary = () => {
+    window.location.hash = '#/characters';
   };
 
-  const navigateToTagBuilder = () => {
-    window.location.hash = '#/tag-builder';
+  const navigateToSettingLibrary = () => {
+    window.location.hash = '#/settings';
+  };
+
+  const navigateToTagLibrary = () => {
+    window.location.hash = '#/tags';
+  };
+
+  const navigateToSessionLibrary = () => {
+    window.location.hash = '#/sessions';
+  };
+
+  const navigateToCharacterBuilder = (id: string | null) => {
+    if (id) {
+      window.location.hash = `#/character-builder?id=${id}`;
+    } else {
+      window.location.hash = '#/character-builder';
+    }
+  };
+
+  const navigateToSettingBuilder = (id: string | null) => {
+    if (id) {
+      window.location.hash = `#/setting-builder?id=${id}`;
+    } else {
+      window.location.hash = '#/setting-builder';
+    }
+  };
+
+  const navigateToTagBuilder = (id?: string | null) => {
+    if (id) {
+      window.location.hash = `#/tag-builder?id=${id}`;
+    } else {
+      window.location.hash = '#/tag-builder';
+    }
   };
 
   const navigateToChat = () => {
-    window.location.hash = '';
+    window.location.hash = '#/chat';
   };
 
   const onStartSession = async () => {
@@ -131,7 +170,6 @@ export function useAppController(): AppControllerValue {
       await deleteSession(sessionId);
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
-        navigateToChat();
       }
       refreshSessions();
     } catch (err) {
@@ -179,6 +217,11 @@ export function useAppController(): AppControllerValue {
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
     navigateToTagBuilder,
+    navigateToCharacterLibrary,
+    navigateToSettingLibrary,
+    navigateToTagLibrary,
+    navigateToSessionLibrary,
+    navigateToHome,
     selectSession,
   };
 }

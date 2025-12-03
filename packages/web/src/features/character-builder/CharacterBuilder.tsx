@@ -217,10 +217,11 @@ const buildProfile = (form: FormState): CharacterProfile => {
   return profile;
 };
 
-export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => void }> = ({
-  id,
-  onSave: onSaveCallback,
-}) => {
+export const CharacterBuilder: React.FC<{
+  id?: string | null;
+  onSave?: () => void;
+  onCancel?: () => void;
+}> = ({ id, onSave: onSaveCallback, onCancel }) => {
   const {
     form,
     fieldErrors,
@@ -301,19 +302,7 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-200">Character Builder</h2>
-        <a
-          href="#"
-          className="px-3 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors text-sm font-medium"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.hash = '';
-          }}
-        >
-          Back to Chat
-        </a>
-      </div>
+      <h2 className="text-xl font-semibold text-slate-200">Character Builder</h2>
       {loading && <p className="text-sm text-slate-400">Loading character…</p>}
       {loadError && !loading && <p className="text-sm text-amber-300">{loadError}</p>}
 
@@ -342,6 +331,7 @@ export const CharacterBuilder: React.FC<{ id?: string | null; onSave?: () => voi
           onSave={() => {
             void handleSave();
           }}
+          onCancel={onCancel}
         />
       </div>
     </div>

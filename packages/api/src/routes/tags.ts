@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import {
   listPromptTags,
+  getPromptTag,
   createPromptTag,
   updatePromptTag,
   deletePromptTag,
@@ -8,11 +9,47 @@ import {
 import { CreateTagRequestSchema, UpdateTagRequestSchema } from '@minimal-rpg/schemas';
 import type { ApiError } from '../types.js';
 
+// Transform DB row to API response format (camelCase)
+function toTagResponse(row: {
+  id: string;
+  owner: string;
+  name: string;
+  short_description: string;
+  prompt_text: string;
+  created_at?: Date;
+  updated_at?: Date;
+}) {
+  return {
+    id: row.id,
+    owner: row.owner,
+    name: row.name,
+    shortDescription: row.short_description || undefined,
+    promptText: row.prompt_text,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export function registerTagRoutes(app: Hono): void {
   // GET /tags - list all tags (admin only effectively, but public for now)
   app.get('/tags', async (c) => {
     const tags = await listPromptTags('admin');
-    return c.json(tags, 200);
+    return c.json(tags.map(toTagResponse), 200);
+  });
+
+  // GET /tags/:id - get a single tag
+  app.get('/tags/:id', async (c) => {
+    const id = c.req.param('id');
+    try {
+      const tag = await getPromptTag(id, 'admin');
+      if (!tag) {
+        return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
+      }
+      return c.json(toTagResponse(tag), 200);
+    } catch (err) {
+      console.error('[API] Failed to get tag:', err);
+      return c.json({ ok: false, error: 'Failed to get tag' } satisfies ApiError, 500);
+    }
   });
 
   // POST /tags - create a new tag
@@ -26,7 +63,7 @@ export function registerTagRoutes(app: Hono): void {
 
     try {
       const tag = await createPromptTag('admin', name, shortDescription ?? '', promptText);
-      return c.json(tag, 201);
+      return c.json(toTagResponse(tag), 201);
     } catch (err) {
       console.error('[API] Failed to create tag:', err);
       return c.json({ ok: false, error: 'Failed to create tag' } satisfies ApiError, 500);
@@ -55,7 +92,7 @@ export function registerTagRoutes(app: Hono): void {
       if (!updated) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
-      return c.json(updated, 200);
+      return c.json(toTagResponse(updated), 200);
     } catch (err) {
       console.error('[API] Failed to update tag:', err);
       return c.json({ ok: false, error: 'Failed to update tag' } satisfies ApiError, 500);
