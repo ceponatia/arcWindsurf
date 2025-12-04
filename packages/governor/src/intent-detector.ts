@@ -1,9 +1,10 @@
 import {
   type IntentDetector,
-  type DetectedIntent,
   type IntentDetectionContext,
   type IntentType,
   type IntentParams,
+  type IntentDetectionResult,
+  type IntentDetectionDebug,
 } from './types.js';
 
 // ============================================================================
@@ -180,7 +181,7 @@ export class RuleBasedIntentDetector implements IntentDetector {
     this.useContext = config.useContext ?? true;
   }
 
-  detect(input: string, context?: IntentDetectionContext): Promise<DetectedIntent> {
+  detect(input: string, context?: IntentDetectionContext): Promise<IntentDetectionResult> {
     const normalizedInput = input.trim().toLowerCase();
 
     // Score each intent pattern
@@ -195,22 +196,41 @@ export class RuleBasedIntentDetector implements IntentDetector {
     scores.sort((a, b) => b.score - a.score);
 
     const best = scores[0];
+    const debug: IntentDetectionDebug = {
+      detector: 'rule-based',
+      parsed: {
+        bestType: best?.pattern.type,
+        bestScore: best?.score ?? 0,
+        maxScore: scores[0]?.score ?? 0,
+        candidates: scores.slice(0, 3).map((entry) => ({
+          type: entry.pattern.type,
+          score: entry.score,
+        })),
+      },
+      warnings: best && best.score >= this.minConfidence ? undefined : ['below-threshold'],
+    };
 
     // Check if best score meets minimum threshold
     if (!best || best.score < this.minConfidence) {
       return Promise.resolve({
-        type: 'unknown',
-        confidence: best?.score ?? 0,
-        params: best?.params,
-        signals: best?.signals,
+        intent: {
+          type: 'unknown',
+          confidence: best?.score ?? 0,
+          params: best?.params,
+          signals: best?.signals,
+        },
+        debug,
       });
     }
 
     return Promise.resolve({
-      type: best.pattern.type,
-      confidence: Math.min(best.score, 1.0), // Cap at 1.0
-      params: best.params,
-      signals: best.signals,
+      intent: {
+        type: best.pattern.type,
+        confidence: Math.min(best.score, 1.0),
+        params: best.params,
+        signals: best.signals,
+      },
+      debug,
     });
   }
 
@@ -380,11 +400,17 @@ export function createRuleBasedIntentDetector(
  */
 export function createFallbackIntentDetector(): IntentDetector {
   return {
-    detect(input: string): Promise<DetectedIntent> {
+    detect(input: string): Promise<IntentDetectionResult> {
       return Promise.resolve({
-        type: 'unknown',
-        confidence: 0,
-        params: { action: input },
+        intent: {
+          type: 'unknown',
+          confidence: 0,
+          params: { action: input },
+        },
+        debug: {
+          detector: 'fallback',
+          parsed: { reason: 'no-detector-configured' },
+        },
       });
     },
   };

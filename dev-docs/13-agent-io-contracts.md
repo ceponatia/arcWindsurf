@@ -13,26 +13,31 @@ Relevant code and docs:
 
 ## 1. High‑Level Flow
 
-Conceptually, one player turn will eventually follow this path:
+Conceptually, one player **turn** (a unit of time and state evaluation driven by freeform natural-language input) will eventually follow this path:
 
 1. **API receives input**
-   - HTTP request from web/UI containing: `sessionId`, raw `playerInput`, and any client metadata.
-   - API resolves/creates the backing DB session and loads the necessary state slices (character, setting, etc.).
 
-2. **Governor orchestrates the turn**
-   - Governor is called with `sessionId` and `input` (see section 2).
-   - It performs intent detection, state recall, agent routing, and aggregation.
+- HTTP request from web/UI containing: `sessionId`, raw `playerInput` (freeform text), and any client metadata.
+- API resolves/creates the backing DB session and loads the necessary state slices (character, setting, etc.).
 
-3. **Agents perform domain‑specific reasoning**
-   - Each selected agent receives a normalized view of the player input plus the relevant effective state slice(s).
-   - Agents return narrative output and proposed state changes in a structured format.
+1. **Governor orchestrates the turn**
 
-4. **State Manager applies changes**
-   - The Governor (or another orchestration layer) uses the State Manager to combine baseline state and per‑session overrides, apply JSON patches, and produce updated overrides.
+- Governor is called with `sessionId` and `input` (see section 2).
+- It performs intent detection, state recall, time update, agent routing, and aggregation.
 
-5. **API persists and responds**
-   - Updated overrides are written back to the DB.
-   - The aggregated narrative result is returned to the client.
+1. **Agents perform domain‑specific reasoning**
+
+- Each selected agent receives a normalized view of the player input plus the relevant effective state slice(s).
+- Agents return narrative output and proposed state changes (including any time progression) in a structured format.
+
+1. **State Manager applies changes**
+
+- The Governor (or another orchestration layer) uses the State Manager to combine baseline state and per‑session overrides, apply JSON patches, and produce updated overrides.
+
+1. **API persists and responds**
+
+- Updated overrides are written back to the DB.
+- The aggregated narrative result is returned to the client.
 
 In addition to turn handling, there is a separate class of **profile normalization** flows that are not directly tied to a user chat turn but use the same building blocks:
 
@@ -41,33 +46,19 @@ In addition to turn handling, there is a separate class of **profile normalizati
 - The State Manager is used to merge these parsed attributes into the existing profile JSON without requiring callers to send the full structured view.
 - API persists the updated `profile_json` back to Postgres.
 
-Only a small part of this pipeline is implemented today (Governor scaffold + State Manager helpers). The rest is design intent.
+Only a small part of this pipeline is implemented today (Governor scaffold + State Manager helpers). In production, the API’s `POST /sessions/:id/turns` route already exercises a **minimal** version of this flow: it accepts freeform player text, builds a basic turn context from DB instances, calls `governor.handleTurn`, and returns a `TurnResultDto` over HTTP. Intent parsing, time modeling, and structured agent outputs remain design intent.
 
 ---
 
 ## 2. Governor Public Contract
 
-The Governor is implemented in [packages/governor/src/governor.ts](packages/governor/src/governor.ts) with the following public surface:
+The Governor is implemented in [packages/governor/src/governor.ts](packages/governor/src/governor.ts) and in practice is **instantiated via a composition factory in the API** (for example, `createGovernorForRequest`). The exact TypeScript signatures may evolve, but the public surface is conceptually:
 
-```ts
-export interface GovernorConfig {
-  stateManager: StateManager;
-  // In the future: llmProvider, etc.
-}
-
-export interface TurnResult {
-  message: string;
-  // events, etc.
-}
-
-export class Governor {
-  constructor(config: GovernorConfig) {
-    /* ... */
-  }
-
-  async handleTurn(sessionId: string, input: string): Promise<TurnResult>;
-}
-```
+- `GovernorConfig`
+  - `stateManager: StateManager` (and, in future, `llmProvider`, retrieval hooks, logging, etc.).
+- `Governor.handleTurn(sessionId: string, input: string, context?: TurnStateContext): Promise<TurnResult>`
+  - `input` is the raw freeform player text for this turn.
+  - `context` (when provided by the API route) includes preloaded state slices (character, setting, and eventually location, inventory, and time).
 
 ### 2.1 Inputs
 

@@ -20,6 +20,7 @@ export function registerConfigRoutes(app: Hono) {
       temperature: cfg.temperature,
       topP: cfg.topP,
       openrouterModel: cfg.openrouterModel,
+      governorDevMode: cfg.governorDevMode,
     };
     return c.json(body, 200);
   });

@@ -8,6 +8,13 @@ export {
   createFallbackIntentDetector,
   type RuleBasedIntentDetectorConfig,
 } from './intent-detector.js';
+export {
+  LlmIntentDetector,
+  type LlmIntentDetectorConfig,
+  type LlmIntentMessage,
+  type LlmIntentGenerateFn,
+  type LlmIntentGenerationResult,
+} from './llm-intent-detector.js';
 
 // Context Building
 export {

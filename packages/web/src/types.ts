@@ -22,6 +22,7 @@ export interface Message {
   content: string;
   createdAt: string; // ISO timestamp
   idx?: number;
+  turnMetadata?: TurnMetadata;
 }
 
 export interface Session {
@@ -32,6 +33,132 @@ export interface Session {
   settingInstanceId: string | null;
   createdAt: string; // ISO timestamp
   messages: Message[];
+}
+
+export interface RuntimeConfigResponse {
+  port: number;
+  contextWindow: number;
+  temperature: number;
+  topP: number;
+  openrouterModel: string;
+  governorDevMode: boolean;
+}
+
+export type JsonPatchOperationOp = 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
+
+export interface JsonPatchOperation {
+  op: JsonPatchOperationOp;
+  path: string;
+  from?: string;
+  value?: unknown;
+}
+
+export type IntentType =
+  | 'move'
+  | 'look'
+  | 'talk'
+  | 'use'
+  | 'take'
+  | 'give'
+  | 'examine'
+  | 'wait'
+  | 'system'
+  | 'unknown';
+
+export interface IntentParams {
+  target?: string;
+  direction?: string;
+  item?: string;
+  action?: string;
+  extra?: Record<string, unknown>;
+}
+
+export interface DetectedIntent {
+  type: IntentType;
+  confidence: number;
+  params?: IntentParams;
+  signals?: string[];
+}
+
+export interface IntentDetectionPromptSnapshot {
+  system: string;
+  user: string;
+}
+
+export interface IntentDetectionDebug {
+  detector: string;
+  model?: string;
+  prompt?: IntentDetectionPromptSnapshot;
+  historyPreview?: string[];
+  contextSummary?: string[];
+  rawResponse?: string;
+  parsed?: unknown;
+  warnings?: string[];
+}
+
+export type AgentType = 'map' | 'npc' | 'rules' | 'parser' | 'custom';
+
+export interface AgentEvent {
+  type: string;
+  payload: Record<string, unknown>;
+  source: AgentType;
+}
+
+export interface TokenUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
+
+export interface AgentDiagnostics {
+  executionTimeMs?: number;
+  tokenUsage?: TokenUsage;
+  warnings?: string[];
+  debug?: Record<string, unknown>;
+}
+
+export interface AgentOutput {
+  narrative: string;
+  statePatches?: JsonPatchOperation[];
+  events?: AgentEvent[];
+  diagnostics?: AgentDiagnostics;
+  continueProcessing?: boolean;
+}
+
+export interface PhaseTiming {
+  intentDetectionMs?: number;
+  stateRecallMs?: number;
+  contextRetrievalMs?: number;
+  agentRoutingMs?: number;
+  agentExecutionMs?: number;
+  stateUpdateMs?: number;
+  responseAggregationMs?: number;
+}
+
+export interface TurnMetadata {
+  processingTimeMs: number;
+  intent?: DetectedIntent;
+  intentDebug?: IntentDetectionDebug;
+  agentsInvoked: AgentType[];
+  agentOutputs?: AgentOutput[];
+  nodesRetrieved?: number;
+  phaseTiming?: PhaseTiming;
+}
+
+export type TurnDebugSliceVariant = 'intent' | 'prompt' | 'raw' | 'agent';
+
+export type TurnDebugSliceBody =
+  | { kind: 'text'; lines: string[] }
+  | { kind: 'list'; title?: string; items: string[] }
+  | { kind: 'code'; label?: string; value: string }
+  | { kind: 'json'; label?: string; value: string };
+
+export interface TurnDebugSlice {
+  id: string;
+  title: string;
+  variant: TurnDebugSliceVariant;
+  description?: string;
+  body: TurnDebugSliceBody;
 }
 
 export interface SessionSummary {

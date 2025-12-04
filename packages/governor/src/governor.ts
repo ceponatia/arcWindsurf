@@ -22,6 +22,8 @@ import {
   type DetectedIntent,
   type IntentDetector,
   type IntentDetectionContext,
+  type IntentDetectionResult,
+  type IntentDetectionDebug,
   type PhaseTiming,
   type AgentExecutionResult,
   type TurnExecutionResult,
@@ -125,6 +127,7 @@ export class Governor {
         opts.applyPatchesOnPartialFailure ?? DEFAULT_GOVERNOR_OPTIONS.applyPatchesOnPartialFailure,
       intentConfidenceThreshold:
         opts.intentConfidenceThreshold ?? DEFAULT_GOVERNOR_OPTIONS.intentConfidenceThreshold,
+      devMode: opts.devMode ?? DEFAULT_GOVERNOR_OPTIONS.devMode,
     };
 
     // Create context builder
@@ -179,7 +182,9 @@ export class Governor {
     try {
       // 1. Intent Detection
       const intentStart = Date.now();
-      const intent = await this.detectIntent(playerInput, turnInput);
+      const detectionResult = await this.detectIntent(playerInput, turnInput);
+      const intent = detectionResult.intent;
+      const intentDebug = detectionResult.debug;
       phaseTiming.intentDetectionMs = Date.now() - intentStart;
 
       if (this.logging?.logIntentDetection) {
@@ -224,7 +229,14 @@ export class Governor {
 
       if (agents.length === 0) {
         // No agents to handle this intent - return fallback response
-        return this.createFallbackResult(turnInput, intent, startTime, phaseTiming, events);
+        return this.createFallbackResult(
+          turnInput,
+          intent,
+          intentDebug,
+          startTime,
+          phaseTiming,
+          events
+        );
       }
 
       // 5. Agent Execution
@@ -253,6 +265,7 @@ export class Governor {
         executionResult,
         stateChanges,
         intent,
+        intentDebug,
         turnContext.knowledgeContext.length,
         startTime,
         phaseTiming,
@@ -283,7 +296,10 @@ export class Governor {
   // Phase 1: Intent Detection
   // ============================================================================
 
-  private async detectIntent(playerInput: string, turnInput: TurnInput): Promise<DetectedIntent> {
+  private async detectIntent(
+    playerInput: string,
+    turnInput: TurnInput
+  ): Promise<IntentDetectionResult> {
     // Build context for intent detection
     const context: IntentDetectionContext = {};
 
@@ -527,6 +543,7 @@ export class Governor {
     executionResult: TurnExecutionResult,
     stateChanges: TurnStateChanges,
     intent: DetectedIntent,
+    intentDebug: IntentDetectionDebug | undefined,
     nodesRetrieved: number,
     startTime: number,
     phaseTiming: PhaseTiming,
@@ -536,12 +553,16 @@ export class Governor {
 
     const metadata: TurnMetadata = {
       processingTimeMs,
-      intent,
       agentsInvoked: [...executionResult.successfulAgents, ...executionResult.failedAgents],
-      agentOutputs: executionResult.agentResults.map((r) => r.output),
       nodesRetrieved,
       phaseTiming,
     };
+
+    if (this.options.devMode) {
+      metadata.intent = intent;
+      metadata.intentDebug = intentDebug;
+      metadata.agentOutputs = executionResult.agentResults.map((r) => r.output);
+    }
 
     // Add events from agent execution
     events.push(...executionResult.combinedEvents);
@@ -574,6 +595,7 @@ export class Governor {
   private createFallbackResult(
     turnInput: TurnInput,
     intent: DetectedIntent,
+    intentDebug: IntentDetectionDebug | undefined,
     startTime: number,
     phaseTiming: PhaseTiming,
     events: TurnEvent[]
@@ -582,19 +604,20 @@ export class Governor {
 
     const metadata: TurnMetadata = {
       processingTimeMs,
-      intent,
       agentsInvoked: [],
       nodesRetrieved: 0,
       phaseTiming,
     };
 
-    // Generate fallback message based on intent
-    let message: string;
-    if (intent.type === 'unknown' || intent.confidence < this.options.intentConfidenceThreshold) {
-      message = `I'm not sure what you want to do. Try commands like "look", "go north", "talk to [name]", or "use [item]".`;
-    } else {
-      message = `You can't do that right now.`;
+    if (this.options.devMode) {
+      metadata.intent = intent;
+      metadata.intentDebug = intentDebug;
     }
+
+    const message =
+      intent.type === 'unknown' || intent.confidence < this.options.intentConfidenceThreshold
+        ? `I'm not sure what you want to do. Try commands like "look", "go north", "talk to [name]", or "use [item]".`
+        : this.generateIntentNarrative(intent, turnInput.playerInput);
 
     events.push({
       type: 'turn-completed',
@@ -608,6 +631,78 @@ export class Governor {
       metadata,
       success: true,
     };
+  }
+
+  private generateIntentNarrative(intent: DetectedIntent, playerInput: string): string {
+    const params = intent.params ?? {};
+    const target = params.target?.trim();
+    const direction = params.direction?.trim();
+    const item = params.item?.trim();
+    const quotedInput = playerInput.trim();
+    const safeInput = quotedInput.length > 0 ? quotedInput : 'that action';
+
+    switch (intent.type) {
+      case 'move': {
+        if (direction) {
+          return `You set off ${direction}, letting the world unfold a few careful steps at a time.`;
+        }
+        if (target) {
+          return `You start toward ${target}, gauging the terrain as you go.`;
+        }
+        return 'You shift your footing and prepare to move, mapping out a path in your head.';
+      }
+      case 'look': {
+        if (target) {
+          return `You study ${target} with a steady gaze, searching for anything out of place.`;
+        }
+        return 'You slow down and take in the scene, cataloging every texture, light, and shadow.';
+      }
+      case 'examine': {
+        if (target) {
+          return `You lean in close to ${target}, tracing every detail with practiced care.`;
+        }
+        return 'You run your fingers along the nearest surface, committing each detail to memory.';
+      }
+      case 'talk': {
+        if (target) {
+          return `You draw a breath and prepare your words for ${target}.`;
+        }
+        return 'You search for someone willing to listen, rehearsing an opening line under your breath.';
+      }
+      case 'use': {
+        if (item && target) {
+          return `You ready ${item} and picture how it might affect ${target}.`;
+        }
+        if (item) {
+          return `You test the weight of ${item}, looking for the right moment to act.`;
+        }
+        return 'You think through your options, hands hovering over the tools you carry.';
+      }
+      case 'take': {
+        if (item ?? target) {
+          const noun = item ?? target;
+          return `You reach toward ${noun}, judging whether it can be claimed without trouble.`;
+        }
+        return 'You take stock of what might be worth grabbing before it slips away.';
+      }
+      case 'give': {
+        if (item && target) {
+          return `You weigh the choice of passing ${item} to ${target}, wondering what it might earn you.`;
+        }
+        if (item) {
+          return `You turn ${item} over in your hands, deciding who deserves it.`;
+        }
+        return 'You glance at what you carry, considering what you could offer and to whom.';
+      }
+      case 'wait': {
+        return 'You pause, letting the moment breathe while you listen for the next cue.';
+      }
+      case 'system': {
+        return `System actions like "${safeInput}" are noted for later, but the story keeps moving for now.`;
+      }
+      default:
+        return `You can't do that right now, but the urge to ${safeInput.toLowerCase()} lingers.`;
+    }
   }
 
   private handleError(

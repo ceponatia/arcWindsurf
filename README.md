@@ -279,6 +279,13 @@ The API reads environment variables with sensible defaults for local development
 - `TOP_P` (default: `0.9`) — nucleus sampling parameter
 - Frontend message timeout: set `VITE_API_MESSAGE_TIMEOUT_MS` (default `60000`) to allow longer-running model responses. The previous 10s default could abort messages mid-generation.
 
+### Governor Debug Mode
+
+- `GOVERNOR_DEV_MODE` (default: `false`) — when `true`, the API enables LLM-based intent detector debugging. Turn metadata includes the raw classifier payloads so you can inspect the detected intent, prompt, and parsed JSON.
+- `VITE_GOVERNOR_DEV_MODE` (default: `false`) — when `true`, the web client listens for the governor metadata and renders debug bubbles under each assistant turn. This flag only takes effect when the backend flag above is also `true` and the web build is targeting the governor-powered turns API (`VITE_USE_TURNS_API=true`).
+
+With both flags enabled, every assistant reply shows a stack of diagnostics (intent summary, prompt snapshot, raw detector payload, and agent outputs) beneath the narrative. Disable either flag (and refresh) to return to the standard chat timeline with no extra network or render cost.
+
 ### Frontend (Vite) Settings
 
 - `VITE_API_BASE_URL` (default: `http://localhost:3001`)

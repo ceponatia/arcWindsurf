@@ -1,4 +1,5 @@
-import { applyPatch, type Operation, validate } from 'fast-json-patch';
+import jsonPatch from 'fast-json-patch';
+import type { Operation } from 'fast-json-patch';
 import { type ZodSchema, type ZodError } from 'zod';
 import {
   type StateManagerConfig,
@@ -100,7 +101,7 @@ export class StateManager {
 
     // 3. Validate patches if requested
     if (validatePatches) {
-      const patchErrors = validate(patches, nextState);
+      const patchErrors = jsonPatch.validate(patches, nextState);
       if (patchErrors) {
         throw new PatchValidationError('Invalid patch operations', patchErrors.message);
       }
@@ -118,7 +119,7 @@ export class StateManager {
 
         try {
           // applyPatch params: document, patch, validateOperation, mutateDocument, banPrototypeModifications
-          applyPatch(nextState, [patch], true, true);
+          jsonPatch.applyPatch(nextState, [patch], true, true);
           patchesApplied++;
         } catch (error) {
           failedPatches.push({
@@ -131,7 +132,7 @@ export class StateManager {
     } else {
       // Apply all patches at once (will throw on first error)
       // applyPatch params: document, patch, validateOperation, mutateDocument, banPrototypeModifications
-      applyPatch(nextState, patches, true, true);
+      jsonPatch.applyPatch(nextState, patches, true, true);
       patchesApplied = patches.length;
     }
 

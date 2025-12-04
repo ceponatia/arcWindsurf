@@ -18,8 +18,8 @@ It currently lives entirely in TypeScript in
 
 The State Manager is designed to support but is not yet fully wired into:
 
-- The Governor turn loop (see [dev-docs/09-governor-and-agents.md](dev-docs/09-governor-and-agents.md)).
-- A future knowledge-node + embedding pipeline (see [dev-docs/06-knowledge-node-model.md](dev-docs/06-knowledge-node-model.md) and [dev-docs/07-retrieval-and-scoring.md](dev-docs/07-retrieval-and-scoring.md)).
+- The **natural-language, time-based Governor turn loop** (see [dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md)), where each HTTP turn is freeform player text plus a unit of in-world time advancement.
+- A future knowledge-node + embedding pipeline (see [dev-docs/08-knowledge-node-model.md](dev-docs/08-knowledge-node-model.md) and [dev-docs/09-retrieval-and-scoring.md](dev-docs/09-retrieval-and-scoring.md)).
 
 ---
 
@@ -105,19 +105,22 @@ As a result, the State Manager is presently an **isolated utility** that is read
 ## 4. Intended Turn-Level Usage
 
 The intended usage pattern (as described in
-[dev-docs/09-governor-and-agents.md](dev-docs/09-governor-and-agents.md) and in comments within `manager.ts`) is:
+[dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md) and in comments within `manager.ts`) is **per-turn, over freeform natural-language input**:
 
 1. **Recall**
-   - Load `baseline` and `overrides` from persistence (for example, `template_snapshot` + `profile_json` or a template + override layer).
-   - Compute `effective` via `getEffectiveState` and hand that to the Governor/agents as the current state.
 
-2. **Agent proposal**
-   - One or more agents generate JSON Patch operations (`Operation[]`) representing proposed state changes.
-   - Patches are defined relative to **effective** state, not necessarily the raw overrides layer.
+- Load `baseline` and `overrides` from persistence (for example, `template_snapshot` + `profile_json` or a template + override layer).
+- Compute `effective` via `getEffectiveState` and hand that to the Governor/agents as the current state for this turn.
 
-3. **Commit**
-   - Use `applyPatches(baseline, overrides, patches)` to produce `newOverrides`.
-   - Persist `newOverrides` to the relevant store (for example, into `profile_json` for that instance, or into a dedicated overrides column once diffing is implemented).
+1. **Agent proposal**
+
+- One or more agents generate JSON Patch operations (`Operation[]`) representing proposed state changes (movement, NPC reactions, inventory updates, time progression, etc.).
+- Patches are defined relative to **effective** state, not necessarily the raw overrides layer.
+
+1. **Commit**
+
+- Use `applyPatches(baseline, overrides, patches)` to produce `newOverrides`.
+- Persist `newOverrides` to the relevant store (for example, into `profile_json` for that instance, or into a dedicated overrides column once diffing is implemented).
 
 In the current scaffold:
 

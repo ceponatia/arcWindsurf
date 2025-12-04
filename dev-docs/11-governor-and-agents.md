@@ -8,49 +8,68 @@ The goal is to give a clear picture of what exists in the code today and what is
 
 The Governor is a thin coordination layer implemented in [packages/governor/src/governor.ts](packages/governor/src/governor.ts). It is responsible for:
 
-- Receiving player input for a given session.
-- Orchestrating high‑level turn handling (intent, routing, state recall, state updates).
+- Receiving **freeform natural-language player input** for a given session.
+- Orchestrating high‑level **turn handling**, where a **turn** is a unit of timeline advancement and state evaluation, not a narrow text-adventure command.
 - Delegating all state operations to @minimal-rpg/state-manager.
 - Eventually invoking one or more specialized agents (LLM-backed or otherwise) and aggregating their responses.
 
-The public surface today is:
+The public surface in the governor package is centered on a turn-oriented entrypoint (for example, `handleTurn`) that takes a session identifier and raw player input and returns a `TurnResult` with at least:
 
-- class Governor
-  - constructor(config: GovernorConfig)
-  - handleTurn(sessionId: string, input: string): Promise<TurnResult>
+- `message: string` – the player-facing narrative or status text for this turn.
+- `events` / state-change metadata (planned; partially represented in the API’s `TurnResultDto`).
 
-Where GovernorConfig currently requires:
+In the **API layer**, a concrete composition factory (for example `createGovernorForRequest`) already exists and is used by the `POST /sessions/:id/turns` route. That route:
 
-- stateManager: StateManager – a dependency from @minimal-rpg/state-manager, used for state recall and commits.
+- Treats each HTTP call as a **turn** over a DB-backed session.
+- Builds a minimal `TurnStateContext` (character + setting, with room to grow into location, inventory, and time slices).
+- Calls `governor.handleTurn` with the raw text input and context.
 
-TurnResult is a simple structure:
+The current Governor behavior is still largely a scaffold (fallback-only narrative, no real intent parsing or agent routing), but the **shape of the turn contract and HTTP wiring are in place**.
 
-- message: string – the player-facing narrative or status text for this turn.
+## 2. High-level Turn Flow (Natural Language + Time)
 
-At the moment, handleTurn is a scaffold: it logs the request and returns an echo-style message indicating the Governor is not fully implemented. The rest of this document describes the intended flow that will gradually be filled in around this scaffold.
+The intended per-turn flow for the Governor is **natural-language-first** and **time-aware**. A turn is not a special syntax like `go north`; it is a point where the system:
 
-## 2. High-level Turn Flow
+1. Receives freeform player text.
+2. Advances in-world time according to a configurable **turn time policy**.
+3. Evaluates state, runs agents, and produces a narrative + events.
 
-The intended per-turn flow for the Governor is:
+Concretely, the per-turn flow is:
 
 1. Intent detection
-   - Analyze the raw player input and recent context to determine what the player is trying to do (e.g., move, talk, inspect, use item).
-   - This will eventually be driven by an LLM or classifier, but is not yet implemented in code.
-2. State recall
-   - Use stateManager to fetch the relevant effective state for the current session.
-   - The effective state is built using the template + snapshot instance pattern documented in earlier dev docs (templates are immutable; instances carry per-session overrides).
-   - The Governor does not perform merging logic directly; it relies on the StateManager interface for that.
-3. Agent routing and execution
-   - Based on the detected intent, choose one or more specialized agents (e.g., NPC/dialogue agent, map/navigation agent, rules/system agent).
-   - Provide each agent with the effective state slice and the player input.
-   - Collect agent responses, including any proposed state changes.
-   - This entire phase is currently TODO in the implementation.
-4. State update
-   - Take structured state change proposals from agents and pass them to stateManager for application.
-   - The Governor does not write to the database directly; it delegates that responsibility.
-5. Response aggregation
-   - Combine the agent narratives and system messages into a single TurnResult.
-   - For now, the scaffold simply returns an echo-style message.
+
+- Analyze the raw player input and recent context to determine what the player is trying to do (for example, move, talk, inspect, use item, wait/advance-time, meta-questions).
+- This will eventually be driven by a `ParserAgent` (LLM-backed or otherwise) but is not yet implemented in code.
+- Player utterances like "I head north toward the cafe" or "I look around" are **not** special commands; they are just natural language that the parser interprets into structured intents.
+
+1. State recall
+
+- Use StateManager to fetch the relevant effective state for the current session.
+- The effective state is built using the template + snapshot instance pattern documented in the state/persistence docs (templates are immutable; instances carry per-session overrides).
+- The Governor does not perform merging logic directly; it relies on the StateManager interface for that.
+
+1. Time update
+
+- Consult the session’s **turn time policy** (for example, fixed duration per turn, intent-dependent advancement, explicit "wait" actions) to determine how much `currentTime` should advance.
+- Apply this time delta as part of the state changes for the turn.
+- This time domain is conceptually part of the state model; actual fields and persistence wiring are still TODO.
+
+1. Agent routing and execution
+
+- Based on the detected intent(s), choose one or more specialized agents (for example, NPC/dialogue agent, map/navigation agent, rules/system agent).
+- Provide each agent with the effective state slice and the player input (both the parsed intent and the original text for narrative grounding).
+- Collect agent responses, including any proposed state changes.
+- This entire phase is currently TODO in the implementation; the production Governor path effectively returns a fallback narrative.
+
+1. State update
+
+- Take structured state change proposals from agents (including time progression) and pass them to StateManager for application.
+- The Governor does not write to the database directly; it delegates that responsibility to the API/DB layer.
+
+1. Response aggregation
+
+- Combine the agent narratives and system messages into a single `TurnResult`.
+- The current implementation emits a generic fallback message; richer aggregation is planned.
 
 In addition to turns initiated by player input, the Governor (or a closely related orchestration layer) is a natural place to trigger **in-session profile normalization/parsing** jobs when character attributes change during the course of a game session (for example, state updates emitted by agents). Those flows are defined as separate intents (for example, "normalizeCharacterProfileForSession") that:
 
@@ -58,11 +77,7 @@ In addition to turns initiated by player input, the Governor (or a closely relat
 - Invoke regex and LLM-based parsers to refresh parsed attributes (for example, `appearance` fields) when in-session text fields change.
 - Commit the resulting JSON back to persistence via the State Manager and DB APIs.
 
-By contrast, when characters are initially **created or updated** in the builder UI, parsing is initiated directly from the character builder page:
-
-- The builder sends the authored data to a parsing endpoint that fans out to both the regex system and the LLM parser.
-- The regex system only handles simple, explicitly-labeled inputs (for example, `Hair color: brown`) and maps them directly to keys like `appearance.hair.color`.
-- Freer natural-language descriptions (for example, "he has messy dark hair and bright green eyes") are sent to the LLM parser with instructions to return structured key/value pairs (for example, `appearance.hair.style`, `appearance.hair.color`, `appearance.eyes.color`).
+By contrast, when characters are initially **created or updated** in the builder UI, parsing is initiated directly from the character builder page and is **not turn-based**. The turn system only comes into play once a session is running and the player is sending freeform chat to advance time and state.
 
 ## 3. Governor Configuration and Dependencies
 

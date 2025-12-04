@@ -5,6 +5,8 @@ import type {
   Message,
   Session,
   SessionSummary,
+  RuntimeConfigResponse,
+  TurnMetadata,
 } from '../../types.js';
 import type {
   CharacterProfile,
@@ -14,6 +16,14 @@ import type {
   UpdateTagRequest,
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS, USE_TURNS_API } from '../../config.js';
+
+interface TurnEndpointResponse {
+  message: string;
+  events: unknown[];
+  stateChanges?: unknown;
+  metadata?: TurnMetadata;
+  success: boolean;
+}
 
 export interface DbColumn {
   name: string;
@@ -127,6 +137,10 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   }
 }
 
+export async function getRuntimeConfig(signal?: AbortSignal): Promise<RuntimeConfigResponse> {
+  return http<RuntimeConfigResponse>('/config', signal ? { signal } : undefined);
+}
+
 export async function getCharacters(signal?: AbortSignal): Promise<CharacterSummary[]> {
   return http<CharacterSummary[]>('/characters', signal ? { signal } : undefined);
 }
@@ -186,24 +200,22 @@ export async function sendMessage(
   signal?: AbortSignal
 ): Promise<{ message: Message }> {
   if (USE_TURNS_API) {
-    const result = await http<{
-      message: string;
-      events: unknown[];
-      stateChanges?: unknown;
-      metadata?: unknown;
-      success: boolean;
-    }>(`/sessions/${encodeURIComponent(sessionId)}/turns`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: content }),
-      timeoutMs: MESSAGE_TIMEOUT_MS,
-      ...(signal && { signal }),
-    });
+    const result = await http<TurnEndpointResponse>(
+      `/sessions/${encodeURIComponent(sessionId)}/turns`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: content }),
+        timeoutMs: MESSAGE_TIMEOUT_MS,
+        ...(signal && { signal }),
+      }
+    );
 
     const assistant: Message = {
       role: 'assistant',
       content: result.message,
       createdAt: new Date().toISOString(),
+      ...(result.metadata ? { turnMetadata: result.metadata } : {}),
     };
 
     return { message: assistant };

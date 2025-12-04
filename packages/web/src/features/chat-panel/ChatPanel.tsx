@@ -1,8 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 import type { Message, Session } from '../../types.js';
-import { getSession, sendMessage, updateMessage, deleteMessage } from '../../shared/api/client.js';
-import { ChatView } from '@minimal-rpg/ui';
+import {
+  getSession,
+  sendMessage,
+  updateMessage,
+  deleteMessage,
+  getRuntimeConfig,
+} from '../../shared/api/client.js';
+import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
+import { TurnDebugPanel } from '../chat/index.js';
+import { GOVERNOR_DEV_MODE, USE_TURNS_API } from '../../config.js';
 
 export interface ChatPanelProps {
   sessionId?: string | null;
@@ -16,6 +24,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const [sending, setSending] = useState(false);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [serverGovernorDevMode, setServerGovernorDevMode] = useState(false);
   const ctrlRef = useRef<AbortController | null>(null);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
@@ -52,6 +61,44 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       ctrlRef.current?.abort();
     };
   }, [effectiveSessionId]);
+
+  useEffect(() => {
+    if (!GOVERNOR_DEV_MODE) return;
+    const ctrl = new AbortController();
+    let active = true;
+    const loadConfig = async () => {
+      try {
+        const cfg = await getRuntimeConfig(ctrl.signal);
+        if (!active) return;
+        setServerGovernorDevMode(Boolean(cfg.governorDevMode));
+      } catch (err) {
+        if (!active || isAbortError(err)) return;
+        console.warn('[ChatPanel] Failed to load runtime config', err);
+      }
+    };
+    void loadConfig();
+    return () => {
+      active = false;
+      ctrl.abort();
+    };
+  }, []);
+
+  const debugUiEnabled = GOVERNOR_DEV_MODE && serverGovernorDevMode && USE_TURNS_API;
+
+  const renderDebugAfterMessage = useCallback(
+    (message: ChatViewMessage, _idx: number) => {
+      void _idx;
+      if (!debugUiEnabled) return null;
+      const enriched = message as Message;
+      if (enriched.role !== 'assistant' || !enriched.turnMetadata) return null;
+      return (
+        <div className="mt-2">
+          <TurnDebugPanel metadata={enriched.turnMetadata} />
+        </div>
+      );
+    },
+    [debugUiEnabled]
+  );
 
   const onSend = async () => {
     if (!effectiveSessionId) return;
@@ -199,6 +246,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       onDeleteMessage={(idx) => {
         void onDeleteMessage(idx);
       }}
+      renderAfterMessage={renderDebugAfterMessage}
     />
   );
 };

@@ -93,6 +93,9 @@ export interface GovernorOptions {
 
   /** Default confidence threshold for intent detection */
   intentConfidenceThreshold?: number;
+
+  /** Whether to expose additional debug metadata */
+  devMode?: boolean;
 }
 
 /**
@@ -103,6 +106,7 @@ export const DEFAULT_GOVERNOR_OPTIONS: Required<GovernorOptions> = {
   continueOnAgentError: true,
   applyPatchesOnPartialFailure: false,
   intentConfidenceThreshold: 0.3,
+  devMode: false,
 };
 
 /**
@@ -301,6 +305,9 @@ export interface TurnMetadata {
   /** Detected intent */
   intent?: DetectedIntent | undefined;
 
+  /** Additional debugging artefacts for intent detection */
+  intentDebug?: IntentDetectionDebug | undefined;
+
   /** Agents that were invoked */
   agentsInvoked: AgentType[];
 
@@ -390,7 +397,7 @@ export interface IntentDetector {
   /**
    * Detect intent from player input and context.
    */
-  detect(input: string, context?: IntentDetectionContext): Promise<DetectedIntent>;
+  detect(input: string, context?: IntentDetectionContext): Promise<IntentDetectionResult>;
 }
 
 /**
@@ -411,6 +418,51 @@ export interface IntentDetectionContext {
 
   /** Items in inventory */
   inventoryItems?: string[] | undefined;
+}
+
+/**
+ * Debug metadata produced during intent detection.
+ */
+export interface IntentDetectionDebug {
+  /** Identifier for the detector implementation */
+  detector: string;
+
+  /** Optional model or strategy used */
+  model?: string | undefined;
+
+  /** Prompt snapshot that was sent to the detector */
+  prompt?:
+    | {
+        system: string;
+        user: string;
+      }
+    | undefined;
+
+  /** Recent history lines that were provided */
+  historyPreview?: string[] | undefined;
+
+  /** Context bullet points that were included */
+  contextSummary?: string[] | undefined;
+
+  /** Raw text response from the detector */
+  rawResponse?: string | undefined;
+
+  /** Parsed JSON payload before normalization */
+  parsed?: unknown;
+
+  /** Any warnings emitted while parsing */
+  warnings?: string[] | undefined;
+}
+
+/**
+ * Full intent detection result that includes debug artefacts.
+ */
+export interface IntentDetectionResult {
+  /** Normalized intent produced by the detector */
+  intent: DetectedIntent;
+
+  /** Optional debug metadata */
+  debug?: IntentDetectionDebug | undefined;
 }
 
 // ============================================================================

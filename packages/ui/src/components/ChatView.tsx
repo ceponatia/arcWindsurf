@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import type { ReactNode } from 'react';
 import { MessageContent } from './MessageContent.js';
 
 export interface ChatViewMessage {
@@ -22,6 +23,7 @@ export interface ChatViewProps {
   onCancelEdit: () => void;
   onSaveEdit: (idx: number) => void | Promise<void>;
   onDeleteMessage: (idx: number) => void | Promise<void>;
+  renderAfterMessage?: (message: ChatViewMessage, index: number) => ReactNode;
 }
 
 const EditIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -65,6 +67,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onCancelEdit,
   onSaveEdit,
   onDeleteMessage,
+  renderAfterMessage,
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -85,70 +88,74 @@ export const ChatView: React.FC<ChatViewProps> = ({
         {error && <div className="text-center text-sm text-red-400 font-mono">{error}</div>}
         {!loading && !error && (
           <div className="space-y-3 overflow-hidden">
-            {messages.map((m, idx) => (
-              <div key={idx} className="group relative overflow-hidden">
-                {editingIdx === idx ? (
-                  <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans border border-violet-500/50">
-                    <textarea
-                      className="w-full bg-transparent text-slate-200 outline-none resize-none p-1"
-                      rows={Math.max(3, m.content.split('\n').length)}
-                      value={editDraft}
-                      onChange={(e) => onDraftChange(e.target.value)}
-                    />
-                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-700">
-                      <button
-                        className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-900/20 transition-colors"
-                        onClick={() => {
-                          void onDeleteMessage(idx);
-                        }}
-                        title="Delete message"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                        <span>Delete</span>
-                      </button>
-                      <div className="flex gap-2">
+            {messages.map((m, idx) => {
+              const afterContent = renderAfterMessage?.(m, idx);
+              return (
+                <div key={idx} className="group relative overflow-hidden">
+                  {editingIdx === idx ? (
+                    <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans border border-violet-500/50">
+                      <textarea
+                        className="w-full bg-transparent text-slate-200 outline-none resize-none p-1"
+                        rows={Math.max(3, m.content.split('\n').length)}
+                        value={editDraft}
+                        onChange={(e) => onDraftChange(e.target.value)}
+                      />
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-700">
                         <button
-                          className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1"
-                          onClick={onCancelEdit}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1 rounded"
+                          className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-900/20 transition-colors"
                           onClick={() => {
-                            void onSaveEdit(idx);
+                            void onDeleteMessage(idx);
                           }}
+                          title="Delete message"
                         >
-                          Save
+                          <TrashIcon className="w-4 h-4" />
+                          <span>Delete</span>
                         </button>
+                        <div className="flex gap-2">
+                          <button
+                            className="text-xs text-slate-400 hover:text-slate-300 px-2 py-1"
+                            onClick={onCancelEdit}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1 rounded"
+                            onClick={() => {
+                              void onSaveEdit(idx);
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Edit button - always visible on mobile, hover on desktop */}
-                    <button
-                      className="absolute -right-1 -top-1 p-1.5 rounded-md bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 transition-all opacity-70 sm:opacity-0 sm:group-hover:opacity-100 z-10"
-                      onClick={() => {
-                        onStartEdit(idx, m.content);
-                      }}
-                      title="Edit message"
-                    >
-                      <EditIcon className="w-4 h-4" />
-                    </button>
-                    {m.role === 'user' ? (
-                      <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans mr-6 overflow-hidden min-w-0">
-                        <MessageContent content={m.content} />
-                      </div>
-                    ) : (
-                      <div className="rounded-lg bg-violet-950/40 border border-violet-900/30 px-3 py-2 font-serif leading-relaxed mr-6 overflow-hidden min-w-0">
-                        <MessageContent content={m.content} />
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    <>
+                      {/* Edit button - always visible on mobile, hover on desktop */}
+                      <button
+                        className="absolute -right-1 -top-1 p-1.5 rounded-md bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 transition-all opacity-70 sm:opacity-0 sm:group-hover:opacity-100 z-10"
+                        onClick={() => {
+                          onStartEdit(idx, m.content);
+                        }}
+                        title="Edit message"
+                      >
+                        <EditIcon className="w-4 h-4" />
+                      </button>
+                      {m.role === 'user' ? (
+                        <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans mr-6 overflow-hidden min-w-0">
+                          <MessageContent content={m.content} />
+                        </div>
+                      ) : (
+                        <div className="rounded-lg bg-violet-950/40 border border-violet-900/30 px-3 py-2 font-serif leading-relaxed mr-6 overflow-hidden min-w-0">
+                          <MessageContent content={m.content} />
+                        </div>
+                      )}
+                      {afterContent ? <div>{afterContent}</div> : null}
+                    </>
+                  )}
+                </div>
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}

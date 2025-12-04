@@ -12,22 +12,42 @@ right now are explicitly marked as TBD.
 
 ## 1. Define and Implement Minimal End-to-End Turn Flow
 
-- Choose a concrete happy-path scenario (e.g. move + look in a small
-  connected map with at least one NPC and one usable item).
+- Choose a concrete happy-path scenario that can be expressed in **natural
+  language chat** while still exercising core game actions. For example:
+  moving and looking around a small connected map with at least one NPC and
+  one usable item, where the user can speak casually ("I head north toward
+  the cafe", "I look around", "I ask Taylor about the concert").
 - Confirm and document the required state domains for this slice:
   - character: `name`, `summary`, `goals`, `personalityTraits`.
   - setting: `name`, `summary`, `themes`.
   - location: `id`, `name`, `description`, `exits`.
   - inventory: `items` with `id`, `name`, `description`, `usable`.
+  - time: `currentTime`, and a **turn time policy** that controls how much
+    in-world time advances per turn.
 - Document how these fields map onto the existing `TurnStateContext` and
   `AgentStateSlices` shapes (types already cover these domains) and call out
   any missing data sources that need to be filled in.
+- Treat a **turn** as a unit of timeline advancement and state evaluation,
+  not as a narrow command interface:
+  - Each turn accepts **freeform player text**.
+  - Intents (move, look, talk, wait/advance-time, etc.) are parsed from that
+    text (eventually by a `ParserAgent`), but the full text remains available
+    to the LLM for narrative.
+  - The governor advances in-world time according to a configurable policy
+    (see below), then orchestrates agents and state changes.
 - Implement the full request path for this scenario:
   - Persist session and instance rows in the test DB via the existing DB
-    package.
+    package (already implemented and in use by the API).
   - Create an API route that receives input and returns a `TurnResult`.
+    **Status:** a minimal version exists today at `POST /sessions/:id/turns`
+    and is wired to the Governor, backed by DB instances rather than static
+    files. If we decide to _abandon_ or substantially change this route
+    shape, we should make a note to **revert or update the current
+    implementation in `packages/api/src/routes/turns.ts` accordingly.**
   - Run Governor, AgentRegistry, StateManager, and Retrieval (in-memory) in
-    the same request; validate behaviors for the scenario.
+    the same request; validate behaviors for the scenario. **Status:** a
+    fallback-only flow exists; intent parsing, map/NPC rules, and retrieval
+    remain TODO.
 
 **Deliverables:**
 
@@ -39,25 +59,37 @@ right now are explicitly marked as TBD.
 
 - Add or extend an API entrypoint for turn handling, such as
   `POST /sessions/:id/turns` (or extend `POST /sessions/:id/messages`).
+  **Status:** `POST /sessions/:id/turns` is currently implemented and
+  reachable from the web UI behind a feature flag
+  (`VITE_USE_TURNS_API=true`). It loads the session and its
+  character/setting instances from Postgres and calls the Governor with a
+  minimal `TurnStateContext` baseline. If we later decide to consolidate
+  back into `POST /sessions/:id/messages` or change the route contract, we
+  should **revisit and possibly revert/update this handler**.
 
 In the request handler, implement the full flow:
 
 - Load the DB session and associated character/setting instances.
 - Build `baseline` and `overrides` objects for `TurnStateContext` from the
-  stored `template_snapshot` and `profile_json` columns.
+  stored `template_snapshot` and `profile_json` columns (currently we only
+  derive a minimal baseline; overrides and full state application via
+  `StateManager` are still TODO).
 - Construct a `TurnInput` (`sessionId`, `playerInput`, `baseline`,
   `overrides`, `conversationHistory`).
 - Inject a concrete `Governor` instance resolved from the API composition
   factory and call `handleTurn`.
-- Persist updated overrides/state back to Postgres using the DB layer.
+- Persist updated overrides/state back to Postgres using the DB layer,
+  using `StateManager.applyPatches` once agents emit structured state
+  changes.
 - Translate `TurnResult` into the HTTP response payload; return `message`,
   `events`, `stateChanges`, and metadata.
 
 **Deliverables:**
 
 - A production-ready API route that calls the Governor and persists state
-  changes.
-- A clear mapping from DB/session data to `TurnInput` and back.
+  changes (evolution of the existing `/sessions/:id/turns` handler).
+- A clear mapping from DB/session data to `TurnInput` and back, including
+  how time (turn progression) is represented in session state.
 
 ## 3. Instantiate Governor and Dependencies (Concrete Composition)
 
@@ -173,6 +205,5 @@ In the request handler, implement the full flow:
 
 ## Next Steps
 
-- Finish the location and inventory schemas so the state manager can validate every slice before persistence.
-- Sketch the Governor composition factory (StateManager + AgentRegistry + Retrieval + IntentDetector) and expose it to the API layer.
-- Replace the existing POST /sessions/:id/messages logic with the Governor-backed turn route, persisting the returned patches via StateManager.applyPatches and seeding retrieval nodes on session bootstrap.
+- Revert any unwanted changes from the erroneous initial implementation of the turn system.
+- Potentially grab additional API keys for DeepSeek (or other agents) to fully activate the governor & agents.

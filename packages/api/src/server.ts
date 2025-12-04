@@ -60,6 +60,7 @@ async function start(): Promise<void> {
     topP: cfg.topP,
     openrouterModel: cfg.openrouterModel,
     openrouterApiKeySet: Boolean(cfg.openrouterApiKey),
+    governorDevMode: cfg.governorDevMode,
   });
 
   // Enable CORS for browser-based clients (Vite dev, etc.)
@@ -77,7 +78,7 @@ async function start(): Promise<void> {
   registerAdminDbRoutes(app);
   registerProfileRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
-  registerTurnRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
+  registerTurnRoutes(app);
   registerTagRoutes(app);
 
   const port = cfg.port;
