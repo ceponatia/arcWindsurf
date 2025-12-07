@@ -15,5 +15,15 @@ export {
   type ParserPattern,
 } from './parser-agent.js';
 
+// Sensory agent (in subfolder - new agent organization pattern)
+export {
+  SensoryAgent,
+  isSensoryIntent,
+  type ScentData,
+  type SensoryAgentConfig,
+  type SensoryContext,
+  type SensoryIntentType,
+} from './sensory/index.js';
+
 // Registry
 export { DefaultAgentRegistry, createDefaultRegistry } from './registry.js';

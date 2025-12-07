@@ -18,7 +18,7 @@ The fundamental identity of a character.
 | :---------- | :------- | :------- | :---------------------------------------------------------- |
 | `id`        | string   | Yes      | Unique identifier (slug or UUID).                           |
 | `name`      | string   | Yes      | Display name (max 120 chars).                               |
-| `age`       | number   | No       | Defaults to 21. Max 120.                                    |
+| `age`       | number   | No       | Character's age in years (positive integer).                |
 | `summary`   | string   | Yes      | Short description for lists/previews.                       |
 | `backstory` | string   | Yes      | Full background history.                                    |
 | `tags`      | string[] | No       | Defaults to `['draft']`. Used for filtering/categorization. |

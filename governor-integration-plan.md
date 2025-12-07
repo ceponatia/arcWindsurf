@@ -46,8 +46,10 @@ right now are explicitly marked as TBD.
     implementation in `packages/api/src/routes/turns.ts` accordingly.**
   - Run Governor, AgentRegistry, StateManager, and Retrieval (in-memory) in
     the same request; validate behaviors for the scenario. **Status:** a
-    fallback-only flow exists; intent parsing, map/NPC rules, and retrieval
-    remain TODO.
+    Governor-driven flow exists today: LLM-based intent detection and
+    fallback narratives are implemented, and the in-memory retrieval
+    service is wired but not yet populated; map/NPC/rules agents and
+    persistent retrieval data remain TODO.
 
 **Deliverables:**
 

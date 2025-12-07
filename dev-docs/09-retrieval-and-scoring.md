@@ -2,7 +2,9 @@
 
 This document describes the current and proposed approaches for **retrieval and scoring** of context in Minimal RPG. It focuses on how the system decides **what information to surface to the LLM** and **how to prioritize it**.
 
-As of now, there is **no RAG/vector retrieval wired into the runtime** despite pgvector being enabled in Postgres. All live behavior is based on:
+As of now, there is **no pgvector-backed RAG or vector retrieval wired into the runtime**, although pgvector is enabled in Postgres. There is an in-memory `RetrievalService` implementation (`InMemoryRetrievalService`) that is connected to the Governor via `DefaultContextBuilder`, but no production code populates it with knowledge nodes yet, so it effectively returns empty results.
+
+All live behavior that actually affects prompts today is based on:
 
 - Serializing character and setting profiles directly into the prompt.
 - Summarizing older chat history into a compact system message.
@@ -162,10 +164,11 @@ The prompt builder must remain robust even if retrieval fails or tables are empt
 In the live codebase:
 
 - pgvector is enabled and a typed wrapper exists, but **no** production code calls vector operations.
+- An in-memory retrieval service (`InMemoryRetrievalService` in `@minimal-rpg/retrieval`) is wired into the Governor via `DefaultContextBuilder`, but it is not populated from DB or any background jobs, so `knowledgeContext` is typically empty.
 - There are **no** RAG endpoints, background jobs, or node/item embedding pipelines.
-- All scoring is implicit (recency for history, fixed inclusion for profiles).
+- All scoring that actually influences behavior is implicit (recency for history, fixed inclusion for profiles).
 
-The retrieval and scoring designs in this doc, the knowledge node model, and item-aware RAG are therefore **purely prospective**.
+The pgvector-backed retrieval and scoring designs in this doc, the knowledge node model, and item-aware RAG remain **prospective** until a first experiment is wired into the API and begins populating or querying a real vector store.
 
 ## 7. TBD / Open questions
 

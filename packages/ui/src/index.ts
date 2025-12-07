@@ -1,3 +1,5 @@
+export * from './components/BuilderActionPanel.js';
+export * from './components/PreviewSidebarLayout.js';
 export * from './components/MessageContent.js';
 export * from './components/AppHeader.js';
 export * from './components/SessionsPanel.js';

@@ -1,7 +1,13 @@
 import { pool } from './client.js';
+import { seedBuiltInTags } from './seeds/built-in-tags.js';
 
 async function run() {
-  // No-op seed. Add demo data here if needed.
+  console.log('[db] Running seeds...');
+
+  // Seed built-in tags
+  await seedBuiltInTags(pool);
+
+  console.log('[db] Seeds complete.');
   await pool.end();
 }
 

@@ -6,8 +6,8 @@ Relevant code and docs:
 
 - Governor: [packages/governor/src/governor.ts](packages/governor/src/governor.ts)
 - State Manager: [packages/state-manager/src/manager.ts](packages/state-manager/src/manager.ts) and [packages/state-manager/src/types.ts](packages/state-manager/src/types.ts)
-- Governor overview: [dev-docs/09-governor-and-agents.md](dev-docs/09-governor-and-agents.md)
-- State manager overview: [dev-docs/10-state-manager-and-embedding-lifecycle.md](dev-docs/10-state-manager-and-embedding-lifecycle.md)
+- Governor overview: [dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md)
+- State manager overview: [dev-docs/12-state-manager-and-embedding-lifecycle.md](dev-docs/12-state-manager-and-embedding-lifecycle.md)
 
 ---
 
@@ -46,7 +46,13 @@ In addition to turn handling, there is a separate class of **profile normalizati
 - The State Manager is used to merge these parsed attributes into the existing profile JSON without requiring callers to send the full structured view.
 - API persists the updated `profile_json` back to Postgres.
 
-Only a small part of this pipeline is implemented today (Governor scaffold + State Manager helpers). In production, the API’s `POST /sessions/:id/turns` route already exercises a **minimal** version of this flow: it accepts freeform player text, builds a basic turn context from DB instances, calls `governor.handleTurn`, and returns a `TurnResultDto` over HTTP. Intent parsing, time modeling, and structured agent outputs remain design intent.
+Several parts of this pipeline are implemented today:
+
+- The Governor orchestrator in `@minimal-rpg/governor` implements a 7-step turn pipeline (intent detection, state recall, context retrieval, agent routing/execution, state update, response aggregation).
+- `@minimal-rpg/state-manager` is used by the Governor for state recall and patch application.
+- In production, the API’s `POST /sessions/:id/turns` route accepts freeform player text, builds a basic `TurnStateContext` from DB instances, calls `governor.handleTurn`, and returns a `TurnResultDto` over HTTP.
+
+However, no domain agents are yet registered in the API’s Governor composition, and the API does not persist `TurnResult.stateChanges` back to Postgres. Time modeling and structured agent outputs are therefore still primarily design intent.
 
 ---
 
@@ -55,46 +61,52 @@ Only a small part of this pipeline is implemented today (Governor scaffold + Sta
 The Governor is implemented in [packages/governor/src/governor.ts](packages/governor/src/governor.ts) and in practice is **instantiated via a composition factory in the API** (for example, `createGovernorForRequest`). The exact TypeScript signatures may evolve, but the public surface is conceptually:
 
 - `GovernorConfig`
-  - `stateManager: StateManager` (and, in future, `llmProvider`, retrieval hooks, logging, etc.).
-- `Governor.handleTurn(sessionId: string, input: string, context?: TurnStateContext): Promise<TurnResult>`
-  - `input` is the raw freeform player text for this turn.
-  - `context` (when provided by the API route) includes preloaded state slices (character, setting, and eventually location, inventory, and time).
+  - `stateManager: StateManager` — required for state recall and patch application.
+  - `agentRegistry?: AgentRegistry` — optional registry of domain agents.
+  - `retrievalService?: RetrievalService` — optional knowledge retrieval service.
+  - `intentDetector?: IntentDetector` — LLM- or rule-based intent detector.
+  - `options?: GovernorOptions` — includes `devMode`, thresholds, and limits.
+  - `logging?: GovernorLoggingConfig` — controls logging behavior.
+- `Governor.handleTurn(sessionId: string, input: string): Promise<TurnResult>`
+- `Governor.handleTurn(turnInput: TurnInput): Promise<TurnResult>`
+  - In the HTTP turns route, the API calls the `TurnInput` overload, passing `sessionId`, `playerInput`, a baseline `TurnStateContext`, empty `overrides`, and derived `conversationHistory`.
 
 ### 2.1 Inputs
 
-`handleTurn` currently takes two primitive parameters:
+The Governor supports two call shapes:
 
-- `sessionId: string`
-  - Stable identifier for the current session.
-  - Used only for logging in the current scaffold.
-
-- `input: string`
-  - Raw player text from the client.
-  - No explicit separation between “player utterance” and “out‑of‑band commands” yet.
-
-In a future integration, the API layer is expected to pre‑resolve DB session state and may pass additional context to the Governor via an expanded config or method signature (for example, preloaded baselines/overrides). That is not implemented today.
+- `handleTurn(sessionId: string, input: string)` — convenience overload primarily useful for tests and simple callers.
+- `handleTurn(turnInput: TurnInput)` — full contract used by the API, which includes:
+  - `sessionId: string`
+  - `playerInput: string`
+  - `baseline: TurnStateContext` (character, setting, and eventually location, inventory, time)
+  - `overrides: DeepPartial<TurnStateContext>` (currently `{}` in production)
+  - `conversationHistory?: TurnConversationTurn[]`
+  - Optional metadata such as `turnNumber`.
 
 ### 2.2 Outputs
 
-`handleTurn` returns a `Promise<TurnResult>`:
+`handleTurn` returns a `Promise<TurnResult>` with at least:
 
 - `message: string`
   - Player‑facing narrative or status text for the turn.
-  - Currently an echo‑style placeholder: `You said: "..." (Governor is not yet fully implemented)`.
-
-There are comments hinting at future fields on `TurnResult` (such as events), but no additional properties are defined or used yet.
+  - When no agents are available or intent confidence is low, the Governor generates a deterministic narrative based on the detected intent (for example, movement/look/talk fallbacks).
+- `events: TurnEvent[]`
+  - Internal events emitted during processing (intent detected, agents run, state updated, etc.).
+- `stateChanges?: TurnStateChanges`
+  - Proposed JSON Patch-style changes to baseline/overrides, computed via the State Manager.
+- `metadata?: TurnMetadata`
+  - In dev mode, includes detected intent, intent-detection debug info, and per-agent outputs; in production mode, this is either omitted or reduced.
 
 ### 2.3 Governor Internal Use of State Manager
 
-In the scaffold, the Governor does **not** actually call the State Manager, but the comments describe the intended usage:
+In the current implementation, the Governor **does** call the State Manager:
 
 - **State recall**
-  - `const { effective } = stateManager.getEffectiveState(baseline, overrides);`
-  - `baseline` and `overrides` are expected to come from persistence (for example, template snapshot + per‑session overrides or similar).
+  - `DefaultContextBuilder` calls `stateManager.getEffectiveState(baseline, overrides)` to compute an effective state used for intent context and (eventually) agent slices.
 
 - **State update**
-  - `stateManager.applyPatches(baseline, overrides, patches);`
-  - `patches` will be derived from agent outputs in JSON Patch format.
+  - When agents (or fallback logic) produce patches, the Governor calls `stateManager.applyPatches(baseline, overrides, patches)` to compute `stateChanges`.
 
 The concrete shapes of `baseline`, `overrides`, and `patches` are determined by the State Manager API (section 3) and agent contracts (section 4).
 
@@ -194,13 +206,15 @@ The comments in the implementation outline a more refined diff‑based design (d
 
 ## 4. Conceptual Agent Contracts
 
-Concrete agent classes or interfaces do **not** exist in the codebase as of this writing. However, [dev-docs/09-governor-and-agents.md](dev-docs/09-governor-and-agents.md) and comments in the Governor describe the intended pattern:
+Concrete agent types live in `@minimal-rpg/agents` (see [packages/agents/src/types.ts](packages/agents/src/types.ts)), and a `DefaultAgentRegistry` is implemented in [packages/agents/src/registry.ts](packages/agents/src/registry.ts). Example agents (map, NPC, rules, parser) exist but are **not** currently registered in the API’s Governor composition, so production turns run through the fallback narrative path only.
+
+The conceptual pattern remains:
 
 - Agents are domain‑specific workers (e.g., map/navigation, NPC/dialogue, rules/system).
-- The Governor will route each turn to one or more agents based on intent and state.
-- Agents will produce both narrative text and structured state changes.
+- The Governor routes each turn to one or more agents based on intent and state via the `AgentRegistry`.
+- Agents produce both narrative text and structured state changes.
 
-Because there are no TypeScript interfaces yet, this section uses a **conceptual** contract to clarify expectations without asserting types that don’t exist.
+The rest of this section describes the agent I/O contract in a way that matches the concrete `AgentInput`/`AgentOutput` types without depending on every field.
 
 ### 4.1 Conceptual Agent Input
 

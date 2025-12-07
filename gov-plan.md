@@ -117,23 +117,36 @@ GOVERNOR_DEV_MODE=true|false → toggles extra metadata in TurnResult.
 Web
 
 New env:
-VITE_GOVERNOR_DEV_MODE=true|false → toggles debug panel visibility. 6. Milestones
+VITE_GOVERNOR_DEV_MODE=true|false → toggles debug panel visibility.
+
+## 6. Milestones
 
 Milestone 1: LLM Intent Detector
 
 Implement LlmIntentDetector in governor package using generateWithOpenRouter.
-Wire into governor composition (API uses LLM instead of fallback/rule-based detector).
+Wire into governor composition (API uses LLM when `OPENROUTER_API_KEY` is configured, otherwise falls back to a rule-based detector).
 Log and surface DetectedIntent in TurnResult.metadata (dev mode only).
+
+Status: **DONE** — implemented and wired via `createGovernorForRequest`, with dev-mode metadata exposed through the turns route and web debug UI.
+
 Milestone 2: Governor Dev Mode + UI
 
 Add governorDevMode flag to Governor options and API composition.
 Wire flag through to web (VITE_GOVERNOR_DEV_MODE).
 Show/hide debug information in chat panel based on flag.
+
+Status: **DONE** — `GOVERNOR_DEV_MODE` and `VITE_GOVERNOR_DEV_MODE` are plumbed end-to-end; when both are true and `VITE_USE_TURNS_API=true`, the web client renders per-turn debug bubbles using metadata from the Governor.
+
 Milestone 3: Simple Intent-Based Narratives
 
 Replace current governor fallback with a minimal branching narrative based on DetectedIntent.type.
 Still no real agents or patches; state remains unchanged.
+
+Status: **DONE** — the Governor provides `generateIntentNarrative` fallbacks for common intent types (move, look, talk, use, etc.) when no agents handle the turn or intent confidence is low.
+
 Milestone 4: First Real Agent
 
 Introduce a simple LLM-backed or rule-based “Narrator” or “Navigation” agent.
 Have the Governor route intent to that agent and treat its narrative as the main message.
+
+Status: **TBD** — agent types and a registry exist in `@minimal-rpg/agents`, but the API’s Governor composition does not yet register or invoke any concrete agents.

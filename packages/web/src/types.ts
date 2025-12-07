@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { Build, SpeechStyle } from '@minimal-rpg/schemas';
+import type { Build, ItemCategory } from '@minimal-rpg/schemas';
 
 export interface CharacterSummary {
   id: string;
@@ -13,6 +13,15 @@ export interface SettingSummary {
   id: string;
   name: string;
   tone: string;
+}
+
+export interface ItemSummary {
+  id: string;
+  name: string;
+  category: ItemCategory;
+  type: string;
+  description: string;
+  tags?: string[];
 }
 
 export type MessageRole = 'user' | 'assistant';
@@ -73,11 +82,19 @@ export interface IntentParams {
   extra?: Record<string, unknown>;
 }
 
+export interface IntentSegment {
+  type: 'talk' | 'action' | 'thought' | 'emote' | 'sensory';
+  content: string;
+  sensoryType?: 'smell' | 'touch' | 'look' | 'taste' | 'listen';
+  bodyPart?: string;
+}
+
 export interface DetectedIntent {
   type: IntentType;
   confidence: number;
   params?: IntentParams;
   signals?: string[];
+  segments?: IntentSegment[];
 }
 
 export interface IntentDetectionPromptSnapshot {
@@ -96,7 +113,7 @@ export interface IntentDetectionDebug {
   warnings?: string[];
 }
 
-export type AgentType = 'map' | 'npc' | 'rules' | 'parser' | 'custom';
+export type AgentType = 'map' | 'npc' | 'rules' | 'parser' | 'sensory' | 'custom';
 
 export interface AgentEvent {
   type: string;
@@ -125,6 +142,11 @@ export interface AgentOutput {
   continueProcessing?: boolean;
 }
 
+export interface AgentOutputWithType {
+  agentType: AgentType;
+  output: AgentOutput;
+}
+
 export interface PhaseTiming {
   intentDetectionMs?: number;
   stateRecallMs?: number;
@@ -140,9 +162,18 @@ export interface TurnMetadata {
   intent?: DetectedIntent;
   intentDebug?: IntentDetectionDebug;
   agentsInvoked: AgentType[];
-  agentOutputs?: AgentOutput[];
+  agentOutputs?: AgentOutputWithType[];
   nodesRetrieved?: number;
   phaseTiming?: PhaseTiming;
+}
+
+export interface NpcInstanceSummary {
+  id: string;
+  role: string;
+  label: string | null;
+  templateId: string;
+  name?: string;
+  createdAt?: string;
 }
 
 export type TurnDebugSliceVariant = 'intent' | 'prompt' | 'raw' | 'agent';
@@ -178,10 +209,13 @@ export type ViewMode =
   | 'character-library'
   | 'setting-library'
   | 'tag-library'
+  | 'item-library'
   | 'session-library'
+  | 'session-builder'
   | 'character-builder'
   | 'setting-builder'
-  | 'tag-builder';
+  | 'tag-builder'
+  | 'item-builder';
 
 export interface AppControllerStateSlice {
   selectedCharacterId: string | null;
@@ -223,10 +257,13 @@ export interface AppControllerActions {
   navigateToCharacterBuilder: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
+  navigateToItemBuilder: (id?: string | null) => void;
   navigateToCharacterLibrary: () => void;
   navigateToSettingLibrary: () => void;
   navigateToTagLibrary: () => void;
+  navigateToItemLibrary: () => void;
   navigateToSessionLibrary: () => void;
+  navigateToSessionBuilder: () => void;
   navigateToHome: () => void;
   selectSession: (id: string) => void;
 }
@@ -290,8 +327,6 @@ export type ArmsBuildOption = SelectOption<Build['arms']['build']>;
 export type ArmsLengthOption = SelectOption<Build['arms']['length']>;
 export type LegsLengthOption = SelectOption<Build['legs']['length']>;
 export type LegsBuildOption = SelectOption<Build['legs']['build']>;
-
-export type CharacterStyleOverrides = Partial<SpeechStyle>;
 
 export interface ApiErrorShape {
   ok: false;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NpcAgent } from './npc-agent.js';
-import type { AgentInput, AgentIntent, CharacterSlice } from './types.js';
+import type { AgentInput, AgentIntent, CharacterSlice, IntentSegment } from './types.js';
 
 function createMockInput(overrides: Partial<AgentInput> = {}): AgentInput {
   return {
@@ -15,9 +15,8 @@ function createMockCharacter(overrides: Partial<CharacterSlice> = {}): Character
   return {
     instanceId: 'char-1',
     name: 'Aria',
-    summary: 'A brave adventurer seeking glory.',
     goals: ['Find the ancient artifact'],
-    personalityTraits: ['brave', 'curious'],
+    personality: ['brave', 'curious'],
     ...overrides,
   };
 }
@@ -30,12 +29,39 @@ function createTalkIntent(target?: string): AgentIntent {
   };
 }
 
+function createNarrateIntent(
+  narrateType?: 'action' | 'thought' | 'emote' | 'narrative'
+): AgentIntent {
+  return {
+    type: 'narrate',
+    params: narrateType ? { narrateType } : {},
+    confidence: 1,
+  };
+}
+
+function createCompoundIntent(segments: IntentSegment[]): AgentIntent {
+  // Primary type should be 'talk' if there's speech, else 'narrate'
+  const hasTalk = segments.some((s) => s.type === 'talk');
+  return {
+    type: hasTalk ? 'talk' : 'narrate',
+    params: {},
+    confidence: 0.9,
+    segments,
+  };
+}
+
 describe('NpcAgent', () => {
   const agent = new NpcAgent();
 
   describe('canHandle', () => {
     it('handles talk intents', () => {
       expect(agent.canHandle(createTalkIntent())).toBe(true);
+    });
+
+    it('handles narrate intents', () => {
+      expect(agent.canHandle(createNarrateIntent('action'))).toBe(true);
+      expect(agent.canHandle(createNarrateIntent('thought'))).toBe(true);
+      expect(agent.canHandle(createNarrateIntent('emote'))).toBe(true);
     });
 
     it('does not handle move intents', () => {
@@ -75,6 +101,39 @@ describe('NpcAgent', () => {
 
       const result = await agent.execute(input);
 
+      expect(result.narrative).toBeDefined();
+    });
+
+    it('handles compound intents with segments', async () => {
+      const character = createMockCharacter();
+      const segments: IntentSegment[] = [
+        { type: 'action', content: 'He sits up' },
+        { type: 'talk', content: "Wow, I didn't realize that." },
+        { type: 'emote', content: 'feels a bit embarrassed' },
+      ];
+      const input = createMockInput({
+        playerInput: "*He sits up* Wow, I didn't realize that. *feels a bit embarrassed*",
+        intent: createCompoundIntent(segments),
+        stateSlices: { character },
+      });
+
+      const result = await agent.execute(input);
+
+      // Template mode will still produce a valid response
+      expect(result.narrative).toContain('Aria');
+    });
+
+    it('handles thought narrate type without revealing thoughts', async () => {
+      const character = createMockCharacter();
+      const input = createMockInput({
+        playerInput: '*wonders if she noticed*',
+        intent: createNarrateIntent('thought'),
+        stateSlices: { character },
+      });
+
+      const result = await agent.execute(input);
+
+      // Should produce a response without explicitly knowing the thought
       expect(result.narrative).toBeDefined();
     });
   });

@@ -1,30 +1,34 @@
 # Governor and Agents
 
-This document describes the current Governor orchestration layer, how it is intended to interact with specialized agents, and how it connects to the state manager and future retrieval/embedding systems.
+Steps:
 
-The goal is to give a clear picture of what exists in the code today and what is planned, without assuming unimplemented pieces already work.
+- Ensure OpenRouter is configured (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`) so the LLM intent detector can run.
+- Optionally enable dev mode on the API to surface richer metadata:
+  - Set `GOVERNOR_DEV_MODE=true` in `packages/api/.env`.
+- Call the turns endpoint with freeform input:
 
-## 1. Role of the Governor
+```bash
+curl -X POST \
+  "http://localhost:3001/sessions/<SESSION_ID>/turns" \
+  -H "Content-Type: application/json" \
+  -d '{"input":"I look around"}'
+```
 
-The Governor is a thin coordination layer implemented in [packages/governor/src/governor.ts](packages/governor/src/governor.ts). It is responsible for:
+The response is a JSON-serialized `TurnResultDto` with at least:
 
-- Receiving **freeform natural-language player input** for a given session.
-- Orchestrating high‑level **turn handling**, where a **turn** is a unit of timeline advancement and state evaluation, not a narrow text-adventure command.
-- Delegating all state operations to @minimal-rpg/state-manager.
-- Eventually invoking one or more specialized agents (LLM-backed or otherwise) and aggregating their responses.
+- `message: string` – the narrative for this turn.
+- `events: TurnEvent[]` – turn/agent/state events.
+- `stateChanges?: TurnStateChanges` – summary of applied patches (usually `null`/`undefined` until agents emit patches).
+- `metadata?: TurnMetadata` – in dev mode, includes `intent`, `intentDebug`, `agentsInvoked`, `agentOutputs`, and `phaseTiming`.
+- `metadata?: TurnMetadata` – observability data, including detected intent, debug artefacts, phase timings, and agent outputs when dev mode is enabled.
 
-The public surface in the governor package is centered on a turn-oriented entrypoint (for example, `handleTurn`) that takes a session identifier and raw player input and returns a `TurnResult` with at least:
-
-- `message: string` – the player-facing narrative or status text for this turn.
-- `events` / state-change metadata (planned; partially represented in the API’s `TurnResultDto`).
-
-In the **API layer**, a concrete composition factory (for example `createGovernorForRequest`) already exists and is used by the `POST /sessions/:id/turns` route. That route:
+In the **API layer**, a concrete composition factory `createGovernorForRequest` exists in [packages/api/src/governor/composition.ts](packages/api/src/governor/composition.ts) and is used by the `POST /sessions/:id/turns` route. That route:
 
 - Treats each HTTP call as a **turn** over a DB-backed session.
 - Builds a minimal `TurnStateContext` (character + setting, with room to grow into location, inventory, and time slices).
-- Calls `governor.handleTurn` with the raw text input and context.
+- Calls `governor.handleTurn` with `TurnInput` (sessionId, playerInput, baseline, overrides, and a short `conversationHistory`).
 
-The current Governor behavior is still largely a scaffold (fallback-only narrative, no real intent parsing or agent routing), but the **shape of the turn contract and HTTP wiring are in place**.
+The current Governor behavior supports LLM-based intent detection, optional agent routing, and a deterministic fallback narrative. If no agents are registered in the `AgentRegistry` (the current default), the Governor generates a simple branch based on the detected intent type (for example, move/look/talk/wait) instead of invoking domain-specific agents.
 
 ## 2. High-level Turn Flow (Natural Language + Time)
 
@@ -39,8 +43,8 @@ Concretely, the per-turn flow is:
 1. Intent detection
 
 - Analyze the raw player input and recent context to determine what the player is trying to do (for example, move, talk, inspect, use item, wait/advance-time, meta-questions).
-- This will eventually be driven by a `ParserAgent` (LLM-backed or otherwise) but is not yet implemented in code.
-- Player utterances like "I head north toward the cafe" or "I look around" are **not** special commands; they are just natural language that the parser interprets into structured intents.
+- In the current implementation, this is handled by an `IntentDetector` implementation. In production, `LlmIntentDetector` uses OpenRouter + DeepSeek to classify the turn into a `DetectedIntent` (type, confidence, params, signals) and produces detailed debug artefacts when dev mode is enabled.
+- Player utterances like "I head north toward the cafe" or "I look around" are **not** special commands; they are just natural language that the detector interprets into structured intents.
 
 1. State recall
 
@@ -59,7 +63,7 @@ Concretely, the per-turn flow is:
 - Based on the detected intent(s), choose one or more specialized agents (for example, NPC/dialogue agent, map/navigation agent, rules/system agent).
 - Provide each agent with the effective state slice and the player input (both the parsed intent and the original text for narrative grounding).
 - Collect agent responses, including any proposed state changes.
-- This entire phase is currently TODO in the implementation; the production Governor path effectively returns a fallback narrative.
+- In the current code, a pluggable `AgentRegistry` exists (`DefaultAgentRegistry` in `@minimal-rpg/agents`), but `createDefaultRegistry()` registers no agents by default. As a result, the runtime path typically routes to **zero** agents and falls back to the built‑in intent-based narrative generator.
 
 1. State update
 
@@ -81,17 +85,25 @@ By contrast, when characters are initially **created or updated** in the builder
 
 ## 3. Governor Configuration and Dependencies
 
-The Governor is instantiated with a GovernorConfig object. In code today it looks like:
+The Governor is instantiated with a `GovernorConfig` object. In production, `createGovernorForRequest` wires this up as follows (see [packages/api/src/governor/composition.ts](packages/api/src/governor/composition.ts)):
 
-- GovernorConfig
-  - stateManager: StateManager
-  - // In the future: llmProvider, routing configuration, logging hooks, etc.
+- `stateManager: StateManager` – a singleton created from `@minimal-rpg/state-manager` with `validateOnMerge` and `computeMinimalDiff` enabled.
+- `agentRegistry?: AgentRegistry` – currently a `DefaultAgentRegistry` instance from `@minimal-rpg/agents`, which starts empty unless agents are manually registered.
+- `retrievalService?: RetrievalService` – an `InMemoryRetrievalService` from `@minimal-rpg/retrieval`, used by the Governor’s `DefaultContextBuilder` to populate `knowledgeContext` when nodes are available.
+- `intentDetector?: IntentDetector` – resolved once per process:
+  - If `OPENROUTER_API_KEY` is set, a process-wide `LlmIntentDetector` is created that calls OpenRouter/DeepSeek.
+  - Otherwise, a rule-based fallback detector from `createRuleBasedIntentDetector()` is used.
+- `options?: GovernorOptions` – merged with defaults and including:
+  - `maxAgentsPerTurn`, `continueOnAgentError`, `applyPatchesOnPartialFailure`, `intentConfidenceThreshold`.
+  - `devMode` derived from `GOVERNOR_DEV_MODE` (see API config below).
+- `logging?: GovernorConfig['logging']` – optional logging hooks for turns, intent detection, retrieval, agents, and state changes.
 
 Key points about this configuration:
 
 - The Governor does not construct or own the StateManager; it receives a ready-to-use instance.
 - This keeps orchestration logic separate from persistence, making it easier to test the Governor in isolation by swapping in a mock StateManager.
-- Additional dependencies (LLM provider, embeddings, routing tables) will be added to GovernorConfig as those systems come online.
+- LLM configuration is isolated to the API’s OpenRouter adapter; the Governor only sees an abstract `IntentDetector`.
+- Retrieval and agents are optional: if either is omitted, the Governor still produces a coherent intent-based fallback narrative.
 
 ## 4. Interaction with the State Manager
 
@@ -143,18 +155,21 @@ The exact TypeScript interfaces for these agents are still evolving and are not 
 
 ## 6. Context Retrieval and Embeddings (Future)
 
-Earlier design documents describe a knowledge-node and vector-based retrieval system where character and setting profiles are decomposed into nodes, embedded, and retrieved via pgvector. That design is not yet wired into the Governor, but the intended relationship is:
+Earlier design documents describe a knowledge-node and vector-based retrieval system where character and setting profiles are decomposed into nodes, embedded, and retrieved via pgvector. The current implementation splits this into two layers:
 
-- The Governor (or a dedicated retrieval component invoked by the Governor) will:
-  - Use recent player input and session context to build a retrieval query.
-  - Ask the state/knowledge layer to return a ranked list of relevant nodes for the active entities.
-  - Combine these nodes into a compact context block for each agent.
+- **In-memory retrieval (implemented):**
+  - `createGovernorForRequest` instantiates an `InMemoryRetrievalService` and passes it into the Governor.
+  - `DefaultContextBuilder` (see [packages/governor/src/context-builder.ts](packages/governor/src/context-builder.ts)) calls `retrievalService.retrieve(...)` to build a `knowledgeContext` array for each turn when nodes are present.
+  - As of now, no production code populates this service with `KnowledgeNode` entries, so `knowledgeContext` is typically empty even though the plumbing and types are in place.
 
-- Agents will then:
-  - Consume only the retrieved/salient details, not entire raw JSON profiles.
-  - Optionally adjust importance scores or flags in response to narrative events (e.g., marking an item as highly salient).
+- **DB-backed retrieval (planned):**
+  - Character and setting profiles will eventually be decomposed into nodes, embedded, and stored in Postgres with pgvector.
+  - The retrieval service will query this store, score results, and surface a compact context block per turn.
+  - Agents will consume these retrieved/salient details instead of entire raw JSON profiles, and may adjust importance scores in response to narrative events (for example, marking an item as highly salient).
 
-Because the concrete implementation of this retrieval layer is still in flux, details like table names, embedding models, and scoring formulas are intentionally omitted here and should be referenced from the dedicated knowledge-node and retrieval docs instead.
+Because the DB-backed retrieval layer is still in flux, details like table names, embedding models, and scoring formulas are intentionally omitted here and should be referenced from the dedicated knowledge-node and retrieval docs instead.
+
+In the meantime, the in-memory service provides a convenient seam for experimentation and for unit tests that want to validate how agents behave when `knowledgeContext` is populated.
 
 ## 7. Error Handling and Observability
 
@@ -199,3 +214,58 @@ The following aspects are intentionally left as TBD because they are not yet imp
   - How much historical context (previous turns) the Governor keeps in memory vs. re-derives from state.
 
 These items should be updated once corresponding implementations land in the codebase.
+
+## 9. Quickstart: Governor-Driven Turn
+
+This section describes how to run a Governor-backed turn both via HTTP and from the web UI.
+
+### 9.1 Via HTTP
+
+Prerequisites:
+
+- API server running locally (`pnpm -F @minimal-rpg/api dev` or `pnpm core`).
+- A session created via `POST /sessions` (the response includes `id`).
+
+Steps:
+
+1. Ensure OpenRouter is configured (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`) so the LLM intent detector can run.
+2. Optionally enable dev mode on the API to surface richer metadata:
+   - Set `GOVERNOR_DEV_MODE=true` in `packages/api/.env`.
+3. Call the turns endpoint with freeform input:
+
+   ```bash
+   curl -X POST \
+     "http://localhost:3001/sessions/<SESSION_ID>/turns" \
+     -H "Content-Type: application/json" \
+     -d '{"input":"I look around"}'
+   ```
+
+4. The response is a JSON-serialized `TurnResultDto` with at least:
+
+- `message: string` – the narrative for this turn.
+- `events: TurnEvent[]` – turn/agent/state events.
+- `stateChanges?: TurnStateChanges` – summary of applied patches (usually `null`/`undefined` until agents emit patches).
+- `metadata?: TurnMetadata` – in dev mode, includes `intent`, `intentDebug`, `agentsInvoked`, `agentOutputs`, and `phaseTiming`.
+
+### 9.2 From the Web UI
+
+Prerequisites:
+
+- API and Web dev servers running (see root `README.md` quick start).
+- At least one character and setting available so you can create a session.
+
+Steps:
+
+- In the web env (`packages/web/.env` or your shell), set:
+  - `VITE_USE_TURNS_API=true` – routes chat through `POST /sessions/:id/turns` instead of the legacy messages endpoint.
+  - Optionally `VITE_GOVERNOR_DEV_MODE=true` – enables the debug bubbles panel when the backend dev flag is also on.
+- In the API env, set `GOVERNOR_DEV_MODE=true` if you want rich metadata and UI debug bubbles.
+- Start the stack:
+  - `pnpm -F @minimal-rpg/api dev`
+  - `pnpm -F @minimal-rpg/web dev`
+- In the browser, create or select a session and send a message such as "I look around".
+- When both dev flags and `VITE_USE_TURNS_API` are enabled, each assistant turn shows:
+  - The main narrative from the Governor.
+  - A stack of debug bubbles under the message (intent summary, prompt snapshot, raw detector payload, agent outputs) driven by `TurnMetadata`.
+
+Disable either dev flag (and reload) to return to the standard chat experience with no additional metadata or debug UI.

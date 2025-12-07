@@ -8,6 +8,7 @@ interface SessionLibraryProps {
   onRefresh: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onCreateNew: () => void;
   activeSessionId: string | null;
 }
 
@@ -18,6 +19,7 @@ export const SessionLibrary: React.FC<SessionLibraryProps> = ({
   onRefresh,
   onSelect,
   onDelete,
+  onCreateNew,
   activeSessionId,
 }) => {
   const formatDate = (isoString: string) => {
@@ -38,12 +40,20 @@ export const SessionLibrary: React.FC<SessionLibraryProps> = ({
           <h1 className="text-2xl font-semibold text-slate-100">Sessions</h1>
           <p className="text-sm text-slate-400 mt-1">Your conversation history</p>
         </div>
-        <button
-          onClick={onRefresh}
-          className="px-3 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
-        >
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onRefresh}
+            className="px-3 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={onCreateNew}
+            className="px-3 py-2 text-sm rounded-md bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+          >
+            + New Session
+          </button>
+        </div>
       </div>
 
       {loading && <div className="text-center py-12 text-slate-400">Loading sessions…</div>}
@@ -62,10 +72,13 @@ export const SessionLibrary: React.FC<SessionLibraryProps> = ({
 
       {!loading && !error && sessions.length === 0 && (
         <div className="text-center py-12 border border-dashed border-slate-700 rounded-lg">
-          <p className="text-slate-400">No sessions yet</p>
-          <p className="text-sm text-slate-500 mt-2">
-            Start a session by selecting a character and setting
-          </p>
+          <p className="text-slate-400 mb-4">No sessions yet</p>
+          <button
+            onClick={onCreateNew}
+            className="px-4 py-2 text-sm rounded-md bg-violet-600 text-white hover:bg-violet-500"
+          >
+            Start your first session
+          </button>
         </div>
       )}
 

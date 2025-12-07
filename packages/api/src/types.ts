@@ -1,4 +1,9 @@
-import type { CharacterProfile, SettingProfile, SessionTagInstance } from '@minimal-rpg/schemas';
+import type {
+  CharacterProfile,
+  SettingProfile,
+  SessionTagInstance,
+  ItemCategory,
+} from '@minimal-rpg/schemas';
 import type { TurnResult } from '@minimal-rpg/governor';
 import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
 
@@ -27,6 +32,7 @@ export interface RuntimeConfig {
   openrouterApiKey: string;
   openrouterModel: string;
   governorDevMode: boolean;
+  intentDebug: boolean;
 }
 
 // Loaded data (characters + settings)
@@ -50,6 +56,16 @@ export interface SettingSummary {
   source: 'fs' | 'db';
 }
 
+// Item summary (DTO)
+export interface ItemSummary {
+  id: string;
+  name: string;
+  category: ItemCategory;
+  type: string;
+  description: string;
+  tags?: string[];
+}
+
 // Sessions list item decoration
 export interface SessionListItem {
   id: string;
@@ -67,6 +83,24 @@ export interface DbMessage {
   content: string;
   createdAt: string;
   idx: number;
+}
+
+export interface DbNpcMessage {
+  idx: number;
+  speaker: 'player' | 'npc' | 'narrator';
+  content: string;
+  createdAt: string;
+}
+
+export interface StateChangeLogEntry {
+  id: string;
+  sessionId: string;
+  turnIdx: number | null;
+  patchCount: number;
+  modifiedPaths: string[];
+  agentTypes: string[];
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface DbSession {
@@ -225,6 +259,7 @@ export type RuntimeConfigResponse = RuntimeConfigPublic;
 // Mapper function signatures for discoverability
 export type MapCharacterSummary = (c: CharacterProfile, source: 'fs' | 'db') => CharacterSummary;
 export type MapSettingSummary = (s: SettingProfile, source: 'fs' | 'db') => SettingSummary;
+export type MapItemSummary = (item: import('@minimal-rpg/schemas').ItemDefinition) => ItemSummary;
 export type MapSessionListItem = (
   s: DbSessionSummary,
   characterName?: string,
@@ -250,6 +285,11 @@ export interface CharacterInstanceRow {
   templateId: string;
   templateSnapshot: string;
   profileJson: string;
+  overridesJson?: string;
+  role: string;
+  label?: string | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
 }
 
 export interface SettingInstanceRow {
@@ -258,6 +298,7 @@ export interface SettingInstanceRow {
   templateId: string;
   templateSnapshot: string;
   profileJson: string;
+  overridesJson?: string;
 }
 
 export interface MessageRow {
@@ -267,6 +308,29 @@ export interface MessageRow {
   role: ChatRole;
   content: string;
   createdAt?: string | Date | null;
+}
+
+// Item definition row (library/template)
+export interface ItemDefinitionRow {
+  id: string;
+  category: string;
+  // JSONB columns are auto-parsed by node-postgres
+  definitionJson: unknown;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+}
+
+// Item instance row (per-session copy)
+export interface ItemInstanceRow {
+  id: string;
+  sessionId: string;
+  definitionId: string;
+  // JSONB columns are auto-parsed by node-postgres
+  definitionSnapshot: unknown;
+  ownerType: string;
+  ownerId: string;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
 }
 
 interface ProfileTable<T extends ProfileRow> {
@@ -281,8 +345,12 @@ interface ProfileTable<T extends ProfileRow> {
 type TemplateTable<T extends ProfileRow> = ProfileTable<T>;
 interface CharacterInstanceTable {
   findUnique(args: {
-    where: { id?: string; sessionId?: string };
+    where: { id?: string; sessionId?: string; role?: string };
   }): Promise<CharacterInstanceRow | null>;
+  findMany(args?: {
+    where?: { sessionId?: string; role?: string };
+    orderBy?: { createdAt?: 'asc' | 'desc' };
+  }): Promise<CharacterInstanceRow[]>;
   create(args: {
     data: {
       id: string;
@@ -290,11 +358,14 @@ interface CharacterInstanceTable {
       templateId: string;
       templateSnapshot: string;
       profileJson: string;
+      overridesJson?: string;
+      role?: string;
+      label?: string | null;
     };
   }): Promise<CharacterInstanceRow>;
   update(args: {
     where: { id: string };
-    data: { profileJson?: string };
+    data: { profileJson?: string; overridesJson?: string; role?: string; label?: string | null };
   }): Promise<CharacterInstanceRow>;
   delete(args: { where: { id: string } }): Promise<void>;
 }
@@ -310,12 +381,52 @@ interface SettingInstanceTable {
       templateId: string;
       templateSnapshot: string;
       profileJson: string;
+      overridesJson?: string;
     };
   }): Promise<SettingInstanceRow>;
   update(args: {
     where: { id: string };
-    data: { profileJson?: string };
+    data: { profileJson?: string; overridesJson?: string };
   }): Promise<SettingInstanceRow>;
+  delete(args: { where: { id: string } }): Promise<void>;
+}
+
+interface ItemDefinitionTable {
+  findMany(args?: {
+    where?: { category?: string };
+    orderBy?: { createdAt?: 'asc' | 'desc' };
+  }): Promise<ItemDefinitionRow[]>;
+  findUnique(args: { where: { id: string } }): Promise<ItemDefinitionRow | null>;
+  create(args: {
+    data: { id: string; category: string; definitionJson: string };
+  }): Promise<ItemDefinitionRow>;
+  update(args: {
+    where: { id: string };
+    data: { category?: string; definitionJson?: string };
+  }): Promise<ItemDefinitionRow>;
+  delete(args: { where: { id: string } }): Promise<void>;
+}
+
+interface ItemInstanceTable {
+  findMany(args?: {
+    where?: { sessionId?: string; ownerType?: string; ownerId?: string; definitionId?: string };
+    orderBy?: { createdAt?: 'asc' | 'desc' };
+  }): Promise<ItemInstanceRow[]>;
+  findUnique(args: { where: { id: string } }): Promise<ItemInstanceRow | null>;
+  create(args: {
+    data: {
+      id: string;
+      sessionId: string;
+      definitionId: string;
+      definitionSnapshot: string;
+      ownerType: string;
+      ownerId: string;
+    };
+  }): Promise<ItemInstanceRow>;
+  update(args: {
+    where: { id: string };
+    data: { ownerType?: string; ownerId?: string };
+  }): Promise<ItemInstanceRow>;
   delete(args: { where: { id: string } }): Promise<void>;
 }
 
@@ -337,6 +448,8 @@ export interface PrismaClientLike {
   settingTemplate: TemplateTable<SettingTemplateRow>;
   characterInstance: CharacterInstanceTable;
   settingInstance: SettingInstanceTable;
+  itemDefinition: ItemDefinitionTable;
+  itemInstance: ItemInstanceTable;
 }
 
 export interface SessionsClientLike {
@@ -349,4 +462,23 @@ export interface SessionsClientLike {
   listSessions(): Promise<DbSessionSummary[]>;
   deleteSession(id: string): Promise<void>;
   appendMessage(sessionId: string, role: ChatRole, content: string): Promise<void>;
+  appendNpcMessage(
+    sessionId: string,
+    npcId: string,
+    speaker: 'player' | 'npc' | 'narrator',
+    content: string
+  ): Promise<void>;
+  getNpcMessages(
+    sessionId: string,
+    npcId: string,
+    options?: { limit?: number }
+  ): Promise<DbNpcMessage[]>;
+  appendStateChangeLog(params: {
+    sessionId: string;
+    turnIdx?: number | null;
+    patchCount: number;
+    modifiedPaths: string[];
+    agentTypes: string[];
+    metadata?: Record<string, unknown>;
+  }): Promise<StateChangeLogEntry>;
 }

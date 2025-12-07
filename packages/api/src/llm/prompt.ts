@@ -1,4 +1,4 @@
-import type { CharacterProfile, SettingProfile, SettingTag } from '@minimal-rpg/schemas';
+import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import type { BuildPromptOptions, BuildPromptResult, DbMessage } from '../types.js';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
@@ -24,7 +24,8 @@ export function assertPromptConfigValid(): void {
 }
 
 const BASE_RULES: string[] = SystemPromptSchema.parse(systemPromptJson).rules;
-const TAG_RULES_BY_TAG: Partial<Record<SettingTag, string[]>> = {
+/** Predefined tag-specific rules keyed by tag string */
+const TAG_RULES_BY_TAG: Record<string, string[]> = {
   romance: SystemPromptSchema.parse(systemPromptRomanceJson).rules,
   adventure: SystemPromptSchema.parse(systemPromptAdventureJson).rules,
   mystery: SystemPromptSchema.parse(systemPromptMysteryJson).rules,
@@ -42,19 +43,15 @@ function serializeCharacter(c: CharacterProfile) {
     'age' in c && typeof (c as { age?: unknown }).age === 'number'
       ? `Age: ${(c as { age?: number }).age}`
       : undefined,
-    `Summary: ${c.summary}`,
-    `Backstory: ${truncate(c.backstory, 1200)}`,
+    `Backstory: ${c.backstory}`,
     personalityLine,
     'physique' in c && (c as { physique?: unknown }).physique
       ? `Appearance: ${serializePhysique((c as { physique?: unknown }).physique)}`
       : undefined,
-    `Speaking Style: ${c.speakingStyle}`,
-    c.tags?.length ? `Tags: ${c.tags.join(', ')}` : undefined,
     // scent is optional; guard via in-operator for forward/backward compat
     'scent' in c && (c as { scent?: unknown }).scent
       ? serializeScent((c as { scent?: unknown }).scent)
       : undefined,
-    serializeStyle(c) || undefined,
     serializeDetails(c.details),
   ]
     .filter(Boolean)
@@ -73,12 +70,13 @@ function serializeSetting(s: SettingProfile) {
 }
 
 function buildTagSpecificRules(setting: SettingProfile): string[] {
-  const tags: SettingTag[] = setting.tags ?? [];
+  const tags: string[] = setting.tags ?? [];
   const seenRules = new Set<string>();
   const out: string[] = [];
 
   for (const tag of tags) {
-    const rules = TAG_RULES_BY_TAG[tag];
+    // Normalize tag to lowercase for matching predefined rules
+    const rules = TAG_RULES_BY_TAG[tag.toLowerCase()];
     if (!rules) continue;
     for (const rule of rules) {
       if (seenRules.has(rule)) continue;
@@ -92,19 +90,6 @@ function buildTagSpecificRules(setting: SettingProfile): string[] {
 
 function truncate(text: string, max: number) {
   return text.length > max ? text.slice(0, max - 1) + '…' : text;
-}
-
-function serializeStyle(c: CharacterProfile) {
-  const st = c.style;
-  if (!st) return '';
-  const pairs: string[] = [];
-  if (st.sentenceLength) pairs.push(`sentenceLength=${st.sentenceLength}`);
-  if (st.humor) pairs.push(`humor=${st.humor}`);
-  if (st.darkness) pairs.push(`darkness=${st.darkness}`);
-  if (st.pacing) pairs.push(`pacing=${st.pacing}`);
-  if (st.formality) pairs.push(`formality=${st.formality}`);
-  if (st.verbosity) pairs.push(`verbosity=${st.verbosity}`);
-  return pairs.length ? `Style Hints: ${pairs.join(', ')}` : '';
 }
 
 function serializePhysique(physique: unknown): string {

@@ -50,6 +50,8 @@ Where:
 ```ts
 import {
   cosineSimilarity,
+  computeTotalImportance,
+  computeScore,
   scoreNode,
   scoreAndRankNodes,
   filterByMinScore,
@@ -61,11 +63,18 @@ import {
 // Cosine similarity between embeddings
 const similarity = cosineSimilarity([1, 0, 0], [0.8, 0.6, 0]);
 
-// Score a single node
-const scored = scoreNode(node, 0.85, DEFAULT_SCORING_WEIGHTS);
+// Compute total importance (base + narrative)
+const totalImportance = computeTotalImportance(node);
+
+// Compute combined score from similarity and importance
+const score = computeScore(similarity, totalImportance, DEFAULT_SCORING_WEIGHTS);
+
+// Score a single node against a query embedding
+const queryEmbedding = [0.9, 0.8, 0.7 /* ... */];
+const scored = scoreNode(node, queryEmbedding, DEFAULT_SCORING_WEIGHTS);
 
 // Score and rank multiple nodes
-const ranked = scoreAndRankNodes(nodes, [0.9, 0.8, 0.7], { similarity: 0.7, importance: 0.3 });
+const ranked = scoreAndRankNodes(nodes, queryEmbedding, { similarity: 0.7, importance: 0.3 });
 
 // Filter low-scoring results
 const filtered = filterByMinScore(ranked, 0.3);
@@ -76,27 +85,26 @@ const filtered = filterByMinScore(ranked, 0.3);
 ```ts
 import {
   extractNodes,
+  createKnowledgeNode,
   diffNodes,
   DEFAULT_CHARACTER_PATHS,
   DEFAULT_SETTING_PATHS,
 } from '@minimal-rpg/retrieval';
 
 // Extract nodes from a character profile
-const extracted = extractNodes(characterProfile, DEFAULT_CHARACTER_PATHS);
+const { nodes: extracted, errors } = extractNodes(characterProfile, DEFAULT_CHARACTER_PATHS);
 
 // Create knowledge nodes from extracted data
 const nodes = extracted.map((e) =>
-  createKnowledgeNode({
-    path: e.path,
-    content: e.content,
-    baseImportance: e.importance,
+  createKnowledgeNode(e, {
+    id: crypto.randomUUID(),
     characterInstanceId: 'char-123',
   })
 );
 
 // Diff old vs new nodes to find changes
 const diff = diffNodes(oldNodes, newNodes);
-console.log(diff.created, diff.updated, diff.unchanged);
+console.log(diff.toCreate, diff.toUpdate, diff.unchanged, diff.toRemove);
 ```
 
 ### InMemoryRetrievalService
@@ -201,5 +209,6 @@ This package provides an in-memory implementation of the retrieval service. Key 
 
 - ✅ **Scoring utilities** - cosine similarity, scoring, decay, boost
 - ✅ **Node extraction** - extract nodes from profiles, diffing
+- ✅ **NodeStore** - in-memory node storage with indexing by instance ID
 - ✅ **InMemoryRetrievalService** - full in-memory implementation
 - ⏳ **PgVectorRetrievalService** - database-backed implementation (future)

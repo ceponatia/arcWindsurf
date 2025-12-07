@@ -18,6 +18,7 @@ import {
   type ConversationTurn,
   type GovernorRetrievalResult,
   type StateObject,
+  type NpcTranscriptLoader,
 } from './types.js';
 
 // ============================================================================
@@ -42,6 +43,9 @@ export interface ContextBuilderConfig {
 
   /** Whether to include conversation history in retrieval queries */
   includeHistoryInQuery?: boolean | undefined;
+
+  /** Loader for per-NPC transcripts (optional) */
+  npcTranscriptLoader?: NpcTranscriptLoader | undefined;
 }
 
 // ============================================================================
@@ -108,6 +112,7 @@ export class DefaultContextBuilder implements ContextBuilder {
   private readonly maxKnowledgeNodes: number;
   private readonly minKnowledgeScore: number;
   private readonly includeHistoryInQuery: boolean;
+  private readonly npcTranscriptLoader: NpcTranscriptLoader | undefined;
 
   constructor(config: ContextBuilderConfig) {
     this.stateManager = config.stateManager;
@@ -115,11 +120,18 @@ export class DefaultContextBuilder implements ContextBuilder {
     this.maxKnowledgeNodes = config.maxKnowledgeNodes ?? 10;
     this.minKnowledgeScore = config.minKnowledgeScore ?? 0.3;
     this.includeHistoryInQuery = config.includeHistoryInQuery ?? true;
+    this.npcTranscriptLoader = config.npcTranscriptLoader;
   }
 
   async build(input: ContextBuildInput): Promise<TurnContext> {
     // 1. Compute effective state
     const effectiveState = this.computeEffectiveState(input.baseline, input.overrides);
+
+    // 1b. Load NPC transcript history if a canonical NPC is targeted
+    const npcConversationHistory = await this.loadNpcTranscript(
+      input.intent.params?.npcId,
+      input.sessionId
+    );
 
     // 2. Extract state slices for agents
     const stateSlices = this.extractStateSlices(effectiveState);
@@ -140,9 +152,28 @@ export class DefaultContextBuilder implements ContextBuilder {
       stateSlices,
       knowledgeContext,
       conversationHistory: input.conversationHistory ?? [],
+      npcConversationHistory,
       playerInput: input.playerInput,
       turnNumber: input.turnNumber ?? 1,
     };
+  }
+
+  /**
+   * Load per-NPC transcript history when an npcId is present.
+   */
+  private async loadNpcTranscript(
+    npcId: string | undefined,
+    sessionId: string
+  ): Promise<ConversationTurn[] | undefined> {
+    if (!npcId || !this.npcTranscriptLoader) return undefined;
+
+    try {
+      return await this.npcTranscriptLoader({ sessionId, npcId, limit: 50 });
+    } catch (err) {
+      // Fail open; transcript is optional context
+      console.warn('Failed to load NPC transcript', err);
+      return undefined;
+    }
   }
 
   /**
@@ -162,9 +193,14 @@ export class DefaultContextBuilder implements ContextBuilder {
   private extractStateSlices(state: TurnStateContext): AgentStateSlices {
     const slices: AgentStateSlices = {};
 
-    // Extract character slice
+    // Extract character slice (primary PC)
     if (state.character) {
       slices.character = this.extractCharacterSlice(state.character);
+    }
+
+    // Extract NPC slice (active NPC for this turn)
+    if (state.npc) {
+      slices.npc = this.extractCharacterSlice(state.npc);
     }
 
     // Extract location slice
@@ -187,22 +223,62 @@ export class DefaultContextBuilder implements ContextBuilder {
 
   /**
    * Extract character slice from state.
+   * Passes through all CharacterProfile fields for agents to use as needed.
    */
   private extractCharacterSlice(character: StateObject): CharacterSlice {
     const slice: CharacterSlice = {
       instanceId: safeString(character['instanceId'], 'unknown'),
       name: safeString(character['name'], 'Unknown'),
-      summary: safeString(character['summary'], ''),
     };
 
+    // Basic fields
+    const age = safeNumberOptional(character['age']);
+    if (age !== undefined) slice.age = age;
+
+    const backstory = safeStringOptional(character['backstory']);
+    if (backstory !== undefined) slice.backstory = backstory;
+
+    // Goals (runtime state)
     const goals = safeStringArray(character['goals']);
-    if (goals !== undefined) {
-      slice.goals = goals;
+    if (goals !== undefined) slice.goals = goals;
+
+    // Personality - can be string or string[]
+    const personality = character['personality'];
+    if (typeof personality === 'string') {
+      slice.personality = personality;
+    } else if (Array.isArray(personality)) {
+      const traits = personality.filter((v): v is string => typeof v === 'string');
+      if (traits.length > 0) slice.personality = traits;
     }
 
-    const personalityTraits = safeStringArray(character['personalityTraits']);
-    if (personalityTraits !== undefined) {
-      slice.personalityTraits = personalityTraits;
+    // Physique - can be string or Physique object
+    const physique = character['physique'];
+    if (typeof physique === 'string' || isStateObject(physique)) {
+      slice.physique = physique as CharacterSlice['physique'];
+    }
+
+    // Legacy scent
+    const scent = character['scent'];
+    if (isStateObject(scent)) {
+      slice.scent = scent as CharacterSlice['scent'];
+    }
+
+    // Body map for per-region sensory data
+    const body = character['body'];
+    if (isStateObject(body)) {
+      slice.body = body as unknown as NonNullable<CharacterSlice['body']>;
+    }
+
+    // Structured personality map
+    const personalityMap = character['personalityMap'];
+    if (isStateObject(personalityMap)) {
+      slice.personalityMap = personalityMap as CharacterSlice['personalityMap'];
+    }
+
+    // Details array
+    const details = character['details'];
+    if (Array.isArray(details)) {
+      slice.details = details as CharacterSlice['details'];
     }
 
     return slice;

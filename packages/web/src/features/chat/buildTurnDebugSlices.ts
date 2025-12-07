@@ -152,7 +152,7 @@ export function buildTurnDebugSlices(metadata?: TurnMetadata): TurnDebugSlice[] 
   }
 
   if (metadata.agentOutputs?.length) {
-    metadata.agentOutputs.forEach((output, idx) => {
+    metadata.agentOutputs.forEach(({ agentType, output }, idx) => {
       const lines: string[] = [];
       if (output.narrative) {
         lines.push(output.narrative.trim());
@@ -169,7 +169,7 @@ export function buildTurnDebugSlices(metadata?: TurnMetadata): TurnDebugSlice[] 
 
       slices.push({
         id: `agent-output-${idx}`,
-        title: `Agent Output #${idx + 1}`,
+        title: `Agent Output #${idx + 1} (${agentType.toUpperCase()})`,
         variant: 'agent',
         body: { kind: 'text', lines: lines.length ? lines : ['No narrative returned.'] },
       });

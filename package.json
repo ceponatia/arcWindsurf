@@ -15,6 +15,7 @@
     "docker:up:detached": "docker compose up --build -d",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
+    "test:trait": "node scripts/test-trait.mjs",
     "typecheck": "turbo typecheck"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "markdownlint-cli": "^0.45.0",

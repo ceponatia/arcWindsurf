@@ -2,15 +2,18 @@ import { isAbortError } from '@minimal-rpg/utils';
 import type {
   CharacterSummary,
   SettingSummary,
+  ItemSummary,
   Message,
   Session,
   SessionSummary,
   RuntimeConfigResponse,
   TurnMetadata,
+  NpcInstanceSummary,
 } from '../../types.js';
 import type {
   CharacterProfile,
   SettingProfile,
+  ItemDefinition,
   TagResponse,
   CreateTagRequest,
   UpdateTagRequest,
@@ -160,6 +163,17 @@ export async function getSession(sessionId: string, signal?: AbortSignal): Promi
   );
 }
 
+export async function getSessionNpcs(
+  sessionId: string,
+  signal?: AbortSignal
+): Promise<NpcInstanceSummary[]> {
+  const res = await http<{ ok: boolean; npcs: NpcInstanceSummary[] }>(
+    `/sessions/${encodeURIComponent(sessionId)}/npcs`,
+    signal ? { signal } : undefined
+  );
+  return res.npcs ?? [];
+}
+
 export async function createSession(
   characterId: string,
   settingId: string,
@@ -197,7 +211,8 @@ export async function createSession(
 export async function sendMessage(
   sessionId: string,
   content: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: { npcId?: string | null }
 ): Promise<{ message: Message }> {
   if (USE_TURNS_API) {
     const result = await http<TurnEndpointResponse>(
@@ -205,7 +220,7 @@ export async function sendMessage(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: content }),
+        body: JSON.stringify({ input: content, npcId: options?.npcId ?? undefined }),
         timeoutMs: MESSAGE_TIMEOUT_MS,
         ...(signal && { signal }),
       }
@@ -353,7 +368,11 @@ export async function saveSetting(
 }
 
 export async function getTags(signal?: AbortSignal): Promise<TagResponse[]> {
-  return http<TagResponse[]>('/tags', signal ? { signal } : undefined);
+  const result = await http<{ tags: TagResponse[]; total: number }>(
+    '/tags',
+    signal ? { signal } : undefined
+  );
+  return result.tags;
 }
 
 export async function getTag(id: string, signal?: AbortSignal): Promise<TagResponse> {
@@ -387,6 +406,55 @@ export async function updateTag(
 
 export async function deleteTag(id: string, signal?: AbortSignal): Promise<void> {
   await http<void>(`/tags/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    ...(signal && { signal }),
+  });
+}
+
+// ============ ITEMS ============
+
+export async function getItems(
+  options?: { category?: string },
+  signal?: AbortSignal
+): Promise<ItemSummary[]> {
+  const params = new URLSearchParams();
+  if (options?.category) params.set('category', options.category);
+  const query = params.toString();
+  const path = query ? `/items?${query}` : '/items';
+  return http<ItemSummary[]>(path, signal ? { signal } : undefined);
+}
+
+export async function getItem(id: string, signal?: AbortSignal): Promise<ItemDefinition> {
+  return http<ItemDefinition>(`/items/${encodeURIComponent(id)}`, signal ? { signal } : undefined);
+}
+
+export async function saveItem(
+  definition: ItemDefinition,
+  signal?: AbortSignal
+): Promise<{ item: ItemSummary }> {
+  return http<{ item: ItemSummary }>('/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(definition),
+    ...(signal && { signal }),
+  });
+}
+
+export async function updateItem(
+  id: string,
+  definition: ItemDefinition,
+  signal?: AbortSignal
+): Promise<{ item: ItemSummary }> {
+  return http<{ item: ItemSummary }>(`/items/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(definition),
+    ...(signal && { signal }),
+  });
+}
+
+export async function deleteItem(id: string, signal?: AbortSignal): Promise<void> {
+  await http<void>(`/items/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     ...(signal && { signal }),
   });

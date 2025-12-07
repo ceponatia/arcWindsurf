@@ -2,15 +2,20 @@ import React, { useState } from 'react';
 import { ChatPanel } from '../features/chat-panel/index.js';
 import { CharacterBuilder } from '../features/character-builder/index.js';
 import { SettingBuilder } from '../features/setting-builder/index.js';
+import { ItemBuilder } from '../features/item-builder/index.js';
 import { TagBuilder } from '../features/tag-builder/TagBuilder.js';
+import { SessionBuilder } from '../features/session-builder/index.js';
 import {
   CharacterLibrary,
   SettingLibrary,
   TagLibrary,
   SessionLibrary,
+  ItemLibrary,
 } from '../features/library/index.js';
 import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
+import { useTags } from '../shared/hooks/useTags.js';
+import { useItems } from '../shared/hooks/useItems.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
 
 // Icons for sidebar navigation
@@ -63,6 +68,18 @@ const ChatIcon: React.FC<{ className?: string }> = ({ className }) => (
       d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97z"
       clipRule="evenodd"
     />
+  </svg>
+);
+
+const BoxIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+  >
+    <path d="M3.375 7.5L12 12.375 20.625 7.5 12 2.625 3.375 7.5z" />
+    <path d="M2.25 8.715v7.16c0 .621.332 1.194.87 1.505l8.25 4.75a1.75 1.75 0 001.76 0l8.25-4.75a1.75 1.75 0 00.87-1.505v-7.16L12 13.875 2.25 8.715z" />
   </svg>
 );
 
@@ -136,12 +153,30 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
+    navigateToItemLibrary,
     navigateToSessionLibrary,
+    navigateToSessionBuilder,
     navigateToHome,
     selectSession,
+    creating,
+    createError,
   } = controller;
 
-  // local helper flags for future UI tweaks (reserved)
+  const { loading: tagsLoading, error: tagsError, data: tagsData, retry: refreshTags } = useTags();
+  const {
+    loading: itemsLoading,
+    error: itemsError,
+    data: itemsData,
+    retry: refreshItems,
+  } = useItems();
+
+  const handleStartSession = async (characterId: string, settingId: string, tagIds: string[]) => {
+    const { createSession } = await import('../shared/api/client.js');
+    const newSession = await createSession(characterId, settingId, tagIds);
+    controller.setCurrentSessionId(newSession.id);
+    controller.refreshSessions();
+    window.location.hash = '#/chat';
+  };
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans">
@@ -185,6 +220,12 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               onClick={navigateToTagLibrary}
             />
             <NavButton
+              icon={<BoxIcon className="w-5 h-5" />}
+              label="Items"
+              active={viewMode === 'item-library' || viewMode === 'item-builder'}
+              onClick={navigateToItemLibrary}
+            />
+            <NavButton
               icon={<ChatIcon className="w-5 h-5" />}
               label="Sessions"
               active={viewMode === 'session-library' || viewMode === 'chat'}
@@ -220,9 +261,17 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                 settingsLoading={settingsLoading}
                 settingsError={settingsError}
                 settingsData={settingsData ?? []}
+                tagsLoading={tagsLoading}
+                tagsError={tagsError}
+                tagsData={tagsData ?? []}
+                itemsLoading={itemsLoading}
+                itemsError={itemsError}
+                itemsData={itemsData ?? []}
                 refreshCharacters={refreshCharacters}
                 refreshSettings={refreshSettings}
                 refreshSessions={refreshSessions}
+                refreshTags={refreshTags}
+                refreshItems={refreshItems}
                 handleDeleteSession={handleDeleteSession}
                 navigateToCharacterBuilder={navigateToCharacterBuilder}
                 navigateToSettingBuilder={navigateToSettingBuilder}
@@ -230,7 +279,15 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                 navigateToCharacterLibrary={navigateToCharacterLibrary}
                 navigateToSettingLibrary={navigateToSettingLibrary}
                 navigateToTagLibrary={navigateToTagLibrary}
+                navigateToItemLibrary={navigateToItemLibrary}
+                navigateToItemBuilder={controller.navigateToItemBuilder}
+                navigateToSessionBuilder={navigateToSessionBuilder}
+                navigateToSessionLibrary={navigateToSessionLibrary}
+                navigateToHome={navigateToHome}
                 selectSession={selectSession}
+                creating={creating}
+                createError={createError}
+                onStartSession={handleStartSession}
               />
             </div>
           </section>
@@ -265,10 +322,30 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
+    navigateToItemLibrary,
     navigateToSessionLibrary,
+    navigateToSessionBuilder,
     navigateToHome,
     selectSession,
+    creating,
+    createError,
   } = controller;
+
+  const { loading: tagsLoading, error: tagsError, data: tagsData, retry: refreshTags } = useTags();
+  const {
+    loading: itemsLoading,
+    error: itemsError,
+    data: itemsData,
+    retry: refreshItems,
+  } = useItems();
+
+  const handleStartSession = async (characterId: string, settingId: string, tagIds: string[]) => {
+    const { createSession } = await import('../shared/api/client.js');
+    const newSession = await createSession(characterId, settingId, tagIds);
+    controller.setCurrentSessionId(newSession.id);
+    controller.refreshSessions();
+    window.location.hash = '#/chat';
+  };
 
   const handleNavClose = () => setNavOpen(false);
 
@@ -340,6 +417,15 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               }}
             />
             <NavButton
+              icon={<BoxIcon className="w-5 h-5" />}
+              label="Items"
+              active={viewMode === 'item-library' || viewMode === 'item-builder'}
+              onClick={() => {
+                navigateToItemLibrary();
+                handleNavClose();
+              }}
+            />
+            <NavButton
               icon={<ChatIcon className="w-5 h-5" />}
               label="Sessions"
               active={viewMode === 'session-library' || viewMode === 'chat'}
@@ -367,9 +453,17 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
           settingsLoading={settingsLoading}
           settingsError={settingsError}
           settingsData={settingsData ?? []}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
+          tagsData={tagsData ?? []}
+          itemsLoading={itemsLoading}
+          itemsError={itemsError}
+          itemsData={itemsData ?? []}
           refreshCharacters={refreshCharacters}
           refreshSettings={refreshSettings}
           refreshSessions={refreshSessions}
+          refreshTags={refreshTags}
+          refreshItems={refreshItems}
           handleDeleteSession={handleDeleteSession}
           navigateToCharacterBuilder={navigateToCharacterBuilder}
           navigateToSettingBuilder={navigateToSettingBuilder}
@@ -377,7 +471,15 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
           navigateToCharacterLibrary={navigateToCharacterLibrary}
           navigateToSettingLibrary={navigateToSettingLibrary}
           navigateToTagLibrary={navigateToTagLibrary}
+          navigateToItemLibrary={navigateToItemLibrary}
+          navigateToItemBuilder={controller.navigateToItemBuilder}
+          navigateToSessionBuilder={navigateToSessionBuilder}
+          navigateToSessionLibrary={navigateToSessionLibrary}
+          navigateToHome={navigateToHome}
           selectSession={selectSession}
+          creating={creating}
+          createError={createError}
+          onStartSession={handleStartSession}
         />
       </main>
     </div>
@@ -397,9 +499,17 @@ interface MainContentProps {
   settingsLoading: boolean;
   settingsError: string | null;
   settingsData: NonNullable<AppControllerValue['settingsData']>;
+  tagsLoading: boolean;
+  tagsError: string | null;
+  tagsData: import('../types.js').TagSummary[];
+  itemsLoading: boolean;
+  itemsError: string | null;
+  itemsData: import('../types.js').ItemSummary[];
   refreshCharacters: () => void;
   refreshSettings: () => void;
   refreshSessions: () => void;
+  refreshTags: () => void;
+  refreshItems: () => void;
   handleDeleteSession: (id: string) => Promise<void>;
   navigateToCharacterBuilder: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
@@ -407,7 +517,15 @@ interface MainContentProps {
   navigateToCharacterLibrary: () => void;
   navigateToSettingLibrary: () => void;
   navigateToTagLibrary: () => void;
+  navigateToItemLibrary: () => void;
+  navigateToItemBuilder: (id?: string | null) => void;
+  navigateToSessionBuilder: () => void;
+  navigateToSessionLibrary: () => void;
+  navigateToHome: () => void;
   selectSession: (id: string) => void;
+  creating: boolean;
+  createError: string | null;
+  onStartSession: (characterId: string, settingId: string, tagIds: string[]) => Promise<void>;
 }
 
 const MainContent: React.FC<MainContentProps> = ({
@@ -423,9 +541,17 @@ const MainContent: React.FC<MainContentProps> = ({
   settingsLoading,
   settingsError,
   settingsData,
+  tagsLoading,
+  tagsError,
+  tagsData,
+  itemsLoading,
+  itemsError,
+  itemsData,
   refreshCharacters,
   refreshSettings,
   refreshSessions,
+  refreshTags,
+  refreshItems,
   handleDeleteSession,
   navigateToCharacterBuilder,
   navigateToSettingBuilder,
@@ -433,7 +559,14 @@ const MainContent: React.FC<MainContentProps> = ({
   navigateToCharacterLibrary,
   navigateToSettingLibrary,
   navigateToTagLibrary,
+  navigateToItemLibrary,
+  navigateToItemBuilder,
+  navigateToSessionBuilder,
+  navigateToSessionLibrary,
   selectSession,
+  creating,
+  createError,
+  onStartSession,
 }) => {
   switch (viewMode) {
     case 'home':
@@ -455,6 +588,12 @@ const MainContent: React.FC<MainContentProps> = ({
               className="px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
             >
               Create Setting
+            </button>
+            <button
+              onClick={() => navigateToItemBuilder(null)}
+              className="px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+            >
+              Create Item
             </button>
           </div>
         </div>
@@ -489,6 +628,18 @@ const MainContent: React.FC<MainContentProps> = ({
         <TagLibrary onEdit={navigateToTagBuilder} onCreateNew={() => navigateToTagBuilder(null)} />
       );
 
+    case 'item-library':
+      return (
+        <ItemLibrary
+          items={itemsData}
+          loading={itemsLoading}
+          error={itemsError}
+          onRefresh={refreshItems}
+          onEdit={navigateToItemBuilder}
+          onCreateNew={() => navigateToItemBuilder(null)}
+        />
+      );
+
     case 'session-library':
       return (
         <SessionLibrary
@@ -498,7 +649,30 @@ const MainContent: React.FC<MainContentProps> = ({
           onRefresh={refreshSessions}
           onSelect={selectSession}
           onDelete={(id) => void handleDeleteSession(id)}
+          onCreateNew={navigateToSessionBuilder}
           activeSessionId={currentSessionId}
+        />
+      );
+
+    case 'session-builder':
+      return (
+        <SessionBuilder
+          characters={charactersData}
+          charactersLoading={charactersLoading}
+          charactersError={charactersError}
+          onRefreshCharacters={refreshCharacters}
+          settings={settingsData}
+          settingsLoading={settingsLoading}
+          settingsError={settingsError}
+          onRefreshSettings={refreshSettings}
+          tags={tagsData}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
+          onRefreshTags={refreshTags}
+          creating={creating}
+          createError={createError}
+          onStartSession={onStartSession}
+          onCancel={navigateToSessionLibrary}
         />
       );
 
@@ -522,6 +696,9 @@ const MainContent: React.FC<MainContentProps> = ({
 
     case 'tag-builder':
       return <TagBuilder id={builderId} onCancel={navigateToTagLibrary} />;
+
+    case 'item-builder':
+      return <ItemBuilder id={builderId} onCancel={navigateToItemLibrary} />;
 
     case 'chat':
       return <ChatPanel sessionId={currentSessionId} />;

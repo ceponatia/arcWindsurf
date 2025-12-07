@@ -1,4 +1,11 @@
 import { type Operation } from 'fast-json-patch';
+import type {
+  BodyMap,
+  Physique,
+  PersonalityMap,
+  CharacterDetail,
+  Scent,
+} from '@minimal-rpg/schemas';
 
 // ============================================================================
 // Agent Input/Output Types
@@ -11,6 +18,9 @@ import { type Operation } from 'fast-json-patch';
 export interface AgentInput {
   /** Stable session identifier */
   sessionId: string;
+
+  /** Canonical NPC identifier for this turn, if applicable */
+  npcId?: string;
 
   /** Raw player text from the client */
   playerInput: string;
@@ -26,6 +36,9 @@ export interface AgentInput {
 
   /** Recent conversation history for context */
   conversationHistory?: ConversationTurn[];
+
+  /** NPC-specific transcript history when addressing a specific NPC */
+  npcConversationHistory?: ConversationTurn[];
 }
 
 /**
@@ -43,6 +56,37 @@ export interface ConversationTurn {
 }
 
 /**
+ * A segment of a compound intent input.
+ * Used when player input mixes speech, actions, thoughts, and sensory awareness.
+ *
+ * ASTERISK RULE: Text in *asterisks* is NEVER talk.
+ * - Text outside asterisks = talk (speech)
+ * - Text inside asterisks = action/thought/emote/sensory
+ *
+ * Example: "If I must *he jokes while noticing the smell of her perfume*"
+ */
+export interface IntentSegment {
+  /**
+   * Segment type:
+   * - 'talk': Direct speech (NOT in asterisks)
+   * - 'action': Physical actions (*sits down*)
+   * - 'thought': Internal thoughts (*wonders if...*)
+   * - 'emote': Emotional reactions (*blushes*)
+   * - 'sensory': Sensory awareness (*smells perfume*)
+   */
+  type: 'talk' | 'action' | 'thought' | 'emote' | 'sensory';
+
+  /** The extracted text content for this segment */
+  content: string;
+
+  /** For sensory segments, which sense: smell, touch, look, taste, or listen */
+  sensoryType?: 'smell' | 'touch' | 'look' | 'taste' | 'listen' | undefined;
+
+  /** For sensory segments, raw body part reference (e.g., "feet", "hair") */
+  bodyPart?: string | undefined;
+}
+
+/**
  * Intent detection output.
  */
 export interface AgentIntent {
@@ -57,6 +101,13 @@ export interface AgentIntent {
 
   /** Raw tokens/phrases that contributed to this classification */
   signals?: string[];
+
+  /**
+   * For compound inputs, ordered segments of different intent types.
+   * Example: action + speech + thought in one player turn.
+   * When present, agents should process all segments in order.
+   */
+  segments?: IntentSegment[] | undefined;
 }
 
 /**
@@ -71,6 +122,14 @@ export type IntentType =
   | 'take' // Player wants to pick up an item
   | 'give' // Player wants to give an item
   | 'attack' // Player wants to engage in combat
+  | 'examine' // Player wants to closely examine something
+  | 'wait' // Player wants to wait/pass time
+  | 'system' // Meta/system commands
+  | 'smell' // Player wants to smell/sniff something
+  | 'taste' // Player wants to taste something
+  | 'touch' // Player wants to touch/feel something
+  | 'listen' // Player wants to listen to sounds
+  | 'narrate' // Player describes actions/narrative (no dialogue expected)
   | 'custom'; // Free-form or unclassified intent
 
 /**
@@ -80,14 +139,36 @@ export interface IntentParams {
   /** Target entity (NPC name, item, location) */
   target?: string | undefined;
 
+  /** Canonical NPC identifier when addressing a specific NPC */
+  npcId?: string | undefined;
+
   /** Direction for movement */
   direction?: string | undefined;
 
   /** Item being used/given/taken */
   item?: string | undefined;
 
+  /**
+   * Body part reference for sensory intents (smell, touch, look).
+   * Raw player input - resolved to canonical BodyRegion by agents.
+   * Example: "hair", "feet", "hands", or undefined for general/unspecified.
+   */
+  bodyPart?: string | undefined;
+
   /** Action for custom intents */
   action?: string | undefined;
+
+  /**
+   * For 'narrate' intents, specifies the type of narrative input:
+   * - 'action': Physical action (*sits down*, *walks over*)
+   * - 'thought': Internal thought (*wonders if she noticed*, *thinks about leaving*)
+   * - 'emote': Emotional state/reaction (*blushes*, *feels nervous*)
+   * - 'narrative': Third-person storytelling ("The two spend time together")
+   *
+   * When narrateType is 'thought', the NPC can be narratively aware but
+   * the character should not explicitly react to or mention the thought.
+   */
+  narrateType?: 'action' | 'thought' | 'emote' | 'narrative' | undefined;
 
   /** Additional free-form parameters */
   extra?: Record<string, unknown>;
@@ -100,6 +181,9 @@ export interface IntentParams {
 export interface AgentStateSlices {
   /** Current character profile (effective state) */
   character?: CharacterSlice;
+
+  /** Active NPC profile for this turn (if any) */
+  npc?: CharacterSlice;
 
   /** Current setting profile (effective state) */
   setting?: SettingSlice;
@@ -115,8 +199,8 @@ export interface AgentStateSlices {
 }
 
 /**
- * Minimal character slice for agent consumption.
- * Agents should not need full profiles—retrieval provides salient details.
+ * Full character data for agent consumption.
+ * Contains all CharacterProfile fields for agents to use as needed.
  */
 export interface CharacterSlice {
   /** Character instance ID */
@@ -125,14 +209,32 @@ export interface CharacterSlice {
   /** Character name */
   name: string;
 
-  /** Short summary */
-  summary: string;
+  /** Character age */
+  age?: number | undefined;
 
-  /** Current goals (for narrative consistency) */
-  goals?: string[];
+  /** Full backstory for NPC dialogue generation */
+  backstory?: string | undefined;
 
-  /** Personality traits (for dialogue style) */
-  personalityTraits?: string[];
+  /** Current goals (runtime state, not in profile) */
+  goals?: string[] | undefined;
+
+  /** Personality - simple string or array of traits */
+  personality?: string | string[] | undefined;
+
+  /** Physique - appearance description or structured object */
+  physique?: string | Physique | undefined;
+
+  /** Legacy scent schema (use body map for per-region) */
+  scent?: Scent | undefined;
+
+  /** Body map with per-region sensory data (scent, texture, visual) */
+  body?: BodyMap | undefined;
+
+  /** Structured personality map for detailed NPC behavior */
+  personalityMap?: PersonalityMap | undefined;
+
+  /** Additional character details/facts */
+  details?: CharacterDetail[] | undefined;
 }
 
 /**
@@ -325,7 +427,7 @@ export interface Agent {
 /**
  * Known agent types in the system.
  */
-export type AgentType = 'map' | 'npc' | 'rules' | 'parser' | 'custom';
+export type AgentType = 'map' | 'npc' | 'rules' | 'parser' | 'sensory' | 'custom';
 
 // ============================================================================
 // Agent Configuration

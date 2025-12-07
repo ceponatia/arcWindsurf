@@ -10,7 +10,10 @@ This is the current, factual architecture based on the live code (not the archiv
   - `@minimal-rpg/db` — Postgres access layer + migrations (pgvector enabled).
   - `@minimal-rpg/schemas` — Zod schemas/types for characters and settings.
   - `@minimal-rpg/utils` / `@minimal-rpg/ui` — shared helpers/UI primitives.
-  - `@minimal-rpg/governor`, `@minimal-rpg/state-manager` — scaffolds only; not wired into runtime yet.
+  - `@minimal-rpg/governor` — turn orchestration (intent → agents → patches → response).
+  - `@minimal-rpg/state-manager` — baseline + overrides merging and JSON Patch application.
+  - `@minimal-rpg/agents` — domain agents (Map, NPC, Rules, Parser).
+  - `@minimal-rpg/retrieval` — in-memory knowledge node retrieval and scoring.
 
 ## Runtime Stack
 
@@ -18,21 +21,32 @@ This is the current, factual architecture based on the live code (not the archiv
   - Hono + `@hono/node-server`, CORS enabled for browser clients.
   - Loads prompt config (JSON files under `packages/api/src/llm/prompts`) and validates via schemas at startup.
   - Loads character/setting JSON from `data/` (or `DATA_DIR`) and keeps them in memory.
-  - Registers route groups: `/config`, `/admin/db`, `/characters`, `/settings`, `/sessions` (+ overrides/messages).
+  - Registers route groups: `/config`, `/admin/db`, `/characters`, `/settings`, `/sessions` (including overrides/messages) and `/sessions/:id/turns`.
+  - Governor-backed turns (`POST /sessions/:id/turns`) are the primary chat/runtime entry point. Each turn:
+    - Records the user input as a message.
+    - Loads per-session character and setting instances, overrides, and state slices.
+    - Builds a structured `TurnStateContext` and passes it into the governor.
+    - Persists state changes, overrides, NPC transcripts, and an audit log.
   - LLM calls go through OpenRouter only (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, optional temperature/top_p).
 
 - **Database**: PostgreSQL (pgvector extension enabled; vectors not yet used)
   - Tables (`packages/db/sql/001_init.sql`):
-    - `user_sessions` — session metadata (template ids).
+    - `user_sessions` — session metadata (template ids, labels, timestamps).
     - `messages` — ordered chat history (`idx` per session).
-    - `character_instances` / `setting_instances` — per-session snapshots with `template_snapshot` + mutable `profile_json`.
+    - `npc_messages` — per-NPC transcripts for each session.
+    - `character_instances` / `setting_instances` — per-session snapshots with `template_snapshot`, mutable `profile_json`, and `overrides_json`.
     - `character_profiles` / `setting_profiles` — dynamic templates stored in DB (filesystem templates stay on disk).
+    - `state_change_log` — per-turn audit entries capturing which agents ran and which slices changed.
+    - `session_location_state`, `session_inventory_state`, `session_time_state` — per-session slices for world position, inventory, and timeline.
+  - Multi-NPC support:
+    - `character_instances` includes `role` (`primary` or `npc`) and an optional `label` for display.
+    - `GET /sessions/:id/npcs` exposes these instances to the client; `POST /sessions/:id/npcs` adds more.
   - Accessed via `@minimal-rpg/db` (pg Pool wrapper) exported as a Prisma-like client shape for the API.
 
 - **Frontend**: `packages/web`
   - Entry `src/main.tsx` renders mobile or desktop shell; hash toggle for character builder (`#/character-builder`), `/dbview` path for admin DB viewer.
   - API base configured via `src/config.ts` (`VITE_API_BASE_URL`); dev proxy in `vite.config.ts`.
-  - Panels: characters, settings, sessions, chat, character builder, optional `/dbview`.
+  - Panels: characters, settings, sessions, chat (backed by `/sessions/:id/turns`), character builder, optional `/dbview`.
 
 - **Orchestration scripts**:
   - `pnpm core` / `pnpm core:quit` spin up/down API+Web, apply migrations, and health-check endpoints.
@@ -43,8 +57,15 @@ This is the current, factual architecture based on the live code (not the archiv
 - **Static content**: `data/characters/*.json`, `data/settings/*.json` validated at boot via `@minimal-rpg/schemas`.
 - **Dynamic templates**: POST `/characters` or `/settings` persists to DB (`character_profiles`, `setting_profiles`). Filesystem templates remain immutable via API.
 - **Session creation**: `POST /sessions` stores `user_sessions` row and clones baseline template JSON into `character_instances` and `setting_instances` (`template_snapshot`, `profile_json`).
-- **Overrides**: PUT `/sessions/:id/overrides/{character|setting}` deep-merges overrides into `profile_json` (arrays replace). Effective profile = instance `profile_json`.
-- **Messages**: `POST /sessions/:id/messages` appends user message, builds prompt, calls OpenRouter, stores assistant reply. Messages persisted in `messages` with incremental `idx`.
+- **Overrides**:
+  - PUT `/sessions/:id/overrides/{character|setting}` deep-merges overrides into `profile_json` (arrays replace) for simple flows.
+  - Governor-backed turns compute **minimal overrides** (diff vs baseline) via `@minimal-rpg/state-manager` and persist them into `overrides_json` alongside the updated `profile_json`.
+- **Messages & turns**:
+  - `POST /sessions/:id/messages` remains as a more direct “prompt builder + LLM” endpoint.
+  - `POST /sessions/:id/turns` is the canonical game loop endpoint:
+    - Appends user input to `messages`.
+    - Invokes the governor to handle intent detection, agent execution, and state patches.
+    - Persists assistant replies, state slices, overrides, NPC transcripts, and `state_change_log` entries.
 
 ### Free-text notes → JSONB profiles → knowledge nodes (planned)
 

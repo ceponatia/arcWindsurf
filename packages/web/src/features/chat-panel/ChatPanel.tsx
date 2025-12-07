@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
-import type { Message, Session } from '../../types.js';
+import type { Message, Session, TurnMetadata } from '../../types.js';
 import {
   getSession,
+  getSessionNpcs,
   sendMessage,
   updateMessage,
   deleteMessage,
   getRuntimeConfig,
 } from '../../shared/api/client.js';
 import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
-import { TurnDebugPanel } from '../chat/index.js';
+import { AgentDebugSidebar } from '../chat/components/index.js';
 import { GOVERNOR_DEV_MODE, USE_TURNS_API } from '../../config.js';
+import type { NpcInstanceSummary } from '../../types.js';
 
 export interface ChatPanelProps {
   sessionId?: string | null;
@@ -25,6 +27,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const [serverGovernorDevMode, setServerGovernorDevMode] = useState(false);
+  const [npcs, setNpcs] = useState<NpcInstanceSummary[]>([]);
+  const [selectedNpcId, setSelectedNpcId] = useState<string | null>(null);
+  const [npcError, setNpcError] = useState<string | null>(null);
+  const [npcsLoading, setNpcsLoading] = useState(false);
+  const [lastTurnMetadata, setLastTurnMetadata] = useState<TurnMetadata | null>(null);
   const ctrlRef = useRef<AbortController | null>(null);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
@@ -63,6 +70,45 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   }, [effectiveSessionId]);
 
   useEffect(() => {
+    setNpcs([]);
+    setSelectedNpcId(null);
+    setNpcError(null);
+    if (!effectiveSessionId) return;
+    const ctrl = new AbortController();
+    let active = true;
+
+    const loadNpcs = async () => {
+      setNpcsLoading(true);
+      try {
+        const results = await getSessionNpcs(effectiveSessionId, ctrl.signal);
+        if (!active) return;
+        setNpcs(results);
+        setNpcError(null);
+        setSelectedNpcId((prev) => {
+          if (!results.length) return null;
+          if (prev && results.some((npc) => npc.id === prev)) return prev;
+          const primary = results.find((npc) => npc.role === 'primary') ?? results[0];
+          return primary?.id ?? null;
+        });
+      } catch (err) {
+        if (!active || isAbortError(err)) return;
+        const msg = getErrorMessage(err, 'Failed to load NPCs');
+        setNpcError(msg);
+      } finally {
+        if (active) setNpcsLoading(false);
+      }
+    };
+
+    void loadNpcs();
+
+    return () => {
+      active = false;
+      ctrl.abort();
+      setNpcsLoading(false);
+    };
+  }, [effectiveSessionId]);
+
+  useEffect(() => {
     if (!GOVERNOR_DEV_MODE) return;
     const ctrl = new AbortController();
     let active = true;
@@ -85,20 +131,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
 
   const debugUiEnabled = GOVERNOR_DEV_MODE && serverGovernorDevMode && USE_TURNS_API;
 
-  const renderDebugAfterMessage = useCallback(
-    (message: ChatViewMessage, _idx: number) => {
-      void _idx;
-      if (!debugUiEnabled) return null;
-      const enriched = message as Message;
-      if (enriched.role !== 'assistant' || !enriched.turnMetadata) return null;
-      return (
-        <div className="mt-2">
-          <TurnDebugPanel metadata={enriched.turnMetadata} />
-        </div>
-      );
-    },
-    [debugUiEnabled]
-  );
+  // No longer render inline debug panels - we use the sidebar instead
+  const renderDebugAfterMessage = useCallback((_message: ChatViewMessage, _idx: number) => {
+    void _message;
+    void _idx;
+    return null;
+  }, []);
 
   const onSend = async () => {
     if (!effectiveSessionId) return;
@@ -113,9 +151,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : prev));
 
     try {
-      const res = await sendMessage(effectiveSessionId, text);
+      const res = await sendMessage(effectiveSessionId, text, undefined, {
+        npcId: selectedNpcId ?? null,
+      });
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
+
+      // Capture turn metadata for the debug sidebar
+      if (debugUiEnabled && assistant.turnMetadata) {
+        setLastTurnMetadata(assistant.turnMetadata);
+      }
     } catch (e) {
       setDraft(text);
       const msg = getErrorMessage(e, 'Failed to send message');
@@ -166,7 +211,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
 
     try {
       await deleteMessage(effectiveSessionId, dbIdx);
-      // Remove from local state only after successful delete
+      // Exit edit mode and remove from local state after successful delete
+      setEditingIdx(null);
+      setEditDraft('');
       setSession((prev) => {
         if (!prev) return prev;
         const newMessages = prev.messages.filter((m) =>
@@ -178,6 +225,70 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       const msg = getErrorMessage(e, 'Failed to delete message');
       setError(msg);
       refresh();
+    }
+  };
+
+  const onRedo = async (idx: number) => {
+    if (!effectiveSessionId || sending) return;
+
+    const messages = session?.messages ?? [];
+    const userMessage = messages[idx];
+    if (!userMessage || userMessage.role !== 'user') return;
+
+    const userContent = userMessage.content;
+    const userDbIdx = userMessage.idx ?? idx + 1;
+
+    // Find the assistant message that follows this user message (if any)
+    const nextMessage = messages[idx + 1];
+    const hasAssistantResponse = nextMessage && nextMessage.role === 'assistant';
+    const assistantDbIdx = hasAssistantResponse ? (nextMessage.idx ?? idx + 2) : null;
+
+    setSending(true);
+    setError(null);
+
+    try {
+      // Delete the assistant response first (if exists), then the user message
+      if (assistantDbIdx !== null) {
+        await deleteMessage(effectiveSessionId, assistantDbIdx);
+      }
+      await deleteMessage(effectiveSessionId, userDbIdx);
+
+      // Update local state to remove both messages
+      setSession((prev) => {
+        if (!prev) return prev;
+        const newMessages = prev.messages.filter((_, i) => {
+          if (i === idx) return false; // Remove user message
+          if (hasAssistantResponse && i === idx + 1) return false; // Remove assistant message
+          return true;
+        });
+        return { ...prev, messages: newMessages };
+      });
+
+      // Add back user message optimistically
+      const userMsg: Message = {
+        role: 'user',
+        content: userContent,
+        createdAt: new Date().toISOString(),
+      };
+      setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : prev));
+
+      // Re-send the message to get new response
+      const res = await sendMessage(effectiveSessionId, userContent, undefined, {
+        npcId: selectedNpcId ?? null,
+      });
+      const assistant = res.message;
+      setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
+
+      // Capture turn metadata for the debug sidebar
+      if (debugUiEnabled && assistant.turnMetadata) {
+        setLastTurnMetadata(assistant.turnMetadata);
+      }
+    } catch (e) {
+      const msg = getErrorMessage(e, 'Failed to regenerate response');
+      setError(msg);
+      refresh(); // Reload session to get consistent state
+    } finally {
+      setSending(false);
     }
   };
 
@@ -214,7 +325,33 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     );
   }
 
-  return (
+  const npcAccessory =
+    npcs.length > 0 || npcError || npcsLoading ? (
+      <div className="flex flex-col gap-1 text-xs text-slate-300">
+        <div className="px-1 text-[11px] uppercase tracking-wide text-slate-400">Target NPC</div>
+        <select
+          className="bg-slate-900 text-slate-200 ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 rounded-md px-2 py-1 text-sm"
+          value={selectedNpcId ?? ''}
+          onChange={(e) => {
+            const next = e.target.value.trim();
+            setSelectedNpcId(next === '' ? null : next);
+          }}
+          disabled={disabled || npcsLoading}
+        >
+          <option value="">Auto (primary/default)</option>
+          {npcs.map((npc) => {
+            const label = npc.label ?? npc.name ?? npc.role ?? 'NPC';
+            return <option key={npc.id} value={npc.id}>{`${label} - ${npc.role}`}</option>;
+          })}
+        </select>
+        {npcsLoading ? (
+          <div className="px-1 text-[11px] text-slate-400">Loading NPCs...</div>
+        ) : null}
+        {npcError ? <div className="px-1 text-[11px] text-red-400">{npcError}</div> : null}
+      </div>
+    ) : null;
+
+  const chatView = (
     <ChatView
       messages={session?.messages ?? []}
       loading={loading}
@@ -246,7 +383,25 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       onDeleteMessage={(idx) => {
         void onDeleteMessage(idx);
       }}
+      onRedo={(idx) => {
+        void onRedo(idx);
+      }}
       renderAfterMessage={renderDebugAfterMessage}
+      inputAccessory={npcAccessory}
     />
   );
+
+  // When debug mode is enabled, show the agent debug sidebar on the right
+  if (debugUiEnabled) {
+    return (
+      <div className="flex h-full">
+        <div className="flex-1 min-w-0">{chatView}</div>
+        <div className="w-80 flex-shrink-0 hidden lg:block">
+          <AgentDebugSidebar metadata={lastTurnMetadata} />
+        </div>
+      </div>
+    );
+  }
+
+  return chatView;
 };

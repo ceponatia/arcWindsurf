@@ -96,9 +96,10 @@ The State Manager **does not** talk to these tables directly. The intended usage
 Current implementation status:
 
 - The API’s override endpoints (`/sessions/:id/overrides/character` and `/sessions/:id/overrides/setting`) implement their own deep-merge logic in the API layer today; they do **not** currently call into `@minimal-rpg/state-manager`.
-- The Governor package depends on `@minimal-rpg/state-manager` conceptually, but no production path (API routes, web UI) invokes the Governor or State Manager yet.
+- The Governor package now uses `@minimal-rpg/state-manager` in its turn pipeline: `DefaultContextBuilder` calls `getEffectiveState` for recall, and the Governor’s state-update phase calls `applyPatches` to compute `TurnStateChanges`.
+- The `POST /sessions/:id/turns` route in `@minimal-rpg/api` constructs a `Governor` via `createGovernorForRequest` and passes a baseline `TurnStateContext` derived from DB-backed instance snapshots; it currently supplies an empty `overrides` object and **does not yet persist** `TurnResult.stateChanges` back to Postgres.
 
-As a result, the State Manager is presently an **isolated utility** that is ready to be adopted but not yet part of the main runtime loop.
+As a result, the State Manager is part of the Governor-driven runtime loop for turns, but it is not yet used by the legacy overrides endpoints, nor is its patch output wired through to durable per-session overrides in the database.
 
 ---
 
@@ -251,7 +252,6 @@ The following aspects are intentionally left as TBD because they are not impleme
   - Maximum expected size/complexity of state documents passed through the State Manager.
   - Whether we need more efficient cloning/diffing strategies than `JSON.parse(JSON.stringify(...))` and full-document overrides.
 
-This document should be updated once:
+This document will need another update once:
 
-- The Governor is wired into the API/session loop.
 - A first end-to-end integration between State Manager, DB, and (optionally) embeddings is implemented.

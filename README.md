@@ -1,55 +1,23 @@
 # Minimal RPG
 
-Monorepo for a minimal roleplaying chat app powered by advanced language models.
+Minimal roleplaying chat app powered by advanced language models.
 
-## Packages
+## 1. Quick Start (pnpm)
 
-| Package                      | Description                                                      | Status   |
-| ---------------------------- | ---------------------------------------------------------------- | -------- |
-| `@minimal-rpg/api`           | Hono-based HTTP API server                                       | Active   |
-| `@minimal-rpg/web`           | React 19 + Vite SPA client                                       | Active   |
-| `@minimal-rpg/db`            | PostgreSQL access layer + migrations (pgvector enabled)          | Active   |
-| `@minimal-rpg/schemas`       | Zod schemas/types for characters, settings, locations, inventory | Active   |
-| `@minimal-rpg/utils`         | Shared runtime utilities                                         | Active   |
-| `@minimal-rpg/ui`            | Shared UI primitives                                             | Active   |
-| `@minimal-rpg/governor`      | Turn orchestration layer                                         | Skeleton |
-| `@minimal-rpg/state-manager` | Baseline + overrides merging, JSON Patch                         | Active   |
-| `@minimal-rpg/agents`        | Specialized agents (Map, NPC, Rules, Parser)                     | Active   |
-| `@minimal-rpg/retrieval`     | Knowledge node retrieval and scoring                             | Active   |
-
-## What's New
-
-**December 2025:** Location and inventory slices now ship with `BuiltLocationSchema` and `InventoryStateSchema` from `@minimal-rpg/schemas`, so the StateManager can validate navigation graphs and lightweight item metadata before persisting session overrides.
-
-**December 2025:** Character profiles now support flexible `details` entries (label/value pairs with area, importance, and tags). The Character Builder exposes these through a new Profile Details section, and the prompt serializer now surfaces the saved facts directly while laying groundwork for future RAG scoring.
-
-**December 2025:** The web UI now renders through a single responsive `AppShell` (`packages/web/src/layouts/AppShell.tsx`). Desktop and mobile layouts share controller/state logic, and breakpoint detection lives in the new `packages/web/src/hooks/useIsMobile.ts` helper.
-
-**November 2025:** Mobile responsive UI added. The web app now detects mobile devices and displays a mobile-optimized interface with a collapsible sidebar drawer for session/character/setting management and a full-screen chat interface.
-
-**November 2025:** Session management now uses immutable templates plus per-session snapshots. Creating a session stores the template IDs alongside freshly cloned `character_instance` and `setting_instance` records. These snapshots capture the entire template JSON so templates can change (or be deleted) without breaking in-flight sessions. Override updates mutate the stored snapshot directly, keeping the template pristine.
-
-**November 2025:** OpenRouter is now the default and required LLM path. Configure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`. See `dev-docs/llm-recommendations.md` for model comparisons and `dev-docs/migration-guide.md` for migration instructions.
-**Utilities:** The `deleteSettingFromDb(settingId, baseUrl?)` helper now lives in `@minimal-rpg/utils` and calls `DELETE /settings/:id`. Filesystem-backed settings return 405 and cannot be deleted.
-
-**Builder UX:** Character and Setting builders now share a common `splitList` helper at `packages/web/src/features/shared/stringLists.ts` for parsing comma/newline-separated text fields (tags, themes, etc.).
-
-## Quick Start
-
-Prerequisites:
+### Prerequisites
 
 - Node.js 20+
 - pnpm (Corepack is fine)
-- **LLM Provider:** OpenRouter account with API key (see Configuration)
+- OpenRouter account + API key
 
-Install dependencies and build everything:
+### Install + build
 
 ```bash
 pnpm -w install
 pnpm -w build
 ```
 
-Start the API and Web apps in separate terminals:
+### Dev servers (manual)
 
 ```bash
 # Terminal A
@@ -59,75 +27,118 @@ pnpm -F @minimal-rpg/api dev
 pnpm -F @minimal-rpg/web dev
 ```
 
-- API will listen on `http://localhost:3001`
-- Web (Vite dev) will listen on `http://localhost:5173`
-- Configure your LLM provider (OpenRouter) in `packages/api/.env` before starting
-  - See the Configuration section below for details
+- API: <http://localhost:3001>
+- Web: <http://localhost:5173>
+- Web chat: when a session has NPC instances, use the selector beside the input to target an NPC; leave it on Auto to use the primary/default.
 
-### Unified startup/teardown
+Configure OpenRouter in `packages/api/.env` before starting (see `packages/api/.env.example`).
 
-Use the orchestration scripts to prep the database, start both servers, and verify health:
+## 2. Quickstart (Docker)
+
+### Run everything with Docker Compose
+
+From the repo root:
+
+```bash
+docker compose up --build
+```
+
+This starts Postgres, the API, and the Web dev server on the same ports as the pnpm workflow:
+
+- API: <http://localhost:3001>
+- Web: <http://localhost:5173>
+
+Stop containers with `Ctrl+C`, or in another shell:
+
+```bash
+docker compose down
+```
+
+### When do I need `--build`?
+
+The `Dockerfile.dev` bakes in the dependency install step, but the source code is mounted as a volume (`.:/app`), so most edits do not require a rebuild.
+
+Use **`--build` (or `docker compose build`) when**:
+
+- You change `package.json`, `pnpm-lock.yaml`, or `pnpm-workspace.yaml`
+- You add/remove packages or change their `package.json` files
+- You change Docker-related files (`Dockerfile.dev`, `docker-compose.yml`)
+
+You **do not need to rebuild** when:
+
+- Editing TypeScript/JS/TSX files in any package
+- Changing JSON data under `data/` (characters, settings, etc.)
+- Tweaking `.env` files used at runtime (restart containers instead)
+
+For non-build changes, a simple restart is enough:
+
+```bash
+docker compose down
+docker compose up
+```
+
+## 3. Unified Dev Workflow
+
+Use the core script to prep the DB, start both servers, and verify health in one step:
 
 ```bash
 pnpm core
 ```
 
-- Applies PostgreSQL migrations via `@minimal-rpg/db db:migrate` and checks for port conflicts.
-- Spawns the API/Web dev servers (detached) and polls `/health`, `/config`, `/characters`, and `/settings`.
-- Checks LLM configuration (`llm.provider`, `llm.model`, and `llm.configured`).
-- Adds a dev DB viewer at `GET /admin/db/overview` (see Web `/dbview`).
+What it does:
 
-Optional: force a fresh DB (drop + migrate + seed) before startup:
+- Runs PostgreSQL migrations via `@minimal-rpg/db db:migrate`
+- Starts API + Web dev servers (detached)
+- Polls `/health`, `/config`, `/characters`, `/settings`
+- Verifies LLM configuration (provider, model, configured flag)
+
+Force a clean DB (drop + migrate + seed):
 
 ```bash
 CORE_RESET_DB=true pnpm core
 ```
 
-This is destructive but handy if your local schema drifted or you want a clean slate.
-
-When finished, stop everything and free the ports:
+Stop all dev services and free ports 3001/5173:
 
 ```bash
 pnpm core:quit
 ```
 
-- Sends SIGTERM/SIGKILL to tracked services and forcibly clears any processes bound to ports 3001/5173.
-- If ports remain busy after automated cleanup, the script highlights them so you can investigate manually.
+### Trait testing CLI (LLM personality experiments)
 
-## Run Locally
-
-Install and build everything:
+Run a small, standalone CLI to probe how the LLM responds to specific personality phrasings. This does not touch the DB or main app:
 
 ```bash
-pnpm -w install
-pnpm -w build
+OPENROUTER_API_KEY=sk-... pnpm test:trait -- --trait "quiet, highly introverted, conflict-avoidant but deeply empathetic"
 ```
 
-Start API (dev):
+Flags:
 
-```bash
-pnpm -F @minimal-rpg/api dev
-```
+- `--trait` – personality phrase(s) to emphasize (optional; a default introverted profile is used if omitted)
+- `--scenario` – custom test scene text (optional)
+- `--model` – override `OPENROUTER_MODEL` (defaults to `deepseek/deepseek-chat`)
+- `--dimensions` – comma-separated Big Five scores (e.g. `"openness=0.8,extraversion=0.1"`)
 
-Start Web (dev):
+If `--dimensions` is provided, the script uses the same slider → temperament mapping as the NPC agent to derive a trait prompt (you can still override it with `--trait`). It then prints the trait, scenario, model, any parsed dimensions, and the raw model response so you can judge how clearly the personality comes through.
 
-```bash
-pnpm -F @minimal-rpg/web dev
-```
+---
 
-## Database Setup
+## 4. Database & Docker
 
-The app now uses PostgreSQL with the pgvector extension. Provide `DATABASE_URL` in `packages/api/.env` (see `.env.example`).
+### Database setup
 
-Create/update the database schema (idempotent):
+- Requires PostgreSQL with pgvector
+- Set `DATABASE_URL` in `packages/api/.env`
+
+Apply / update schema:
 
 ```bash
 pnpm -F @minimal-rpg/db db:migrate
 ```
 
-## Docker Compose (Dev)
+### Docker Compose (dev)
 
-Run API and Web together in containers:
+Run API + Web in containers:
 
 ```bash
 docker compose up --build
@@ -135,252 +146,142 @@ docker compose up --build
 
 Defaults:
 
-- API: `http://localhost:3001`
-- Web (Vite dev): `http://localhost:5173`
-- Frontend API base: `http://localhost:3001` (baked into Vite via `VITE_API_BASE_URL`).
-  - Keep this on `localhost` when running Compose locally so the browser can reach the API without relying on a LAN IP that may not resolve on the host OS.
-  - If you really need to hit a remote API host, change `VITE_API_BASE_URL` in `docker-compose.yml` and rebuild the `web` service.
+- API: <http://localhost:3001>
+- Web: <http://localhost:5173>
+- Frontend API base: `VITE_API_BASE_URL=http://localhost:3001`
 
-To change model/runtime params, set env vars (see `packages/api/.env.example`).
+Postgres data lives in the `pgdata` volume. Use `docker compose down -v` if you want a fresh DB.
 
-Notes:
+---
 
-- Postgres data persists in the named `pgdata` volume. Run `docker compose down -v` (or `pnpm docker:down && docker volume rm minimal-rpg_pgdata`) if you want a clean database.
-- The Postgres container is initialized with `POSTGRES_INITDB_ARGS=--locale=C` to avoid collation version mismatches when the base image updates. After pulling a new image, recreate the database volume once so the locale setting takes effect.
+## 5. API Overview
 
-## Health
+Base URL: <http://localhost:3001>
 
-## API Endpoints (Overview)
+- `GET /characters` – list characters (id, name, summary, tags)
+- `POST /characters` – create character (body: CharacterProfile JSON)
+- `GET /sessions` – list sessions (most recent first)
+- `POST /sessions` – create session `{ characterId, settingId }`
+- `GET /sessions/:id/npcs` – list per-session character/NPC instances with role/label/name
+- `POST /sessions/:id/npcs` – create an additional per-session NPC instance from a character template `{ templateId, role?, label? }` (role defaults to `npc` and only one `primary` is allowed)
+- `GET /sessions/:id` – session details + messages
+- `POST /sessions/:id/messages` – send message `{ content }`
+- `POST /sessions/:id/turns` – governor-backed turn endpoint `{ input, npcId? }` that persists state slices, resolves the active NPC, and writes per-NPC transcripts
+- `PUT /sessions/:id/overrides/character` – upsert character overrides
+- `PUT /sessions/:id/overrides/setting` – upsert setting overrides
+- `GET /health` – health and reachability
+- `GET /config` – effective runtime config (no secrets)
 
-Base URL defaults to `http://localhost:3001`.
+Characters and settings come from JSON files under `data/characters` and `data/settings`. The server validates these on startup and fails fast on invalid data.
 
-- `GET /characters` — List available characters (id, name, summary, tags)
-- `POST /characters` — Create a new dynamic character (body: CharacterProfile JSON). Persists to Postgres and is merged into subsequent `GET /characters` responses.
-- `GET /sessions` — List existing sessions (most recent first, includes character/setting names)
-- `POST /sessions` — Create a chat session
-  - Body: `{ "characterId": string, "settingId": string }`
-  - Returns: `{ id, characterTemplateId, characterInstanceId, settingTemplateId, settingInstanceId, createdAt }`
-- `GET /sessions/:id` — Get session details and messages
-- `POST /sessions/:id/messages` — Send a message
-  - Body: `{ "content": string }`
-  - Required: non-empty `id`, `name`, and `lore`.
-- `PUT /sessions/:id/overrides/character` — Upsert character overrides for the session
-  - Body: JSON object with partial fields to override (arrays replace)
-  - Audited: persists a baseline JSON snapshot of the template on first write
-- `PUT /sessions/:id/overrides/setting` — Upsert setting overrides for the session
-  - Body: JSON object with partial fields to override (arrays replace)
-  - Audited: persists a baseline JSON snapshot of the template on first write
-- `GET /health` — Health and reachability
-- `GET /config` — Effective runtime configuration (no secrets)
+Per-session overrides mutate the `character_instances` and `setting_instances` snapshots; arrays replace, objects merge deeply before persisting.
 
-Tip: Characters and settings are defined in JSON files under `data/characters` and `data/settings`. The server validates these on startup.
+---
 
-### Per-Session Overrides
+## 6. Schemas & Packages
 
-- Overrides mutate the per-session snapshot stored in `character_instances` and `setting_instances`. Each instance keeps the original template JSON in `template_snapshot` plus the current, fully merged profile in `profile_json`.
-- The chat prompt loads the template, applies any instance mutations, and passes the resulting effective profiles to the LLM. Arrays in overrides still replace the template arrays; objects merge deeply before being written back to the snapshot.
+### Schema package
 
-## Schemas
+- `@minimal-rpg/schemas` (in `packages/schemas`)
+- Zod schemas and types for characters, settings, locations, and inventory slices
 
-- Source package: `@minimal-rpg/schemas` (in `packages/schemas`)
-- Provides Zod schemas/types for characters, settings, locations, and inventory slices.
-- Example usage:
+Example:
 
 ```ts
 import {
   CharacterProfileSchema,
   InventoryStateSchema,
   BuiltLocationSchema,
-  type CharacterProfile,
-  type InventoryState,
-  type BuiltLocation,
 } from '@minimal-rpg/schemas';
 
-const character = CharacterProfileSchema.parse(obj.character) satisfies CharacterProfile;
-const location = BuiltLocationSchema.parse(obj.location) satisfies BuiltLocation;
-const inventory = InventoryStateSchema.parse(obj.inventory) satisfies InventoryState;
+const character = CharacterProfileSchema.parse(obj.character);
+const location = BuiltLocationSchema.parse(obj.location);
+const inventory = InventoryStateSchema.parse(obj.inventory);
 ```
 
-- Namespaced access is also available:
+Namespaced access (e.g. `Character.CharacterProfileSchema`) is also available. Prefer importing directly from `@minimal-rpg/schemas`.
 
-```ts
-import { Character, Setting, Location, Inventory } from '@minimal-rpg/schemas';
+### Monorepo packages
 
-// Character.* includes leaf schemas like AppearanceSchema, ScentSchema, etc.
-const ok = Character.CharacterProfileSchema.safeParse(obj);
-const exitsOk = Location.BuiltLocationSchema.safeParse(obj.location);
-const packOk = Inventory.InventoryStateSchema.safeParse(obj.inventory);
-```
+- `@minimal-rpg/api` – Hono-based HTTP API server
+- `@minimal-rpg/web` – React + Vite SPA client
+- `@minimal-rpg/db` – PostgreSQL access layer + migrations (pgvector)
+- `@minimal-rpg/schemas` – Zod schemas/types for core domain
+- `@minimal-rpg/utils` – shared runtime utilities
+- `@minimal-rpg/ui` – shared UI primitives
+- `@minimal-rpg/governor` – turn orchestration (intent → agents → patches → response)
+- `@minimal-rpg/state-manager` – baseline + overrides merging and JSON Patch
+- `@minimal-rpg/agents` – specialized agents (Map, NPC, Rules, Parser, Sensory)
+- `@minimal-rpg/retrieval` – in-memory knowledge node retrieval and scoring used by the governor
 
-The package continues to export flat named types (`CharacterProfile`, `SettingProfile`, `Appearance`, ...), so existing imports remain valid.
+For a deeper architecture walkthrough (DB schema, governor-backed turn flow, and how slices/overrides fit together), see [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md).
 
-Prefer importing directly from `@minimal-rpg/schemas`. The former `@minimal-rpg/shared` package has been removed.
+---
 
-Character profiles also expose optional `details` entries via `Character.CharacterDetailSchema`. Each detail stores a label/value pair plus an `area`, `importance` (0-1), optional `notes`, and `tags`. Until RAG-backed retrieval ships, every saved detail is serialized into the prompt so nothing is lost.
+## 7. Configuration
 
-Additional design & optimization details for character profile → prompt integration (including RAG roadmap) are documented in `dev-docs/character-profile-llm-integration.md`.
+### Core env vars
 
-### API Types & Mappers
+- `PORT` (default `3001`)
+- `DATABASE_URL` – Postgres connection string
 
-All route-facing API DTOs and LLM interfaces are centralized in `packages/api/src/types.ts`. Raw DB entities are never sent directly to clients.
+### LLM (OpenRouter)
 
-Mapper functions in `packages/api/src/mappers/` translate DB/session entities into stable DTOs:
+- `OPENROUTER_API_KEY` – from <https://openrouter.ai/keys>
+- `OPENROUTER_MODEL` – e.g. `deepseek/deepseek-chat-v3-0324`
 
-- `profileMappers.ts` → `CharacterSummary`, `SettingSummary`
-- `sessionMappers.ts` → `SessionListItem`
-- `messageMappers.ts` → `MessageResponse`
+### Frontend (Vite)
 
-The OpenRouter provider exposes a normalized `LlmResponse` shape via `generateWithOpenRouter`, with provider-specific metadata namespaced (`openrouterMeta`). Adding a future provider only requires implementing the `LlmProvider` interface and returning `LlmResponse`.
+- `VITE_API_BASE_URL` (default `http://localhost:3001`)
+- `VITE_API_MESSAGE_TIMEOUT_MS` (default `60000`)
+- `VITE_STRICT_MODE` (default `false`)
 
-Overrides logic uses typed `OverridesObject` and `OverridesAudit` to keep merging/auditing explicit.
+Additional details live in `dev-docs/` (LLM recommendations, migration guide, web architecture).
 
-- DB row helper types such as `CharacterTemplateRow`, `SettingTemplateRow`, and the per-session instance rows also live in `packages/api/src/types.ts` so routes can hydrate Prisma records without ad-hoc structural casts.
+---
 
-## Configuration
+## 8. Dev Tools & Troubleshooting
 
-The API reads environment variables with sensible defaults for local development.
+### Dev DB viewer
 
-### Core Settings
+- Enable server flag `ADMIN_DB_TOOLS=true` (API) and `VITE_DB_TOOLS=true` (Web)
+- Visit <http://localhost:5173/dbview> for table metadata + recent rows
 
-- `PORT` (default: `3001`)
-- `DATABASE_URL` (example: `postgres://postgres:postgres@localhost:5432/minirpg`)
+### Common issues
 
-### LLM Configuration
+- Messages endpoint 5xx
+  - Check `GET /health` – `llm.configured` must be `true`
+  - Ensure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` are set in `packages/api/.env`
+- DB migration errors
+  - Verify `DATABASE_URL` and Postgres reachability
+  - Re-run: `pnpm -F @minimal-rpg/db db:migrate`
+- `pnpm core` "hangs"
+  - It keeps dev servers running by design
+  - If the API exits, start it alone (`pnpm -F @minimal-rpg/api dev`) to see validation errors
 
-- `OPENROUTER_API_KEY` — Your OpenRouter API key from <https://openrouter.ai/keys>
-- `OPENROUTER_MODEL` — Model to use (e.g., `deepseek/deepseek-chat-v3-0324`)
-- See `dev-docs/llm-recommendations.md` for detailed model comparisons and recommendations.
+Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data changes to catch issues early.
 
-### Prompts
+---
 
-- System prompts are now managed as JSON files under `packages/api/src/llm/prompts/`:
-  - `system-prompt.json` — core narration rules
-  - `safety-rules.json` — safety and boundaries
-  - `safety-mode.json` — safety-mode directive and sensitive note
-- The API loads these at startup via ESM JSON imports; edit them to adjust guide behavior without code changes.
+## 9. Recent Highlights
 
-### Dev Database Viewer
-
-- Visit `http://localhost:5173/dbview` to see a live overview of key tables, their fields, row counts, and the 50 most recent rows per table.
-- Backed by `GET /admin/db/overview` which introspects Postgres metadata and queries sample rows.
-- For development use only; do not expose this endpoint in production.
-
-#### Row Deletion (Dev-only)
-
-- Enable server-side admin tools by setting `ADMIN_DB_TOOLS=true` in `packages/api/.env`.
-- Enable the UI controls by setting `VITE_DB_TOOLS=true` for the web app.
-- When both are enabled, `/dbview` shows a Delete action per row. Clicking Delete calls `DELETE /admin/db/:model/:id` and refreshes the table.
-- The API only supports deletion for models with a single `id` primary key and returns `204` on success.
-
-### Generation Parameters
-
-- `CONTEXT_WINDOW` (default: `12`) — how many recent turns to include
-- `TEMPERATURE` (default: `0.7`) — generation temperature (0.0-1.0)
-- `TOP_P` (default: `0.9`) — nucleus sampling parameter
-- Frontend message timeout: set `VITE_API_MESSAGE_TIMEOUT_MS` (default `60000`) to allow longer-running model responses. The previous 10s default could abort messages mid-generation.
-
-### Governor Debug Mode
-
-- `GOVERNOR_DEV_MODE` (default: `false`) — when `true`, the API enables LLM-based intent detector debugging. Turn metadata includes the raw classifier payloads so you can inspect the detected intent, prompt, and parsed JSON.
-- `VITE_GOVERNOR_DEV_MODE` (default: `false`) — when `true`, the web client listens for the governor metadata and renders debug bubbles under each assistant turn. This flag only takes effect when the backend flag above is also `true` and the web build is targeting the governor-powered turns API (`VITE_USE_TURNS_API=true`).
-
-With both flags enabled, every assistant reply shows a stack of diagnostics (intent summary, prompt snapshot, raw detector payload, and agent outputs) beneath the narrative. Disable either flag (and refresh) to return to the standard chat timeline with no extra network or render cost.
-
-### Frontend (Vite) Settings
-
-- `VITE_API_BASE_URL` (default: `http://localhost:3001`)
-- `VITE_API_MESSAGE_TIMEOUT_MS` (default: `60000`)
-- `VITE_STRICT_MODE` (default: `false`) — when `true`, renders `React.StrictMode` in dev which double-invokes effects. Leave `false` to avoid duplicate fetches/cancellations during development.
-
-Example env file: `packages/api/.env.example`
-
-See `dev-docs/web-architecture.md` for the web package structure, routing, components, hooks, API client, and data flow.
-
-### Web Feature Modules
-
-- The web package now follows a feature-first layout under `packages/web/src/features/*`.
-- Each feature folder exports its public surface via an `index.ts` barrel so top-level apps can import from `features/<name>` instead of deep relative paths.
-- Shared HTTP helpers live under `packages/web/src/shared/` (`shared/api`, `shared/hooks`, etc.) while UI/platform hooks (for example `useIsMobile`) live under `packages/web/src/hooks`.
-- A single responsive `AppShell` lives in `packages/web/src/layouts/AppShell.tsx`, keeping `src/App.tsx` minimal.
-
-### Frontend Styling (Tailwind)
-
-- The web UI uses Tailwind CSS with dark theme defaults and the Typography plugin.
-- Edit theme tokens and variants in `packages/web/tailwind.config.js`.
-- Global styles live in `packages/web/src/styles/app.css` and use `@tailwind base/components/utilities` plus a small custom scrollbar.
-- Class names are embedded directly in components. No CSS Modules are used.
-- Shared UI components under `packages/ui/src` are included in the Tailwind content paths so any new classes added there (like session action buttons) stay compiled.
-
-### Character Builder UI
-
-- The builder is split into focused sections (Basics, Personality, Appearance, Details, Scent, Goals & Style) under `features/character-builder/components/*` for easier maintenance.
-- A persistent preview sidebar now shows the character summary and drive-by details while exposing a single Save action and status messaging.
-- Structured appearance inputs still map directly to `AppearanceSchema`, but you can also paste free-text appearance notes. Scent selects remain constrained to the schema enums and `perfume` stays capped at 40 chars.
-- Client-side validation runs `CharacterProfileSchema.safeParse` before calling the API; invalid fields highlight inline via the new hook-driven form state (`useCharacterBuilderForm`).
-
-### LLM Migration Notes
-
-Legacy local Ollama support was removed; OpenRouter is now the sole provider. See:
-
-- **Model Recommendations:** `dev-docs/llm-recommendations.md`
-- **Migration Guide:** `dev-docs/migration-guide.md`
-
-The OpenRouter adapter (`packages/api/src/llm/openrouter.ts`) is implemented and ready to use.
-
-## Schema Change Checklist
-
-When you add or change Zod schemas (for characters, settings, or prompt config), keep these pieces in sync:
-
-- `packages/schemas/src` — Define/modify the Zod schema and ensure it is exported from the relevant barrel files (for characters: `character/*.ts` and `character/index.ts`, then `src/index.ts`).
-- `data/characters/*.json`, `data/settings/*.json` — Update example JSON and any real data to satisfy the new schema requirements (run `node ./scripts/validate-data.js` to confirm).
-- `packages/api/src/types.ts` — If API DTOs or `BuildPromptOptions` need new fields, add them here so routes and LLM code stay type-safe.
-- `packages/api/src/llm/prompt.ts` — Update `serializeCharacter`, `serializeSetting`, and related helpers to surface new schema fields in the prompt (for example, new appearance or style facets).
-- `packages/api/src/data/loader.ts` — Ensure the loader validates and surfaces any new schema-driven fields from JSON/DB into in-memory data.
-- `packages/web/src` — Adjust UI components (e.g., Character Builder, Settings UI) and client-side validation to match the updated schemas.
-- `dev-docs/*.md` — Update any docs that describe schemas or prompt wiring (notably `dev-docs/api-zod.md` and `dev-docs/character-profile-llm-integration.md`).
-
-After making schema changes, run `pnpm check` and `node ./scripts/validate-data.js` to catch type or data validation issues early.
-
-## Troubleshooting
-
-### LLM Provider Issues
-
-- **OpenRouter errors:**
-  - Check your API key is valid at <https://openrouter.ai/keys>
-  - Ensure you have credits at <https://openrouter.ai/credits>
-  - Verify the model name is correct: <https://openrouter.ai/models>
-- **"Missing LLM configuration" error:**
-  - Set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` in `packages/api/.env`.
-
-### Other Issues
-
-- **Messages endpoint returns 5xx when sending chat:**
-  - Check `GET /health` — `llm.configured` must be `true` and `llm.model` should match your `.env`.
-  - Ensure `packages/api/.env` defines `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` (server now always loads this file).
-  - The web UI shows detailed errors from the API; if you see an OpenRouter error (e.g., auth/credit/model access), fix your key or model.
-  - To see server logs in real time, run the API in a foreground terminal:
-
-    ```bash
-    pnpm -F @minimal-rpg/api dev
-    ```
-
-  - Common causes: invalid model name, insufficient credits, network egress blocked.
-
-- **Database migration errors:**
-  - Ensure `DATABASE_URL` is set (see `packages/api/.env.example`) and that your Postgres instance is reachable.
-  - Run: `pnpm -F @minimal-rpg/db db:migrate`
-- **Markdown formatting checks failing:**
-  - Run `pnpm run lint:md` to see markdown issues and fix indentation/tabs.
-- **Characters or settings show "Loading…" or many canceled requests:**
-  - In dev, React Strict Mode double-invokes effects, often aborting the first fetch. We disable Strict Mode by default via `VITE_STRICT_MODE=false`.
-  - If you prefer Strict Mode, set `VITE_STRICT_MODE=true`; the duplicate (canceled) requests are expected during development but harmless.
-  - Confirm the API base URL and check the browser console for any real network errors.
-- **`pnpm core` appears to hang, and the Web UI shows no characters/settings:**
-  - `pnpm core` intentionally keeps the API and Web dev servers running; it will not exit on success.
-  - If the API exits immediately, the Web dev server will still run and the UI will have no data. Start the API alone to see validation errors:
-
-    ```bash
-    pnpm -F @minimal-rpg/api dev
-    ```
-
-  - The API fails fast when data JSON violates the Zod schemas (e.g., `appearance.build` must be one of `slight|average|athletic|heavy`, `style.formality` must be `casual|neutral|formal`). Fix the offending file and restart.
+- Location and inventory slices validate via `BuiltLocationSchema` and `InventoryStateSchema` before persisting overrides.
+- Character profiles support flexible `details` entries (label/value with area, importance, tags) which feed directly into prompts.
+- Character profiles now support an optional `body` map with per-region sensory data (scent, texture, visual). Body regions include: head, face, hair, neck, shoulders, torso, chest, back, arms, hands, waist, hips, legs, feet.
+- Body region aliases include equipment references (e.g., "shoes" → feet, "gloves" → hands, "hat" → head) so natural language queries about clothing resolve to the correct body region.
+- Equipment slot mapping (body region → clothing slots) is handled by `@minimal-rpg/governor`'s `resolveBodyWithEquipment()`, keeping character schemas decoupled from item schemas.
+- Character builder (web) uses the BodyMap schema exclusively for sensory data. Legacy flat scent fields have been removed from the form—use Body Sensory Data entries for per-region scent, texture, and visual descriptions. Input like "strong musk, lightly floral" is parsed into structured data with intensity extraction.
+- Character builder appearance section now uses a dynamic entry-based UI for per-region physical attributes (region → attribute → value), matching the body sensory data pattern. Appearance regions include: overall, hair, eyes, skin, face, arms, legs, feet. Attributes vary by region (e.g., hair has color, style, length; eyes has color, shape, expression).
+- `speakingStyle` and `style` (speech style hints) have been removed from `CharacterProfileSchema` and the character builder. Dialogue style is now inferred from personality traits and details rather than explicit style parameters.
+- Character profiles now support an optional `personalityMap` for structured NPC personality data. The `PersonalityMapSchema` includes Big Five dimension scores, emotional baseline (Plutchik-based emotions), core values with priority ranking, fears with triggers and coping mechanisms, attachment style, social patterns (stranger default, warmth rate, conflict style), speech style (vocabulary, formality, humor type), and stress behavior (fight/flight/freeze/fawn responses). Trait prompts can be injected into NPC system prompts using the `TRAIT_PROMPTS` registry—each trait ID maps to a short prompt fragment (~10-25 words). Trait conflict detection (`validateTraitSet()`) catches polar opposites, logical contradictions, and behavioral clashes at character creation time.
+- Sensory intent detection extracts `bodyPart` from player input (e.g., "I smell her hair"). The `SensoryAgent` resolves raw body part references to canonical regions using `resolveBodyRegion()` from `@minimal-rpg/schemas`.
+- Body region aliases enable natural language parsing (e.g., "locks" → "hair", "belly" → "torso"). When unspecified, sensory queries default to "torso" for general body scent.
+- Web UI renders through a single responsive `AppShell` with mobile-optimized layout and shared controller/state logic.
+- Session management uses immutable templates plus per-session snapshots so template edits never break in-flight sessions.
+- OpenRouter is the sole LLM provider; legacy local Ollama support has been removed.
+- Per-NPC transcripts persist in `npc_messages`; API sessions client now exports helpers to append and read NPC dialogue for a session (use the character instance id as the NPC id).
+- Governor-backed turns now write per-NPC transcripts automatically, honor an optional `npcId` target, and persist overrides plus a `state_change_log` audit entry for applied patches and agents involved.
+- Per-session `location`, `inventory`, and `time` slices are now stored in dedicated tables (`session_location_state`, `session_inventory_state`, `session_time_state`) and are loaded/persisted by the governor-backed `/sessions/:id/turns` route.
+- Character and setting instances now store `overrides_json` alongside the mutable `profile_json`, and the turn route persists governor-produced overrides for future turns. Character instances also carry `role` + optional `label` so sessions can distinguish the primary PC from supporting NPCs.
+- **Enhanced Tags System (MVP)**: Tags now support categories (style, mechanic, content, world, behavior, trigger, meta), activation modes (always/conditional), target types (session, character, npc, player, location, setting), and trigger conditions (intent, keyword, emotion, relationship, time, location, state). The tag builder UI includes sections for basics, activation, triggers (for conditional tags), and a live preview sidebar. Tags are stored in `prompt_tags` with session bindings in `session_tag_bindings`. Run `pnpm -F @minimal-rpg/db db:seed` to populate 13 built-in tags across style, mechanic, content, and world categories.
+- **Compound Intent Detection**: The intent detector segments player input using the **asterisk rule**: text outside `*asterisks*` is speech (`talk`), text inside asterisks is classified as `action`, `thought`, `emote`, or `sensory`. Segment types are now first-class (no more `narrate` with subtypes). For example, `If I must *he jokes while noticing her scent*` becomes: talk("If I must") → action("he jokes") → sensory("noticing her scent", smell). The governor routes sensory segments to the SensoryAgent for body region lookups.

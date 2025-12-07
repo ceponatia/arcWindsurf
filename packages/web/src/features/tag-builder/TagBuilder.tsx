@@ -1,176 +1,160 @@
-import React, { useEffect, useState } from 'react';
-import { getTag, createTag, updateTag } from '../../shared/api/client.js';
-import type { CreateTagRequest } from '@minimal-rpg/schemas';
+import { useCallback, useEffect, useState } from 'react';
+
+import { persistTag, removeTag, updateTag } from './api.js';
+import {
+  ActivationSection,
+  BasicsSection,
+  PreviewSidebar,
+  TriggersSection,
+} from './components/index.js';
+import {
+  buildCreateRequest,
+  buildUpdateRequest,
+  useTagBuilderForm,
+} from './hooks/useTagBuilderForm.js';
+import type { TriggerFormEntry } from './types.js';
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const noop = () => {};
 
 interface TagBuilderProps {
   id?: string | null;
   onCancel?: () => void;
+  onSaved?: (id: string) => void;
 }
 
-export const TagBuilder: React.FC<TagBuilderProps> = ({ id, onCancel }) => {
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+export const TagBuilder: React.FC<TagBuilderProps> = ({ id, onCancel, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [name, setName] = useState('');
-  const [shortDescription, setShortDescription] = useState('');
-  const [promptText, setPromptText] = useState('');
+  const {
+    formState,
+    loading,
+    loadError,
+    updateField,
+    addTriggerEntry,
+    removeTriggerEntry,
+    updateTriggerEntry,
+    reset,
+  } = useTagBuilderForm(id ?? null);
 
+  // Reset form when id changes to null (new tag mode)
   useEffect(() => {
-    if (id) {
-      setLoading(true);
-      setLoadError(null);
-      getTag(id)
-        .then((tag) => {
-          setName(tag.name);
-          setShortDescription(tag.shortDescription ?? '');
-          setPromptText(tag.promptText);
-        })
-        .catch((err) => {
-          setLoadError(err instanceof Error ? err.message : 'Failed to load tag');
-        })
-        .finally(() => setLoading(false));
-    } else {
-      // Reset form for new tag
-      setName('');
-      setShortDescription('');
-      setPromptText('');
+    if (!id) {
+      reset();
     }
-  }, [id]);
+  }, [id, reset]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
 
-    const data: CreateTagRequest = {
-      name: name.trim(),
-      shortDescription: shortDescription.trim() || undefined,
-      promptText: promptText.trim(),
-    };
-
-    // Basic validation
-    if (!data.name) {
-      setError('Name is required');
-      setSaving(false);
-      return;
-    }
-    if (!data.promptText) {
-      setError('Prompt text is required');
-      setSaving(false);
-      return;
-    }
-
     try {
       if (id) {
-        await updateTag(id, data);
+        const request = buildUpdateRequest(formState);
+        await updateTag(id, request);
+        setSuccess('Tag saved successfully');
+        onSaved?.(id);
       } else {
-        await createTag(data);
+        const request = buildCreateRequest(formState);
+        const result = await persistTag(request);
+        setSuccess('Tag created successfully');
+        onSaved?.(result.id);
       }
-      setSuccess('Tag saved.');
-      if (onCancel) onCancel();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save tag');
     } finally {
       setSaving(false);
     }
-  };
+  }, [id, formState, onSaved]);
 
+  const handleDelete = useCallback(async () => {
+    if (!id) return;
+    setError(null);
+
+    try {
+      await removeTag(id);
+      onCancel?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete tag');
+    }
+  }, [id, onCancel]);
+
+  const handleUpdateTrigger = useCallback(
+    (index: number, field: keyof TriggerFormEntry, value: string | boolean) => {
+      updateTriggerEntry(index, field, value);
+    },
+    [updateTriggerEntry]
+  );
+
+  const isEditing = Boolean(id);
   const disabled = saving || loading;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-200">{id ? 'Edit Tag' : 'New Tag'}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-white">{isEditing ? 'Edit Tag' : 'New Tag'}</h2>
+        {isEditing && formState.isBuiltIn && (
+          <span className="px-2 py-1 text-xs bg-amber-600/20 text-amber-300 rounded">
+            Built-in (read-only)
+          </span>
+        )}
+      </div>
 
-      {loading && <p className="text-sm text-slate-400">Loading tag…</p>}
+      {loading && <p className="text-sm text-gray-400">Loading tag…</p>}
       {loadError && !loading && <p className="text-sm text-amber-300">{loadError}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left: Form */}
-        <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
-          <div className="border border-slate-800 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Tag Details</div>
-            <div className="p-4 grid grid-cols-1 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Name *</span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  disabled={disabled}
-                  required
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Short Description</span>
-                <input
-                  type="text"
-                  value={shortDescription}
-                  onChange={(e) => setShortDescription(e.target.value)}
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  disabled={disabled}
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Prompt Text *</span>
-                <textarea
-                  value={promptText}
-                  onChange={(e) => setPromptText(e.target.value)}
-                  className="min-h-[200px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  disabled={disabled}
-                  required
-                />
-              </label>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column: Form sections */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+            <BasicsSection formState={formState} updateField={updateField} />
           </div>
-        </div>
 
-        {/* Right: Preview */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-0">
-            <div className="border border-slate-800 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Preview</div>
-              <div className="p-4 space-y-2">
-                <div className="text-lg font-semibold">{name || 'Unnamed Tag'}</div>
-                {shortDescription && (
-                  <div className="text-sm text-slate-400">{shortDescription}</div>
-                )}
-                <div className="text-sm text-slate-300 whitespace-pre-wrap">
-                  {promptText || 'No prompt text yet.'}
-                </div>
-              </div>
+          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+            <ActivationSection formState={formState} updateField={updateField} />
+          </div>
+
+          {formState.activationMode === 'conditional' && (
+            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+              <TriggersSection
+                triggers={formState.triggers}
+                onAdd={addTriggerEntry}
+                onRemove={removeTriggerEntry}
+                onUpdate={handleUpdateTrigger}
+              />
             </div>
-            <div className="mt-4 space-y-2">
+          )}
+
+          {/* Delete button for existing tags */}
+          {isEditing && !formState.isBuiltIn && (
+            <div className="pt-4 border-t border-gray-700">
               <button
                 type="button"
-                onClick={() => void handleSave()}
-                className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
-                  disabled
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                }`}
+                onClick={() => void handleDelete()}
                 disabled={disabled}
+                className="px-4 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 hover:text-red-300 rounded border border-red-600/50 transition-colors disabled:opacity-50"
               >
-                {saving ? 'Saving…' : 'Save Tag'}
+                Delete Tag
               </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
-                disabled={disabled}
-              >
-                Cancel
-              </button>
-              {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
-              {success && <p className="mt-2 text-sm text-emerald-400">{success}</p>}
             </div>
-          </div>
+          )}
         </div>
+
+        {/* Right column: Preview */}
+        <PreviewSidebar
+          formState={formState}
+          isEditing={isEditing}
+          isSaving={saving}
+          onSave={() => void handleSave()}
+          onCancel={onCancel ?? noop}
+          onDelete={isEditing ? () => void handleDelete() : undefined}
+          error={error}
+          success={success}
+        />
       </div>
     </div>
   );

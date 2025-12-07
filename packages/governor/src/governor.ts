@@ -7,9 +7,11 @@ import {
   type AgentType,
   type AgentIntent,
   type IntentParams,
+  type IntentSegment as AgentIntentSegment,
 } from '@minimal-rpg/agents';
 import { type RetrievalService } from '@minimal-rpg/retrieval';
 import { type StateManager, type DeepPartial } from '@minimal-rpg/state-manager';
+import { mapToAgentIntent } from './intents.js';
 import {
   type GovernorConfig,
   type GovernorOptions,
@@ -28,6 +30,7 @@ import {
   type AgentExecutionResult,
   type TurnExecutionResult,
   type TurnContext,
+  type ResponseComposer,
   DEFAULT_GOVERNOR_OPTIONS,
   TurnProcessingError,
 } from './types.js';
@@ -50,11 +53,20 @@ function buildIntentParams(params: DetectedIntent['params'] | undefined): Intent
   if (params?.direction !== undefined) {
     result.direction = params.direction;
   }
+  if (params?.npcId !== undefined) {
+    result.npcId = params.npcId;
+  }
   if (params?.item !== undefined) {
     result.item = params.item;
   }
   if (params?.action !== undefined) {
     result.action = params.action;
+  }
+  if (params?.bodyPart !== undefined) {
+    result.bodyPart = params.bodyPart;
+  }
+  if (params?.narrateType !== undefined) {
+    result.narrateType = params.narrateType;
   }
   if (params?.extra !== undefined) {
     result.extra = params.extra;
@@ -79,6 +91,24 @@ function buildAgentIntent(
 
   if (intent.signals !== undefined) {
     agentIntent.signals = intent.signals;
+  }
+
+  // Pass through segments for compound intents
+  if (intent.segments !== undefined && intent.segments.length > 0) {
+    // Map governor IntentSegment to agent IntentSegment
+    agentIntent.segments = intent.segments.map((seg) => {
+      const mapped: AgentIntentSegment = {
+        type: seg.type,
+        content: seg.content,
+      };
+      if (seg.sensoryType !== undefined) {
+        mapped.sensoryType = seg.sensoryType;
+      }
+      if (seg.bodyPart !== undefined) {
+        mapped.bodyPart = seg.bodyPart;
+      }
+      return mapped;
+    });
   }
 
   return agentIntent;
@@ -109,6 +139,7 @@ export class Governor {
   private readonly options: Required<GovernorOptions>;
   private readonly contextBuilder: DefaultContextBuilder;
   private readonly logging: GovernorConfig['logging'];
+  private readonly responseComposer: ResponseComposer | undefined;
 
   constructor(config: GovernorConfig) {
     this.stateManager = config.stateManager;
@@ -116,6 +147,7 @@ export class Governor {
     this.agentRegistry = config.agentRegistry;
     this.intentDetector = config.intentDetector ?? createFallbackIntentDetector();
     this.logging = config.logging;
+    this.responseComposer = config.responseComposer;
 
     // Merge options with defaults, ensuring all values are defined
     const opts = config.options ?? {};
@@ -128,12 +160,14 @@ export class Governor {
       intentConfidenceThreshold:
         opts.intentConfidenceThreshold ?? DEFAULT_GOVERNOR_OPTIONS.intentConfidenceThreshold,
       devMode: opts.devMode ?? DEFAULT_GOVERNOR_OPTIONS.devMode,
+      agentTimeoutMs: opts.agentTimeoutMs ?? DEFAULT_GOVERNOR_OPTIONS.agentTimeoutMs,
     };
 
     // Create context builder
     const contextBuilderConfig: ContextBuilderConfig = {
       stateManager: this.stateManager,
       retrievalService: this.retrievalService,
+      npcTranscriptLoader: config.npcTranscriptLoader,
     };
     this.contextBuilder = new DefaultContextBuilder(contextBuilderConfig);
   }
@@ -184,6 +218,29 @@ export class Governor {
       const intentStart = Date.now();
       const detectionResult = await this.detectIntent(playerInput, turnInput);
       const intent = detectionResult.intent;
+      // Default npcId to the active NPC when missing for talk intents; fall back to the primary character.
+      if (intent.type === 'talk' && !intent.params?.npcId) {
+        const npcInstanceId = (turnInput.baseline?.npc as Record<string, unknown> | undefined)?.[
+          'instanceId'
+        ];
+        const characterInstanceId = (
+          turnInput.baseline?.character as Record<string, unknown> | undefined
+        )?.['instanceId'];
+
+        const fallbackNpcId =
+          typeof npcInstanceId === 'string'
+            ? npcInstanceId
+            : typeof characterInstanceId === 'string'
+              ? characterInstanceId
+              : undefined;
+
+        if (fallbackNpcId) {
+          intent.params = {
+            ...intent.params,
+            npcId: fallbackNpcId,
+          };
+        }
+      }
       const intentDebug = detectionResult.debug;
       phaseTiming.intentDetectionMs = Date.now() - intentStart;
 
@@ -261,7 +318,7 @@ export class Governor {
 
       // 7. Response Aggregation
       const aggregationStart = Date.now();
-      const result = this.aggregateResponse(
+      const result = await this.aggregateResponse(
         executionResult,
         stateChanges,
         intent,
@@ -269,7 +326,8 @@ export class Governor {
         turnContext.knowledgeContext.length,
         startTime,
         phaseTiming,
-        events
+        events,
+        turnInput
       );
       phaseTiming.responseAggregationMs = Date.now() - aggregationStart;
 
@@ -315,6 +373,24 @@ export class Governor {
           : undefined;
     }
 
+    // Expose any known NPC names to the detector so it can boost talk intents when characters are present.
+    const presentNpcNames: string[] = [];
+    if (turnInput.baseline?.npc) {
+      const maybeName = (turnInput.baseline.npc as Record<string, unknown>)['name'];
+      if (typeof maybeName === 'string' && maybeName.trim().length > 0) {
+        presentNpcNames.push(maybeName);
+      }
+    }
+    if (turnInput.baseline?.character) {
+      const maybeName = (turnInput.baseline.character as Record<string, unknown>)['name'];
+      if (typeof maybeName === 'string' && maybeName.trim().length > 0) {
+        presentNpcNames.push(maybeName);
+      }
+    }
+    if (presentNpcNames.length > 0) {
+      context.presentNpcs = presentNpcNames;
+    }
+
     if (turnInput.baseline?.inventory) {
       const items = turnInput.baseline.inventory['items'];
       if (Array.isArray(items)) {
@@ -354,32 +430,87 @@ export class Governor {
     // Convert DetectedIntent to AgentIntent for routing
     const agentIntent = buildAgentIntent(intent, (t) => this.mapIntentType(t));
 
-    // Find agents that can handle this intent
-    const agents = this.agentRegistry.findForIntent(agentIntent);
+    // Find agents that can handle the primary intent
+    const primaryAgents = this.agentRegistry.findForIntent(agentIntent);
 
-    // Limit to max agents per turn
-    return agents.slice(0, this.options.maxAgentsPerTurn);
+    // For compound intents, route to agents for ALL segment types
+    const additionalAgents: Agent[] = [];
+    if (intent.segments) {
+      for (const segment of intent.segments) {
+        let segmentIntent: AgentIntent | undefined;
+
+        if (segment.type === 'sensory' && segment.sensoryType) {
+          // Sensory segment - route to sensory agents
+          segmentIntent = {
+            type: this.mapSensoryTypeToIntent(segment.sensoryType),
+            params: {
+              bodyPart: segment.bodyPart,
+            },
+            confidence: intent.confidence,
+          };
+        } else if (segment.type === 'talk') {
+          // Talk segment - route to NPC agent
+          segmentIntent = {
+            type: 'talk',
+            params: {},
+            confidence: intent.confidence,
+          };
+        } else if (segment.type === 'action' || segment.type === 'emote') {
+          // Action/emote segment - route to NPC agent (for reactions)
+          segmentIntent = {
+            type: 'narrate',
+            params: {
+              narrateType: segment.type,
+            },
+            confidence: intent.confidence,
+          };
+        }
+
+        if (segmentIntent) {
+          const segmentAgents = this.agentRegistry.findForIntent(segmentIntent);
+          for (const agent of segmentAgents) {
+            // Avoid duplicates
+            if (
+              !primaryAgents.some((a) => a.agentType === agent.agentType) &&
+              !additionalAgents.some((a) => a.agentType === agent.agentType)
+            ) {
+              additionalAgents.push(agent);
+            }
+          }
+        }
+      }
+    }
+
+    // Combine and limit to max agents per turn
+    return [...primaryAgents, ...additionalAgents].slice(0, this.options.maxAgentsPerTurn);
+  }
+
+  /**
+   * Map sensory segment type to intent type for routing.
+   */
+  private mapSensoryTypeToIntent(
+    sensoryType: 'smell' | 'touch' | 'look' | 'taste' | 'listen'
+  ): AgentIntent['type'] {
+    switch (sensoryType) {
+      case 'smell':
+        return 'smell';
+      case 'touch':
+        return 'touch';
+      case 'look':
+        return 'look';
+      case 'taste':
+        return 'taste';
+      case 'listen':
+        return 'listen';
+    }
   }
 
   /**
    * Map governor intent types to agent intent types.
+   * Delegates to the centralized mapping in intents.ts.
    */
   private mapIntentType(type: DetectedIntent['type']): AgentIntent['type'] {
-    // Most types map directly; map any that don't exist in agents
-    const mapping: Record<DetectedIntent['type'], AgentIntent['type']> = {
-      move: 'move',
-      look: 'look',
-      talk: 'talk',
-      use: 'use',
-      take: 'take',
-      give: 'give',
-      examine: 'look', // Map examine to look
-      wait: 'custom',
-      system: 'custom',
-      unknown: 'custom',
-    };
-
-    return mapping[type];
+    return mapToAgentIntent(type);
   }
 
   // ============================================================================
@@ -391,7 +522,6 @@ export class Governor {
     context: TurnContext,
     events: TurnEvent[]
   ): Promise<TurnExecutionResult> {
-    const agentResults: AgentExecutionResult[] = [];
     const combinedPatches: Operation[] = [];
     const combinedEvents: TurnEvent[] = [];
     const successfulAgents: AgentType[] = [];
@@ -408,6 +538,19 @@ export class Governor {
       conversationHistory: context.conversationHistory,
     };
 
+    const targetNpcId = context.intent.params?.npcId;
+    if (targetNpcId) {
+      agentInput.npcId = targetNpcId;
+    }
+
+    if (context.npcConversationHistory) {
+      agentInput.npcConversationHistory = context.npcConversationHistory;
+    }
+
+    // Execute all agents in parallel with timeout protection
+    const agentTimeout = this.options.agentTimeoutMs ?? 30000; // 30s default
+
+    // Emit start events for all agents
     for (const agent of agents) {
       events.push({
         type: 'agent-started',
@@ -419,9 +562,19 @@ export class Governor {
       if (this.logging?.logAgents) {
         console.log(`[Governor] Executing agent: ${agent.name} (${agent.agentType})`);
       }
+    }
 
-      const result = await this.executeAgent(agent, agentInput);
-      agentResults.push(result);
+    // Execute all agents in parallel
+    const agentPromises = agents.map((agent) =>
+      this.executeAgentWithTimeout(agent, agentInput, agentTimeout)
+    );
+
+    const agentResults = await Promise.all(agentPromises);
+
+    // Process results
+    for (let i = 0; i < agents.length; i++) {
+      const agent = agents[i]!;
+      const result = agentResults[i]!;
 
       events.push({
         type: 'agent-completed',
@@ -454,10 +607,6 @@ export class Governor {
         }
       } else {
         failedAgents.push(agent.agentType);
-
-        if (!this.options.continueOnAgentError) {
-          break;
-        }
       }
     }
 
@@ -469,6 +618,39 @@ export class Governor {
       successfulAgents,
       failedAgents,
     };
+  }
+
+  /**
+   * Execute an agent with timeout protection.
+   * Returns immediately on error or timeout instead of hanging.
+   */
+  private async executeAgentWithTimeout(
+    agent: Agent,
+    input: AgentInput,
+    timeoutMs: number
+  ): Promise<AgentExecutionResult> {
+    const startTime = Date.now();
+
+    const timeoutPromise = new Promise<AgentExecutionResult>((resolve) => {
+      setTimeout(() => {
+        resolve({
+          agentType: agent.agentType,
+          output: {
+            narrative: '',
+            diagnostics: {
+              warnings: [`Agent ${agent.agentType} timed out after ${timeoutMs}ms`],
+            },
+          },
+          executionTimeMs: timeoutMs,
+          success: false,
+          error: new Error(`Agent ${agent.agentType} timed out after ${timeoutMs}ms`),
+        });
+      }, timeoutMs);
+    });
+
+    const executePromise = this.executeAgent(agent, input);
+
+    return Promise.race([executePromise, timeoutPromise]);
   }
 
   private async executeAgent(agent: Agent, input: AgentInput): Promise<AgentExecutionResult> {
@@ -523,6 +705,8 @@ export class Governor {
         patchCount: result.patchesApplied,
         modifiedPaths: result.modifiedPaths,
         patches,
+        newEffectiveState: result.newEffective as TurnStateContext,
+        newOverrides: result.newOverrides,
       };
     } catch (error) {
       const errorCause = error instanceof Error ? error : undefined;
@@ -539,7 +723,7 @@ export class Governor {
   // Phase 7: Response Aggregation
   // ============================================================================
 
-  private aggregateResponse(
+  private async aggregateResponse(
     executionResult: TurnExecutionResult,
     stateChanges: TurnStateChanges,
     intent: DetectedIntent,
@@ -547,8 +731,9 @@ export class Governor {
     nodesRetrieved: number,
     startTime: number,
     phaseTiming: PhaseTiming,
-    events: TurnEvent[]
-  ): TurnResult {
+    events: TurnEvent[],
+    turnInput: TurnInput
+  ): Promise<TurnResult> {
     const processingTimeMs = Date.now() - startTime;
 
     const metadata: TurnMetadata = {
@@ -556,12 +741,15 @@ export class Governor {
       agentsInvoked: [...executionResult.successfulAgents, ...executionResult.failedAgents],
       nodesRetrieved,
       phaseTiming,
+      agentOutputs: executionResult.agentResults.map((r) => ({
+        agentType: r.agentType,
+        output: r.output,
+      })),
     };
 
     if (this.options.devMode) {
       metadata.intent = intent;
       metadata.intentDebug = intentDebug;
-      metadata.agentOutputs = executionResult.agentResults.map((r) => r.output);
     }
 
     // Add events from agent execution
@@ -579,8 +767,35 @@ export class Governor {
       });
     }
 
+    let message = executionResult.combinedNarrative || 'Nothing happens.';
+
+    if (this.responseComposer) {
+      try {
+        const composed = await this.responseComposer({
+          turnInput,
+          intent,
+          executionResult,
+          stateChanges,
+          nodesRetrieved,
+          events,
+          sessionTags: turnInput.sessionTags,
+        });
+
+        if (typeof composed === 'string') {
+          const trimmed = composed.trim();
+          if (trimmed.length > 0) {
+            message = trimmed;
+          }
+        }
+      } catch (error) {
+        if (this.logging?.logTurns) {
+          console.warn('[Governor] Response composer failed, using combined narrative.', error);
+        }
+      }
+    }
+
     return {
-      message: executionResult.combinedNarrative || 'Nothing happens.',
+      message,
       events,
       stateChanges: stateChanges.patchCount > 0 ? stateChanges : undefined,
       metadata,
@@ -614,10 +829,20 @@ export class Governor {
       metadata.intentDebug = intentDebug;
     }
 
-    const message =
-      intent.type === 'unknown' || intent.confidence < this.options.intentConfidenceThreshold
-        ? `I'm not sure what you want to do. Try commands like "look", "go north", "talk to [name]", or "use [item]".`
-        : this.generateIntentNarrative(intent, turnInput.playerInput);
+    let message: string;
+    if (intent.type === 'unknown' || intent.confidence < this.options.intentConfidenceThreshold) {
+      if (this.options.devMode && intent.suggestedType) {
+        // In dev mode, show the LLM's suggested intent type so we can identify missing intents
+        message = `[DEV] Unhandled intent detected. LLM suggested type: "${intent.suggestedType}". Consider adding this to IntentType if it appears frequently. Input: "${turnInput.playerInput}"`;
+      } else if (intent.suggestedType) {
+        // In production, give a more helpful message based on the suggested type
+        message = `You try to ${intent.suggestedType}, but nothing happens. Try commands like "look", "go north", "talk to [name]", or "use [item]".`;
+      } else {
+        message = `I'm not sure what you want to do. Try commands like "look", "go north", "talk to [name]", or "use [item]".`;
+      }
+    } else {
+      message = this.generateIntentNarrative(intent, turnInput.playerInput);
+    }
 
     events.push({
       type: 'turn-completed',
@@ -700,6 +925,19 @@ export class Governor {
       case 'system': {
         return `System actions like "${safeInput}" are noted for later, but the story keeps moving for now.`;
       }
+      // ========================================================================
+      // Sensory Intents
+      // When SensoryAgent is registered, these cases are never reached.
+      // Return empty string to silently ignore - per design, we never say
+      // "you don't notice anything". The intent is simply not acted upon.
+      // ========================================================================
+      case 'smell':
+      case 'taste':
+      case 'touch':
+      case 'listen': {
+        // Silent ignore - no SensoryAgent registered and no data to work with
+        return '';
+      }
       default:
         return `You can't do that right now, but the urge to ${safeInput.toLowerCase()} lingers.`;
     }
@@ -761,6 +999,7 @@ export class Governor {
       setting: {},
       location: {},
       inventory: {},
+      time: {},
     };
   }
 }

@@ -2,37 +2,35 @@ import {
   type IntentDetector,
   type IntentDetectionContext,
   type IntentDetectionResult,
-  type IntentType,
   type IntentParams,
   type DetectedIntent,
+  type IntentSegment,
 } from './types.js';
+import { type IntentType, resolveIntentType } from './intents.js';
 
-const INTENT_TYPES: IntentType[] = [
-  'move',
-  'look',
-  'talk',
-  'use',
-  'take',
-  'give',
-  'examine',
-  'wait',
-  'system',
-  'unknown',
-];
+/**
+ * Build the default system prompt for intent detection.
+ * Compact version optimized for speed - fewer tokens = faster response.
+ */
+function buildDefaultSystemPrompt(): string {
+  return `You are an RPG intent classifier. Parse player input into JSON.
 
-const DEFAULT_SYSTEM_PROMPT = [
-  'You are an intent classifier for a text-based RPG.',
-  'Determine the single most likely intent expressed by the player.',
-  'Use the supplied history and context only as short hints.',
-  'Respond with STRICT JSON that matches this schema and NOTHING ELSE:',
-  '{',
-  '  "type": "move|look|talk|use|take|give|examine|wait|system|unknown",',
-  '  "confidence": number between 0 and 1,',
-  '  "params": { "target"?: string, "item"?: string, "direction"?: string, "action"?: string },',
-  '  "signals"?: string[]',
-  '}',
-  'Do not include markdown fences, commentary, or natural language.',
-].join('\n');
+RULES:
+- Outside *asterisks* = talk (speech)
+- Inside *asterisks* = action/thought/emote/sensory (NEVER talk)
+- Physical contact/proximity = touch (even without "feel" keyword)
+- Smell/scent/odor/aroma keywords = smell
+- bodyPart = the TARGET being sensed (e.g., "her feet" → "feet")
+
+OUTPUT FORMAT:
+{"primaryType":"talk|action|smell|touch|...","confidence":0.0-1.0,"intents":[{"type":"talk|action|thought|emote|smell|touch|taste|listen|look","content":"...","bodyPart":"optional"}]}
+
+EXAMPLE:
+Input: "Sure *he notices her feet in his lap, catching their scent*"
+{"primaryType":"touch","confidence":0.95,"intents":[{"type":"talk","content":"Sure"},{"type":"touch","content":"notices her feet in his lap","bodyPart":"feet"},{"type":"smell","content":"catching their scent","bodyPart":"feet"}]}
+
+Output valid JSON only. No markdown.`;
+}
 
 export interface LlmIntentMessage {
   role: 'system' | 'user';
@@ -55,6 +53,8 @@ export interface LlmIntentDetectorConfig {
   historyLimit?: number;
   minConfidence?: number;
   systemPrompt?: string;
+  /** When true, asks the LLM to include reasoning in its response */
+  debug?: boolean;
 }
 
 interface PromptArtifacts {
@@ -76,13 +76,15 @@ export class LlmIntentDetector implements IntentDetector {
   private readonly historyLimit: number;
   private readonly minConfidence: number;
   private readonly systemPrompt: string;
+  private readonly debug: boolean;
 
   constructor(config: LlmIntentDetectorConfig) {
     this.callModel = config.callModel;
     this.detectorName = config.detectorName ?? 'llm-intent-detector';
     this.historyLimit = Math.max(0, config.historyLimit ?? 3);
     this.minConfidence = Math.min(Math.max(config.minConfidence ?? 0, 0), 1);
-    this.systemPrompt = config.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+    this.systemPrompt = config.systemPrompt ?? buildDefaultSystemPrompt();
+    this.debug = config.debug ?? false;
   }
 
   async detect(input: string, context?: IntentDetectionContext): Promise<IntentDetectionResult> {
@@ -120,40 +122,33 @@ export class LlmIntentDetector implements IntentDetector {
 
   private buildPrompt(input: string, context?: IntentDetectionContext): PromptArtifacts {
     const trimmedInput = input.trim();
+
+    // Limit history to reduce tokens
     const historyPreview = (context?.recentHistory ?? [])
       .slice(-this.historyLimit)
       .map((entry, idx) => `${idx + 1}. ${entry}`);
 
+    // Only include essential context
     const contextSummary: string[] = [];
-
-    if (context?.currentLocation) {
-      contextSummary.push(`Location: ${context.currentLocation}`);
-    }
     if (context?.presentNpcs && context.presentNpcs.length > 0) {
       contextSummary.push(`NPCs: ${context.presentNpcs.join(', ')}`);
     }
-    if (context?.inventoryItems && context.inventoryItems.length > 0) {
-      contextSummary.push(`Inventory: ${context.inventoryItems.join(', ')}`);
-    }
-    if (context?.availableActions && context.availableActions.length > 0) {
-      contextSummary.push(`Actions: ${context.availableActions.join(', ')}`);
-    }
 
-    const sections: string[] = [`Player Input:\n${trimmedInput}`];
+    // Build compact user prompt
+    let user = trimmedInput;
 
     if (historyPreview.length > 0) {
-      sections.push(`Recent Turns:\n${historyPreview.join('\n')}`);
+      user += `\n[History: ${historyPreview.join('; ')}]`;
     }
 
     if (contextSummary.length > 0) {
-      sections.push(`Context Summary:\n${contextSummary.map((line) => `- ${line}`).join('\n')}`);
+      user += `\n[${contextSummary.join('; ')}]`;
     }
 
-    sections.push(
-      'Output JSON only. Fields must exactly match the schema. Use "unknown" if intent cannot be determined.'
-    );
+    if (this.debug) {
+      user += '\n[DEBUG: include "reasoning" field]';
+    }
 
-    const user = sections.join('\n\n');
     const messages: LlmIntentMessage[] = [
       { role: 'system', content: this.systemPrompt },
       { role: 'user', content: user },
@@ -202,17 +197,159 @@ export class LlmIntentDetector implements IntentDetector {
     }
 
     const record = value as Record<string, unknown>;
-    const type = this.mapIntentType(record['type']);
+
+    // Support both "primaryType" (new) and "type" (legacy) fields
+    let type = this.mapIntentType(record['primaryType'] ?? record['type']);
     const confidence = this.clampConfidence(record['confidence']);
     const params = this.normalizeParams(record['params']);
     const signals = this.normalizeSignals(record['signals']);
 
-    return {
+    // Support both "intents" (new) and "segments" (legacy) fields
+    let segments = this.normalizeSegments(record['intents'] ?? record['segments']);
+
+    // === SENSORY SIGNAL PROMOTION ===
+    // If the LLM returned the old format with signals containing sensory types,
+    // promote the first sensory signal to be the primary type and generate segments
+    const sensoryTypes = ['smell', 'touch', 'taste', 'listen', 'look'];
+    const sensorySignal = signals?.find((s) => sensoryTypes.includes(s));
+
+    if (sensorySignal && !sensoryTypes.includes(type)) {
+      // Promote sensory signal to primary type
+      type = this.mapIntentType(sensorySignal);
+
+      // If no segments exist, auto-generate them from the legacy format
+      if (!segments || segments.length === 0) {
+        segments = this.generateSegmentsFromLegacy(type, params, fallbackInput);
+      }
+    }
+
+    // Extract suggestedType for unknown intents
+    const suggestedType =
+      type === 'unknown' && typeof record['suggestedType'] === 'string'
+        ? record['suggestedType'].trim()
+        : undefined;
+
+    const intent: DetectedIntent = {
       type,
       confidence,
       params,
       signals,
     };
+
+    if (suggestedType) {
+      intent.suggestedType = suggestedType;
+    }
+
+    if (segments && segments.length > 0) {
+      intent.segments = segments;
+    }
+
+    return intent;
+  }
+
+  /**
+   * Generate segments from legacy format when LLM doesn't provide the new multi-intent array.
+   * This creates a single sensory segment from params and input.
+   */
+  private generateSegmentsFromLegacy(
+    primaryType: IntentType,
+    params: IntentParams | undefined,
+    input: string
+  ): IntentSegment[] {
+    const sensoryTypes = ['smell', 'touch', 'taste', 'listen', 'look'];
+
+    if (!sensoryTypes.includes(primaryType)) {
+      return [];
+    }
+
+    const segment: IntentSegment = {
+      type: 'sensory',
+      content: input.trim(),
+      sensoryType: primaryType as 'smell' | 'touch' | 'look' | 'taste' | 'listen',
+    };
+
+    // Extract bodyPart from params if available
+    if (params?.bodyPart && typeof params.bodyPart === 'string') {
+      segment.bodyPart = params.bodyPart;
+    }
+
+    return [segment];
+  }
+
+  private normalizeSegments(input: unknown): IntentSegment[] | undefined {
+    if (!Array.isArray(input)) {
+      return undefined;
+    }
+
+    const segments: IntentSegment[] = [];
+    // Valid segment types - includes both action types and sensory types
+    const validTypes = [
+      'talk',
+      'action',
+      'thought',
+      'emote',
+      'sensory',
+      'smell',
+      'touch',
+      'taste',
+      'listen',
+      'look',
+    ];
+    // Sensory types that should be normalized to segment type "sensory" with sensoryType field
+    const sensoryTypes = ['smell', 'touch', 'taste', 'listen', 'look'];
+
+    for (const item of input) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+
+      const record = item as Record<string, unknown>;
+      const rawType = record['type'];
+      const content = record['content'];
+
+      // Validate required fields
+      if (!validTypes.includes(rawType as string) || typeof content !== 'string') {
+        continue;
+      }
+
+      // Normalize sensory types (smell, touch, etc.) to segment type "sensory" with sensoryType
+      const isSensoryType = sensoryTypes.includes(rawType as string);
+      const segmentType = isSensoryType ? 'sensory' : (rawType as IntentSegment['type']);
+
+      const segment: IntentSegment = {
+        type: segmentType,
+        content: content.trim(),
+      };
+
+      // Extract sensoryType and bodyPart for sensory segments
+      if (isSensoryType) {
+        segment.sensoryType = rawType as 'smell' | 'touch' | 'look' | 'taste' | 'listen';
+      } else if (rawType === 'sensory') {
+        // Handle legacy format where sensoryType is a separate field
+        const sensoryType = record['sensoryType'];
+        if (
+          sensoryType === 'smell' ||
+          sensoryType === 'touch' ||
+          sensoryType === 'look' ||
+          sensoryType === 'taste' ||
+          sensoryType === 'listen'
+        ) {
+          segment.sensoryType = sensoryType;
+        }
+      }
+
+      // Extract bodyPart for any sensory segment
+      if (segment.type === 'sensory') {
+        const bodyPart = record['bodyPart'];
+        if (typeof bodyPart === 'string' && bodyPart.trim()) {
+          segment.bodyPart = bodyPart.trim();
+        }
+      }
+
+      segments.push(segment);
+    }
+
+    return segments.length > 0 ? segments : undefined;
   }
 
   private normalizeParams(input: unknown): IntentParams | undefined {
@@ -235,6 +372,19 @@ export class LlmIntentDetector implements IntentDetector {
     if (typeof source['action'] === 'string') {
       params.action = source['action'];
     }
+    if (typeof source['bodyPart'] === 'string') {
+      params.bodyPart = source['bodyPart'];
+    }
+    // Handle narrateType for narrate intents
+    const narrateType = source['narrateType'];
+    if (
+      narrateType === 'action' ||
+      narrateType === 'thought' ||
+      narrateType === 'emote' ||
+      narrateType === 'narrative'
+    ) {
+      params.narrateType = narrateType;
+    }
     if (source['extra'] && typeof source['extra'] === 'object') {
       params.extra = source['extra'] as Record<string, unknown>;
     }
@@ -256,20 +406,7 @@ export class LlmIntentDetector implements IntentDetector {
       return 'unknown';
     }
 
-    const normalized = value.toLowerCase().trim();
-    if ((INTENT_TYPES as string[]).includes(normalized)) {
-      return normalized as IntentType;
-    }
-
-    const aliases: Record<string, IntentType> = {
-      inspect: 'examine',
-      observe: 'look',
-      speak: 'talk',
-      say: 'talk',
-      wait: 'wait',
-    };
-
-    return aliases[normalized] ?? 'unknown';
+    return resolveIntentType(value);
   }
 
   private clampConfidence(value: unknown): number {
