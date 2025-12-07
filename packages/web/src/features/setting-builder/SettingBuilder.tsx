@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import {
-  SettingProfileSchema,
-  type SettingProfile,
-  SETTING_TAGS,
-  type SettingTag,
-} from '@minimal-rpg/schemas';
+import { SettingProfileSchema, type SettingProfile } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
 import { splitList } from '../shared/stringLists.js';
-import { getSetting, saveSetting } from '../../shared/api/client.js';
+import { getSetting, saveSetting, deleteSetting } from '../../shared/api/client.js';
+import { PreviewSidebar } from './components/PreviewSidebar.js';
 
 interface FormState {
   id: string;
   name: string;
   lore: string;
   themes: string;
-  tags: SettingTag[];
+  /** User-defined tags as comma-separated string */
+  tags: string;
 }
 
 const initialState: FormState = {
@@ -22,7 +19,7 @@ const initialState: FormState = {
   name: '',
   lore: '',
   themes: '',
-  tags: [],
+  tags: '',
 };
 
 type FormKey = keyof FormState;
@@ -38,9 +35,18 @@ export const SettingBuilder: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
+  /** Whether we're viewing/editing an existing setting vs creating new */
+  const isEditing = Boolean(id);
+  /** Whether fields are unlocked for editing (always true for new, toggled for existing) */
+  const [isInEditMode, setIsInEditMode] = useState(!isEditing);
+  /** Track if user has saved at least once this session */
+  const [hasSaved, setHasSaved] = useState(false);
 
   useEffect(() => {
     if (id) {
+      // Reset edit mode state when loading existing entity
+      setIsInEditMode(false);
+      setHasSaved(false);
       getSetting(id)
         .then((data) => {
           setForm({
@@ -48,7 +54,7 @@ export const SettingBuilder: React.FC<{
             name: data.name,
             lore: data.lore,
             themes: (data.themes ?? []).join(', '),
-            tags: data.tags ?? [],
+            tags: (data.tags ?? []).join(', '),
           });
         })
         .catch((err) => {
@@ -56,24 +62,15 @@ export const SettingBuilder: React.FC<{
           setError('Failed to load setting');
         });
     } else {
+      // New entity starts in edit mode
       setForm(initialState);
+      setIsInEditMode(true);
+      setHasSaved(false);
     }
   }, [id]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  function toggleTag(tag: SettingTag) {
-    setForm((f) => {
-      const tags = new Set(f.tags);
-      if (tags.has(tag)) {
-        tags.delete(tag);
-      } else {
-        tags.add(tag);
-      }
-      return { ...f, tags: Array.from(tags) };
-    });
   }
 
   async function onSave() {
@@ -83,13 +80,14 @@ export const SettingBuilder: React.FC<{
     setFieldErrors({});
 
     const themes = splitList(form.themes);
+    const tags = splitList(form.tags);
 
     const profile: SettingProfile = {
       id: form.id.trim(),
       name: form.name.trim(),
       lore: form.lore.trim(),
       themes: themes.length > 0 ? themes : undefined,
-      tags: form.tags.length > 0 ? form.tags : undefined,
+      tags: tags.length > 0 ? tags : undefined,
     };
 
     // Client-side validation
@@ -110,9 +108,9 @@ export const SettingBuilder: React.FC<{
 
     try {
       await saveSetting(profile);
-      setSuccess('Setting saved.');
+      setSuccess('Saved successfully');
+      setHasSaved(true);
       if (onSaveCallback) onSaveCallback();
-      window.location.hash = '';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
@@ -120,7 +118,20 @@ export const SettingBuilder: React.FC<{
     }
   }
 
-  const disabled = saving;
+  async function handleDelete() {
+    if (!id) return;
+    setError(null);
+    await deleteSetting(id);
+    window.location.hash = '';
+  }
+
+  const disabled = saving || !isInEditMode;
+
+  // Determine close button label based on edit state
+  // - If not in edit mode (viewing): "Close"
+  // - If in edit mode and have saved: "Close"
+  // - If in edit mode and haven't saved (unsaved changes): "Cancel"
+  const closeLabel = !isInEditMode || hasSaved ? 'Close' : 'Cancel';
 
   return (
     <div className="space-y-4">
@@ -135,9 +146,10 @@ export const SettingBuilder: React.FC<{
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">ID</span>
                 <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   value={form.id}
                   onChange={(e) => update('id', e.target.value)}
+                  disabled={disabled}
                   {...getInlineErrorProps('id', fieldErrors.id)}
                 />
                 {fieldErrors.id && (
@@ -149,9 +161,10 @@ export const SettingBuilder: React.FC<{
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">Name</span>
                 <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   value={form.name}
                   onChange={(e) => update('name', e.target.value)}
+                  disabled={disabled}
                   {...getInlineErrorProps('name', fieldErrors.name)}
                 />
                 {fieldErrors.name && (
@@ -163,36 +176,29 @@ export const SettingBuilder: React.FC<{
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">Themes (comma separated)</span>
                 <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   value={form.themes}
                   onChange={(e) => update('themes', e.target.value)}
+                  disabled={disabled}
                 />
               </label>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Tags</span>
-                <div className="flex flex-wrap gap-2">
-                  {SETTING_TAGS.map((tag) => (
-                    <label
-                      key={tag}
-                      className="flex items-center gap-2 bg-slate-900 px-2 py-1 rounded border border-slate-800 cursor-pointer hover:border-slate-600"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.tags.includes(tag)}
-                        onChange={() => toggleTag(tag)}
-                        className="rounded border-slate-700 bg-slate-800 text-violet-600 focus:ring-violet-500"
-                      />
-                      <span className="text-sm text-slate-300 capitalize">{tag}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Tags (comma separated)</span>
+                <input
+                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                  value={form.tags}
+                  onChange={(e) => update('tags', e.target.value)}
+                  disabled={disabled}
+                  placeholder="tags can be used to filter and search settings"
+                />
+              </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-slate-400">Lore</span>
                 <textarea
-                  className="min-h-[200px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                  className="min-h-[200px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   value={form.lore}
                   onChange={(e) => update('lore', e.target.value)}
+                  disabled={disabled}
                   {...getInlineErrorProps('lore', fieldErrors.lore)}
                 />
                 {fieldErrors.lore && (
@@ -206,48 +212,20 @@ export const SettingBuilder: React.FC<{
         </div>
 
         {/* Right: Preview */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-0">
-            <div className="border border-slate-800 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Preview</div>
-              <div className="p-4 space-y-2">
-                <div className="text-lg font-semibold">{form.name || 'Unnamed Setting'}</div>
-                <div className="text-sm text-slate-400">ID: {form.id || '—'}</div>
-                <div className="text-sm text-slate-300 whitespace-pre-wrap">
-                  {form.lore || 'No lore yet.'}
-                </div>
-                {form.themes && (
-                  <div className="text-xs text-slate-500 mt-2">Themes: {form.themes}</div>
-                )}
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              <button
-                className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
-                  disabled
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                }`}
-                disabled={disabled}
-                onClick={() => {
-                  void onSave();
-                }}
-              >
-                {saving ? 'Saving…' : 'Save Setting'}
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
-                disabled={disabled}
-              >
-                Cancel
-              </button>
-              {error && <p className="mt-2 text-sm text-red-400">Error: {error}</p>}
-              {success && <p className="mt-2 text-sm text-emerald-400">{success}</p>}
-            </div>
-          </div>
-        </div>
+        <PreviewSidebar
+          form={form}
+          disabled={disabled}
+          saving={saving}
+          error={error}
+          success={success}
+          onSave={() => void onSave()}
+          onCancel={onCancel}
+          onEdit={() => setIsInEditMode(true)}
+          onDelete={handleDelete}
+          isEditing={isEditing}
+          isInEditMode={isInEditMode}
+          closeLabel={closeLabel}
+        />
       </div>
     </div>
   );

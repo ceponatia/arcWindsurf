@@ -18,8 +18,8 @@ It currently lives entirely in TypeScript in
 
 The State Manager is designed to support but is not yet fully wired into:
 
-- The Governor turn loop (see [dev-docs/09-governor-and-agents.md](dev-docs/09-governor-and-agents.md)).
-- A future knowledge-node + embedding pipeline (see [dev-docs/06-knowledge-node-model.md](dev-docs/06-knowledge-node-model.md) and [dev-docs/07-retrieval-and-scoring.md](dev-docs/07-retrieval-and-scoring.md)).
+- The **natural-language, time-based Governor turn loop** (see [dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md)), where each HTTP turn is freeform player text plus a unit of in-world time advancement.
+- A future knowledge-node + embedding pipeline (see [dev-docs/08-knowledge-node-model.md](dev-docs/08-knowledge-node-model.md) and [dev-docs/09-retrieval-and-scoring.md](dev-docs/09-retrieval-and-scoring.md)).
 
 ---
 
@@ -96,28 +96,32 @@ The State Manager **does not** talk to these tables directly. The intended usage
 Current implementation status:
 
 - The API’s override endpoints (`/sessions/:id/overrides/character` and `/sessions/:id/overrides/setting`) implement their own deep-merge logic in the API layer today; they do **not** currently call into `@minimal-rpg/state-manager`.
-- The Governor package depends on `@minimal-rpg/state-manager` conceptually, but no production path (API routes, web UI) invokes the Governor or State Manager yet.
+- The Governor package now uses `@minimal-rpg/state-manager` in its turn pipeline: `DefaultContextBuilder` calls `getEffectiveState` for recall, and the Governor’s state-update phase calls `applyPatches` to compute `TurnStateChanges`.
+- The `POST /sessions/:id/turns` route in `@minimal-rpg/api` constructs a `Governor` via `createGovernorForRequest` and passes a baseline `TurnStateContext` derived from DB-backed instance snapshots; it currently supplies an empty `overrides` object and **does not yet persist** `TurnResult.stateChanges` back to Postgres.
 
-As a result, the State Manager is presently an **isolated utility** that is ready to be adopted but not yet part of the main runtime loop.
+As a result, the State Manager is part of the Governor-driven runtime loop for turns, but it is not yet used by the legacy overrides endpoints, nor is its patch output wired through to durable per-session overrides in the database.
 
 ---
 
 ## 4. Intended Turn-Level Usage
 
 The intended usage pattern (as described in
-[dev-docs/09-governor-and-agents.md](dev-docs/09-governor-and-agents.md) and in comments within `manager.ts`) is:
+[dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md) and in comments within `manager.ts`) is **per-turn, over freeform natural-language input**:
 
 1. **Recall**
-   - Load `baseline` and `overrides` from persistence (for example, `template_snapshot` + `profile_json` or a template + override layer).
-   - Compute `effective` via `getEffectiveState` and hand that to the Governor/agents as the current state.
 
-2. **Agent proposal**
-   - One or more agents generate JSON Patch operations (`Operation[]`) representing proposed state changes.
-   - Patches are defined relative to **effective** state, not necessarily the raw overrides layer.
+- Load `baseline` and `overrides` from persistence (for example, `template_snapshot` + `profile_json` or a template + override layer).
+- Compute `effective` via `getEffectiveState` and hand that to the Governor/agents as the current state for this turn.
 
-3. **Commit**
-   - Use `applyPatches(baseline, overrides, patches)` to produce `newOverrides`.
-   - Persist `newOverrides` to the relevant store (for example, into `profile_json` for that instance, or into a dedicated overrides column once diffing is implemented).
+1. **Agent proposal**
+
+- One or more agents generate JSON Patch operations (`Operation[]`) representing proposed state changes (movement, NPC reactions, inventory updates, time progression, etc.).
+- Patches are defined relative to **effective** state, not necessarily the raw overrides layer.
+
+1. **Commit**
+
+- Use `applyPatches(baseline, overrides, patches)` to produce `newOverrides`.
+- Persist `newOverrides` to the relevant store (for example, into `profile_json` for that instance, or into a dedicated overrides column once diffing is implemented).
 
 In the current scaffold:
 
@@ -248,7 +252,6 @@ The following aspects are intentionally left as TBD because they are not impleme
   - Maximum expected size/complexity of state documents passed through the State Manager.
   - Whether we need more efficient cloning/diffing strategies than `JSON.parse(JSON.stringify(...))` and full-document overrides.
 
-This document should be updated once:
+This document will need another update once:
 
-- The Governor is wired into the API/session loop.
 - A first end-to-end integration between State Manager, DB, and (optionally) embeddings is implemented.

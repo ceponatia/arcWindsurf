@@ -15,12 +15,17 @@ export async function getDbOverview(): Promise<DbOverviewResult> {
   const tableNames = [
     'user_sessions',
     'messages',
+    'npc_messages',
     'character_instances',
     'setting_instances',
     'character_profiles',
     'setting_profiles',
     'prompt_tags',
     'session_tag_instances',
+    'state_change_log',
+    'session_location_state',
+    'session_inventory_state',
+    'session_time_state',
   ];
 
   const results: DbTableOverview[] = [];
@@ -101,6 +106,16 @@ export async function deleteDbRow(modelName: string, id: string): Promise<void> 
     prompttags: 'prompt_tags',
     sessiontaginstance: 'session_tag_instances',
     sessiontaginstances: 'session_tag_instances',
+    npcmessages: 'npc_messages',
+    npcmessage: 'npc_messages',
+    statechangelog: 'state_change_log',
+    statechangelogs: 'state_change_log',
+    sessionlocationstate: 'session_location_state',
+    sessionlocationstates: 'session_location_state',
+    sessioninventorystate: 'session_inventory_state',
+    sessioninventorystates: 'session_inventory_state',
+    sessiontimestate: 'session_time_state',
+    sessiontimestates: 'session_time_state',
   };
   const key = modelName.toLowerCase();
   const table = map[key];

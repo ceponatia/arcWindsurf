@@ -9,12 +9,6 @@ import {
   APPEARANCE_LEGS_BUILD,
   APPEARANCE_LEGS_LENGTH,
   APPEARANCE_TORSOS,
-  SPEECH_DARKNESS_LEVELS,
-  SPEECH_FORMALITY_LEVELS,
-  SPEECH_HUMOR_LEVELS,
-  SPEECH_PACING_LEVELS,
-  SPEECH_SENTENCE_LENGTHS,
-  SPEECH_VERBOSITY_LEVELS,
 } from '../packages/schemas/dist/index.js';
 
 const base = path.resolve(process.cwd(), 'data');
@@ -34,7 +28,8 @@ function validateCharacter(obj, file) {
   const errs = [];
   if (!obj || typeof obj !== 'object') errs.push('must be an object');
   // Core required scalar fields (personality handled separately; age optional)
-  const requiredScalars = ['id', 'name', 'summary', 'backstory', 'speakingStyle'];
+  // Note: speakingStyle was removed from schema, now handled via personalityMap.speechStyle
+  const requiredScalars = ['id', 'name', 'summary', 'backstory'];
   for (const k of requiredScalars) {
     if (!obj[k] || typeof obj[k] !== 'string' || obj[k].length === 0)
       errs.push(`${k} must be non-empty string`);
@@ -53,10 +48,10 @@ function validateCharacter(obj, file) {
       errs.push('personality must be a string or array of strings');
     }
   }
-  // Age (optional; enforce 16..120)
+  // Age (optional positive integer)
   if (obj.age !== undefined) {
-    if (typeof obj.age !== 'number' || !Number.isInteger(obj.age) || obj.age < 16 || obj.age > 120)
-      errs.push('age must be integer 16..120');
+    if (typeof obj.age !== 'number' || !Number.isInteger(obj.age) || obj.age < 1)
+      errs.push('age must be a positive integer');
   }
   // Goals
   if (!Array.isArray(obj.goals) || obj.goals.some((g) => typeof g !== 'string' || g.length === 0))
@@ -67,23 +62,6 @@ function validateCharacter(obj, file) {
     (!Array.isArray(obj.tags) || obj.tags.some((t) => typeof t !== 'string' || t.length === 0))
   )
     errs.push('tags must be an array of non-empty strings');
-  // Style object (optional)
-  if (obj.style) {
-    const style = obj.style;
-    if (typeof style !== 'object' || Array.isArray(style)) errs.push('style must be an object');
-    const enums = {
-      sentenceLength: SPEECH_SENTENCE_LENGTHS,
-      humor: SPEECH_HUMOR_LEVELS,
-      darkness: SPEECH_DARKNESS_LEVELS,
-      pacing: SPEECH_PACING_LEVELS,
-      formality: SPEECH_FORMALITY_LEVELS,
-      verbosity: SPEECH_VERBOSITY_LEVELS,
-    };
-    for (const [key, allowed] of Object.entries(enums)) {
-      if (style[key] && !allowed.includes(style[key]))
-        errs.push(`style.${key} invalid (${style[key]}) must be one of ${allowed.join('|')}`);
-    }
-  }
   // Physique (optional string or object: build + appearance buckets)
   if (obj.physique) {
     if (typeof obj.physique === 'string') {

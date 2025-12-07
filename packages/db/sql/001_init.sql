@@ -23,6 +23,19 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_session_idx ON messages(session_id, idx);
 
+-- Per-NPC transcripts (agent-facing)
+CREATE TABLE IF NOT EXISTS npc_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES user_sessions(id) ON DELETE CASCADE,
+  npc_id TEXT NOT NULL,
+  idx INTEGER NOT NULL,
+  speaker TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(session_id, npc_id, idx)
+);
+CREATE INDEX IF NOT EXISTS idx_npc_messages_session_npc_idx ON npc_messages(session_id, npc_id, idx);
+
 -- Character instances (per-session snapshots)
 CREATE TABLE IF NOT EXISTS character_instances (
   id TEXT PRIMARY KEY,

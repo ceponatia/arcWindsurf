@@ -180,16 +180,26 @@ At runtime, the API server combines in-memory and persisted state:
 
 The in-memory layer is therefore a cache of static content, while all mutable game state (including dynamic templates and session instances) is authoritative in Postgres.
 
-## 6. Not yet wired into the state loop
+## 6. Governor-backed turns vs legacy flow
 
-Several packages and designs relate to state but are **not** currently in the main HTTP request path:
+There are now **two** primary ways to advance a session:
 
-- `@minimal-rpg/governor` – contains prototypes for multi-agent orchestration and richer state management but is not invoked by the API.
-- `@minimal-rpg/state-manager` – contains JSON Patch helpers and state management scaffolding; current overrides logic in the API uses its own merge utilities.
+- **Legacy prompt-builder flow** – `POST /sessions/:id/messages`:
+  - Appends `user` / `assistant` rows in `messages`.
+  - Rebuilds prompts directly from `character_instances.profile_json` and `setting_instances.profile_json` plus history.
+  - Does not use the governor or state-manager; state is whatever lives inside the instance JSON.
+
+- **Governor-backed flow** – `POST /sessions/:id/turns`:
+  - Loads per-session character/setting instances and derives a `TurnStateContext` including `character`, `setting`, `location`, `inventory`, and `time` slices.
+  - Invokes `@minimal-rpg/governor`, which uses `@minimal-rpg/state-manager` to apply agent-emitted JSON Patch operations.
+  - Persists the resulting effective `character` and `setting` back to `character_instances` / `setting_instances`.
+  - Persists per-session `location`, `inventory`, and `time` slices into dedicated tables: `session_location_state`, `session_inventory_state`, and `session_time_state`.
+  - Logs state diffs in `state_change_log` and NPC dialogue in `npc_messages`.
+
+Several other designs remain **future-facing** and are not yet wired into the main HTTP path:
+
 - Vector-based knowledge nodes – archived docs describe splitting profiles into nodes and storing embeddings, but there is no `profile_nodes` (or similar) table or retrieval code in the live prompt builder. The forward-looking design assumes `character_instances.profile_json` and `setting_instances.profile_json` are decomposed into nodes (for example, `appearance.hair`, `appearance.legs`, `personality.traits`) that can later be used to build `Knowledge Context` blocks for the LLM.
-- Items, inventory, and outfits – see [dev-docs/06-items-inventory-and-outfits.md](dev-docs/06-items-inventory-and-outfits.md); no item tables or item state are present in the DB schema yet, but future RAG flows will treat outfit state plus `profile_json` as inputs to turn-local `Item Context` blocks instead of permanently embedding full inventories in `profile_json`.
-
-These should be treated as future extensions to the state model rather than current behavior.
+- Items, inventory, and outfits – see [dev-docs/06-items-inventory-and-outfits.md](dev-docs/06-items-inventory-and-outfits.md); there are still no item or ownership tables. The only persisted "inventory" today is the coarse-grained session-level slice in `session_inventory_state` used by the governor, not a full item system.
 
 ## 7. TBD / Open questions
 
@@ -198,7 +208,7 @@ The following aspects of state and persistence are not fully defined in the curr
 - **Player vs NPC modeling** – in the current runtime there is no first-class "player" table; all actors use the same `CharacterProfile` shape, and any distinction is implicit. The production design, however, assumes a future first-class Player entity with its own schema and persistence.
 - **Multi-character sessions** – sessions bind exactly one character template and one setting template; support for parties or multiple concurrent characters would require schema and API changes.
 - **Structured relationships** – relationship graphs or stats (for example, trust/affection counters) are not modeled explicitly in the database and would live inside `profile_json` if added.
-- **Location state** – while location schemas exist in [packages/schemas/src/location](packages/schemas/src/location), there are no location tables or per-session location tracking yet (see [dev-docs/03-settings-and-locations-schema.md](dev-docs/03-settings-and-locations-schema.md)).
+- **Location catalog and navigation** – while location schemas exist in [packages/schemas/src/location](packages/schemas/src/location), and per-session location slices are now stored in `session_location_state` (alongside `session_inventory_state` and `session_time_state`), there is still no global catalog of locations or navigation graph. Region/Building/Room definitions remain JSON-only and are not yet decomposed into relational tables or linked to sessions beyond the current-slice state.
 - **Vector memory / long-term state** – pgvector is enabled and reserved for future use, but no vectors are stored or queried as part of session state today.
 - **Concurrency guarantees** – the code assumes a turn-based flow; there is no explicit optimistic locking/versioning on `profile_json` for concurrent writes.
 

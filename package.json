@@ -15,13 +15,16 @@
     "docker:up:detached": "docker compose up --build -d",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
+    "test:trait": "node scripts/test-trait.mjs",
     "typecheck": "turbo typecheck"
   },
   "dependencies": {
+    "fast-json-patch": "3.1.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "markdownlint-cli": "^0.45.0",
@@ -32,5 +35,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4"
   },
-  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c"
+  "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a"
 }

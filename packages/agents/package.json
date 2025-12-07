@@ -1,0 +1,28 @@
+{
+  "name": "@minimal-rpg/agents",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@minimal-rpg/schemas": "workspace:*",
+    "@minimal-rpg/state-manager": "workspace:*",
+    "fast-json-patch": "^3.1.1"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.3"
+  }
+}

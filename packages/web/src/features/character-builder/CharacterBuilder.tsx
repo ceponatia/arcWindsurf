@@ -1,42 +1,33 @@
 import React, { useState } from 'react';
 import {
   CharacterProfileSchema,
-  SPEECH_DARKNESS_LEVELS,
-  SPEECH_FORMALITY_LEVELS,
-  SPEECH_HUMOR_LEVELS,
-  SPEECH_PACING_LEVELS,
-  SPEECH_SENTENCE_LENGTHS,
-  SPEECH_VERBOSITY_LEVELS,
+  parseBodyEntries,
+  type BodyMap,
   type CharacterDetail,
-  type Scent,
   type Physique,
   type CharacterProfile,
+  type AppearanceRegion,
+  type PersonalityMap,
 } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields } from '@minimal-rpg/utils';
-import type { CharacterStyleOverrides, SelectOption } from '../../types.js';
 import { splitList } from '../shared/stringLists.js';
-import { persistCharacter } from './api.js';
+import { persistCharacter, removeCharacter } from './api.js';
 import { AppearanceSection } from './components/AppearanceSection.js';
 import { BasicsSection } from './components/BasicsSection.js';
+import { BodySection } from './components/BodySection.js';
 import { DetailsSection } from './components/DetailsSection.js';
-import { GoalsAndStyleSection } from './components/GoalsAndStyleSection.js';
 import { PersonalitySection } from './components/PersonalitySection.js';
 import { PreviewSidebar } from './components/PreviewSidebar.js';
-import { ScentSection } from './components/ScentSection.js';
 import { useCharacterBuilderForm } from './hooks/useCharacterBuilderForm.js';
 import {
+  type AppearanceEntry,
+  type BodySensoryEntry,
   type DetailFormEntry,
   type FormFieldErrors,
   type FormKey,
   type FormState,
-  type StyleValue,
+  type PersonalityFormState,
 } from './types.js';
-
-const HAIR_SCENTS = ['floral', 'citrus', 'fresh', 'herbal', 'neutral'] as const;
-const BODY_SCENTS = ['clean', 'fresh', 'neutral', 'light musk'] as const;
-
-const pickOption = <T extends string>(value: SelectOption<T>, fallback: T): T =>
-  (value ?? fallback) as T;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -48,102 +39,249 @@ const parsePersonality = (value: string): string | string[] => {
   return parts;
 };
 
-const shouldUseStructuredAppearance = (form: FormState) =>
-  Boolean(
-    form.apHeight ??
-      form.apTorso ??
-      form.apSkinTone ??
-      form.apFeatures ??
-      form.apHairColor ??
-      form.apHairStyle ??
-      form.apHairLength ??
-      form.apEyesColor ??
-      form.apArmsBuild ??
-      form.apArmsLength ??
-      form.apLegsBuild ??
-      form.apLegsLength
-  );
+/**
+ * Build PersonalityMap from form state.
+ * Only includes non-default values to keep the JSON compact.
+ */
+const buildPersonalityMap = (pm: PersonalityFormState): PersonalityMap | undefined => {
+  const result: PersonalityMap = {};
 
-type AppearanceShape = Physique['appearance'];
+  // Traits (comma-separated string → array)
+  const traits = splitList(pm.traits);
+  if (traits.length > 0) {
+    result.traits = traits;
+  }
 
-const buildAppearance = (form: FormState): AppearanceShape | undefined => {
+  // Dimensions (only include if any differ from 0.5)
+  const dimensionScores = pm.dimensions.filter((d) => d.score !== 0.5);
+  if (dimensionScores.length > 0) {
+    result.dimensions = {};
+    for (const d of dimensionScores) {
+      result.dimensions[d.dimension] = d.score;
+    }
+  }
+
+  // Emotional baseline (only include if non-default)
+  const eb = pm.emotionalBaseline;
+  const hasEmotionalChanges =
+    eb.current !== 'anticipation' ||
+    eb.intensity !== 'mild' ||
+    eb.blend !== undefined ||
+    eb.moodBaseline !== 'trust' ||
+    eb.moodStability !== 0.5;
+  if (hasEmotionalChanges) {
+    result.emotionalBaseline = {
+      current: eb.current,
+      intensity: eb.intensity,
+      moodBaseline: eb.moodBaseline,
+      moodStability: eb.moodStability,
+      ...(eb.blend ? { blend: eb.blend } : {}),
+    };
+  }
+
+  // Values
+  if (pm.values.length > 0) {
+    result.values = pm.values.map((v) => ({
+      value: v.value,
+      priority: v.priority,
+    }));
+  }
+
+  // Fears
+  if (pm.fears.length > 0) {
+    result.fears = pm.fears
+      .filter((f) => f.specific.trim())
+      .map((f) => ({
+        category: f.category,
+        specific: f.specific,
+        intensity: f.intensity,
+        triggers: splitList(f.triggers),
+        copingMechanism: f.copingMechanism,
+      }));
+  }
+
+  // Attachment (only if non-default)
+  if (pm.attachment !== 'secure') {
+    result.attachment = pm.attachment;
+  }
+
+  // Social (only include if any differ from defaults)
+  const s = pm.social;
+  const hasSocialChanges =
+    s.strangerDefault !== 'neutral' ||
+    s.warmthRate !== 'moderate' ||
+    s.preferredRole !== 'supporter' ||
+    s.conflictStyle !== 'diplomatic' ||
+    s.criticismResponse !== 'reflective' ||
+    s.boundaries !== 'healthy';
+  if (hasSocialChanges) {
+    result.social = {
+      strangerDefault: s.strangerDefault,
+      warmthRate: s.warmthRate,
+      preferredRole: s.preferredRole,
+      conflictStyle: s.conflictStyle,
+      criticismResponse: s.criticismResponse,
+      boundaries: s.boundaries,
+    };
+  }
+
+  // Speech (only include if any differ from defaults)
+  const sp = pm.speech;
+  const hasSpeechChanges =
+    sp.vocabulary !== 'average' ||
+    sp.sentenceStructure !== 'moderate' ||
+    sp.formality !== 'neutral' ||
+    sp.humor !== 'occasional' ||
+    sp.humorType !== undefined ||
+    sp.expressiveness !== 'moderate' ||
+    sp.directness !== 'direct' ||
+    sp.pace !== 'moderate';
+  if (hasSpeechChanges) {
+    result.speech = {
+      vocabulary: sp.vocabulary,
+      sentenceStructure: sp.sentenceStructure,
+      formality: sp.formality,
+      humor: sp.humor,
+      expressiveness: sp.expressiveness,
+      directness: sp.directness,
+      pace: sp.pace,
+      ...(sp.humorType ? { humorType: sp.humorType } : {}),
+    };
+  }
+
+  // Stress (only include if any differ from defaults)
+  const st = pm.stress;
+  const hasStressChanges =
+    st.primary !== 'freeze' ||
+    st.secondary !== undefined ||
+    st.threshold !== 0.5 ||
+    st.recoveryRate !== 'moderate' ||
+    st.soothingActivities.trim() ||
+    st.stressIndicators.trim();
+  if (hasStressChanges) {
+    result.stress = {
+      primary: st.primary,
+      threshold: st.threshold,
+      recoveryRate: st.recoveryRate,
+      soothingActivities: splitList(st.soothingActivities),
+      stressIndicators: splitList(st.stressIndicators),
+      ...(st.secondary ? { secondary: st.secondary } : {}),
+    };
+  }
+
+  // Return undefined if nothing was set
+  return Object.keys(result).length > 0 ? result : undefined;
+};
+
+/**
+ * Group appearance entries by region and attribute.
+ * Returns a map: region → attribute → value
+ */
+function groupAppearanceEntries(
+  entries: AppearanceEntry[]
+): Map<AppearanceRegion, Map<string, string>> {
+  const grouped = new Map<AppearanceRegion, Map<string, string>>();
+  for (const entry of entries) {
+    if (!entry.value.trim()) continue;
+    if (!grouped.has(entry.region)) {
+      grouped.set(entry.region, new Map());
+    }
+    grouped.get(entry.region)!.set(entry.attribute, entry.value.trim());
+  }
+  return grouped;
+}
+
+/**
+ * Build Physique from appearance entries.
+ */
+const buildPhysique = (form: FormState): CharacterProfile['physique'] | undefined => {
+  // If free-text appearance is provided, use that
   const textAppearance = form.appearance.trim();
   if (textAppearance) {
-    // When free-text appearance is provided, we represent it via the
-    // CharacterProfile.physique string branch instead of structured appearance.
+    return textAppearance;
+  }
+
+  // Group entries by region
+  const grouped = groupAppearanceEntries(form.appearances);
+  if (grouped.size === 0) {
     return undefined;
   }
 
-  if (!shouldUseStructuredAppearance(form)) {
-    return undefined;
-  }
-
-  const features = splitList(form.apFeatures);
-
-  const appearance: AppearanceShape = {
-    hair: {
-      color: form.apHairColor || 'brown',
-      style: form.apHairStyle || 'straight',
-      length: form.apHairLength || 'medium',
-    },
-    eyes: { color: form.apEyesColor || 'brown' },
-    ...(features.length ? { features } : {}),
+  // Extract values with defaults
+  const getValue = (region: AppearanceRegion, attr: string, fallback: string): string => {
+    return grouped.get(region)?.get(attr) ?? fallback;
   };
-  return appearance;
+
+  const physique: Physique = {
+    build: {
+      height: getValue('overall', 'height', 'average') as Physique['build']['height'],
+      torso: getValue('overall', 'build', 'average') as Physique['build']['torso'],
+      skinTone: getValue('skin', 'tone', 'pale'),
+      arms: {
+        build: getValue('arms', 'build', 'average') as Physique['build']['arms']['build'],
+        length: getValue('arms', 'length', 'average') as Physique['build']['arms']['length'],
+      },
+      legs: {
+        build: getValue('legs', 'build', 'toned') as Physique['build']['legs']['build'],
+        length: getValue('legs', 'length', 'average') as Physique['build']['legs']['length'],
+      },
+      feet: {
+        size: getValue('feet', 'size', 'small') as Physique['build']['feet']['size'],
+        shape: getValue('feet', 'shape', 'average'),
+      },
+    },
+    appearance: {
+      hair: {
+        color: getValue('hair', 'color', 'brown'),
+        style: getValue('hair', 'style', 'straight'),
+        length: getValue('hair', 'length', 'medium'),
+      },
+      eyes: {
+        color: getValue('eyes', 'color', 'brown'),
+      },
+    },
+  };
+
+  // Add face features if present
+  const faceFeatures = getValue('face', 'features', '');
+  if (faceFeatures) {
+    physique.appearance.features = splitList(faceFeatures);
+  }
+
+  return physique;
 };
 
-const buildScent = (form: FormState): Partial<Scent> => {
-  const scent: Partial<Scent> = {};
-  const hair = form.scentHair.trim();
-  if ((HAIR_SCENTS as readonly string[]).includes(hair)) {
-    scent.hairScent = hair as Scent['hairScent'];
+/**
+ * Build the body map from body sensory entries.
+ * Each entry contains a region, type (scent/texture/visual), and raw text.
+ * The raw text is parsed using parseBodyEntries which extracts intensity,
+ * temperature, moisture and other attributes from natural language.
+ */
+const buildBody = (entries: BodySensoryEntry[]): BodyMap | undefined => {
+  // Build a single text representation for parsing
+  // Format: "region: type: raw text" for each entry
+  const lines = entries
+    .filter((e) => e.raw.trim())
+    .map((e) => `${e.region}: ${e.type}: ${e.raw.trim()}`);
+
+  if (lines.length === 0) {
+    return undefined;
   }
-  const body = form.scentBody.trim();
-  if ((BODY_SCENTS as readonly string[]).includes(body)) {
-    scent.bodyScent = body as Scent['bodyScent'];
-  }
-  const perfume = form.scentPerfume.trim();
-  if (perfume) {
-    scent.perfume = perfume.slice(0, 40);
-  }
-  return scent;
-};
 
-const pickStyleValue = <K extends keyof CharacterStyleOverrides>(
-  value: string,
-  allowed: readonly string[]
-): StyleValue<K> | undefined => (allowed.includes(value) ? (value as StyleValue<K>) : undefined);
+  // Join lines with semicolons for the parser
+  const input = lines.join('; ');
+  const result = parseBodyEntries(input);
 
-const buildStyle = (form: FormState): CharacterStyleOverrides => {
-  const style: CharacterStyleOverrides = {};
-  const sentenceLength = pickStyleValue<'sentenceLength'>(
-    form.styleSentenceLength.trim(),
-    SPEECH_SENTENCE_LENGTHS
-  );
-  if (sentenceLength) style.sentenceLength = sentenceLength;
+  // Check if the map has any non-empty regions
+  const hasContent = Object.values(result.bodyMap).some((region) => {
+    if (!region) return false;
+    const scentKeys = region.scent ? Object.keys(region.scent).length : 0;
+    const textureKeys = region.texture ? Object.keys(region.texture).length : 0;
+    const visualKeys = region.visual ? Object.keys(region.visual).length : 0;
+    return scentKeys > 0 || textureKeys > 0 || visualKeys > 0;
+  });
 
-  const humor = pickStyleValue<'humor'>(form.styleHumor.trim(), SPEECH_HUMOR_LEVELS);
-  if (humor) style.humor = humor;
-
-  const darkness = pickStyleValue<'darkness'>(form.styleDarkness.trim(), SPEECH_DARKNESS_LEVELS);
-  if (darkness) style.darkness = darkness;
-
-  const pacing = pickStyleValue<'pacing'>(form.stylePacing.trim(), SPEECH_PACING_LEVELS);
-  if (pacing) style.pacing = pacing;
-
-  const formality = pickStyleValue<'formality'>(
-    form.styleFormality.trim(),
-    SPEECH_FORMALITY_LEVELS
-  );
-  if (formality) style.formality = formality;
-
-  const verbosity = pickStyleValue<'verbosity'>(
-    form.styleVerbosity.trim(),
-    SPEECH_VERBOSITY_LEVELS
-  );
-  if (verbosity) style.verbosity = verbosity;
-
-  return style;
+  return hasContent ? result.bodyMap : undefined;
 };
 
 const mapDetailEntries = (entries: DetailFormEntry[]): CharacterDetail[] => {
@@ -171,33 +309,10 @@ const mapDetailEntries = (entries: DetailFormEntry[]): CharacterDetail[] => {
 
 const buildProfile = (form: FormState): CharacterProfile => {
   const tags = splitList(form.tags);
-  const appearance = buildAppearance(form);
-  const scent = buildScent(form);
-  const style = buildStyle(form);
+  const physique = buildPhysique(form);
   const details = mapDetailEntries(form.details);
-
-  const physique: CharacterProfile['physique'] | undefined = appearance
-    ? {
-        build: {
-          height: pickOption(form.apHeight, 'average'),
-          torso: pickOption(form.apTorso, 'average'),
-          skinTone: form.apSkinTone || 'pale',
-          arms: {
-            build: pickOption(form.apArmsBuild, 'average'),
-            length: pickOption(form.apArmsLength, 'average'),
-          },
-          legs: {
-            length: pickOption(form.apLegsLength, 'average'),
-            build: pickOption(form.apLegsBuild, 'toned'),
-          },
-          feet: {
-            size: 'small',
-            shape: 'average',
-          },
-        },
-        appearance,
-      }
-    : form.appearance.trim() || undefined;
+  const body = buildBody(form.bodySensory);
+  const personalityMap = buildPersonalityMap(form.personalityMap);
 
   const profile: CharacterProfile = {
     id: form.id.trim(),
@@ -207,11 +322,10 @@ const buildProfile = (form: FormState): CharacterProfile => {
     backstory: form.backstory.trim(),
     tags,
     personality: parsePersonality(form.personality),
-    speakingStyle: form.speakingStyle.trim(),
     ...(physique ? { physique } : {}),
-    ...(Object.keys(scent).length ? { scent } : {}),
-    ...(Object.keys(style).length ? { style } : {}),
     ...(details.length ? { details } : {}),
+    ...(body ? { body } : {}),
+    ...(personalityMap ? { personalityMap } : {}),
   };
 
   return profile;
@@ -230,6 +344,12 @@ export const CharacterBuilder: React.FC<{
     updateDetailEntry,
     addDetailEntry,
     removeDetailEntry,
+    updateBodyEntry,
+    addBodyEntry,
+    removeBodyEntry,
+    updateAppearanceEntry,
+    addAppearanceEntry,
+    removeAppearanceEntry,
     loading,
     loadError,
   } = useCharacterBuilderForm(id);
@@ -237,6 +357,15 @@ export const CharacterBuilder: React.FC<{
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const isEditing = Boolean(id);
+
+  const handleDelete = async () => {
+    if (!id) return;
+    setError(null);
+    await removeCharacter(id);
+    window.location.hash = '';
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -250,22 +379,7 @@ export const CharacterBuilder: React.FC<{
       const fieldMap = mapZodErrorsToFields<FormKey>(validation.error, {
         pathToField: (path: (string | number)[]) => {
           const p = path.map(String);
-          if (p[0] === 'appearance') {
-            const map: Record<string, FormKey> = {
-              'hair.color': 'apHairColor',
-              'hair.style': 'apHairStyle',
-              'hair.length': 'apHairLength',
-              'eyes.color': 'apEyesColor',
-              height: 'apHeight',
-              torso: 'apTorso',
-              skinTone: 'apSkinTone',
-              'arms.build': 'apArmsBuild',
-              'arms.length': 'apArmsLength',
-              'legs.build': 'apLegsBuild',
-              'legs.length': 'apLegsLength',
-            };
-            return map[p.slice(1).join('.')] ?? undefined;
-          }
+          // Map validation errors for top-level fields
           const top: Record<string, FormKey> = {
             id: 'id',
             name: 'name',
@@ -273,7 +387,6 @@ export const CharacterBuilder: React.FC<{
             summary: 'summary',
             backstory: 'backstory',
             personality: 'personality',
-            speakingStyle: 'speakingStyle',
           };
           const key = p[0];
           if (!key) return undefined;
@@ -288,9 +401,8 @@ export const CharacterBuilder: React.FC<{
 
     try {
       await persistCharacter(profile);
-      setSuccess('Character saved.');
+      setSuccess('Saved successfully');
       if (onSaveCallback) onSaveCallback();
-      window.location.hash = '';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
@@ -310,15 +422,24 @@ export const CharacterBuilder: React.FC<{
         <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
           <BasicsSection form={form} fieldErrors={fieldErrors} updateField={updateField} />
           <PersonalitySection form={form} fieldErrors={fieldErrors} updateField={updateField} />
-          <AppearanceSection form={form} fieldErrors={fieldErrors} updateField={updateField} />
+          <AppearanceSection
+            appearances={form.appearances}
+            updateAppearanceEntry={updateAppearanceEntry}
+            addAppearanceEntry={addAppearanceEntry}
+            removeAppearanceEntry={removeAppearanceEntry}
+          />
+          <BodySection
+            bodySensory={form.bodySensory}
+            updateBodyEntry={updateBodyEntry}
+            addBodyEntry={addBodyEntry}
+            removeBodyEntry={removeBodyEntry}
+          />
           <DetailsSection
             details={form.details}
             updateDetailEntry={updateDetailEntry}
             addDetailEntry={addDetailEntry}
             removeDetailEntry={removeDetailEntry}
           />
-          <ScentSection form={form} updateField={updateField} />
-          <GoalsAndStyleSection form={form} fieldErrors={fieldErrors} updateField={updateField} />
         </div>
 
         <PreviewSidebar
@@ -332,6 +453,8 @@ export const CharacterBuilder: React.FC<{
             void handleSave();
           }}
           onCancel={onCancel}
+          onDelete={handleDelete}
+          isEditing={isEditing}
         />
       </div>
     </div>

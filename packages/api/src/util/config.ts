@@ -8,6 +8,8 @@ interface AppEnv extends NodeJS.ProcessEnv {
   TOP_P?: string;
   OPENROUTER_API_KEY?: string;
   OPENROUTER_MODEL?: string;
+  GOVERNOR_DEV_MODE?: string;
+  INTENT_DEBUG?: string;
 }
 
 const env = process.env as AppEnv;
@@ -27,6 +29,8 @@ export function getConfig(): RuntimeConfig {
 
   const openrouterApiKey = env.OPENROUTER_API_KEY ?? '';
   const openrouterModel = env.OPENROUTER_MODEL ?? 'deepseek/deepseek-chat';
+  const governorDevMode = env.GOVERNOR_DEV_MODE === 'true';
+  const intentDebug = env.INTENT_DEBUG === 'true';
 
   return {
     port,
@@ -35,5 +39,7 @@ export function getConfig(): RuntimeConfig {
     topP,
     openrouterApiKey,
     openrouterModel,
+    governorDevMode,
+    intentDebug,
   };
 }

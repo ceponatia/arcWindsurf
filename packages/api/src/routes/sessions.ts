@@ -7,8 +7,8 @@ import {
   appendMessage,
   listSessions,
   deleteSession,
-  createSessionTagInstances,
-  getSessionTagInstances,
+  getSessionTagsWithDefinitions,
+  createSessionTagBinding,
   getPromptTag,
 } from '../db/sessionsClient.js';
 import {
@@ -65,11 +65,41 @@ function isCreateSessionRequest(body: unknown): body is CreateSessionRequest {
   return typeof characterId === 'string' && typeof settingId === 'string';
 }
 
+interface CreateNpcInstanceRequest {
+  templateId: string;
+  role?: string;
+  label?: string;
+}
+
+function isCreateNpcInstanceRequest(body: unknown): body is CreateNpcInstanceRequest {
+  if (!body || typeof body !== 'object') return false;
+  const { templateId, role, label } = body as {
+    templateId?: unknown;
+    role?: unknown;
+    label?: unknown;
+  };
+  const templateValid = typeof templateId === 'string' && templateId.trim().length > 0;
+  const roleValid = role === undefined || typeof role === 'string';
+  const labelValid = label === undefined || typeof label === 'string';
+  return templateValid && roleValid && labelValid;
+}
+
 function safeRandomId(): string {
   try {
     return randomUUID();
   } catch {
     return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+function tryParseName(profileJson: string | undefined): string | undefined {
+  if (!profileJson) return undefined;
+  try {
+    const parsed = JSON.parse(profileJson) as Record<string, unknown>;
+    const name = parsed?.['name'];
+    return typeof name === 'string' ? name : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -407,16 +437,21 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     const sessAfterUser = await getSession(session.id);
     const history = sessAfterUser?.messages ?? session.messages;
 
-    const tagInstancesRaw = await getSessionTagInstances(session.id);
-    const tagInstances = tagInstancesRaw.map((t) => ({
-      id: t.id,
-      sessionId: t.session_id,
-      tagId: t.tag_id,
-      name: t.name,
-      promptText: t.prompt_text,
-      shortDescription: t.short_description,
-      createdAt: t.created_at,
-    }));
+    // Get active tags for this session (only enabled, always-mode for now)
+    const tagBindingsWithDefs = await getSessionTagsWithDefinitions(session.id, {
+      enabledOnly: true,
+    });
+    const tagInstances = tagBindingsWithDefs
+      .filter((b) => b.tag.activation_mode === 'always') // Only always-mode tags for now
+      .map((b) => ({
+        id: b.id,
+        sessionId: b.session_id,
+        tagId: b.tag_id,
+        name: b.tag.name,
+        promptText: b.tag.prompt_text,
+        shortDescription: b.tag.short_description ?? undefined,
+        createdAt: b.created_at,
+      }));
 
     const effective = await getEffectiveProfiles(session.id, character, setting);
     const messages = buildPrompt({
@@ -520,6 +555,8 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
           templateId: character.id,
           templateSnapshot: JSON.stringify(character),
           profileJson: JSON.stringify(character),
+          overridesJson: JSON.stringify({}),
+          role: 'primary',
         },
       });
 
@@ -535,15 +572,21 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
       });
 
       if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
-        console.log('[API] Creating tag instances:', tagIds.length);
-        const tags = [];
+        console.log('[API] Creating tag bindings:', tagIds.length);
         for (const tid of tagIds) {
           if (typeof tid === 'string') {
+            // Verify tag exists before creating binding
             const t = await getPromptTag(tid, 'admin');
-            if (t) tags.push(t);
+            if (t) {
+              await createSessionTagBinding({
+                sessionId: sessionRecord.id,
+                tagId: tid,
+                targetType: 'session',
+                enabled: true,
+              });
+            }
           }
         }
-        await createSessionTagInstances(sessionRecord.id, tags);
       }
     } catch (err) {
       console.error('[API] Failed to create session instances, rolling back session', err);
@@ -564,6 +607,105 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
     };
     console.log('[API] Session created successfully');
     return c.json(response, 201);
+  });
+
+  // GET /sessions/:id/npcs - list NPC/character instances for a session
+  app.get('/sessions/:id/npcs', async (c) => {
+    const sessionId = c.req.param('id');
+    const session = await getSession(sessionId);
+    if (!session) {
+      return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
+    }
+
+    const instances = await db.characterInstance.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const npcs = instances.map((ci) => ({
+      id: ci.id,
+      role: ci.role,
+      label: ci.label ?? null,
+      templateId: ci.templateId,
+      name: tryParseName(ci.profileJson),
+      createdAt: ci.createdAt ?? undefined,
+    }));
+
+    return c.json({ ok: true, npcs }, 200);
+  });
+
+  // POST /sessions/:id/npcs - create an additional NPC character instance for the session
+  app.post('/sessions/:id/npcs', async (c) => {
+    const sessionId = c.req.param('id');
+    const session = await getSession(sessionId);
+    if (!session) {
+      return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
+    }
+
+    const loaded = deps.getLoaded();
+    if (!loaded) {
+      return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
+    }
+
+    const rawBody: unknown = await c.req.json().catch(() => null);
+    if (!isCreateNpcInstanceRequest(rawBody)) {
+      return c.json({ ok: false, error: 'templateId is required' } satisfies ApiError, 400);
+    }
+
+    const { templateId } = rawBody;
+    const requestedRole = typeof rawBody.role === 'string' ? rawBody.role.trim() : '';
+    const normalizedRole = requestedRole.toLowerCase() === 'primary' ? 'primary' : 'npc';
+    const label = typeof rawBody.label === 'string' ? rawBody.label.trim() : '';
+
+    // Prevent multiple primary instances in a session.
+    if (normalizedRole === 'primary') {
+      const existingPrimary = await db.characterInstance.findUnique({
+        where: { sessionId: session.id, role: 'primary' },
+      });
+      if (existingPrimary) {
+        return c.json(
+          { ok: false, error: 'primary character already exists for session' } satisfies ApiError,
+          409
+        );
+      }
+    }
+
+    const templateProfile = await findCharacter(loaded, templateId);
+    if (!templateProfile) {
+      return c.json({ ok: false, error: 'template not found' } satisfies ApiError, 404);
+    }
+
+    const npcInstanceId = `${templateId}-${safeRandomId()}`;
+
+    try {
+      await db.characterInstance.create({
+        data: {
+          id: npcInstanceId,
+          sessionId: session.id,
+          templateId,
+          templateSnapshot: JSON.stringify(templateProfile),
+          profileJson: JSON.stringify(templateProfile),
+          overridesJson: JSON.stringify({}),
+          role: normalizedRole,
+          label: label.length > 0 ? label : null,
+        },
+      });
+    } catch (err) {
+      console.error('[API] Failed to create NPC instance', err);
+      return c.json({ ok: false, error: 'failed to create npc instance' } satisfies ApiError, 500);
+    }
+
+    return c.json(
+      {
+        ok: true,
+        id: npcInstanceId,
+        sessionId: session.id,
+        role: normalizedRole,
+        label: label.length > 0 ? label : null,
+        templateId,
+      },
+      201
+    );
   });
 
   // DELETE /sessions/:id - delete a session

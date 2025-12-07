@@ -113,6 +113,9 @@ export interface CharacterInstanceRow extends DbRow {
   templateId: string;
   templateSnapshot: string;
   profileJson: string;
+  overridesJson?: string;
+  role: string;
+  label?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -123,6 +126,7 @@ export interface SettingInstanceRow extends DbRow {
   templateId: string;
   templateSnapshot: string;
   profileJson: string;
+  overridesJson?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -146,16 +150,42 @@ export interface UserSessionRow extends DbRow {
   messages?: MessageRow[];
 }
 
+// Enhanced Prompt Tag with targeting, activation, and versioning
 export interface PromptTagRow extends DbRow {
   id: string;
   owner: string;
+  visibility: 'private' | 'public' | 'unlisted';
   name: string;
-  short_description: string;
+  short_description: string | null;
+  category: 'style' | 'mechanic' | 'content' | 'world' | 'behavior' | 'trigger' | 'meta';
   prompt_text: string;
+  activation_mode: 'always' | 'conditional';
+  target_type: 'session' | 'character' | 'npc' | 'player' | 'location' | 'setting';
+  triggers: unknown; // JSONB - TagTrigger[]
+  priority: 'override' | 'high' | 'normal' | 'low' | 'fallback';
+  composition_mode: 'append' | 'prepend' | 'replace' | 'merge';
+  conflicts_with: string[] | null;
+  requires: string[] | null;
+  version: string;
+  changelog: string | null;
+  is_built_in: boolean;
   created_at?: Date;
   updated_at?: Date;
 }
 
+// Session Tag Binding (junction table for session-entity binding)
+export interface SessionTagBindingRow extends DbRow {
+  id: string;
+  session_id: string;
+  tag_id: string;
+  target_type: 'session' | 'character' | 'npc' | 'player' | 'location' | 'setting';
+  target_entity_id: string | null;
+  enabled: boolean;
+  created_at?: Date;
+}
+
+// Deprecated: SessionTagInstanceRow - kept for backward compatibility during migration
+/** @deprecated Use SessionTagBindingRow instead */
 export interface SessionTagInstanceRow extends DbRow {
   id: string;
   session_id: string;
@@ -164,6 +194,29 @@ export interface SessionTagInstanceRow extends DbRow {
   short_description: string;
   prompt_text: string;
   created_at?: Date;
+}
+
+// Item definition (library/template)
+export interface ItemDefinitionRow extends DbRow {
+  id: string;
+  category: string;
+  // JSONB columns are auto-parsed by node-postgres
+  definitionJson: unknown;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Item instance (per-session copy)
+export interface ItemInstanceRow extends DbRow {
+  id: string;
+  sessionId: string;
+  definitionId: string;
+  // JSONB columns are auto-parsed by node-postgres
+  definitionSnapshot: unknown;
+  ownerType: string;
+  ownerId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // Session helpers exposed by sessions.ts

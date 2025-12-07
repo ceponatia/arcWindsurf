@@ -1,25 +1,31 @@
-import { z } from 'zod';
+// Tag schema definitions
+export {
+  TAG_CATEGORIES,
+  TAG_ACTIVATION_MODES,
+  TAG_VISIBILITIES,
+  TAG_TARGET_TYPES,
+  TAG_TRIGGER_CONDITIONS,
+  TAG_PRIORITIES,
+  TAG_COMPOSITION_MODES,
+  TagTriggerSchema,
+  TagDefinitionSchema,
+  SessionTagBindingSchema,
+  SessionTagInstanceSchema,
+} from './definitions.js';
 
-export const TagDefinitionSchema = z.object({
-  id: z.string().uuid(),
-  owner: z.string().min(1),
-  name: z.string().min(1).max(100),
-  shortDescription: z.string().max(500).optional(),
-  promptText: z.string().min(1).max(10000),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
-});
+export type {
+  TagCategory,
+  TagActivationMode,
+  TagVisibility,
+  TagTargetType,
+  TagTriggerCondition,
+  TagTrigger,
+  TagPriority,
+  TagCompositionMode,
+  TagDefinition,
+  SessionTagBinding,
+  SessionTagInstance,
+} from './definitions.js';
 
-export type TagDefinition = z.infer<typeof TagDefinitionSchema>;
-
-export const SessionTagInstanceSchema = z.object({
-  id: z.string().uuid(),
-  sessionId: z.string().uuid(),
-  tagId: z.string().uuid().nullable(),
-  name: z.string(),
-  shortDescription: z.string().optional(),
-  promptText: z.string(),
-  createdAt: z.date().optional(),
-});
-
-export type SessionTagInstance = z.infer<typeof SessionTagInstanceSchema>;
+// Tag helper functions
+export { isConditionalTag, incrementVersion, validateTrigger } from './helpers.js';

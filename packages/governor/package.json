@@ -12,12 +12,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build:wip": "tsc -p tsconfig.json",
-    "lint": "echo 'skipping lint for @minimal-rpg/governor (skeleton)'",
-    "typecheck": "echo 'skipping typecheck for @minimal-rpg/governor (skeleton)'"
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@minimal-rpg/agents": "workspace:*",
+    "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
-    "@minimal-rpg/state-manager": "workspace:*"
+    "@minimal-rpg/state-manager": "workspace:*",
+    "fast-json-patch": "^3.1.1"
   }
 }

@@ -31,9 +31,18 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
       builderId: new URLSearchParams(query).get('id'),
     };
   }
+  if (hash.startsWith('#/item-builder')) {
+    const query = hash.split('?')[1];
+    return {
+      viewMode: 'item-builder',
+      builderId: new URLSearchParams(query).get('id'),
+    };
+  }
   if (hash.startsWith('#/characters')) return { viewMode: 'character-library', builderId: null };
   if (hash.startsWith('#/settings')) return { viewMode: 'setting-library', builderId: null };
   if (hash.startsWith('#/tags')) return { viewMode: 'tag-library', builderId: null };
+  if (hash.startsWith('#/items')) return { viewMode: 'item-library', builderId: null };
+  if (hash.startsWith('#/session-builder')) return { viewMode: 'session-builder', builderId: null };
   if (hash.startsWith('#/sessions')) return { viewMode: 'session-library', builderId: null };
   if (hash.startsWith('#/chat')) return { viewMode: 'chat', builderId: null };
 
@@ -108,8 +117,16 @@ export function useAppController(): AppControllerValue {
     window.location.hash = '#/tags';
   };
 
+  const navigateToItemLibrary = () => {
+    window.location.hash = '#/items';
+  };
+
   const navigateToSessionLibrary = () => {
     window.location.hash = '#/sessions';
+  };
+
+  const navigateToSessionBuilder = () => {
+    window.location.hash = '#/session-builder';
   };
 
   const navigateToCharacterBuilder = (id: string | null) => {
@@ -133,6 +150,14 @@ export function useAppController(): AppControllerValue {
       window.location.hash = `#/tag-builder?id=${id}`;
     } else {
       window.location.hash = '#/tag-builder';
+    }
+  };
+
+  const navigateToItemBuilder = (id?: string | null) => {
+    if (id) {
+      window.location.hash = `#/item-builder?id=${id}`;
+    } else {
+      window.location.hash = '#/item-builder';
     }
   };
 
@@ -217,10 +242,13 @@ export function useAppController(): AppControllerValue {
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
     navigateToTagBuilder,
+    navigateToItemBuilder,
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
+    navigateToItemLibrary,
     navigateToSessionLibrary,
+    navigateToSessionBuilder,
     navigateToHome,
     selectSession,
   };

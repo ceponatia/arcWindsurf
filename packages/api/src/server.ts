@@ -18,8 +18,10 @@ import { getConfig } from './util/config.js';
 import { registerConfigRoutes } from './routes/config.js';
 import { registerAdminDbRoutes } from './routes/adminDb.js';
 import { registerSessionRoutes } from './routes/sessions.js';
+import { registerTurnRoutes } from './routes/turns.js';
 import { registerProfileRoutes } from './routes/profiles.js';
 import { registerTagRoutes } from './routes/tags.js';
+import { registerItemRoutes } from './routes/items.js';
 
 const app = new Hono();
 
@@ -59,6 +61,7 @@ async function start(): Promise<void> {
     topP: cfg.topP,
     openrouterModel: cfg.openrouterModel,
     openrouterApiKeySet: Boolean(cfg.openrouterApiKey),
+    governorDevMode: cfg.governorDevMode,
   });
 
   // Enable CORS for browser-based clients (Vite dev, etc.)
@@ -76,7 +79,9 @@ async function start(): Promise<void> {
   registerAdminDbRoutes(app);
   registerProfileRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
+  registerTurnRoutes(app);
   registerTagRoutes(app);
+  registerItemRoutes(app);
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
