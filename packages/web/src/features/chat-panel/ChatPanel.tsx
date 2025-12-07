@@ -231,16 +231,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const onRedo = async (idx: number) => {
     if (!effectiveSessionId || sending) return;
 
-    const messages = session?.messages ?? [];
-    const userMessage = messages[idx];
-    if (!userMessage || userMessage.role !== 'user') return;
+    const messages = session?.messages;
+    const userMessage = messages?.[idx];
+    if (userMessage?.role !== 'user') return;
 
     const userContent = userMessage.content;
     const userDbIdx = userMessage.idx ?? idx + 1;
 
     // Find the assistant message that follows this user message (if any)
-    const nextMessage = messages[idx + 1];
-    const hasAssistantResponse = nextMessage && nextMessage.role === 'assistant';
+    const nextMessage = messages?.[idx + 1];
+    const hasAssistantResponse = nextMessage?.role === 'assistant';
     const assistantDbIdx = hasAssistantResponse ? (nextMessage.idx ?? idx + 2) : null;
 
     setSending(true);

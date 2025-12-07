@@ -1,4 +1,4 @@
-import { BaseAgent } from './base.js';
+import { BaseAgent } from '../core/base.js';
 import { buildDimensionTraitPhrases } from './personality-mapping.js';
 import type {
   AgentConfig,
@@ -9,7 +9,7 @@ import type {
   CharacterSlice,
   IntentSegment,
   IntentType,
-} from './types.js';
+} from '../core/types.js';
 
 /**
  * Agent responsible for NPC dialogue and reactions.

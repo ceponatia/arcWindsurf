@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { RulesAgent } from './rules-agent.js';
-import type { AgentInput, AgentIntent, InventorySlice } from './types.js';
+import type { AgentInput, AgentIntent, InventorySlice } from '../core/types.js';
 
 function createMockInput(overrides: Partial<AgentInput> = {}): AgentInput {
   return {

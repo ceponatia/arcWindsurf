@@ -2,7 +2,7 @@
  * Types for sensory agent functionality.
  */
 
-import type { AgentConfig, IntentType } from '../types.js';
+import type { AgentConfig, IntentType } from '../core/types.js';
 import type { BodyRegion } from '@minimal-rpg/schemas';
 
 // Re-export BodyRegion for convenience

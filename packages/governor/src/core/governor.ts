@@ -3,15 +3,11 @@ import {
   type AgentRegistry,
   type Agent,
   type AgentInput,
-  type AgentOutput,
-  type AgentType,
   type AgentIntent,
-  type IntentParams,
-  type IntentSegment as AgentIntentSegment,
 } from '@minimal-rpg/agents';
 import { type RetrievalService } from '@minimal-rpg/retrieval';
 import { type StateManager, type DeepPartial } from '@minimal-rpg/state-manager';
-import { mapToAgentIntent } from './intents.js';
+import { mapToAgentIntent } from '../intents/intents.js';
 import {
   type GovernorConfig,
   type GovernorOptions,
@@ -21,99 +17,24 @@ import {
   type TurnEvent,
   type TurnMetadata,
   type TurnStateChanges,
-  type DetectedIntent,
-  type IntentDetector,
-  type IntentDetectionContext,
-  type IntentDetectionResult,
-  type IntentDetectionDebug,
   type PhaseTiming,
-  type AgentExecutionResult,
   type TurnExecutionResult,
   type TurnContext,
   type ResponseComposer,
   DEFAULT_GOVERNOR_OPTIONS,
   TurnProcessingError,
 } from './types.js';
+import {
+  type DetectedIntent,
+  type IntentDetector,
+  type IntentDetectionContext,
+  type IntentDetectionResult,
+  type IntentDetectionDebug,
+} from '../intents/types.js';
 import { DefaultContextBuilder, type ContextBuilderConfig } from './context-builder.js';
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Build IntentParams from DetectedIntent params, avoiding undefined assignments
- * for exactOptionalPropertyTypes compatibility.
- */
-function buildIntentParams(params: DetectedIntent['params'] | undefined): IntentParams {
-  const result: IntentParams = {};
-
-  if (params?.target !== undefined) {
-    result.target = params.target;
-  }
-  if (params?.direction !== undefined) {
-    result.direction = params.direction;
-  }
-  if (params?.npcId !== undefined) {
-    result.npcId = params.npcId;
-  }
-  if (params?.item !== undefined) {
-    result.item = params.item;
-  }
-  if (params?.action !== undefined) {
-    result.action = params.action;
-  }
-  if (params?.bodyPart !== undefined) {
-    result.bodyPart = params.bodyPart;
-  }
-  if (params?.narrateType !== undefined) {
-    result.narrateType = params.narrateType;
-  }
-  if (params?.extra !== undefined) {
-    result.extra = params.extra;
-  }
-
-  return result;
-}
-
-/**
- * Build AgentIntent from DetectedIntent, avoiding undefined assignments
- * for exactOptionalPropertyTypes compatibility.
- */
-function buildAgentIntent(
-  intent: DetectedIntent,
-  mapIntentType: (type: DetectedIntent['type']) => AgentIntent['type']
-): AgentIntent {
-  const agentIntent: AgentIntent = {
-    type: mapIntentType(intent.type),
-    params: buildIntentParams(intent.params),
-    confidence: intent.confidence,
-  };
-
-  if (intent.signals !== undefined) {
-    agentIntent.signals = intent.signals;
-  }
-
-  // Pass through segments for compound intents
-  if (intent.segments !== undefined && intent.segments.length > 0) {
-    // Map governor IntentSegment to agent IntentSegment
-    agentIntent.segments = intent.segments.map((seg) => {
-      const mapped: AgentIntentSegment = {
-        type: seg.type,
-        content: seg.content,
-      };
-      if (seg.sensoryType !== undefined) {
-        mapped.sensoryType = seg.sensoryType;
-      }
-      if (seg.bodyPart !== undefined) {
-        mapped.bodyPart = seg.bodyPart;
-      }
-      return mapped;
-    });
-  }
-
-  return agentIntent;
-}
-import { createFallbackIntentDetector } from './intent-detector.js';
+import { createFallbackIntentDetector } from '../intents/intent-detector.js';
+import { buildAgentIntent } from './intent-utils.js';
+import { executeAgentsWithTimeout } from './agent-executor.js';
 
 // ============================================================================
 // Governor Implementation
@@ -220,19 +141,15 @@ export class Governor {
       const intent = detectionResult.intent;
       // Default npcId to the active NPC when missing for talk intents; fall back to the primary character.
       if (intent.type === 'talk' && !intent.params?.npcId) {
-        const npcInstanceId = (turnInput.baseline?.npc as Record<string, unknown> | undefined)?.[
-          'instanceId'
-        ];
-        const characterInstanceId = (
-          turnInput.baseline?.character as Record<string, unknown> | undefined
-        )?.['instanceId'];
+        const npc = turnInput.baseline?.npc;
+        const npcInstanceId =
+          npc && typeof npc.instanceId === 'string' ? npc.instanceId : undefined;
 
-        const fallbackNpcId =
-          typeof npcInstanceId === 'string'
-            ? npcInstanceId
-            : typeof characterInstanceId === 'string'
-              ? characterInstanceId
-              : undefined;
+        const character = turnInput.baseline?.character;
+        const characterInstanceId =
+          character && typeof character.instanceId === 'string' ? character.instanceId : undefined;
+
+        const fallbackNpcId = npcInstanceId ?? characterInstanceId;
 
         if (fallbackNpcId) {
           intent.params = {
@@ -270,8 +187,8 @@ export class Governor {
         intent,
         baseline,
         overrides,
-        conversationHistory: turnInput.conversationHistory,
-        turnNumber: turnInput.turnNumber,
+        conversationHistory: turnInput.conversationHistory ?? [],
+        turnNumber: turnInput.turnNumber ?? 1,
       });
       phaseTiming.contextRetrievalMs = Date.now() - contextStart;
 
@@ -376,13 +293,13 @@ export class Governor {
     // Expose any known NPC names to the detector so it can boost talk intents when characters are present.
     const presentNpcNames: string[] = [];
     if (turnInput.baseline?.npc) {
-      const maybeName = (turnInput.baseline.npc as Record<string, unknown>)['name'];
+      const maybeName = turnInput.baseline.npc.name;
       if (typeof maybeName === 'string' && maybeName.trim().length > 0) {
         presentNpcNames.push(maybeName);
       }
     }
     if (turnInput.baseline?.character) {
-      const maybeName = (turnInput.baseline.character as Record<string, unknown>)['name'];
+      const maybeName = turnInput.baseline.character.name;
       if (typeof maybeName === 'string' && maybeName.trim().length > 0) {
         presentNpcNames.push(maybeName);
       }
@@ -395,13 +312,15 @@ export class Governor {
       const items = turnInput.baseline.inventory['items'];
       if (Array.isArray(items)) {
         context.inventoryItems = items
-          .filter(
-            (item): item is { name: string } =>
-              typeof item === 'object' &&
-              item !== null &&
-              typeof (item as Record<string, unknown>)['name'] === 'string'
-          )
-          .map((item) => (item as { name: string }).name);
+          .filter((item): item is { name: string } => {
+            if (!item || typeof item !== 'object') {
+              return false;
+            }
+
+            const candidate = item as { name?: unknown };
+            return typeof candidate.name === 'string';
+          })
+          .map((item) => item.name);
       }
     }
 
@@ -517,18 +436,12 @@ export class Governor {
   // Phase 5: Agent Execution
   // ============================================================================
 
+  // 5. Agent Execution
   private async executeAgents(
     agents: Agent[],
     context: TurnContext,
     events: TurnEvent[]
   ): Promise<TurnExecutionResult> {
-    const combinedPatches: Operation[] = [];
-    const combinedEvents: TurnEvent[] = [];
-    const successfulAgents: AgentType[] = [];
-    const failedAgents: AgentType[] = [];
-    const narratives: string[] = [];
-
-    // Convert TurnContext to AgentInput
     const agentInput: AgentInput = {
       sessionId: context.sessionId,
       playerInput: context.playerInput,
@@ -547,139 +460,12 @@ export class Governor {
       agentInput.npcConversationHistory = context.npcConversationHistory;
     }
 
-    // Execute all agents in parallel with timeout protection
     const agentTimeout = this.options.agentTimeoutMs ?? 30000; // 30s default
 
-    // Emit start events for all agents
-    for (const agent of agents) {
-      events.push({
-        type: 'agent-started',
-        timestamp: new Date(),
-        payload: { agentType: agent.agentType },
-        source: agent.agentType,
-      });
-
-      if (this.logging?.logAgents) {
-        console.log(`[Governor] Executing agent: ${agent.name} (${agent.agentType})`);
-      }
-    }
-
-    // Execute all agents in parallel
-    const agentPromises = agents.map((agent) =>
-      this.executeAgentWithTimeout(agent, agentInput, agentTimeout)
-    );
-
-    const agentResults = await Promise.all(agentPromises);
-
-    // Process results
-    for (let i = 0; i < agents.length; i++) {
-      const agent = agents[i]!;
-      const result = agentResults[i]!;
-
-      events.push({
-        type: 'agent-completed',
-        timestamp: new Date(),
-        payload: {
-          agentType: agent.agentType,
-          success: result.success,
-          executionTimeMs: result.executionTimeMs,
-        },
-        source: agent.agentType,
-      });
-
-      if (result.success) {
-        successfulAgents.push(agent.agentType);
-        narratives.push(result.output.narrative);
-
-        if (result.output.statePatches) {
-          combinedPatches.push(...result.output.statePatches);
-        }
-
-        if (result.output.events) {
-          for (const agentEvent of result.output.events) {
-            combinedEvents.push({
-              type: 'custom',
-              timestamp: new Date(),
-              payload: agentEvent.payload,
-              source: agentEvent.source,
-            });
-          }
-        }
-      } else {
-        failedAgents.push(agent.agentType);
-      }
-    }
-
-    return {
-      agentResults,
-      combinedNarrative: narratives.join('\n\n'),
-      combinedPatches,
-      combinedEvents,
-      successfulAgents,
-      failedAgents,
-    };
-  }
-
-  /**
-   * Execute an agent with timeout protection.
-   * Returns immediately on error or timeout instead of hanging.
-   */
-  private async executeAgentWithTimeout(
-    agent: Agent,
-    input: AgentInput,
-    timeoutMs: number
-  ): Promise<AgentExecutionResult> {
-    const startTime = Date.now();
-
-    const timeoutPromise = new Promise<AgentExecutionResult>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          agentType: agent.agentType,
-          output: {
-            narrative: '',
-            diagnostics: {
-              warnings: [`Agent ${agent.agentType} timed out after ${timeoutMs}ms`],
-            },
-          },
-          executionTimeMs: timeoutMs,
-          success: false,
-          error: new Error(`Agent ${agent.agentType} timed out after ${timeoutMs}ms`),
-        });
-      }, timeoutMs);
+    return executeAgentsWithTimeout(agents, agentInput, events, {
+      agentTimeoutMs: agentTimeout,
+      logAgents: this.logging?.logAgents,
     });
-
-    const executePromise = this.executeAgent(agent, input);
-
-    return Promise.race([executePromise, timeoutPromise]);
-  }
-
-  private async executeAgent(agent: Agent, input: AgentInput): Promise<AgentExecutionResult> {
-    const startTime = Date.now();
-
-    try {
-      const output = await agent.execute(input);
-      return {
-        agentType: agent.agentType,
-        output,
-        executionTimeMs: Date.now() - startTime,
-        success: true,
-      };
-    } catch (error) {
-      const errorOutput: AgentOutput = {
-        narrative: `An error occurred while processing your action.`,
-        diagnostics: {
-          warnings: [error instanceof Error ? error.message : 'Unknown error'],
-        },
-      };
-
-      return {
-        agentType: agent.agentType,
-        output: errorOutput,
-        executionTimeMs: Date.now() - startTime,
-        success: false,
-        error: error instanceof Error ? error : new Error('Unknown error'),
-      };
-    }
   }
 
   // ============================================================================
@@ -699,13 +485,13 @@ export class Governor {
     }
 
     try {
-      const result = this.stateManager.applyPatches(baseline, overrides, patches);
+      const result = this.stateManager.applyPatches<TurnStateContext>(baseline, overrides, patches);
 
       return {
         patchCount: result.patchesApplied,
         modifiedPaths: result.modifiedPaths,
         patches,
-        newEffectiveState: result.newEffective as TurnStateContext,
+        newEffectiveState: result.newEffective,
         newOverrides: result.newOverrides,
       };
     } catch (error) {
@@ -749,7 +535,9 @@ export class Governor {
 
     if (this.options.devMode) {
       metadata.intent = intent;
-      metadata.intentDebug = intentDebug;
+      if (intentDebug) {
+        metadata.intentDebug = intentDebug;
+      }
     }
 
     // Add events from agent execution
@@ -767,7 +555,7 @@ export class Governor {
       });
     }
 
-    let message = executionResult.combinedNarrative || 'Nothing happens.';
+    let message = executionResult.combinedNarrative ?? 'Nothing happens.';
 
     if (this.responseComposer) {
       try {
@@ -778,7 +566,7 @@ export class Governor {
           stateChanges,
           nodesRetrieved,
           events,
-          sessionTags: turnInput.sessionTags,
+          ...(turnInput.sessionTags ? { sessionTags: turnInput.sessionTags } : {}),
         });
 
         if (typeof composed === 'string') {
@@ -797,7 +585,7 @@ export class Governor {
     return {
       message,
       events,
-      stateChanges: stateChanges.patchCount > 0 ? stateChanges : undefined,
+      stateChanges: stateChanges,
       metadata,
       success: true,
     };
@@ -826,7 +614,9 @@ export class Governor {
 
     if (this.options.devMode) {
       metadata.intent = intent;
-      metadata.intentDebug = intentDebug;
+      if (intentDebug) {
+        metadata.intentDebug = intentDebug;
+      }
     }
 
     let message: string;
@@ -977,6 +767,7 @@ export class Governor {
     const metadata: TurnMetadata = {
       processingTimeMs,
       agentsInvoked: [],
+      nodesRetrieved: 0,
       phaseTiming,
     };
 

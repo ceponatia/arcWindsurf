@@ -15,7 +15,6 @@ import {
   NpcAgent,
   RulesAgent,
   SensoryAgent,
-  ParserAgent,
   type LlmProvider as AgentLlmProvider,
   type LlmGenerateOptions as AgentLlmGenerateOptions,
   type LlmResponse as AgentLlmResponse,
@@ -118,7 +117,6 @@ function ensureAgentsRegistered(): void {
   agentRegistry.register(new NpcAgent(llmProvider ? { llmProvider } : {}));
   agentRegistry.register(new RulesAgent());
   agentRegistry.register(new SensoryAgent(llmProvider ? { llmProvider } : {}));
-  agentRegistry.register(new ParserAgent());
 }
 
 function getResponseComposer(): ResponseComposer | undefined {

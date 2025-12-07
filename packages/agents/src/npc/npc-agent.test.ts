@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NpcAgent } from './npc-agent.js';
-import type { AgentInput, AgentIntent, CharacterSlice, IntentSegment } from './types.js';
+import type { AgentInput, AgentIntent, CharacterSlice, IntentSegment } from '../core/types.js';
 
 function createMockInput(overrides: Partial<AgentInput> = {}): AgentInput {
   return {

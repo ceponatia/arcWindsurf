@@ -1,21 +1,14 @@
-// Types
-export * from './types.js';
+// Core
+export * from './core/types.js';
+export { BaseAgent } from './core/base.js';
+export { DefaultAgentRegistry, createDefaultRegistry } from './core/registry.js';
 
-// Base class
-export { BaseAgent } from './base.js';
+// Agents
+export { MapAgent } from './map/map-agent.js';
+export { NpcAgent } from './npc/npc-agent.js';
+export { RulesAgent } from './rules/rules-agent.js';
 
-// Agent implementations
-export { MapAgent } from './map-agent.js';
-export { NpcAgent } from './npc-agent.js';
-export { RulesAgent } from './rules-agent.js';
-export {
-  ParserAgent,
-  DEFAULT_PARSER_PATTERNS,
-  type ParserAgentConfig,
-  type ParserPattern,
-} from './parser-agent.js';
-
-// Sensory agent (in subfolder - new agent organization pattern)
+// Sensory agent
 export {
   SensoryAgent,
   isSensoryIntent,
@@ -24,6 +17,3 @@ export {
   type SensoryContext,
   type SensoryIntentType,
 } from './sensory/index.js';
-
-// Registry
-export { DefaultAgentRegistry, createDefaultRegistry } from './registry.js';

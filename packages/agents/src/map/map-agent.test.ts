@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { MapAgent } from './map-agent.js';
-import type { AgentInput, AgentIntent, LocationSlice } from './types.js';
+import type { AgentInput, AgentIntent, LocationSlice } from '../core/types.js';
 
 function createMockInput(overrides: Partial<AgentInput> = {}): AgentInput {
   return {

@@ -1,21 +1,3 @@
-import { BaseAgent } from './base.js';
-import type {
-  AgentConfig,
-  AgentInput,
-  AgentIntent,
-  AgentOutput,
-  AgentType,
-  IntentType,
-} from './types.js';
-
-/**
- * Configuration specific to the parser agent.
- */
-export interface ParserAgentConfig extends AgentConfig {
-  /** Regex patterns for extracting structured data */
-  patterns?: ParserPattern[];
-}
-
 /**
  * A pattern for extracting structured data.
  */
@@ -34,90 +16,70 @@ export interface ParserPattern {
 }
 
 /**
- * Agent responsible for parsing and normalizing profile data.
+ * An extracted attribute from parsing.
+ */
+export interface ExtractedAttribute {
+  /** Name of the attribute */
+  name: string;
+
+  /** Target path in the profile */
+  path: string;
+
+  /** Extracted value */
+  value: string;
+}
+
+/**
+ * Minimal interface for an LLM provider needed by the parser.
+ */
+export interface ParserLlmProvider {
+  generate(
+    prompt: string,
+    options?: {
+      systemPrompt?: string;
+      temperature?: number;
+      maxTokens?: number;
+    }
+  ): Promise<{ text: string; usage?: unknown }>;
+}
+
+/**
+ * Configuration for the AttributeParser.
+ */
+export interface AttributeParserConfig {
+  /** Regex patterns for extracting structured data */
+  patterns?: ParserPattern[];
+  /** Optional LLM provider for fallback extraction */
+  llmProvider?: ParserLlmProvider;
+}
+
+/**
+ * Service responsible for parsing and normalizing profile data.
  * Handles extraction of structured attributes from free-text.
  */
-export class ParserAgent extends BaseAgent {
-  public readonly agentType: AgentType = 'parser';
-  public readonly name = 'Parser/Normalization Agent';
-
-  /** Intent types this agent can handle */
-  private static readonly HANDLED_INTENTS: IntentType[] = ['custom'];
-
+export class AttributeParser {
   /** Default parsing patterns */
   private readonly patterns: ParserPattern[];
+  private readonly llmProvider: ParserLlmProvider | undefined;
 
-  constructor(config: ParserAgentConfig = {}) {
-    super(config);
+  constructor(config: AttributeParserConfig = {}) {
     this.patterns = config.patterns ?? DEFAULT_PARSER_PATTERNS;
-  }
-
-  canHandle(intent: AgentIntent): boolean {
-    // Parser handles custom intents that relate to profile normalization
-    return ParserAgent.HANDLED_INTENTS.includes(intent.type) && intent.params.action === 'parse';
-  }
-
-  protected async process(input: AgentInput): Promise<AgentOutput> {
-    const action = input.intent?.params.action;
-
-    switch (action) {
-      case 'parse':
-        return this.handleParse(input);
-      default:
-        return {
-          narrative: 'Nothing to parse.',
-        };
-    }
+    this.llmProvider = config.llmProvider;
   }
 
   /**
-   * Handle a parse action.
-   * Extracts structured data from the input text.
+   * Parse text to extract attributes.
+   * Tries regex patterns first, then LLM if available and no patterns matched.
    */
-  private async handleParse(input: AgentInput): Promise<AgentOutput> {
-    const text = input.playerInput;
+  public async parse(text: string): Promise<ExtractedAttribute[]> {
     const extracted = this.extractWithPatterns(text);
 
-    // If we have an LLM provider, also try LLM-based extraction
+    // If we have an LLM provider and regex failed, try LLM-based extraction
     if (this.llmProvider && extracted.length === 0) {
-      return this.extractWithLlm(input);
+      return this.extractWithLlm(text);
     }
 
-    if (extracted.length === 0) {
-      return {
-        narrative: 'No structured data could be extracted.',
-        diagnostics: {
-          debug: { patternsChecked: this.patterns.length },
-        },
-      };
-    }
-
-    // Generate patches from extracted data
-    const statePatches = extracted.map((item) => ({
-      op: 'add' as const,
-      path: `/${item.path.replace(/\./g, '/')}`,
-      value: item.value,
-    }));
-
-    return {
-      narrative: `Extracted ${extracted.length} attribute(s) from the text.`,
-      statePatches,
-      events: [
-        {
-          type: 'attributes_extracted',
-          payload: {
-            count: extracted.length,
-            paths: extracted.map((e) => e.path),
-          },
-          source: this.agentType,
-        },
-      ],
-      diagnostics: {
-        debug: {
-          extracted,
-        },
-      },
-    };
+    return extracted;
   }
 
   /**
@@ -147,7 +109,9 @@ export class ParserAgent extends BaseAgent {
   /**
    * Extract structured data using the LLM.
    */
-  private async extractWithLlm(input: AgentInput): Promise<AgentOutput> {
+  private async extractWithLlm(text: string): Promise<ExtractedAttribute[]> {
+    if (!this.llmProvider) return [];
+
     const systemPrompt = `You are a parser that extracts structured character attributes from natural language descriptions.
 
 Given a text description, extract any of the following attributes if mentioned:
@@ -163,45 +127,16 @@ Only include attributes that are explicitly mentioned in the text.
 If no attributes can be extracted, respond with an empty array: []`;
 
     try {
-      const response = await this.llmProvider!.generate(input.playerInput, {
+      const response = await this.llmProvider.generate(text, {
         systemPrompt,
         temperature: 0.1, // Low temperature for deterministic extraction
         maxTokens: 200,
       });
 
-      const parsed = this.parseLlmResponse(response.text);
-
-      if (parsed.length === 0) {
-        return {
-          narrative: 'No structured data could be extracted.',
-          diagnostics: {
-            tokenUsage: response.usage,
-          },
-        };
-      }
-
-      const statePatches = parsed.map((item) => ({
-        op: 'add' as const,
-        path: `/${item.path.replace(/\./g, '/')}`,
-        value: item.value,
-      }));
-
-      return {
-        narrative: `Extracted ${parsed.length} attribute(s) using LLM analysis.`,
-        statePatches,
-        diagnostics: {
-          tokenUsage: response.usage,
-          debug: { extracted: parsed },
-        },
-      };
+      return this.parseLlmResponse(response.text);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        narrative: 'Failed to extract structured data.',
-        diagnostics: {
-          warnings: [`LLM extraction failed: ${errorMessage}`],
-        },
-      };
+      console.warn('LLM extraction failed:', error);
+      return [];
     }
   }
 
@@ -238,25 +173,6 @@ If no attributes can be extracted, respond with an empty array: []`;
       return [];
     }
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected override getFallbackNarrative(_input: AgentInput): string {
-    return 'Unable to parse the input.';
-  }
-}
-
-/**
- * An extracted attribute from parsing.
- */
-interface ExtractedAttribute {
-  /** Name of the attribute */
-  name: string;
-
-  /** Target path in the profile */
-  path: string;
-
-  /** Extracted value */
-  value: string;
 }
 
 /**

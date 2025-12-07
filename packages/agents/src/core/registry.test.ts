@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { DefaultAgentRegistry } from './registry.js';
-import { MapAgent } from './map-agent.js';
-import { NpcAgent } from './npc-agent.js';
-import { RulesAgent } from './rules-agent.js';
+import { MapAgent } from '../map/map-agent.js';
+import { NpcAgent } from '../npc/npc-agent.js';
+import { RulesAgent } from '../rules/rules-agent.js';
 import type { AgentIntent } from './types.js';
 
 describe('DefaultAgentRegistry', () => {

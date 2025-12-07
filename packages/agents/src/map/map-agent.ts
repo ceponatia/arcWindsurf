@@ -1,4 +1,4 @@
-import { BaseAgent } from './base.js';
+import { BaseAgent } from '../core/base.js';
 import type {
   AgentConfig,
   AgentInput,
@@ -8,7 +8,7 @@ import type {
   IntentType,
   LocationExit,
   LocationSlice,
-} from './types.js';
+} from '../core/types.js';
 
 /**
  * Agent responsible for navigation and movement.

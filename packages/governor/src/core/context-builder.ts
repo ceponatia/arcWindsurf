@@ -145,17 +145,22 @@ export class DefaultContextBuilder implements ContextBuilder {
     );
 
     // 4. Assemble turn context
-    return {
+    const context: TurnContext = {
       sessionId: input.sessionId,
       intent: input.intent,
       effectiveState,
       stateSlices,
       knowledgeContext,
       conversationHistory: input.conversationHistory ?? [],
-      npcConversationHistory,
       playerInput: input.playerInput,
       turnNumber: input.turnNumber ?? 1,
     };
+
+    if (npcConversationHistory) {
+      context.npcConversationHistory = npcConversationHistory;
+    }
+
+    return context;
   }
 
   /**
@@ -438,13 +443,15 @@ export class DefaultContextBuilder implements ContextBuilder {
 
     // Add character/setting filters if available
     if (state.character) {
-      const characterInstanceId = safeStringOptional(state.character['instanceId']);
+      const characterState = state.character as Record<string, unknown>;
+      const characterInstanceId = safeStringOptional(characterState['instanceId']);
       if (characterInstanceId !== undefined) {
         query.characterInstanceId = characterInstanceId;
       }
     }
     if (state.setting) {
-      const settingInstanceId = safeStringOptional(state.setting['instanceId']);
+      const settingState = state.setting as Record<string, unknown>;
+      const settingInstanceId = safeStringOptional(settingState['instanceId']);
       if (settingInstanceId !== undefined) {
         query.settingInstanceId = settingInstanceId;
       }

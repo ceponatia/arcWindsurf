@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SensoryAgent } from '../sensory-agent.js';
-import type { AgentInput, AgentIntent, CharacterSlice, KnowledgeContextItem } from '../../types.js';
+import type {
+  AgentInput,
+  AgentIntent,
+  CharacterSlice,
+  KnowledgeContextItem,
+} from '../../core/types.js';
 
 function createMockInput(overrides: Partial<AgentInput> = {}): AgentInput {
   return {

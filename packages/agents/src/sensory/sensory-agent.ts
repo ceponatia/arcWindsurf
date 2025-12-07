@@ -1,4 +1,4 @@
-import { BaseAgent } from '../base.js';
+import { BaseAgent } from '../core/base.js';
 import type {
   AgentInput,
   AgentIntent,
@@ -6,7 +6,7 @@ import type {
   AgentType,
   CharacterSlice,
   KnowledgeContextItem,
-} from '../types.js';
+} from '../core/types.js';
 import type {
   SensoryAgentConfig,
   SensoryContext,
@@ -161,11 +161,11 @@ export class SensoryAgent extends BaseAgent {
     }
 
     // Collect all sensory types and body parts requested
-    const sensoryRequests: Array<{
+    const sensoryRequests: {
       type: SensoryIntentType;
       bodyPart: string | undefined;
       content: string;
-    }> = [];
+    }[] = [];
 
     for (const seg of segments) {
       if (seg.type === 'sensory' && seg.sensoryType && isSensoryIntent(seg.sensoryType)) {
@@ -206,7 +206,7 @@ export class SensoryAgent extends BaseAgent {
    */
   private collectCharacterSensoryData(
     character: CharacterSlice,
-    requests: Array<{ type: SensoryIntentType; bodyPart: string | undefined }>
+    requests: { type: SensoryIntentType; bodyPart: string | undefined }[]
   ): Record<string, string> {
     const data: Record<string, string> = {};
     const body = character.body;
@@ -289,7 +289,7 @@ export class SensoryAgent extends BaseAgent {
   private async generateCombinedSensoryNarrative(
     input: AgentInput,
     character: CharacterSlice,
-    requests: Array<{ type: SensoryIntentType; bodyPart: string | undefined; content: string }>,
+    requests: { type: SensoryIntentType; bodyPart: string | undefined; content: string }[],
     availableData: Record<string, string>
   ): Promise<AgentOutput> {
     // Build list of what senses to describe

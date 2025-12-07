@@ -1,4 +1,4 @@
-import { BaseAgent } from './base.js';
+import { BaseAgent } from '../core/base.js';
 import type {
   AgentConfig,
   AgentInput,
@@ -7,7 +7,7 @@ import type {
   AgentType,
   IntentType,
   InventoryItem,
-} from './types.js';
+} from '../core/types.js';
 
 /**
  * Agent responsible for game rules, checks, and item interactions.

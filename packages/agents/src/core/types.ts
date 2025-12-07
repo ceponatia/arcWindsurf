@@ -403,6 +403,26 @@ export interface TokenUsage {
   total: number;
 }
 
+/**
+ * Result of executing an agent for a single turn.
+ */
+export interface AgentExecutionResult {
+  /** Agent type that was executed */
+  agentType: AgentType;
+
+  /** Output produced by the agent (may be fallback on error) */
+  output: AgentOutput;
+
+  /** Time taken to execute (ms) */
+  executionTimeMs: number;
+
+  /** Whether the agent completed successfully */
+  success: boolean;
+
+  /** Optional error when execution failed */
+  error?: Error | undefined;
+}
+
 // ============================================================================
 // Agent Interface
 // ============================================================================
@@ -427,7 +447,7 @@ export interface Agent {
 /**
  * Known agent types in the system.
  */
-export type AgentType = 'map' | 'npc' | 'rules' | 'parser' | 'sensory' | 'custom';
+export type AgentType = 'map' | 'npc' | 'rules' | 'sensory' | 'custom';
 
 // ============================================================================
 // Agent Configuration
