@@ -25,18 +25,37 @@ export type EquipmentSlot = ClothingSlot;
 export const BODY_REGION_TO_EQUIPMENT_SLOTS: Record<BodyRegion, EquipmentSlot[]> = {
   head: ['head'],
   face: ['head'], // masks, helmets with visors
+  ears: ['head', 'accessory'], // earrings, earmuffs
+  mouth: ['head'], // masks, gags
   hair: ['head'], // hats, headwear
   neck: ['torso', 'accessory'], // collars, necklaces, scarves
+  throat: ['torso', 'accessory'], // chokers, collars
   shoulders: ['torso'], // covered by shirts, jackets
-  torso: ['torso'],
   chest: ['torso'],
+  breasts: ['torso'], // covered by shirts, bras, etc.
+  nipples: ['torso'], // covered by shirts, bras, etc.
   back: ['torso'],
+  lowerBack: ['torso'], // covered by shirts, jackets
+  torso: ['torso'],
+  abdomen: ['torso'], // covered by shirts
+  navel: ['torso'], // covered by shirts
+  armpits: ['torso'], // covered by shirts
   arms: ['torso'], // sleeves of shirts/jackets
   hands: ['hands'],
   waist: ['torso', 'accessory'], // belts, waistbands
   hips: ['legs'], // pants, skirts start at hips
+  groin: ['legs'], // covered by pants, underwear
+  buttocks: ['legs'], // covered by pants, underwear
+  anus: ['legs'], // covered by pants, underwear
+  penis: ['legs'], // covered by pants, underwear
+  vagina: ['legs'], // covered by pants, underwear
   legs: ['legs'],
+  thighs: ['legs'], // covered by pants, skirts
+  knees: ['legs'], // covered by pants
+  calves: ['legs'], // covered by pants
+  ankles: ['legs', 'feet'], // covered by pants or socks
   feet: ['feet'],
+  toes: ['feet'], // covered by shoes, socks
 };
 
 /**
@@ -44,12 +63,39 @@ export const BODY_REGION_TO_EQUIPMENT_SLOTS: Record<BodyRegion, EquipmentSlot[]>
  * Useful for describing what a piece of equipment covers.
  */
 export const EQUIPMENT_SLOT_TO_BODY_REGIONS: Record<EquipmentSlot, BodyRegion[]> = {
-  head: ['head', 'face', 'hair'],
-  torso: ['neck', 'shoulders', 'torso', 'chest', 'back', 'arms', 'waist'],
-  legs: ['hips', 'legs'],
-  feet: ['feet'],
+  head: ['head', 'face', 'ears', 'mouth', 'hair'],
+  torso: [
+    'neck',
+    'throat',
+    'shoulders',
+    'chest',
+    'breasts',
+    'nipples',
+    'back',
+    'lowerBack',
+    'torso',
+    'abdomen',
+    'navel',
+    'armpits',
+    'arms',
+    'waist',
+  ],
+  legs: [
+    'hips',
+    'groin',
+    'buttocks',
+    'anus',
+    'penis',
+    'vagina',
+    'legs',
+    'thighs',
+    'knees',
+    'calves',
+    'ankles',
+  ],
+  feet: ['feet', 'toes', 'ankles'],
   hands: ['hands'],
-  accessory: ['neck', 'waist'], // necklaces, belts, rings, etc.
+  accessory: ['neck', 'throat', 'waist', 'ears'], // necklaces, belts, rings, earrings, etc.
 };
 
 /**

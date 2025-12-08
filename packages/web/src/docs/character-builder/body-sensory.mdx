@@ -1,0 +1,334 @@
+# Body Sensory Guide
+
+Learn how to add scent, texture, visual details, and flavor to specific body regions for rich sensory descriptions.
+
+---
+
+## Overview
+
+The **Body Sensory Data** section allows you to describe how different parts of a character's body engage the senses.
+This can be used to enhance immersion by providing detailed descriptions when the character is examined or interacted with.
+These sensory details cover four main types:
+
+- **Scent** - What the region smells like (perfumes, natural odors, environmental effects)
+- **Texture** - How it feels to touch (smooth, rough, warm, cold, etc.)
+- **Visual** - Detailed visual characteristics (scars, tattoos, skin condition)
+- **Flavor** - How it tastes (a niche field, mainly for wildlife contexts)
+
+These sensory details are used by specialized AI agents to generate immersive descriptions when the character is examined, touched, or interacted with in various ways.
+These systems will be expanded over time to provide richer sensory experiences, including the enhancement of sensory agents, local parsing, etc.
+
+---
+
+## How It Works
+
+Each sensory entry has three parts:
+
+1. **Body Region** - Which part of the body (head, hair, hands, torso, etc.)
+2. **Sensory Type** - What sense you're describing (scent, texture, visual, flavor)
+3. **Description** - Natural language description with optional intensity
+
+Description values are parsed and an attempted match is made to a mapping table on the backend. If the automatic parser is unable to classify the description, a parsing agent will be used on save to identify the correct mapping, which will incur a token cost based on your chosen model.
+
+---
+
+## Available Body Regions
+
+The system supports these body regions for sensory data. **All regions support all four sensory types** (scent, texture, visual, flavor):
+
+| Region         | Notes                       |
+| -------------- | --------------------------- |
+| **Head**       |                             |
+| **Face**       |                             |
+| **Ears**       |                             |
+| **Mouth**      |                             |
+| **Hair**       |                             |
+| **Neck**       |                             |
+| **Throat**     |                             |
+| **Shoulders**  |                             |
+| **Chest**      |                             |
+| **Breasts**    | Shown for female characters |
+| **Nipples**    | Shown for female characters |
+| **Back**       |                             |
+| **Lower Back** |                             |
+| **Torso**      |                             |
+| **Abdomen**    |                             |
+| **Navel**      |                             |
+| **Armpits**    |                             |
+| **Arms**       |                             |
+| **Hands**      |                             |
+| **Waist**      |                             |
+| **Hips**       |                             |
+| **Groin**      |                             |
+| **Buttocks**   |                             |
+| **Anus**       |                             |
+| **Penis**      | Shown for male characters   |
+| **Vagina**     | Shown for female characters |
+| **Legs**       |                             |
+| **Thighs**     |                             |
+| **Knees**      |                             |
+| **Calves**     |                             |
+| **Ankles**     |                             |
+| **Feet**       |                             |
+| **Toes**       |                             |
+
+**Gender-Specific Regions:**
+
+The character builder automatically shows or hides anatomical regions based on the gender field in the Basics section:
+
+- **Female** characters: includes breasts, nipples, and vagina regions
+- **Male** characters: includes penis region
+- **Non-binary/Other** or unspecified: all regions available
+
+Each region can have any combination of:
+
+- **Scent** - What it smells like
+- **Texture** - How it feels to touch
+- **Visual** - Detailed visual characteristics
+- **Flavor** - How it tastes
+
+---
+
+## Sensory Types
+
+### Scent/Smell
+
+Describes what the body region smells like.
+
+**Format:** Natural language with optional intensity
+
+**Examples:**
+
+- "lavender shampoo, faint intensity"
+- "strong musk with a hint of pine"
+- "metallic smell from working with iron, moderate"
+- "earthy, like fresh soil after rain"
+
+**Intensity keywords:** faint, light, subtle, moderate, strong, intense, overwhelming
+
+**Intensity numbers:** 0.0 (barely detectable) to 1.0 (overpowering)
+
+### Texture/Touch
+
+Describes how the region feels to touch.
+
+**Examples:**
+
+- "soft and warm"
+- "rough and calloused from years of smithing"
+- "smooth with fine stubble"
+- "cool and slightly damp"
+- "firm, muscular"
+
+### Visual/Look
+
+Detailed visual descriptions beyond basic appearance attributes.
+
+**Examples:**
+
+- "fine network of small scars across the knuckles"
+- "sun-weathered skin with deep laugh lines"
+- "intricate tattoo winding up the forearm"
+- "slight tremor when at rest"
+
+### Flavor/Taste
+
+Describes how the region tastes. Primarily used for fantasy creatures, but can apply to humans in specific contexts.
+
+**Examples:**
+
+- "salty, slightly sweet"
+- "bitter metallic taste"
+- "faint taste of herbs and soap"
+- "strong metallic, intensity 0.8"
+
+---
+
+## Writing Good Sensory Descriptions
+
+### 1. Use Natural Language
+
+The system accepts natural, conversational descriptions. You don't need special formatting.
+
+✅ **Good:**
+
+- "strong musky scent with hints of cedarwood"
+- "rough and calloused, warm to the touch"
+- "faint lavender from soap, intensity 0.3"
+
+❌ **Too Formal:**
+
+- "Scent: musky. Intensity: 0.7. Notes: cedar."
+
+### 2. Include Context When Relevant
+
+Explain _why_ something smells or feels a certain way if it relates to the character's background.
+
+**Examples:**
+
+- "metallic smell from working with iron all day"
+- "calloused and rough from rope work"
+- "faint floral scent from herbal remedies"
+
+### 3. Specify Intensity
+
+Use words like "faint", "strong", or "subtle", or include a number (0.0-1.0).
+
+**Examples:**
+
+- "lavender, very subtle"
+- "musk, intensity 0.8"
+- "strong campfire smoke"
+
+### 4. Layer Multiple Sensory Types
+
+You can create multiple entries for the same region with different sensory types for rich detail.
+
+**Hand entries:**
+
+- Hands → Scent → "faint smell of leather and metal polish"
+- Hands → Texture → "rough palms, calloused fingers, warm"
+- Hands → Visual → "several small scars across knuckles, short clean nails"
+
+---
+
+## Examples by Character Type
+
+### The Blacksmith
+
+**Hair → Scent:**
+
+> "smoke and metal with faint traces of sweat, intensity 0.6"
+
+**Hands → Texture:**
+
+> "heavily calloused, rough and warm, permanent dark stains under nails"
+
+**Arms → Visual:**
+
+> "muscular with several burn scars, light dusting of soot"
+
+### The Herbalist
+
+**Hair → Scent:**
+
+> "fresh herbs, primarily mint and chamomile, subtle intensity"
+
+**Hands → Texture:**
+
+> "soft but stained green from plant work, cool and slightly damp"
+
+**Hands → Scent:**
+
+> "earthy smell of soil and crushed herbs, moderate"
+
+### The Sailor
+
+**Face → Scent:**
+
+> "sea salt and sun-dried wood, moderate intensity"
+
+**Hands → Texture:**
+
+> "rough and weathered, rope-calloused palms, cool"
+
+**Arms → Visual:**
+
+> "sun-bronzed, anchor tattoo on left forearm, network of white scars"
+
+### The Noble
+
+**Hair → Scent:**
+
+> "expensive perfume, jasmine and sandalwood, intensity 0.5"
+
+**Hands → Texture:**
+
+> "soft, smooth, warm, well-manicured"
+
+**Neck → Scent:**
+
+> "faint rose oil, very subtle"
+
+---
+
+## How Sensory Data is Used
+
+Sensory data is processed by specialized AI agents:
+
+- **Scent Agent** - Generates smell descriptions when a character is near or touched
+- **Touch Agent** - Describes tactile sensations during physical interaction
+- **Visual Agent** - Provides detailed visual observations beyond basic appearance
+- **Taste Agent** - Generates flavor descriptions in relevant contexts
+
+These descriptions are dynamically injected into conversations when contextually appropriate, creating a more immersive experience.
+
+---
+
+## Best Practices
+
+### Start with Key Regions
+
+Focus on regions that are most likely to be noticed:
+
+1. **Hair** (scent is often noticeable)
+2. **Hands** (texture, scent, visual - hands are often seen and touched)
+3. **Face** (visual details, possibly scent)
+4. **Arms** (visual for tattoos, scars, etc.)
+
+### Consider the Character's Profession
+
+What would their work or lifestyle affect?
+
+- **Blacksmith** - metallic smells, rough hands, soot stains
+- **Chef** - food scents, warm hands, possible burns
+- **Gardener** - earth and plant smells, soil-stained hands
+- **Warrior** - leather and weapon oil, calloused hands, scars
+
+### Don't Overdo It
+
+You don't need sensory data for every region. Pick 3-6 regions with distinctive sensory characteristics.
+
+### Test and Iterate
+
+Add a few sensory entries, test your character in a session, then add more based on what feels missing.
+
+---
+
+## Sensory Data vs. Appearance
+
+**Appearance** (structured):
+
+- Visual attributes only
+- Structured by region → attribute → value
+- Used for general descriptions
+
+**Body Sensory** (freeform):
+
+- All senses (scent, texture, visual, flavor)
+- Natural language descriptions
+- Used by specialized sensory agents
+- More immersive and contextual
+
+**Example:**
+
+- **Appearance:** Hair → Color → auburn, Hair → Length → long
+- **Body Sensory:** Hair → Scent → lavender shampoo, faint
+
+---
+
+## Tips for Beginners
+
+1. **Start simple** - Add scent to hair and texture to hands
+2. **Think about context** - What would this character smell/feel like based on their life?
+3. **Use intensity** - Helps the AI calibrate how prominent a scent or sensation is
+4. **Be consistent** - If a character works with herbs, their hands should smell earthy
+5. **Don't force it** - Leave sensory data blank if you don't have a strong idea
+
+---
+
+## Related Documentation
+
+- [Appearance Guide](#/docs/character-builder/appearance) - Visual physical descriptions
+- [Basic Fields](#/docs/character-builder/basic-fields) - Core character information
+- [Character Builder Overview](#/docs/character-builder) - Full feature overview

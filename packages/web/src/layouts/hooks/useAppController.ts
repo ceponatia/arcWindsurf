@@ -45,6 +45,7 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
   if (hash.startsWith('#/session-builder')) return { viewMode: 'session-builder', builderId: null };
   if (hash.startsWith('#/sessions')) return { viewMode: 'session-library', builderId: null };
   if (hash.startsWith('#/chat')) return { viewMode: 'chat', builderId: null };
+  if (hash.startsWith('#/docs')) return { viewMode: 'docs', builderId: null };
 
   return { viewMode: 'home', builderId: null };
 }

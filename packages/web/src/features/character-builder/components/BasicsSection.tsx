@@ -56,6 +56,26 @@ export const BasicsSection: React.FC<BasicsSectionProps> = ({ form, fieldErrors,
         )}
       </label>
       <label className="flex flex-col gap-1">
+        <span className="text-xs text-slate-400">Gender</span>
+        <select
+          className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+          value={form.gender}
+          onChange={(e) => updateField('gender', e.target.value)}
+          {...getInlineErrorProps('gender', fieldErrors.gender)}
+        >
+          <option value="">Select gender...</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+          <option value="unknown">Unknown</option>
+        </select>
+        {fieldErrors.gender && (
+          <span id="gender-error" className="text-sm text-red-400">
+            {fieldErrors.gender}
+          </span>
+        )}
+      </label>
+      <label className="flex flex-col gap-1">
         <span className="text-xs text-slate-400">Tags (comma)</span>
         <input
           className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"

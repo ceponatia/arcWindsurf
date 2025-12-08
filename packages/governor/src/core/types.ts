@@ -68,6 +68,14 @@ export interface TurnInput {
   overrides?: DeepPartial<TurnStateContext>;
   conversationHistory?: ConversationTurn[];
   sessionTags?: SessionTagInstance[];
+  /** Player character persona (when attached to session) */
+  persona?: {
+    name?: string;
+    age?: number;
+    gender?: string;
+    summary?: string;
+    appearance?: string;
+  };
 }
 
 /**

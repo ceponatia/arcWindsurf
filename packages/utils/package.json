@@ -19,7 +19,9 @@
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@minimal-rpg/schemas": "workspace:*"
+  },
   "devDependencies": {
     "tsup": "^8.0.0"
   }

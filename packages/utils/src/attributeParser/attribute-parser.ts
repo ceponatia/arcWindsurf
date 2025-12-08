@@ -8,7 +8,7 @@ export interface ParserPattern {
   /** Regex pattern to match */
   pattern: RegExp;
 
-  /** Target path in the profile (e.g., 'appearance.hair.color') */
+  /** Target path in the profile (e.g., 'physique.appearance.hair.color') */
   targetPath: string;
 
   /** Which capture group to use (default: 1) */
@@ -115,14 +115,21 @@ export class AttributeParser {
     const systemPrompt = `You are a parser that extracts structured character attributes from natural language descriptions.
 
 Given a text description, extract any of the following attributes if mentioned:
-- appearance.hair.color
-- appearance.hair.style
-- appearance.eyes.color
-- appearance.skin.tone
-- appearance.build
-- appearance.height
+- physique.appearance.hair.color
+- physique.appearance.hair.style
+- physique.appearance.hair.length
+- physique.appearance.eyes.color
+- physique.build.skinTone
+- physique.build.height
+- physique.build.torso
+- physique.build.arms.build
+- physique.build.arms.length
+- physique.build.legs.build
+- physique.build.legs.length
+- physique.build.feet.size
+- physique.build.feet.shape
 
-Respond in JSON format with an array of objects: [{"path": "appearance.hair.color", "value": "brown"}, ...]
+Respond in JSON format with an array of objects: [{"path": "physique.appearance.hair.color", "value": "brown"}, ...]
 Only include attributes that are explicitly mentioned in the text.
 If no attributes can be extracted, respond with an empty array: []`;
 
@@ -182,37 +189,79 @@ export const DEFAULT_PARSER_PATTERNS: ParserPattern[] = [
   {
     name: 'hair_color',
     pattern: /(?:hair\s*(?:color|colour):\s*|(?:has\s+)?(\w+)\s+hair)/i,
-    targetPath: 'appearance.hair.color',
+    targetPath: 'physique.appearance.hair.color',
     captureGroup: 1,
   },
   {
     name: 'hair_style',
     pattern: /(?:hair\s*style:\s*|(\w+)\s+(?:styled\s+)?hair)/i,
-    targetPath: 'appearance.hair.style',
+    targetPath: 'physique.appearance.hair.style',
+    captureGroup: 1,
+  },
+  {
+    name: 'hair_length',
+    pattern: /(?:hair\s*length:\s*|(\w+)(?:\s+length)?\s+hair)/i,
+    targetPath: 'physique.appearance.hair.length',
     captureGroup: 1,
   },
   {
     name: 'eye_color',
     pattern: /(?:eye\s*(?:color|colour):\s*|(\w+)\s+eyes)/i,
-    targetPath: 'appearance.eyes.color',
+    targetPath: 'physique.appearance.eyes.color',
     captureGroup: 1,
   },
   {
     name: 'skin_tone',
     pattern: /(?:skin\s*(?:tone|color|colour):\s*|(\w+)\s+skin)/i,
-    targetPath: 'appearance.skin.tone',
+    targetPath: 'physique.build.skinTone',
     captureGroup: 1,
   },
   {
     name: 'height',
     pattern: /(?:height:\s*|(?:is\s+)?(\d+(?:\.\d+)?(?:\s*(?:cm|m|ft|feet|inches?))?))/i,
-    targetPath: 'appearance.height',
+    targetPath: 'physique.build.height',
     captureGroup: 1,
   },
   {
-    name: 'build',
-    pattern: /(?:build:\s*|(slim|slender|athletic|muscular|heavy|stocky|average)\s+build)/i,
-    targetPath: 'appearance.build',
+    name: 'build_torso',
+    pattern: /(?:build:\s*|(lithe|nubile|average|athletic|heavy|obese)\s+build)/i,
+    targetPath: 'physique.build.torso',
+    captureGroup: 1,
+  },
+  {
+    name: 'arms_build',
+    pattern: /(?:arms?\s*(?:are\s+)?(very skinny|slender|average|toned|muscular))/i,
+    targetPath: 'physique.build.arms.build',
+    captureGroup: 1,
+  },
+  {
+    name: 'arms_length',
+    pattern: /(?:arms?\s*(?:are\s+)?(long|short|average)(?:\s+length)?)/i,
+    targetPath: 'physique.build.arms.length',
+    captureGroup: 1,
+  },
+  {
+    name: 'legs_build',
+    pattern: /(?:legs?\s*(?:are\s+)?(very skinny|slender|average|toned|muscular))/i,
+    targetPath: 'physique.build.legs.build',
+    captureGroup: 1,
+  },
+  {
+    name: 'legs_length',
+    pattern: /(?:legs?\s*(?:are\s+)?(long|short|average)(?:\s+length)?)/i,
+    targetPath: 'physique.build.legs.length',
+    captureGroup: 1,
+  },
+  {
+    name: 'feet_size',
+    pattern: /(?:feet?\s*(?:are\s+|size:\s*)?(tiny|petite|small|average|large))/i,
+    targetPath: 'physique.build.feet.size',
+    captureGroup: 1,
+  },
+  {
+    name: 'feet_shape',
+    pattern: /(?:feet?\s*(?:are\s+)?(narrow|wide|average)(?:\s+shaped)?)/i,
+    targetPath: 'physique.build.feet.shape',
     captureGroup: 1,
   },
 ];

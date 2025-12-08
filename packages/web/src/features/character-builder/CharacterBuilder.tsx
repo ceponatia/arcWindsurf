@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   CharacterProfileSchema,
-  parseBodyEntries,
   type BodyMap,
   type CharacterDetail,
   type Physique,
@@ -9,7 +8,7 @@ import {
   type AppearanceRegion,
   type PersonalityMap,
 } from '@minimal-rpg/schemas';
-import { mapZodErrorsToFields } from '@minimal-rpg/utils';
+import { mapZodErrorsToFields, parseBodyEntries } from '@minimal-rpg/utils';
 import { splitList } from '../shared/stringLists.js';
 import { persistCharacter, removeCharacter } from './api.js';
 import { AppearanceSection } from './components/AppearanceSection.js';
@@ -318,6 +317,7 @@ const buildProfile = (form: FormState): CharacterProfile => {
     id: form.id.trim(),
     name: form.name.trim(),
     age: Number.parseInt(String(form.age), 10),
+    ...(form.gender.trim() ? { gender: form.gender.trim() } : {}),
     summary: form.summary.trim(),
     backstory: form.backstory.trim(),
     tags,
@@ -421,15 +421,17 @@ export const CharacterBuilder: React.FC<{
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
           <BasicsSection form={form} fieldErrors={fieldErrors} updateField={updateField} />
-          <PersonalitySection form={form} fieldErrors={fieldErrors} updateField={updateField} />
           <AppearanceSection
             appearances={form.appearances}
+            gender={form.gender}
             updateAppearanceEntry={updateAppearanceEntry}
             addAppearanceEntry={addAppearanceEntry}
             removeAppearanceEntry={removeAppearanceEntry}
           />
+          <PersonalitySection form={form} fieldErrors={fieldErrors} updateField={updateField} />
           <BodySection
             bodySensory={form.bodySensory}
+            gender={form.gender}
             updateBodyEntry={updateBodyEntry}
             addBodyEntry={addBodyEntry}
             removeBodyEntry={removeBodyEntry}

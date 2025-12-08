@@ -1,5 +1,7 @@
 // Package barrel: flat re-exports and namespaced accessors
+export * from './shared/index.js';
 export * from './character/index.js';
+export * from './persona/index.js';
 export * from './setting/index.js';
 export * from './location/index.js';
 export * from './inventory/index.js';
@@ -7,7 +9,9 @@ export * from './items/index.js';
 export * from './tags/index.js';
 
 // Namespaced exports for convenience (avoid clashing with type names)
+export * as Shared from './shared/index.js';
 export * as Character from './character/index.js';
+export * as Persona from './persona/index.js';
 export * as Setting from './setting/index.js';
 export * as Location from './location/index.js';
 export * as Inventory from './inventory/index.js';

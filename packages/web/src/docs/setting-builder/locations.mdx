@@ -1,0 +1,99 @@
+# Locations and Hierarchies
+
+Settings in ArcAgentic can describe entire worlds, but many stories play out in smaller places: cities, taverns, streets, and rooms.
+
+This page explains how to think about locations and hierarchies so your worlds feel grounded and consistent.
+
+---
+
+## Why Use Location Hierarchies?
+
+A location hierarchy answers the question: _"Where exactly is this scene happening?"_
+
+Instead of just saying "a tavern", you can place it inside a town, region, and world. This gives the AI richer context for:
+
+- Local culture and laws
+- Climate and environment
+- Who might show up or pass through
+
+**Example hierarchy:**
+
+```text
+World: Eldoria
+  └─ Region: Northern Territories
+      └─ Location: Frostpeak Village
+          └─ Area: The Rusty Anvil Tavern
+```
+
+---
+
+## Thinking in Layers
+
+When designing a setting, it helps to think in layers:
+
+1. **World** – The broadest context (planet, realm, dimension)
+2. **Region** – Large areas inside the world (kingdoms, continents, districts)
+3. **Location** – Towns, cities, landmarks, dungeons
+4. **Area / Room** – Specific places where scenes happen (tavern room, throne room, alley)
+
+You do not need to build every layer for every story. Start with what you actually use.
+
+---
+
+## Practical Examples
+
+### Small Story: One Tavern
+
+If your whole session happens in a single tavern, you might only define:
+
+- **World:** The Moonlit Road
+- **Location:** The Moonlit Tavern
+
+You can include the surrounding world in the description, but you don't need a full map.
+
+### Bigger Story: A City and Its Districts
+
+For a city-focused campaign, you might use:
+
+- **World:** The City of Halebrook
+- **Region:** Riverfront District, Old Quarter, Noble Heights
+- **Locations:** Individual streets, markets, mansions, guild halls
+
+This lets you move sessions between districts while keeping a strong sense of place.
+
+---
+
+## Using Locations in Descriptions
+
+Even if the app does not expose every layer as separate UI fields yet, thinking in these terms helps you write better descriptions.
+
+Try including:
+
+- **World-level details:** technology level, magic, overall tone (grimdark, whimsical, etc.)
+- **Region-level details:** climate, local customs, common dangers
+- **Location-level details:** smells, sounds, typical crowds
+- **Area-level details:** specific objects, lighting, points of interest
+
+**Example (tavern area):**
+
+> A cramped corner table near the hearth, with a clear view of both the door and the bar. The tabletop is scarred by old knife marks, and someone has carved a map of the nearby woods into the wood.
+
+---
+
+## Keeping Track of Places
+
+As your world grows, you may want to:
+
+- Use consistent names ("Moonlit Tavern" vs "The Moonlit Tavern")
+- Reuse tags to group locations (e.g., `tavern`, `capital-city`, `dangerous`)
+- Maintain a simple note or document listing important locations and how they connect
+
+Future versions of ArcAgentic will integrate more detailed location structures into the runtime. For now, treating locations as layered descriptions already gives the AI a lot to work with.
+
+---
+
+## Next Steps
+
+- Review the main [Setting Builder overview](#/docs/setting-builder)
+- Try designing a small town with 2–3 key locations
+- Start a [session](#/docs/sessions) set in one of your new locations and see how the character reacts

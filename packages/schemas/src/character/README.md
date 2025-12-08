@@ -4,16 +4,17 @@ Zod schemas for character profiles, appearance, personality, and body region dat
 
 ## Files
 
-| File                  | Description                                                         |
-| --------------------- | ------------------------------------------------------------------- |
-| `characterProfile.ts` | Main `CharacterProfileSchema` composite type                        |
-| `basics.ts`           | Core identity fields (id, name, summary, backstory, goals, tags)    |
-| `appearance.ts`       | Physical description via `PhysiqueSchema` (build + appearance)      |
-| `body.ts`             | Body region taxonomy with per-region sensory data (`BodyMapSchema`) |
-| `bodyParser.ts`       | Parser to convert raw text descriptions into `BodyMap`              |
-| `scent.ts`            | Legacy flat scent schema (deprecated, use `body` instead)           |
-| `details.ts`          | Flexible key-value details for RAG experiments                      |
-| `personality.ts`      | Structured personality map (Big Five, emotions, speech style)       |
+| File                  | Description                                                            |
+| --------------------- | ---------------------------------------------------------------------- |
+| `characterProfile.ts` | Main `CharacterProfileSchema` composite type                           |
+| `basics.ts`           | Core identity fields (id, name, age, gender, summary, backstory, tags) |
+| `appearance.ts`       | Physical description via `PhysiqueSchema` (build + appearance)         |
+| `body.ts`             | Body region taxonomy with per-region sensory data (`BodyMapSchema`)    |
+| `scent.ts`            | Legacy flat scent schema (deprecated, use `body` instead)              |
+| `details.ts`          | Flexible key-value details for RAG experiments                         |
+| `personality.ts`      | Structured personality map (Big Five, emotions, speech style)          |
+
+**Note:** Body sensory data parsing utilities (e.g., `parseBodyEntries`, `formatScent`) have been moved to `@minimal-rpg/utils` to keep this package focused on schemas only.
 
 ## CharacterProfile
 

@@ -1,0 +1,142 @@
+# Tags Guide
+
+Learn how to use tags to organize and find characters in your library.
+
+---
+
+## What Are Tags?
+
+Tags are keywords you add to characters to help you organize and search your character library. They appear in the **Basics** section of the Character Builder as a comma-separated text field.
+
+**Important:** Tags are for **UI organization only**. They do NOT affect character behavior, AI prompts, or gameplay in any way.
+
+---
+
+## When to Use Tags
+
+Use tags when you want to:
+
+- **Filter your character library** by role, location, or theme
+- **Search for specific character types** (e.g., all merchants, all guards)
+- **Group related characters** (e.g., all characters from a specific town)
+- **Mark characters by status** (e.g., `draft`, `complete`, `needs-review`)
+
+---
+
+## Tag Types
+
+### Role Tags
+
+What role does this character play?
+
+- `merchant`, `guard`, `noble`, `peasant`, `healer`, `blacksmith`, `innkeeper`
+
+### Location Tags
+
+Where is this character typically found?
+
+- `tavern`, `marketplace`, `castle`, `forest`, `city`, `village`, `docks`
+
+### Genre Tags
+
+What kind of story does this character fit?
+
+- `fantasy`, `medieval`, `urban`, `horror`, `mystery`, `comedy`
+
+### Status Tags
+
+Track the character's development status:
+
+- `draft`, `complete`, `needs-review`, `favorite`, `archived`
+
+### Attribute Tags
+
+General characteristics for quick identification:
+
+- `friendly`, `hostile`, `mysterious`, `humorous`, `serious`, `quirky`
+
+---
+
+## Best Practices
+
+### 1. Use Lowercase
+
+Tags are case-insensitive in most searches, but using lowercase keeps things consistent.
+
+✅ `merchant`, `castle`, `fantasy`  
+❌ `Merchant`, `CASTLE`, `Fantasy`
+
+### 2. Use Hyphens for Multi-Word Tags
+
+Keep tags single-token when possible, or use hyphens to connect words.
+
+✅ `city-guard`, `weapons-dealer`, `tavern-keeper`  
+❌ `city guard` (may be parsed as two separate tags)
+
+### 3. Keep It Concise
+
+Use 3-7 tags per character. Too many tags make filtering less useful.
+
+✅ `merchant, marketplace, friendly, fantasy`  
+❌ `merchant, marketplace, friendly, fantasy, tall, brown-hair, smiling, helpful, experienced, middle-aged, ...`
+
+### 4. Be Consistent
+
+Decide on a tagging convention and stick to it across your library.
+
+- If you use `blacksmith` for one character, don't use `smith` or `metalworker` for others
+- If you use `city-guard`, use it for all city guards (not `guard`, `city-watch`, `watchman`)
+
+---
+
+## Examples
+
+### The Village Blacksmith
+
+**Tags:** `blacksmith`, `merchant`, `village`, `friendly`, `fantasy`
+
+### The Mysterious Wanderer
+
+**Tags:** `wanderer`, `forest`, `mysterious`, `traveler`, `fantasy`
+
+### Captain of the City Guard
+
+**Tags:** `guard`, `city-guard`, `authority`, `urban`, `serious`
+
+### Tavern Keeper
+
+**Tags:** `innkeeper`, `tavern`, `merchant`, `friendly`, `urban`
+
+---
+
+## Tags vs. Personality Traits
+
+It's important not to confuse **tags** (for organization) with **personality traits** (for behavior).
+
+| Feature                         | Tags                         | Personality Traits                       |
+| ------------------------------- | ---------------------------- | ---------------------------------------- |
+| **Purpose**                     | Library organization         | Character behavior                       |
+| **Used in AI prompts**          | ❌ No                        | ✅ Yes                                   |
+| **Affects dialogue**            | ❌ No                        | ✅ Yes                                   |
+| **Where to set**                | Basics section               | Personality section                      |
+| **Examples**                    | `merchant`, `tavern`, `city` | "Protective", "Distrusts nobility"       |
+| **Searchable/filterable in UI** | ✅ Yes                       | Not directly (depends on implementation) |
+
+**Rule of thumb:**
+
+- If it helps you **find** the character → it's a **tag**
+- If it affects how the character **behaves** → it's a **personality trait**
+
+---
+
+## Default Tags
+
+New characters automatically get the `draft` tag. You can remove or replace this as needed.
+
+---
+
+## Related Documentation
+
+- [Basic Fields](#/docs/character-builder/basic-fields) - Learn about ID, name, summary, backstory
+- [Personality](#/docs/character-builder/personality) - Learn about behavioral traits
+- [Character Builder Overview](#/docs/character-builder) - Full feature overview

@@ -215,7 +215,7 @@ export class Governor {
 
       // 5. Agent Execution
       const executionStart = Date.now();
-      const executionResult = await this.executeAgents(agents, turnContext, events);
+      const executionResult = await this.executeAgents(agents, turnContext, events, turnInput);
       phaseTiming.agentExecutionMs = Date.now() - executionStart;
 
       // 6. State Update
@@ -440,7 +440,8 @@ export class Governor {
   private async executeAgents(
     agents: Agent[],
     context: TurnContext,
-    events: TurnEvent[]
+    events: TurnEvent[],
+    turnInput: TurnInput
   ): Promise<TurnExecutionResult> {
     const agentInput: AgentInput = {
       sessionId: context.sessionId,
@@ -458,6 +459,11 @@ export class Governor {
 
     if (context.npcConversationHistory) {
       agentInput.npcConversationHistory = context.npcConversationHistory;
+    }
+
+    // Pass persona to agents (NOT to intent detector)
+    if (turnInput.persona) {
+      agentInput.persona = turnInput.persona;
     }
 
     const agentTimeout = this.options.agentTimeoutMs ?? 30000; // 30s default

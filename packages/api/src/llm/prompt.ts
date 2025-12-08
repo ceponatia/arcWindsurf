@@ -43,6 +43,9 @@ function serializeCharacter(c: CharacterProfile) {
     'age' in c && typeof (c as { age?: unknown }).age === 'number'
       ? `Age: ${(c as { age?: number }).age}`
       : undefined,
+    'gender' in c && typeof (c as { gender?: unknown }).gender === 'string'
+      ? `Gender: ${(c as { gender?: string }).gender}`
+      : undefined,
     `Backstory: ${c.backstory}`,
     personalityLine,
     'physique' in c && (c as { physique?: unknown }).physique

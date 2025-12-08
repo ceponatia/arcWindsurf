@@ -1,0 +1,271 @@
+# Profile Details Guide
+
+Learn how to add rich, context-aware details to your character using the Profile Details system.
+
+---
+
+## Overview
+
+The **Profile Details** section allows you to add structured, tagged details about your character that go beyond basic fields. These details can represent:
+
+- Background information
+- Relationships
+- Skills and knowledge
+- Possessions and belongings
+- Quirks and habits
+- Memories and experiences
+
+Each detail includes metadata like importance, tags, and notes to help the AI understand when and how to use the information.
+
+---
+
+## Detail Structure
+
+Each detail entry has six fields:
+
+| Field          | Required | Description                                                                |
+| -------------- | -------- | -------------------------------------------------------------------------- |
+| **Label**      | ✅       | Short title for the detail (e.g., "Childhood Friend", "Master Swordsmith") |
+| **Area**       | ✅       | Category for organizing details                                            |
+| **Value**      | ✅       | The actual detail content (can be multi-line)                              |
+| **Importance** | ✅       | 0.0 to 1.0 scale indicating priority                                       |
+| **Tags**       | ❌       | Comma-separated keywords for filtering                                     |
+| **Notes**      | ❌       | Internal notes not used in AI prompts                                      |
+
+---
+
+## Detail Areas
+
+Details are organized into predefined areas:
+
+| Area              | Examples                                                    |
+| ----------------- | ----------------------------------------------------------- |
+| **Background**    | Family history, origin story, formative events              |
+| **Relationships** | Friends, rivals, mentors, family members                    |
+| **Skills**        | Expertise, training, abilities, knowledge areas             |
+| **Possessions**   | Important items, heirlooms, tools, weapons                  |
+| **Personality**   | Quirks, habits, phobias, preferences                        |
+| **Appearance**    | Additional visual details not covered in Appearance section |
+| **History**       | Past events, accomplishments, failures                      |
+| **Goals**         | Motivations, desires, ambitions                             |
+| **Other**         | Anything that doesn't fit the above categories              |
+
+---
+
+## Importance Scale
+
+The importance value (0.0 to 1.0) helps the AI prioritize which details to include in context.
+
+| Range       | Meaning           | When to Use                                             |
+| ----------- | ----------------- | ------------------------------------------------------- |
+| **0.8-1.0** | Core identity     | Essential facts that should almost always be considered |
+| **0.5-0.7** | Important context | Significant details that often matter                   |
+| **0.3-0.4** | Background flavor | Interesting but not critical information                |
+| **0.1-0.2** | Minor details     | Rarely relevant, used only when highly contextual       |
+
+### Examples by Importance
+
+**0.9 - Core Identity:**
+
+> **Label:** Master Blacksmith  
+> **Value:** Trained for 20 years under the renowned smith Marcus Ironheart. Known throughout the region for exceptional weapon crafting.
+
+**0.6 - Important Context:**
+
+> **Label:** Distrust of Nobility  
+> **Value:** Father was cheated by a noble who refused to pay for commissioned work, leading to financial ruin.
+
+**0.3 - Background Flavor:**
+
+> **Label:** Prefers Ale Over Wine  
+> **Value:** Developed a taste for dark ales during apprenticeship. Finds wine pretentious.
+
+**0.1 - Minor Detail:**
+
+> **Label:** Childhood Pet  
+> **Value:** Had a tabby cat named Whiskers as a child.
+
+---
+
+## Writing Good Details
+
+### 1. Be Specific and Concrete
+
+✅ **Good:**
+
+> **Label:** Debt to the Thieves Guild  
+> **Value:** Owes 500 gold pieces to the Shadow Syndicate for a loan taken three years ago to save the forge. Pays 20 gold monthly. Two payments behind.
+
+❌ **Too Vague:**
+
+> **Label:** Has Debt  
+> **Value:** Owes money to someone
+
+### 2. Include Relevant Context
+
+Explain why the detail matters or how it affects the character.
+
+**Example:**
+
+> **Label:** Missing Left Ring Finger  
+> **Value:** Lost to a forge accident at age 16. Serves as a constant reminder to respect the craft. Embarrassed by it and often hides the hand.
+
+### 3. Use Tags for Filtering
+
+Add tags that help categorize and retrieve related details.
+
+**Example:**
+
+> **Label:** Apprentice: Young Lena  
+> **Tags:** relationship, apprentice, teaching, responsibility  
+> **Value:** Took on Lena as an apprentice six months ago. Reminds them of their younger self. Protective but demanding.
+
+### 4. Use Notes for Internal Reference
+
+Notes are for **your use only** - they're not sent to the AI.
+
+**Example:**
+
+> **Label:** Rival Smith in Town  
+> **Notes:** Plot hook: rival might steal designs or sabotage forge. Introduce in chapter 3.  
+> **Value:** Garrett Steelhammer, a younger smith who recently opened a forge on the other side of town. Uses cheaper materials and undercuts prices. Character feels threatened.
+
+---
+
+## Examples by Area
+
+### Background
+
+**Label:** Orphaned at Age 12  
+**Area:** Background  
+**Importance:** 0.7  
+**Value:** Parents died in a plague. Survived on the streets until taken in by Master Ironheart at 14.  
+**Tags:** backstory, formative, hardship
+
+### Relationships
+
+**Label:** Best Friend: Sara the Innkeeper  
+**Area:** Relationships  
+**Importance:** 0.6  
+**Value:** Sara runs the Moonlit Tavern. Known each other since childhood. Sara provides emotional support and a listening ear after hard days.  
+**Tags:** friend, confidant, support
+
+### Skills
+
+**Label:** Expert in Blade Tempering  
+**Area:** Skills  
+**Importance:** 0.8  
+**Value:** Mastered the art of quenching and tempering blades for optimal hardness and flexibility. Techniques learned from Master Ironheart and refined over 15 years.  
+**Tags:** skill, craftsmanship, specialty
+
+### Possessions
+
+**Label:** Father's Hammer  
+**Area:** Possessions  
+**Importance:** 0.7  
+**Value:** A well-worn but perfectly balanced smith's hammer. The only possession inherited from their father. Never used for actual work - kept on a shelf as a reminder.  
+**Tags:** heirloom, sentimental, father
+
+### Personality
+
+**Label:** Hates Being Interrupted  
+**Area:** Personality  
+**Importance:** 0.4  
+**Value:** Becomes irritable and curt when interrupted mid-task, especially during precision work. Sees interruptions as disrespectful to the craft.  
+**Tags:** quirk, temperament, workflow
+
+---
+
+## Best Practices
+
+### Start with Core Details
+
+Add 3-5 high-importance details first:
+
+1. Professional expertise (skills, reputation)
+2. Key relationships (mentor, friend, rival)
+3. Formative background events
+4. Primary motivations or goals
+
+### Layer in Context Over Time
+
+You don't need every detail defined upfront. Add details as you:
+
+- Test the character in sessions
+- Discover what feels missing
+- Build out the character's world
+
+### Use Consistent Tagging
+
+Develop a tagging system across your character library:
+
+- **Relationships:** friend, enemy, mentor, apprentice, family
+- **Skills:** combat, crafting, social, magic, knowledge
+- **Emotional:** trauma, pride, fear, desire
+
+### Balance Importance Appropriately
+
+Not everything should be 0.8+. Having too many high-importance details dilutes their impact. Use the full range:
+
+- 1-2 details at 0.9-1.0
+- 3-5 details at 0.6-0.8
+- 5-10 details at 0.3-0.5
+- Any number of minor details at 0.1-0.2
+
+### Consider Retrieval Context
+
+Think about when the AI should "remember" this detail:
+
+- **High importance:** Should be in almost every interaction
+- **Medium importance:** Relevant when topic comes up
+- **Low importance:** Only when directly related
+
+---
+
+## How Details Are Used
+
+Profile details are stored in the database and can be:
+
+1. **Retrieved by the RAG system** based on context and importance
+2. **Injected into prompts** when relevant to the current conversation
+3. **Filtered by tags** to find related information
+4. **Prioritized by importance** when context window is limited
+
+The retrieval system uses semantic search to find relevant details based on:
+
+- Current conversation topic
+- Tagged categories
+- Importance weighting
+- Recency of reference
+
+---
+
+## Tips for Beginners
+
+1. **Start minimal** - Add 3-5 core details, test in a session
+2. **Increase importance for identity** - Things that define who the character IS should be 0.7+
+3. **Lower importance for trivia** - Fun facts and minor quirks can be 0.2-0.3
+4. **Use notes liberally** - Document your intentions and story plans
+5. **Tag consistently** - Helps you find and organize details later
+
+---
+
+## Advanced: Detail Relationships
+
+You can reference other details within detail values to create connections:
+
+**Example:**
+
+> **Label:** Protective of Apprentice Lena  
+> **Value:** Since taking on Lena (see "Apprentice: Young Lena"), has become fiercely protective. Sees her as the daughter they never had. Will not tolerate criticism of her work.  
+> **Tags:** relationship, protective, apprentice
+
+This creates a web of interconnected details that the AI can use to build richer, more consistent responses.
+
+---
+
+## Related Documentation
+
+- [Basic Fields](#/docs/character-builder/basic-fields) - Core character information
+- [Personality](#/docs/character-builder/personality) - Behavioral traits and temperament
+- [Character Builder Overview](#/docs/character-builder) - Full feature overview

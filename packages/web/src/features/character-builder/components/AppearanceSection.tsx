@@ -10,6 +10,7 @@ import type { AppearanceEntry } from '../types.js';
 
 interface AppearanceSectionProps {
   appearances: AppearanceEntry[];
+  gender: string;
   updateAppearanceEntry: <K extends keyof AppearanceEntry>(
     idx: number,
     key: K,
@@ -21,16 +22,71 @@ interface AppearanceSectionProps {
 
 export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   appearances,
+  gender,
   updateAppearanceEntry,
   addAppearanceEntry,
   removeAppearanceEntry,
 }) => {
+  /**
+   * Filter body regions based on gender.
+   * Gender-specific regions: breasts, nipples (female), penis (male), vagina (female)
+   * For 'other' and 'unknown' genders, show all regions.
+   */
+  const getAvailableRegions = (): readonly AppearanceRegion[] => {
+    const genderValue = gender?.trim() || '';
+
+    // If gender is 'other' or 'unknown' or empty, show all regions
+    if (!genderValue || genderValue === 'other' || genderValue === 'unknown') {
+      return APPEARANCE_REGIONS;
+    }
+
+    // Gender-specific regions to conditionally include
+    const femaleOnlyRegions: AppearanceRegion[] = ['breasts', 'nipples', 'vagina'];
+    const maleOnlyRegions: AppearanceRegion[] = ['penis'];
+
+    return APPEARANCE_REGIONS.filter((region) => {
+      // Female-only regions
+      if (femaleOnlyRegions.includes(region)) {
+        return genderValue === 'female';
+      }
+
+      // Male-only regions
+      if (maleOnlyRegions.includes(region)) {
+        return genderValue === 'male';
+      }
+
+      // All other regions are always available
+      return true;
+    });
+  };
+
+  const availableRegions = getAvailableRegions();
   const handleRegionChange = (idx: number, newRegion: AppearanceRegion) => {
     // When region changes, reset attribute to the first available for that region
     const defaultAttr = getDefaultAttribute(newRegion);
     updateAppearanceEntry(idx, 'region', newRegion);
     updateAppearanceEntry(idx, 'attribute', defaultAttr);
     updateAppearanceEntry(idx, 'value', '');
+  };
+
+  /**
+   * Handle value changes with auto-add functionality.
+   * When the last entry's value is populated (all 3 fields filled),
+   * automatically add a new empty entry for convenience.
+   */
+  const handleValueChange = (idx: number, newValue: string) => {
+    updateAppearanceEntry(idx, 'value', newValue);
+
+    // Auto-add: if this is the last entry and value is now populated, add a new entry
+    const isLastEntry = idx === appearances.length - 1;
+    const entry = appearances[idx];
+    const hasRegion = entry.region && entry.region.trim() !== '';
+    const hasAttribute = entry.attribute && entry.attribute.trim() !== '';
+    const hasValue = newValue.trim() !== '';
+
+    if (isLastEntry && hasRegion && hasAttribute && hasValue) {
+      addAppearanceEntry();
+    }
   };
 
   return (
@@ -75,7 +131,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                     value={entry.region}
                     onChange={(e) => handleRegionChange(idx, e.target.value as AppearanceRegion)}
                   >
-                    {APPEARANCE_REGIONS.map((region) => (
+                    {availableRegions.map((region) => (
                       <option key={region} value={region}>
                         {APPEARANCE_REGION_LABELS[region]}
                       </option>
@@ -105,7 +161,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                     <select
                       className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                       value={entry.value}
-                      onChange={(e) => updateAppearanceEntry(idx, 'value', e.target.value)}
+                      onChange={(e) => handleValueChange(idx, e.target.value)}
                     >
                       <option value=""></option>
                       {attrDef.values!.map((val) => (
@@ -119,7 +175,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                       className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                       value={entry.value}
                       placeholder={attrDef?.placeholder ?? ''}
-                      onChange={(e) => updateAppearanceEntry(idx, 'value', e.target.value)}
+                      onChange={(e) => handleValueChange(idx, e.target.value)}
                     />
                   )}
                 </label>

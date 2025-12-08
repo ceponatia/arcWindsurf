@@ -2,14 +2,13 @@
 // Physical description (build + appearance buckets)
 export * from './appearance.js';
 
-// Body region taxonomy and sensory data
-export * from './body.js';
+// Body region taxonomy (canonical regions + aliases)
+export * from './regions.js';
 
-// Body sensory data parser (raw text → BodyMap)
-export * from './bodyParser.js';
+// Sensory data schemas (scent, texture, visual, flavor)
+export * from './sensory.js';
 
 // Other character facets
-export * from './scent.js';
 export * from './basics.js';
 export * from './details.js';
 export * from './characterProfile.js';

@@ -1,251 +1,5 @@
 import { z } from 'zod';
-
-// ============================================================================
-// Body Region Taxonomy
-// ============================================================================
-// Defines the canonical body regions with hierarchical relationships.
-// This enables:
-// - Atomic access to specific body parts for detailed descriptions
-// - Aliasing for natural language parsing (e.g., "look at their feet" → feet)
-// - Sensory data mapping (scents, textures, temperatures)
-// - Intent routing for queries about specific body parts
-//
-// Note: Equipment slot mapping (body region → clothing slots) is handled
-// separately in the governor package's equipment-resolver.ts to keep
-// character schemas decoupled from item schemas.
-// ============================================================================
-
-/**
- * Primary body regions - major areas that can have distinct properties.
- * These are the canonical regions used throughout the system for:
- * - Sensory data (scent, texture, visual appearance)
- * - Equipment slots (what clothing/armor covers this region)
- * - Intent routing (resolving player queries about specific body parts)
- */
-export const BODY_REGIONS = [
-  'head',
-  'face',
-  'hair',
-  'neck',
-  'shoulders',
-  'torso',
-  'chest',
-  'back',
-  'arms',
-  'hands',
-  'waist',
-  'hips',
-  'legs',
-  'feet',
-] as const;
-
-export type BodyRegion = (typeof BODY_REGIONS)[number];
-
-/**
- * Body region aliases map natural language references to canonical regions.
- * Used by intent detection and agents to resolve player input.
- *
- * Includes:
- * - Body part synonyms (e.g., "skull" → "head", "tummy" → "torso")
- * - Equipment references (e.g., "shoes" → "feet", "gloves" → "hands")
- *
- * Example: "I look at her shoes" → resolves to 'feet' region
- * Example: "I smell his hair" → resolves to 'hair' region
- * Example: "What is she wearing on her hands?" → resolves to 'hands' region
- */
-export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
-  // Head region aliases
-  skull: 'head',
-  scalp: 'hair',
-  locks: 'hair',
-  tresses: 'hair',
-  mane: 'hair',
-
-  // Face region aliases
-  visage: 'face',
-  countenance: 'face',
-  features: 'face',
-  eyes: 'face',
-  nose: 'face',
-  mouth: 'face',
-  lips: 'face',
-  cheeks: 'face',
-  chin: 'face',
-  jaw: 'face',
-  forehead: 'face',
-  brow: 'face',
-  ears: 'face',
-
-  // Neck aliases
-  throat: 'neck',
-  nape: 'neck',
-
-  // Torso aliases (default for "general" smell)
-  body: 'torso',
-  trunk: 'torso',
-  abdomen: 'torso',
-  stomach: 'torso',
-  belly: 'torso',
-  midriff: 'torso',
-  ribs: 'torso',
-  side: 'torso',
-  sides: 'torso',
-
-  // Chest aliases
-  breast: 'chest',
-  breasts: 'chest',
-  bosom: 'chest',
-  bust: 'chest',
-  pecs: 'chest',
-  pectorals: 'chest',
-
-  // Back aliases
-  spine: 'back',
-  shoulderblades: 'back',
-
-  // Shoulder aliases
-  shoulder: 'shoulders',
-
-  // Arm aliases
-  arm: 'arms',
-  bicep: 'arms',
-  biceps: 'arms',
-  forearm: 'arms',
-  forearms: 'arms',
-  elbow: 'arms',
-  elbows: 'arms',
-  wrist: 'arms',
-  wrists: 'arms',
-
-  // Hand aliases
-  hand: 'hands',
-  palm: 'hands',
-  palms: 'hands',
-  fingers: 'hands',
-  finger: 'hands',
-  knuckles: 'hands',
-  nails: 'hands',
-  fingernails: 'hands',
-
-  // Waist/hip aliases
-  hip: 'hips',
-  pelvis: 'hips',
-  groin: 'hips',
-  lap: 'hips',
-
-  // Leg aliases
-  leg: 'legs',
-  thigh: 'legs',
-  thighs: 'legs',
-  calf: 'legs',
-  calves: 'legs',
-  knee: 'legs',
-  knees: 'legs',
-  shin: 'legs',
-  shins: 'legs',
-  ankle: 'legs',
-  ankles: 'legs',
-
-  // Foot aliases
-  foot: 'feet',
-  toes: 'feet',
-  toe: 'feet',
-  heel: 'feet',
-  heels: 'feet',
-  sole: 'feet',
-  soles: 'feet',
-  arch: 'feet',
-  arches: 'feet',
-  instep: 'feet',
-
-  // Equipment-based aliases (item → body region it covers)
-  shoes: 'feet',
-  boots: 'feet',
-  sandals: 'feet',
-  socks: 'feet',
-  footwear: 'feet',
-  gloves: 'hands',
-  gauntlets: 'hands',
-  mittens: 'hands',
-  hat: 'head',
-  helmet: 'head',
-  cap: 'head',
-  hood: 'head',
-  crown: 'head',
-  mask: 'face',
-  glasses: 'face',
-  shirt: 'torso',
-  jacket: 'torso',
-  coat: 'torso',
-  dress: 'torso',
-  vest: 'torso',
-  blouse: 'torso',
-  sweater: 'torso',
-  pants: 'legs',
-  trousers: 'legs',
-  skirt: 'legs',
-  shorts: 'legs',
-  leggings: 'legs',
-  jeans: 'legs',
-  belt: 'waist',
-  necklace: 'neck',
-  choker: 'neck',
-  scarf: 'neck',
-  collar: 'neck',
-};
-
-/**
- * Default body region for general/unspecified references.
- * When a player says "I smell them" without specifying a body part,
- * this region is used as the default.
- */
-export const DEFAULT_BODY_REGION: BodyRegion = 'torso';
-
-/**
- * Resolve a body part reference to a canonical region.
- * Returns the default region if no match is found.
- *
- * @param reference - The body part reference from player input
- * @param defaultRegion - Override for the default region (defaults to 'torso')
- */
-export function resolveBodyRegion(
-  reference: string | undefined | null,
-  defaultRegion: BodyRegion = DEFAULT_BODY_REGION
-): BodyRegion {
-  if (!reference) {
-    return defaultRegion;
-  }
-
-  const normalized = reference.toLowerCase().trim();
-
-  // Check if it's already a canonical region
-  if (BODY_REGIONS.includes(normalized as BodyRegion)) {
-    return normalized as BodyRegion;
-  }
-
-  // Check aliases
-  const aliased = BODY_REGION_ALIASES[normalized];
-  if (aliased) {
-    return aliased;
-  }
-
-  // Fuzzy match: check if any alias contains the reference or vice versa
-  for (const [alias, region] of Object.entries(BODY_REGION_ALIASES)) {
-    if (alias.includes(normalized) || normalized.includes(alias)) {
-      return region;
-    }
-  }
-
-  return defaultRegion;
-}
-
-/**
- * Check if a string is a valid body region or alias.
- */
-export function isBodyReference(value: string): boolean {
-  const normalized = value.toLowerCase().trim();
-  return BODY_REGIONS.includes(normalized as BodyRegion) || normalized in BODY_REGION_ALIASES;
-}
+import { BODY_REGIONS, type BodyRegion } from './regions.js';
 
 // ============================================================================
 // Body Region Descriptors (Sensory Data)
@@ -301,6 +55,20 @@ export const RegionVisualSchema = z.object({
 export type RegionVisual = z.infer<typeof RegionVisualSchema>;
 
 /**
+ * Flavor/taste descriptor for a body region.
+ */
+export const RegionFlavorSchema = z.object({
+  /** Primary flavor note (e.g., "salty", "sweet", "metallic", "bitter") */
+  primary: z.string().min(1).max(80),
+  /** Secondary/background flavor notes */
+  notes: z.array(z.string().min(1).max(80)).max(4).optional(),
+  /** Flavor intensity (0 = barely noticeable, 1 = overwhelming) */
+  intensity: z.number().min(0).max(1).default(0.5),
+});
+
+export type RegionFlavor = z.infer<typeof RegionFlavorSchema>;
+
+/**
  * Complete sensory data for a single body region.
  * All fields are optional to allow partial specification.
  */
@@ -311,6 +79,8 @@ export const BodyRegionDataSchema = z.object({
   scent: RegionScentSchema.optional(),
   /** Texture/touch feel of this region */
   texture: RegionTextureSchema.optional(),
+  /** Flavor/taste of this region */
+  flavor: RegionFlavorSchema.optional(),
 });
 
 export type BodyRegionData = z.infer<typeof BodyRegionDataSchema>;
@@ -344,18 +114,37 @@ export const BodyMapSchema = z
   .object({
     head: BodyRegionDataSchema.optional(),
     face: BodyRegionDataSchema.optional(),
+    ears: BodyRegionDataSchema.optional(),
+    mouth: BodyRegionDataSchema.optional(),
     hair: BodyRegionDataSchema.optional(),
     neck: BodyRegionDataSchema.optional(),
+    throat: BodyRegionDataSchema.optional(),
     shoulders: BodyRegionDataSchema.optional(),
-    torso: BodyRegionDataSchema.optional(),
     chest: BodyRegionDataSchema.optional(),
+    breasts: BodyRegionDataSchema.optional(),
+    nipples: BodyRegionDataSchema.optional(),
     back: BodyRegionDataSchema.optional(),
+    lowerBack: BodyRegionDataSchema.optional(),
+    torso: BodyRegionDataSchema.optional(),
+    abdomen: BodyRegionDataSchema.optional(),
+    navel: BodyRegionDataSchema.optional(),
+    armpits: BodyRegionDataSchema.optional(),
     arms: BodyRegionDataSchema.optional(),
     hands: BodyRegionDataSchema.optional(),
     waist: BodyRegionDataSchema.optional(),
     hips: BodyRegionDataSchema.optional(),
+    groin: BodyRegionDataSchema.optional(),
+    buttocks: BodyRegionDataSchema.optional(),
+    anus: BodyRegionDataSchema.optional(),
+    penis: BodyRegionDataSchema.optional(),
+    vagina: BodyRegionDataSchema.optional(),
     legs: BodyRegionDataSchema.optional(),
+    thighs: BodyRegionDataSchema.optional(),
+    knees: BodyRegionDataSchema.optional(),
+    calves: BodyRegionDataSchema.optional(),
+    ankles: BodyRegionDataSchema.optional(),
     feet: BodyRegionDataSchema.optional(),
+    toes: BodyRegionDataSchema.optional(),
   })
   .partial();
 
@@ -424,12 +213,36 @@ export function getRegionVisual(
 }
 
 /**
+ * Get flavor data for a specific body region.
+ *
+ * @param bodyMap - The character's body map
+ * @param region - The target region
+ * @returns The flavor data, or undefined if none found
+ */
+export function getRegionFlavor(
+  bodyMap: BodyMap | undefined,
+  region: BodyRegion
+): RegionFlavor | undefined {
+  if (!bodyMap) return undefined;
+  return bodyMap[region]?.flavor;
+}
+
+/**
  * Get all regions that have scent data defined.
  */
 export function getScentRegions(bodyMap: BodyMap | undefined): BodyRegion[] {
   if (!bodyMap) return [];
 
   return BODY_REGIONS.filter((region) => bodyMap[region]?.scent !== undefined);
+}
+
+/**
+ * Get all regions that have flavor data defined.
+ */
+export function getFlavorRegions(bodyMap: BodyMap | undefined): BodyRegion[] {
+  if (!bodyMap) return [];
+
+  return BODY_REGIONS.filter((region) => bodyMap[region]?.flavor !== undefined);
 }
 
 /**

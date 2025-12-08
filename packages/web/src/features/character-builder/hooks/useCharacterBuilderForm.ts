@@ -6,10 +6,8 @@ import {
   type PersonalityMap,
   BODY_REGIONS,
   PERSONALITY_DIMENSIONS,
-  formatScent,
-  formatTexture,
-  formatVisual,
 } from '@minimal-rpg/schemas';
+import { formatScent, formatTexture, formatVisual, formatFlavor } from '@minimal-rpg/utils';
 import { loadCharacter } from '../api.js';
 import {
   createDetailEntry,
@@ -56,6 +54,13 @@ function bodyMapToEntries(bodyMap: BodyMap | undefined): BodySensoryEntry[] {
         region,
         type: 'visual',
         raw: formatVisual(data.visual),
+      });
+    }
+    if (data.flavor) {
+      entries.push({
+        region,
+        type: 'flavor',
+        raw: formatFlavor(data.flavor),
       });
     }
   }
@@ -242,7 +247,8 @@ function mapProfileToForm(profile: CharacterProfile): FormState {
   const next = createInitialState();
   next.id = profile.id;
   next.name = profile.name;
-  next.age = profile.age;
+  next.age = profile.age ?? '';
+  next.gender = (profile as { gender?: string }).gender ?? '';
   next.summary = profile.summary;
   next.backstory = profile.backstory ?? '';
   next.tags = (profile.tags ?? []).join(', ');

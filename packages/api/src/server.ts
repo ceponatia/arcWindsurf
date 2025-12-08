@@ -22,6 +22,7 @@ import { registerTurnRoutes } from './routes/turns.js';
 import { registerProfileRoutes } from './routes/profiles.js';
 import { registerTagRoutes } from './routes/tags.js';
 import { registerItemRoutes } from './routes/items.js';
+import { registerPersonaRoutes } from './routes/personas.js';
 
 const app = new Hono();
 
@@ -82,6 +83,7 @@ async function start(): Promise<void> {
   registerTurnRoutes(app);
   registerTagRoutes(app);
   registerItemRoutes(app);
+  registerPersonaRoutes(app);
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });

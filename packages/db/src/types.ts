@@ -131,6 +131,23 @@ export interface SettingInstanceRow extends DbRow {
   updatedAt?: Date;
 }
 
+export interface PersonaRow extends DbRow {
+  id: string;
+  userId: string | null;
+  profileJson: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface SessionPersonaRow extends DbRow {
+  sessionId: string;
+  personaId: string;
+  profileJson: string;
+  overridesJson: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface MessageRow extends DbRow {
   id: string;
   sessionId: string;

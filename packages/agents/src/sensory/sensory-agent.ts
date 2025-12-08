@@ -32,7 +32,6 @@ import {
  * - taste: Would require item/consumable taste data
  * - touch: Would require texture/temperature data on items/characters
  * - listen: Would require ambient sound data on locations
- *
  * ## Body Region Resolution
  *
  * When a player says "I smell her hair", the agent:
@@ -225,12 +224,6 @@ export class SensoryAgent extends BaseAgent {
         }
         if (regionData?.scent?.notes?.length) {
           data[`smell_${bodyRegion}_notes`] = regionData.scent.notes.join(', ');
-        }
-        // Also check legacy scent schema
-        if (character.scent) {
-          if (character.scent.hairScent) data['smell_hair'] = character.scent.hairScent;
-          if (character.scent.bodyScent) data['smell_body'] = character.scent.bodyScent;
-          if (character.scent.perfume) data['smell_perfume'] = character.scent.perfume;
         }
       }
 
@@ -582,7 +575,7 @@ Rules:
 
   /**
    * Extract scent-related data from knowledge context.
-   * Looks for paths like 'body.hair.scent', 'body.torso.scent', 'scent.hairScent' (legacy).
+   * Looks for paths like 'body.hair.scent', 'body.torso.scent'.
    * Filters by body region when specified.
    */
   private extractScentFromKnowledge(
@@ -698,18 +691,37 @@ Rules:
     const labels: Record<BodyRegion, string> = {
       head: 'head',
       face: 'face',
+      ears: 'ears',
+      mouth: 'mouth',
       hair: 'hair',
       neck: 'neck',
+      throat: 'throat',
       shoulders: 'shoulders',
-      torso: 'body',
       chest: 'chest',
+      breasts: 'breasts',
+      nipples: 'nipples',
       back: 'back',
+      lowerBack: 'lower back',
+      torso: 'body',
+      abdomen: 'abdomen',
+      navel: 'navel',
+      armpits: 'armpits',
       arms: 'arms',
       hands: 'hands',
       waist: 'waist',
       hips: 'hips',
+      groin: 'groin',
+      buttocks: 'buttocks',
+      anus: 'anus',
+      penis: 'penis',
+      vagina: 'vagina',
       legs: 'legs',
+      thighs: 'thighs',
+      knees: 'knees',
+      calves: 'calves',
+      ankles: 'ankles',
       feet: 'feet',
+      toes: 'toes',
     };
     return labels[region] ?? region;
   }

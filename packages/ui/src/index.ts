@@ -5,4 +5,6 @@ export * from './components/AppHeader.js';
 export * from './components/SessionsPanel.js';
 export * from './components/CharactersPanel.js';
 export * from './components/ChatView.js';
+export * from './components/HelpIcon.js';
+export * from './components/HelpPopover.js';
 export * from './lib/utils.js';

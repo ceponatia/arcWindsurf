@@ -1,0 +1,214 @@
+# Appearance Guide
+
+Learn how to define your character's physical appearance using the region-based appearance system.
+
+---
+
+## Overview
+
+The **Appearance** section lets you specify physical attributes for different body regions. Instead of a free-text description, you select a region, choose an attribute, and provide a value.
+
+This structured approach helps the AI generate consistent descriptions and allows for detailed physical characteristics.
+
+---
+
+## How It Works
+
+Each appearance entry has three parts:
+
+1. **Body Region** - Which part of the body you're describing (face, hair, torso, etc.)
+2. **Attribute** - What aspect of that region you're specifying (color, length, style, etc.)
+3. **Value** - The actual description (auburn, long, muscular, etc.)
+
+---
+
+## Available Body Regions
+
+The system supports these body regions:
+
+| Region             | Example Attributes            |
+| ------------------ | ----------------------------- |
+| **Head**           | Shape, size                   |
+| **Face**           | Shape, complexion, features   |
+| **Ears**           | Size, shape, piercings        |
+| **Mouth/Lips**     | Size, shape, color            |
+| **Hair**           | Color, length, style, texture |
+| **Neck**           | Length, width                 |
+| **Throat**         | Visibility, adam's apple      |
+| **Shoulders**      | Width, build                  |
+| **Chest**          | Size, build                   |
+| **Breasts**        | Size, shape (female)          |
+| **Nipples**        | Color, size (female)          |
+| **Back**           | Build, posture                |
+| **Lower Back**     | Build, curve                  |
+| **Torso/Body**     | Build, musculature            |
+| **Abdomen/Belly**  | Build, muscle definition      |
+| **Navel**          | Shape, depth                  |
+| **Armpits**        | Hair, grooming                |
+| **Arms**           | Length, musculature           |
+| **Hands**          | Size, texture, condition      |
+| **Waist**          | Size, build                   |
+| **Hips**           | Width, build                  |
+| **Groin**          | Hair, grooming                |
+| **Buttocks**       | Size, shape                   |
+| **Anus**           | (anatomical reference)        |
+| **Penis**          | Size, appearance (male)       |
+| **Vagina**         | Appearance (female)           |
+| **Legs (General)** | Overall appearance            |
+| **Thighs**         | Size, musculature             |
+| **Knees**          | Shape, condition              |
+| **Calves**         | Size, musculature             |
+| **Ankles**         | Size, shape                   |
+| **Feet**           | Size, condition               |
+| **Toes**           | Length, nails                 |
+
+---
+
+## Attribute Types
+
+Attributes vary by region. Common attribute categories include:
+
+### Preset Values
+
+Some attributes offer dropdown selections for consistency:
+
+- **Hair Color** - auburn, black, blonde, brown, gray, red, white, etc.
+- **Eye Color** - amber, blue, brown, green, gray, hazel, etc.
+- **Skin Tone** - fair, light, medium, tan, olive, brown, dark, etc.
+
+### Freeform Values
+
+Other attributes accept text input for flexibility:
+
+- **Height** - e.g., "tall", "short", "6 feet", "average"
+- **Build** - e.g., "athletic", "stocky", "slender", "muscular"
+- **Features** - e.g., "sharp cheekbones", "freckles", "scar on left cheek"
+
+---
+
+## Examples
+
+### Example 1: Basic Hair Description
+
+- **Region:** Hair
+- **Attribute:** Color
+- **Value:** auburn
+
+### Example 2: Detailed Facial Feature
+
+- **Region:** Face
+- **Attribute:** Features
+- **Value:** sharp cheekbones with a small scar above the left eyebrow
+
+### Example 3: Body Build
+
+- **Region:** Torso/Body
+- **Attribute:** Build
+- **Value:** broad-shouldered and muscular from years of smithing
+
+### Example 4: Hand Description
+
+- **Region:** Hands
+- **Attribute:** Texture
+- **Value:** rough and calloused
+
+---
+
+## Best Practices
+
+### 1. Start with the Most Visible Features
+
+Begin with features that people notice first:
+
+- Face shape and features
+- Hair color and style
+- Eye color
+- Overall build
+
+### 2. Add Details Gradually
+
+You don't need to describe every body part. Focus on distinctive features that make your character memorable.
+
+### 3. Be Specific but Natural
+
+✅ **Good:** "long, flowing auburn hair with slight waves"  
+❌ **Too Vague:** "nice hair"  
+❌ **Too Technical:** "hair length 24 inches, 60% wave factor, RGB(165,42,42)"
+
+### 4. Think About Context
+
+Consider what makes sense for the character's background:
+
+- A blacksmith might have calloused hands and muscular arms
+- A scholar might have pale skin from indoor work
+- A traveler might have weathered skin and worn hands
+
+### 5. Layer Multiple Entries for Rich Descriptions
+
+You can add multiple appearance entries for the same region if you want to specify different attributes:
+
+**Face entries:**
+
+- Face → Shape → oval
+- Face → Features → high cheekbones with a thin scar
+- Face → Complexion → lightly tanned from outdoor work
+
+---
+
+## How Appearance is Used
+
+Appearance data is used by the AI in several ways:
+
+- **Visual descriptions** - When the character is first encountered
+- **Sensory context** - Referenced during interactions
+- **Physical action descriptions** - Informing how the character moves or gestures
+
+The structured format allows the system to:
+
+- Generate consistent descriptions across multiple sessions
+- Combine appearance with sensory data (see [Body Sensory](#/docs/character-builder/body-sensory))
+- Reference specific details when contextually relevant
+
+---
+
+## Tips for New Users
+
+### Start Simple
+
+For your first character, add 3-5 key appearance entries:
+
+1. Hair color and style
+2. Eye color
+3. Face shape or distinctive features
+4. Overall build
+5. One memorable detail (scar, tattoo, etc.)
+
+### Build Up Over Time
+
+You can always add more appearance details later. Test your character in a session first, then refine based on how you want them described.
+
+### Use Consistent Language
+
+If you describe one character as having "auburn" hair, use the same term for other characters rather than "reddish-brown" to maintain consistency in your library.
+
+---
+
+## Appearance vs. Body Sensory
+
+**Appearance** describes what the character **looks like** visually.  
+**Body Sensory** describes how body regions **smell, feel, taste, or look in detail**.
+
+Example:
+
+- **Appearance:** Hair → Color → auburn, Hair → Length → long
+- **Body Sensory:** Hair → Scent → lavender shampoo, faint intensity
+
+See [Body Sensory Guide](#/docs/character-builder/body-sensory) for more on sensory descriptions.
+
+---
+
+## Related Documentation
+
+- [Basic Fields](#/docs/character-builder/basic-fields) - Core character information
+- [Body Sensory](#/docs/character-builder/body-sensory) - Scent, texture, and sensory details
+- [Character Builder Overview](#/docs/character-builder) - Full feature overview

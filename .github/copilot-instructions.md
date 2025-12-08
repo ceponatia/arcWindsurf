@@ -11,10 +11,11 @@ This monorepo uses pnpm + Turbo with these packages:
 
 ## Important
 
+- Read the folder's README.md files for package-specific info.
+- Follow existing code style and patterns.
 - Each package should have a src/types.ts file for shared types. Use existing types in these files when possible, or add a new type there. Make sure types are STRONGLY typed.
 - After finishing a task, update the root `README.md` with any relevant changes and keep it accurate and concise. Do not remove unrelated information.
 - Put requested developer notes or docs in `/dev-docs`.
-- For markdown lint issues, prefer `markdownlint --fix`.
 - When running terminal commands such as curl and node scripts, either configure the script to return an error or quit after a period of time, or use a sleep command to avoid infinite loops.
 
 ## Architecture & Conventions
@@ -36,51 +37,21 @@ This monorepo uses pnpm + Turbo with these packages:
 ## Developer Workflows
 
 - Install/build all: `pnpm -w install` then `pnpm -w build` (Turbo runs `tsc` into `dist/`).
-- Typecheck + lint: prefer `pnpm check` (runs both), or `pnpm -w typecheck` / `pnpm -w lint`.
-- Run packages:
-  - API dev: `pnpm -F @minimal-rpg/api dev`
-  - API prod: `pnpm -F @minimal-rpg/api build && pnpm -F @minimal-rpg/api start`
-  - Web dev: `pnpm -F @minimal-rpg/web dev`
-- Data validation helper (optional): `node ./scripts/validate-data.js`.
-
-## Data & Schemas
-
-- Character files live in `data/characters/*.json`; settings in `data/settings/*.json`.
-- Files must conform to `@minimal-rpg/schemas`.
-  - Required minimums: non-empty `name` and `summary`; character `goals` is an array of non-empty strings; optional arrays: `tags`, `constraints`.
-- Example validation:
-
-  ```ts
-  import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas';
-
-  const parsed = CharacterProfileSchema.parse(obj);
-  const character: CharacterProfile = parsed;
-  ```
-
-- Run API with a custom data dir:
-  ```bash
-  DATA_DIR=/abs/path/to/data pnpm -F @minimal-rpg/api dev
-  ```
+- Typecheck + lint: prefer `pnpm -w typecheck` / `pnpm -w lint`.
 
 ## Patterns to Follow
 
 - Use shared Zod schemas for runtime validation; avoid duplicate type definitions.
-- Keep imports ESM-correct with explicit `.js` for local paths (because of `verbatimModuleSyntax`).
-- API should fail fast and clearly on invalid data (see `loader.ts`).
-- Prefer small, self-contained JSON files; missing data subdirs are treated as empty.
+- Do not write functional code in schema files—keep them focused on data structure.
+- Use explicit types for function parameters and return values for clarity.
+- Write small, focused functions that do one thing well.
+- Use async/await for asynchronous code; avoid mixing with .then()/.catch().
+- Handle errors gracefully with try/catch and provide meaningful messages.
+- Write JSDoc comments for all functions and complex logic.
+- Use the standard ASCII '-' for hyphens and dashes in source and documentation; avoid typographic variants like '–', '—', or non-breaking hyphens.
 
 ## LLM Integration
 
 - The API uses OpenRouter with the DeepSeek 3 model as the default LLM.
 - Prompt configuration schemas live under `packages/schemas/src/api`.
-
-## Key Files
-
-- Root: `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `README.md`
-- Schemas: `packages/schemas/src/index.ts`
-- Shared: `packages/shared/src/index.ts` (re-exports from `@minimal-rpg/schemas`)
-- API: `packages/api/src/data/loader.ts`, `packages/api/src/server.ts`, `packages/api/src/llm`
-- Web: `packages/web/src`
-- Data: `data/README.md`, `data/characters/example.json`, `data/settings/example.json`
-
-If anything here looks outdated or unclear, update this file along with any affected docs.
+- When modifying prompts, ensure changes are reflected in both the schema and the prompt templates.

@@ -22,7 +22,11 @@ import type {
   SessionTag,
 } from '@minimal-rpg/governor';
 import { db } from '../db/prismaClient.js';
-import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
+import {
+  CharacterProfileSchema,
+  SettingProfileSchema,
+  PersonaProfileSchema,
+} from '@minimal-rpg/schemas';
 import type { CharacterInstanceRow } from '../types.js';
 
 interface TurnRequestBody {
@@ -202,6 +206,9 @@ export function registerTurnRoutes(app: Hono): void {
     const overrides: TurnStateContext = {
       character: primaryCharacterOverrides as StateObject,
       setting: settingOverrides as StateObject,
+      location: {},
+      inventory: {},
+      time: {},
     };
 
     if (activeNpcInstance) {
@@ -230,11 +237,56 @@ export function registerTurnRoutes(app: Hono): void {
     const sessionTags: SessionTag[] = tagBindingsWithDefs
       .filter((b) => b.tag.activation_mode === 'always')
       .map((b) => ({
-        id: b.tag_id,
+        id: b.id,
+        sessionId: b.session_id,
+        tagId: b.tag_id,
         name: b.tag.name,
         promptText: b.tag.prompt_text,
         shortDescription: b.tag.short_description ?? undefined,
       }));
+
+    // Load session persona if attached (for NPC agent context about the player)
+    let persona:
+      | { name?: string; age?: number; gender?: string; summary?: string; appearance?: string }
+      | undefined;
+    try {
+      const sessionPersona = await db.sessionPersona.findUnique({
+        where: { sessionId: session.id },
+      });
+      if (sessionPersona) {
+        const profile = PersonaProfileSchema.parse(JSON.parse(sessionPersona.profileJson));
+
+        // Serialize appearance to string if present
+        let appearanceStr: string | undefined;
+        if (profile.appearance) {
+          if (typeof profile.appearance === 'string') {
+            appearanceStr = profile.appearance;
+          } else {
+            // Structured physique - serialize to brief description
+            const p = profile.appearance.build;
+            appearanceStr = `${p.height} height, ${p.torso} build`;
+          }
+        }
+
+        // Build persona object with only defined properties
+        persona = {
+          name: profile.name,
+          summary: profile.summary,
+        };
+        if (profile.age !== undefined) {
+          persona.age = profile.age;
+        }
+        if (profile.gender !== undefined) {
+          persona.gender = profile.gender;
+        }
+        if (appearanceStr !== undefined) {
+          persona.appearance = appearanceStr;
+        }
+      }
+    } catch (err) {
+      // Log but don't fail the turn if persona data is invalid
+      console.warn('[turns] Failed to load session persona:', (err as Error).message);
+    }
 
     const governor = createGovernorForRequest();
 
@@ -251,6 +303,7 @@ export function registerTurnRoutes(app: Hono): void {
         })
       ),
       sessionTags,
+      ...(persona ? { persona } : {}), // Only include persona if it exists
     });
 
     // Persist the governor-composed reply as the assistant message so

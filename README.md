@@ -184,6 +184,9 @@ Per-session overrides mutate the `character_instances` and `setting_instances` s
 
 - `@minimal-rpg/schemas` (in `packages/schemas`)
 - Zod schemas and types for characters, settings, locations, and inventory slices
+- **Shared schemas** (`packages/schemas/src/shared/`) provide common types used by both Character and Persona schemas:
+  - `CoreIdentitySchema` – shared identity fields (id, name, age, gender, summary)
+  - `PhysiqueSchema` – shared physical appearance schemas (build, appearance enums)
 
 Example:
 
@@ -192,6 +195,8 @@ import {
   CharacterProfileSchema,
   InventoryStateSchema,
   BuiltLocationSchema,
+  CoreIdentitySchema,
+  PhysiqueSchema,
 } from '@minimal-rpg/schemas';
 
 const character = CharacterProfileSchema.parse(obj.character);
@@ -199,7 +204,7 @@ const location = BuiltLocationSchema.parse(obj.location);
 const inventory = InventoryStateSchema.parse(obj.inventory);
 ```
 
-Namespaced access (e.g. `Character.CharacterProfileSchema`) is also available. Prefer importing directly from `@minimal-rpg/schemas`.
+Namespaced access (e.g. `Character.CharacterProfileSchema`, `Shared.CoreIdentitySchema`) is also available. Prefer importing directly from `@minimal-rpg/schemas`.
 
 ### Monorepo packages
 
@@ -213,6 +218,7 @@ Namespaced access (e.g. `Character.CharacterProfileSchema`) is also available. P
 - `@minimal-rpg/state-manager` – baseline + overrides merging and JSON Patch
 - `@minimal-rpg/agents` – specialized agents (Map, NPC, Rules, Parser, Sensory)
 - `@minimal-rpg/retrieval` – in-memory knowledge node retrieval and scoring used by the governor
+- `@minimal-rpg/generator` – random character generation with themed value pools (supports modern-woman, modern-man, and base themes; generates complete profiles with physique, body sensory data, personality maps, and details)
 
 For a deeper architecture walkthrough (DB schema, governor-backed turn flow, and how slices/overrides fit together), see [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md).
 
@@ -265,13 +271,16 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 
 ## 9. Recent Highlights
 
+- **Character Gender Field**: Character profiles now include an optional `gender` field in the basic information section. This field is stored in the schema, editable in the character builder UI, and included in LLM prompts when specified.
+- **In-App Documentation System**: MDX-based docs with hierarchical navigation, syntax highlighting, and contextual help components. Access via the Documentation link in the sidebar or `#/docs`. Includes `HelpIcon` and `HelpPopover` components from `@minimal-rpg/ui` for inline assistance throughout the app.
+  - The docs include a **Self-Hosting** guide aimed at non-developers (`#/docs/self-hosting`) plus feature guides (Quick Start, Character Builder, Setting Builder, Sessions) so people can run and use the app without reading this README in detail.
 - Location and inventory slices validate via `BuiltLocationSchema` and `InventoryStateSchema` before persisting overrides.
 - Character profiles support flexible `details` entries (label/value with area, importance, tags) which feed directly into prompts.
-- Character profiles now support an optional `body` map with per-region sensory data (scent, texture, visual). Body regions include: head, face, hair, neck, shoulders, torso, chest, back, arms, hands, waist, hips, legs, feet.
+- Character profiles now support an optional `body` map with per-region sensory data (scent, texture, visual, flavor). Body regions include 33 anatomical zones from head to toes: head, face, ears, mouth, hair, neck, throat, shoulders, chest, breasts (female), nipples (female), back, lowerBack, torso, abdomen, navel, armpits, arms, hands, waist, hips, groin, buttocks, anus, penis (male), vagina (female), legs, thighs, knees, calves, ankles, feet, toes. Gender-specific regions (breasts, nipples, penis, vagina) are conditionally displayed in the character builder based on the character's gender field.
 - Body region aliases include equipment references (e.g., "shoes" → feet, "gloves" → hands, "hat" → head) so natural language queries about clothing resolve to the correct body region.
 - Equipment slot mapping (body region → clothing slots) is handled by `@minimal-rpg/governor`'s `resolveBodyWithEquipment()`, keeping character schemas decoupled from item schemas.
-- Character builder (web) uses the BodyMap schema exclusively for sensory data. Legacy flat scent fields have been removed from the form—use Body Sensory Data entries for per-region scent, texture, and visual descriptions. Input like "strong musk, lightly floral" is parsed into structured data with intensity extraction.
-- Character builder appearance section now uses a dynamic entry-based UI for per-region physical attributes (region → attribute → value), matching the body sensory data pattern. Appearance regions include: overall, hair, eyes, skin, face, arms, legs, feet. Attributes vary by region (e.g., hair has color, style, length; eyes has color, shape, expression).
+- Character builder (web) uses the BodyMap schema exclusively for sensory data. Legacy flat scent fields have been removed from the form—use Body Sensory Data entries for per-region scent, texture, visual, and flavor descriptions. Input like "strong musk, lightly floral" is parsed into structured data with intensity extraction.
+- Character builder appearance section now uses a dynamic entry-based UI for per-region physical attributes (region → attribute → value), matching the body sensory data pattern. Appearance regions now include all 33 body regions (head, face, ears, mouth, hair, neck, throat, shoulders, chest, breasts, nipples, back, lowerBack, torso, abdomen, navel, armpits, arms, hands, waist, hips, groin, buttocks, anus, penis, vagina, legs, thighs, knees, calves, ankles, feet, toes) plus overall, eyes, and skin. Attributes vary by region (e.g., hair has color, style, length; buttocks has size, shape; arms has build, length). When all three fields (region, attribute, value) are populated on the last entry, a new empty entry is automatically added for convenience.
 - `speakingStyle` and `style` (speech style hints) have been removed from `CharacterProfileSchema` and the character builder. Dialogue style is now inferred from personality traits and details rather than explicit style parameters.
 - Character profiles now support an optional `personalityMap` for structured NPC personality data. The `PersonalityMapSchema` includes Big Five dimension scores, emotional baseline (Plutchik-based emotions), core values with priority ranking, fears with triggers and coping mechanisms, attachment style, social patterns (stranger default, warmth rate, conflict style), speech style (vocabulary, formality, humor type), and stress behavior (fight/flight/freeze/fawn responses). Trait prompts can be injected into NPC system prompts using the `TRAIT_PROMPTS` registry—each trait ID maps to a short prompt fragment (~10-25 words). Trait conflict detection (`validateTraitSet()`) catches polar opposites, logical contradictions, and behavioral clashes at character creation time.
 - Sensory intent detection extracts `bodyPart` from player input (e.g., "I smell her hair"). The `SensoryAgent` resolves raw body part references to canonical regions using `resolveBodyRegion()` from `@minimal-rpg/schemas`.

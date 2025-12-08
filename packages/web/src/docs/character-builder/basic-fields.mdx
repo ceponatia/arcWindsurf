@@ -1,0 +1,137 @@
+# Basic Fields
+
+This page explains the core fields in the Character Builder's **Basics** section. These are the foundational details that define who your character is.
+
+---
+
+## ID
+
+The ID is a unique identifier for your character, used internally by the system.
+
+- Must be unique across all your characters
+- In production, this will be a system-generated UUID
+
+> Tip: Use a combination of the character's name and role for easy identification (e.g., `innkeeper-sarah`, `wizard-eldrin`).
+
+---
+
+## Name
+
+The character's display name as it appears in conversations and the UI.
+
+- Can include spaces, capitals, and special characters
+- Should be easy to remember and pronounce
+- Can be a full name ("Elena Thornwood"), simple name ("Marcus"), or title ("The Wanderer")
+- Used in AI prompts to refer to the character
+
+**Examples:**
+
+- "Elena Thornwood"
+- "Captain Marcus"
+- "The Old Wizard"
+- "Sara"
+
+---
+
+## Age (Optional)
+
+The character's age in years. This field is optional but helps shape the character's voice and behavior.
+
+- Young characters may sound more energetic or inexperienced
+- Older characters may be wiser, more patient, or world-weary
+- Used in AI prompts to inform dialogue style and knowledge
+
+**Tips:**
+
+- You can use a specific number (27) or a general age range (mid-40s) in your mental model
+- Consider how age affects the character's perspective and life experience
+
+---
+
+## Gender (Optional)
+
+The character's gender identity. Used for pronouns and descriptions.
+
+- Optional field - leave blank for neutral presentation
+- Freeform text field - use any label that fits ("female", "male", "non-binary", etc.)
+- Included in AI prompts when provided
+- Affects how the character is described by the system
+
+---
+
+## Tags
+
+Comma-separated keywords for organizing and filtering your character library.
+
+**Important:** Tags are for **UI organization only**. They help you search and filter characters but are NOT used in gameplay or AI prompts.
+
+**Good tag examples:**
+
+- Role tags: `merchant`, `guard`, `noble`, `healer`
+- Location tags: `tavern`, `marketplace`, `castle`
+- Genre tags: `fantasy`, `urban`, `horror`
+- Attribute tags: `friendly`, `mysterious`, `humorous`
+
+**Best practices:**
+
+- Use lowercase for consistency
+- Keep tags short and searchable
+- Use 3-7 tags per character
+- Be consistent across your library
+
+Default: `draft` (automatically added to new characters)
+
+---
+
+## Summary
+
+A brief description of the character for browsing your character library.
+
+**Important:** This field is for **UI display only** - it helps you identify characters in your library but is NOT used in AI prompts or gameplay.
+
+- Keep it concise (1-3 sentences)
+- Focus on what makes this character distinctive
+- Think of it as a "character card" summary
+
+**Example:**
+
+> A weathered blacksmith known for honest work and fair prices. Gruff exterior but kind to apprentices.
+
+---
+
+## Backstory
+
+The character's history and background. This field **is used in AI prompts** and directly affects how the character behaves.
+
+- Aim for 2-5 sentences covering key life events
+- Include formative experiences that shaped who they are
+- Mention relationships, past conflicts, or defining moments
+- Keep it focused on what's relevant to the character's current behavior
+
+**Example:**
+
+> Elena grew up in a mining town, learning blacksmithing from her father. After his death in a cave-in, she took over the forge at age 19. Years of hard work and dealing with difficult customers have made her suspicious of nobility, though she has a soft spot for struggling apprentices.
+
+**Note:** The backstory field will be refactored in the future to support richer, more structured background information. For now, treat it as a free-text narrative.
+
+---
+
+## Quick Reference
+
+| Field     | Required | Used in AI | Used in UI | Purpose                   |
+| --------- | -------- | ---------- | ---------- | ------------------------- |
+| ID        | ✅       | ✅         | ✅         | Unique identifier         |
+| Name      | ✅       | ✅         | ✅         | Character's display name  |
+| Age       | ❌       | ✅         | ✅         | Character's age           |
+| Gender    | ❌       | ✅         | ✅         | Gender identity           |
+| Tags      | ❌       | ❌         | ✅         | Library organization only |
+| Summary   | ✅       | ❌         | ✅         | Library browsing only     |
+| Backstory | ✅       | ✅         | ✅         | Character history         |
+
+---
+
+## Next Steps
+
+- Learn about [Personality](#/docs/character-builder/personality) to shape behavioral traits
+- Explore [Appearance](#/docs/character-builder/appearance) for physical descriptions
+- Read the [Character Builder overview](#/docs/character-builder) for the full picture

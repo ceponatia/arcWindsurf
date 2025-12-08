@@ -1,0 +1,100 @@
+# Chat Interface Details
+
+This page expands on the **Sessions & Chat** documentation and focuses on how to read and use the chat interface inside ArcAgentic.
+
+---
+
+## Layout Overview
+
+When you open a session, you will typically see:
+
+- **Conversation history** – Messages from you and the NPC(s)
+- **Input box** – Where you type what you say or do
+- **Send button** – Sends your message if you prefer clicking over pressing Enter
+- **Character panel** – Basic info about the active NPC (name, role, short summary)
+- **Setting panel** – A brief reminder of where the scene is happening
+
+Some layouts may also show:
+
+- A selector to choose which NPC you are talking to
+- A debug or info panel for advanced users
+
+---
+
+## Writing Messages
+
+You can treat the chat box like a mix of speech and narration.
+
+- Plain text is treated as spoken dialogue:
+  - `"Hello, how was your day?"`
+- You can describe actions or thoughts using `*asterisks*` (for example, `*I sit down at the bar*`). The system uses these to better understand what is happening.
+
+The AI considers:
+
+- What you say
+- What you do
+- What the character already knows about you and the setting
+
+---
+
+## Working with Multiple NPCs
+
+In some sessions, you may have more than one NPC present.
+
+- Look for an **NPC selector** near the input or at the top of the chat
+- You can often choose:
+  - **Auto** – Let the system decide who replies
+  - A specific character – Force all replies to come from that NPC
+
+This is useful when:
+
+- You want to talk only to one character in a crowded scene
+- You are testing how different personalities respond to the same situation
+
+---
+
+## Reading Responses
+
+NPC messages are shaped by:
+
+- Their **personality traits** and **memories**
+- The **setting** description and current location
+- The **recent conversation** and your last message
+
+If a response feels off:
+
+- Check that the character's traits and description match what you expect
+- Make sure the setting description matches the scene you imagine
+- Try rephrasing your message with a bit more detail
+
+---
+
+## Using the Debug Panel (Optional)
+
+If you enable the debug or developer view, you may see extra information such as:
+
+- How your input was classified (speech, action, emotion, sensory, etc.)
+- Which internal agents were involved
+- How long different steps took
+
+You do **not** need this to play, but it can help you understand:
+
+- Why a character reacted a certain way
+- Whether your configuration is working as expected
+
+---
+
+## Tips for Smoother Play
+
+- **Stay in character:** Write messages as if you are your player character
+- **Reference the environment:** Mention objects, sounds, or people from the setting
+- **Build continuity:** Refer back to earlier events so the conversation feels like a single story
+- **Adjust pacing:** You can zoom in on small moments or skip ahead with a single sentence
+
+---
+
+## Related Pages
+
+- [Sessions & Chat overview](#/docs/sessions)
+- [Character Builder](#/docs/character-builder)
+- [Setting Builder](#/docs/setting-builder)

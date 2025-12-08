@@ -12,7 +12,9 @@ import type {
   MessageRow,
   PgClientLike,
   PgPoolStrict,
+  PersonaRow,
   QueryResult,
+  SessionPersonaRow,
   SettingInstanceRow,
   SettingTemplateRow,
   SqlParams,
@@ -632,6 +634,106 @@ export const db = {
     },
     async delete(args: { where: { id: string } }): Promise<void> {
       await query('DELETE FROM item_instances WHERE id = $1', [args.where.id]);
+    },
+  },
+
+  persona: {
+    async findMany(args?: {
+      where?: { userId?: string };
+      orderBy?: { createdAt?: 'asc' | 'desc' };
+    }): Promise<PersonaRow[]> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.userId) {
+        params.push(args.where.userId);
+        clauses.push(`user_id = $${params.length}`);
+      }
+
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const order = args?.orderBy?.createdAt === 'asc' ? 'ASC' : 'DESC';
+
+      const { rows } = await query(
+        `SELECT * FROM personas ${where} ORDER BY created_at ${order}`,
+        params
+      );
+      return rows.map((r) => camelizeRow<PersonaRow>(r));
+    },
+    async findUnique(args: { where: { id: string } }): Promise<PersonaRow | null> {
+      const { rows } = await query('SELECT * FROM personas WHERE id = $1 LIMIT 1', [args.where.id]);
+      return rows[0] ? camelizeRow<PersonaRow>(rows[0]) : null;
+    },
+    async create(args: {
+      data: { id: string; userId?: string | null; profileJson: string };
+    }): Promise<PersonaRow> {
+      const { id, userId, profileJson } = args.data;
+      const { rows } = await query(
+        'INSERT INTO personas (id, user_id, profile_json) VALUES ($1, $2, $3::jsonb) RETURNING *',
+        [id, userId ?? null, profileJson]
+      );
+      return camelizeRow<PersonaRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { id: string };
+      data: { profileJson: string };
+    }): Promise<PersonaRow> {
+      const { id } = args.where;
+      const { profileJson } = args.data;
+      const { rows } = await query(
+        'UPDATE personas SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
+        [id, profileJson]
+      );
+      return camelizeRow<PersonaRow>(rows[0]!);
+    },
+    async delete(args: { where: { id: string } }): Promise<void> {
+      await query('DELETE FROM personas WHERE id = $1', [args.where.id]);
+    },
+  },
+
+  sessionPersona: {
+    async findUnique(args: { where: { sessionId: string } }): Promise<SessionPersonaRow | null> {
+      const { rows } = await query('SELECT * FROM session_personas WHERE session_id = $1 LIMIT 1', [
+        args.where.sessionId,
+      ]);
+      return rows[0] ? camelizeRow<SessionPersonaRow>(rows[0]) : null;
+    },
+    async create(args: {
+      data: {
+        sessionId: string;
+        personaId: string;
+        profileJson: string;
+        overridesJson?: string;
+      };
+    }): Promise<SessionPersonaRow> {
+      const { sessionId, personaId, profileJson, overridesJson } = args.data;
+      const { rows } = await query(
+        `INSERT INTO session_personas (session_id, persona_id, profile_json, overrides_json)
+         VALUES ($1, $2, $3::jsonb, COALESCE($4::jsonb, '{}'::jsonb))
+         RETURNING *`,
+        [sessionId, personaId, profileJson, overridesJson]
+      );
+      return camelizeRow<SessionPersonaRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { sessionId: string };
+      data: { personaId?: string; profileJson?: string; overridesJson?: string };
+    }): Promise<SessionPersonaRow> {
+      const { sessionId } = args.where;
+      const { personaId, profileJson, overridesJson } = args.data;
+      const { rows } = await query(
+        `UPDATE session_personas
+         SET persona_id = COALESCE($2, persona_id),
+             profile_json = COALESCE($3::jsonb, profile_json),
+             overrides_json = COALESCE($4::jsonb, overrides_json),
+             updated_at = now()
+         WHERE session_id = $1
+         RETURNING *`,
+        [sessionId, personaId ?? null, profileJson ?? null, overridesJson ?? null]
+      );
+      return camelizeRow<SessionPersonaRow>(rows[0]!);
+    },
+    async delete(args: { where: { sessionId: string } }): Promise<void> {
+      await query('DELETE FROM session_personas WHERE session_id = $1', [args.where.sessionId]);
     },
   },
 };

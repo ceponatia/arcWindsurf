@@ -1,0 +1,242 @@
+# Self-Hosting ArcAgentic
+
+This guide walks you through running ArcAgentic on your own computer, even if you do not have a software development background.
+
+You will:
+
+- Start the app locally using Docker (recommended for non-developers)
+- Open the web interface in your browser
+- Create your first character, setting, and session
+
+---
+
+## Before You Start
+
+To follow this guide, you need:
+
+- A computer that can run Docker (Windows, macOS, or Linux)
+- An internet connection
+- An OpenRouter account and API key (used to talk to the AI model)
+
+### 1. Install Docker
+
+If you do not already have Docker:
+
+1. Go to the Docker website: https://www.docker.com/get-started
+2. Download **Docker Desktop** for your operating system
+3. Install it using the normal installer steps
+4. Open Docker Desktop and make sure it is running (you should see the Docker icon in your system tray or menu bar)
+
+### 2. Get an OpenRouter API Key
+
+ArcAgentic uses OpenRouter to talk to language models.
+
+1. Visit https://openrouter.ai/
+2. Create an account (free tier is usually enough to start)
+3. Go to **Keys** and create a new API key
+4. Copy the API key somewhere safe (you will paste it into a file in the next step)
+
+---
+
+## Download the Project
+
+You need a copy of the ArcAgentic project files.
+
+If you are comfortable with Git (optional):
+
+```bash
+git clone https://github.com/your-org-or-user/minimal-rpg.git
+cd minimal-rpg
+```
+
+If you are **not** comfortable with Git:
+
+1. Open the GitHub page for the project in your browser
+2. Click **Code → Download ZIP**
+3. Unzip the file (for example into a `minimal-rpg` folder on your Desktop)
+4. Open a terminal / command prompt and change into that folder. Examples:
+   - Windows (PowerShell): `cd "$HOME\Downloads\minimal-rpg"` (adjust for where you unzipped it)
+   - macOS / Linux: `cd ~/Downloads/minimal-rpg` (or wherever you unzipped)
+
+From now on, all commands in this guide assume you are **inside** the project folder (the one that contains `docker-compose.yml`).
+
+---
+
+## Configure Your API Key
+
+The API server reads configuration from an `.env` file.
+
+1. In the project folder, find the file:
+   - `packages/api/.env.example`
+2. Make a copy of it named `.env` in the same folder. Example command:
+
+```bash
+cp packages/api/.env.example packages/api/.env
+```
+
+3. Open `packages/api/.env` in any text editor (Notepad, VS Code, etc.)
+4. Find the line that starts with:
+
+```bash
+OPENROUTER_API_KEY=
+```
+
+5. Paste your API key after the `=` sign, for example:
+
+```bash
+OPENROUTER_API_KEY=sk-your-openrouter-key-here
+```
+
+6. Save the file.
+
+> You can also adjust the `OPENROUTER_MODEL` value later if you want to experiment with different models. The default value is a good starting point.
+
+---
+
+## Start Everything with Docker Compose (Recommended)
+
+Docker Compose starts the database, API, and web app together.
+
+From the project folder (where `docker-compose.yml` lives), run:
+
+```bash
+docker compose up --build
+```
+
+What this does:
+
+- Downloads any needed base images (first run may take several minutes)
+- Installs dependencies inside the container
+- Starts:
+  - PostgreSQL (database)
+  - API server on `http://localhost:3001`
+  - Web app on `http://localhost:5173`
+
+You should see logs streaming in the terminal. When everything is ready, you will see messages that the API and Vite dev server are listening on ports 3001 and 5173.
+
+### Keeping It Running
+
+- **Leave this terminal window open** while you are using the app
+- To stop everything later, press `Ctrl+C` in that terminal
+- To fully clean up containers and the database volume:
+
+```bash
+docker compose down -v
+```
+
+If you only want to stop and later restart the app, you usually only need:
+
+```bash
+docker compose down
+# later
+docker compose up
+```
+
+---
+
+## Open the Web App
+
+Once Docker Compose is running:
+
+1. Open your browser
+2. Go to `http://localhost:5173`
+
+You should see the ArcAgentic interface.
+
+If the page does not load:
+
+- Check that Docker Desktop is running
+- Check that the `docker compose up` terminal is still running and does not show errors
+- If you see API errors about OpenRouter, double-check your `OPENROUTER_API_KEY` in `packages/api/.env`
+
+---
+
+## First Steps Inside the App
+
+Once the app is open in your browser, you can follow the in-app documentation to learn the features.
+
+Recommended order:
+
+1. Open the **Documentation** section in the app (usually a link in the sidebar)
+2. Go to **Getting Started → Quick Start** (`#/docs/quick-start`)
+3. Follow the steps there to:
+   - Create your first character
+   - Create a setting
+   - Start a session and begin chatting
+
+You can always return to this **Self-Hosting** page at `#/docs/self-hosting` if you need to restart or reconfigure the app.
+
+---
+
+## Manual Setup (For Developers)
+
+If you are comfortable with Node.js and package managers, you can also run the app without Docker.
+
+High-level steps (see the project `README.md` for full details):
+
+1. Install **Node.js 20+** and **pnpm**
+2. Run:
+
+```bash
+pnpm -w install
+pnpm -w build
+```
+
+3. Configure `packages/api/.env` with your OpenRouter key (same as above)
+4. In separate terminals, run:
+
+```bash
+pnpm -F @minimal-rpg/api dev
+pnpm -F @minimal-rpg/web dev
+```
+
+5. Open `http://localhost:5173` in your browser
+
+For most non-developers, the Docker Compose approach earlier in this guide is simpler and requires fewer tools.
+
+---
+
+## Where Your Data Lives
+
+ArcAgentic stores its data in two places:
+
+- **Database (Postgres)**
+  - Stores sessions, messages, and runtime state
+  - Managed automatically by Docker Compose
+- **JSON files** (advanced users)
+  - Example characters and settings live under the `data/` folder in the project root
+  - You can edit these files to define default characters and settings that load when the server starts
+
+For normal use, you can manage everything (characters, settings, sessions) through the web interface—no need to edit JSON by hand.
+
+---
+
+## Troubleshooting
+
+**The web page does not load at all**
+
+- Make sure Docker Desktop is running
+- Make sure you ran `docker compose up --build` from the correct folder
+- Check that your browser is pointing to `http://localhost:5173`
+
+**I see errors about the API or OpenRouter**
+
+- Open `packages/api/.env`
+- Confirm that `OPENROUTER_API_KEY` is set
+- Restart Docker Compose:
+
+```bash
+docker compose down
+docker compose up --build
+```
+
+**I changed `.env` but it did not update**
+
+- Restart the containers so they pick up the new values:
+
+```bash
+docker compose down
+docker compose up
+```
+
+If you continue to have issues, check the project `README.md` and the developer docs under `dev-docs/` for deeper troubleshooting steps.

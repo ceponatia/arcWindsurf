@@ -1,0 +1,221 @@
+# Character Builder
+
+The Character Builder is where you bring your NPCs to life with rich personalities, detailed appearances, sensory characteristics, and structured background information.
+
+## Overview
+
+A well-crafted character in Minimal RPG consists of:
+
+- **Basic Information** - ID, name, age, gender, summary, backstory, and tags
+- **Personality** - Behavioral traits, Big Five dimensions, values, fears, speech style, and more
+- **Appearance** - Structured physical attributes by body region
+- **Body Sensory Data** - Scent, texture, visual, and flavor details for immersive descriptions
+- **Profile Details** - Rich, tagged background information with importance weighting
+
+## Creating a Character
+
+### Access the Builder
+
+1. Navigate to **Characters** in the sidebar
+2. Click **Create New Character**
+3. The Character Builder will open with sections for each area
+
+### [Basic Fields](#/docs/character-builder/basic-fields)
+
+Start with the foundational information:
+
+- **ID** - Unique identifier (lowercase, hyphens, e.g., `elena-thornwood`)
+- **Name** - Display name used in conversations
+- **Age** - Character's age (optional, helps inform behavior)
+- **Gender** - Gender identity (optional, affects pronouns)
+- **Tags** - Comma-separated keywords for library organization (UI only, not used in gameplay)
+- **Summary** - Brief description for browsing your library (UI only)
+- **Backstory** - Character history that directly affects AI behavior
+
+### [Personality Section](#/docs/character-builder/personality)
+
+Define how your character thinks, feels, and behaves:
+
+- **Quick Traits** - Comma-separated behavioral keywords (legacy field, still used in prompts)
+- **Trait Prompt IDs** - Structured trait IDs with validation (advanced, future-facing)
+- **Big Five Dimensions** - Openness, conscientiousness, extraversion, agreeableness, neuroticism (used in prompts)
+- **Emotional Baseline** - Current emotion, intensity, mood stability
+- **Core Values** - What matters most (used in prompts)
+- **Fears** - Categories, specific fears, triggers, coping mechanisms
+- **Attachment Style** - Secure, anxious, avoidant, etc.
+- **Social Patterns** - Stranger default, warmth rate, conflict style, boundaries
+- **Speech Style** - Vocabulary, formality, humor, expressiveness, directness, pace (used in prompts)
+- **Stress Behavior** - Responses, threshold, recovery rate, soothing activities
+
+### [Appearance](#/docs/character-builder/appearance)
+
+Define physical appearance using structured region-based attributes:
+
+- Select body region (face, hair, torso, etc.)
+- Choose attribute (color, length, build, etc.)
+- Provide value (preset dropdown or freeform text)
+
+### [Body Sensory Data](#/docs/character-builder/body-sensory)
+
+Add sensory details for immersive descriptions:
+
+- **Scent** - What body regions smell like
+- **Texture** - How they feel to touch
+- **Visual** - Detailed visual characteristics
+- **Flavor** - Taste descriptions (fantasy contexts)
+
+### [Profile Details](#/docs/character-builder/details)
+
+Add rich, structured background information:
+
+- **Label** - Short title
+- **Area** - Background, relationships, skills, possessions, etc.
+- **Value** - The detail content
+- **Importance** - 0.0 to 1.0 weighting for retrieval
+- **Tags** - Keywords for filtering
+- **Notes** - Internal notes (not used in prompts)
+
+### [Tags for Organization](#/docs/character-builder/traits-tags)
+
+Use tags to organize your character library:
+
+- Categorize by role: `merchant`, `guard`, `noble`
+- Group by location: `tavern`, `marketplace`, `castle`
+- Mark by genre: `fantasy`, `urban`, `horror`
+- Track status: `draft`, `complete`, `favorite`
+
+**Important:** Tags are for **UI filtering only** and do NOT affect character behavior or AI prompts.
+
+## Editing Characters
+
+To modify an existing character:
+
+1. Find them in the Characters library
+2. Click the **Edit** button
+3. Make your changes
+4. Click **Save** to update
+
+## Best Practices
+
+### Start Simple, Layer Complexity
+
+For your first character:
+
+1. Fill in basic fields (ID, name, backstory)
+2. Add 3-5 quick personality traits
+3. Adjust Big Five sliders to match your vision
+4. Add 2-3 core values
+5. Test in a session
+
+Then add:
+
+- Speech style adjustments
+- Key appearance details (hair, face, build)
+- Important sensory details (scent of hands, texture of skin)
+- 3-5 high-importance profile details
+
+### Writing Good Backstories
+
+✅ **Good**:
+
+> Elena grew up in a mining town, learning blacksmithing from her father. After his death in a cave-in, she took over the forge at age 19. Years of hard work have made her suspicious of nobility, though she has a soft spot for struggling apprentices.
+
+❌ **Too Vague**: "Blacksmith. Nice person."
+
+### Using Personality Effectively
+
+**What's Used in AI Prompts Today:**
+
+- Quick traits (legacy text field)
+- Big Five dimensions (converted to temperament phrases)
+- Core values ("Core values: loyalty, justice")
+- Speech style (vocabulary, formality, directness, etc.)
+
+**What's Stored but Not Yet Deeply Used:**
+
+- Fears, attachment style, social patterns, stress behavior
+- Trait prompt IDs (validated but not yet injected)
+- Facets (granular Big Five subscales)
+
+Focus on the actively-used fields for immediate impact.
+
+### Appearance and Sensory Details
+
+**Appearance:**
+
+- Start with most visible features (hair, face, build)
+- Use structured attributes for consistency
+- Add 5-10 key appearance entries
+
+**Body Sensory:**
+
+- Focus on 3-6 distinctive regions
+- Consider the character's profession (blacksmith = metallic smell, rough hands)
+- Include intensity for scents
+
+### Profile Details
+
+- Use high importance (0.8+) for core identity
+- Use medium importance (0.5-0.7) for significant context
+- Use low importance (0.1-0.3) for flavor and trivia
+- Tag consistently across characters for filtering
+
+## Troubleshooting
+
+**Character feels too generic?**
+
+- Add specific quick traits ("Distrusts nobility" vs. "cautious")
+- Adjust Big Five sliders away from middle values
+- Add high-importance profile details about formative experiences
+- Include contradictions in personality for depth
+
+**Responses don't match personality?**
+
+- Focus on fields used in prompts: quick traits, Big Five, values, speech style
+- Ensure backstory aligns with personality traits
+- Check that speech style settings match your expectations
+- Remember: fears, attachment, and social patterns are stored but not yet heavily used in prompts
+
+**Character descriptions feel flat?**
+
+- Add appearance details for key visible features
+- Include sensory data for hands, hair, and face
+- Use natural language in sensory descriptions
+- Consider the character's profession when adding scents and textures
+
+**Too much to fill out?**
+
+Start with the essentials:
+
+1. Basic fields (all required)
+2. 3-5 quick personality traits
+3. Big Five sliders
+4. 2-3 core values
+5. Speech style if you want a distinctive voice
+
+Add more sections as you test and iterate.
+
+## Documentation Pages
+
+Explore each section in detail:
+
+### Core Information
+
+- [Basic Fields](#/docs/character-builder/basic-fields) - ID, name, age, gender, tags, summary, backstory
+- [Personality](#/docs/character-builder/personality) - Traits, Big Five, values, fears, speech style, and behavior
+
+### Physical Description
+
+- [Appearance](#/docs/character-builder/appearance) - Structured physical descriptions by body region
+- [Body Sensory](#/docs/character-builder/body-sensory) - Scent, texture, visual, and flavor details for immersive interactions
+
+### Additional Details
+
+- [Profile Details](#/docs/character-builder/details) - Rich background information with importance weighting and tags
+- [Tags](#/docs/character-builder/traits-tags) - Organizing your character library (UI only)
+
+## Next Steps
+
+- Read the [Quick Start Guide](#/docs/quick-start) to create your first character
+- Explore [Settings](#/docs/setting-builder) to build worlds
+- Start [your first session](#/docs/sessions) to test your character

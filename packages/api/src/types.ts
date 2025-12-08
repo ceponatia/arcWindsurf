@@ -333,6 +333,25 @@ export interface ItemInstanceRow {
   updatedAt?: string | Date | null;
 }
 
+// Persona row (user-level player character)
+export interface PersonaRow {
+  id: string;
+  userId: string;
+  profileJson: string;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+}
+
+// Session persona row (per-session persona attachment)
+export interface SessionPersonaRow {
+  sessionId: string;
+  personaId: string;
+  profileJson: string;
+  overridesJson?: string;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+}
+
 interface ProfileTable<T extends ProfileRow> {
   findMany(): Promise<T[]>;
   findUnique(args: { where: { id: string } }): Promise<T | null>;
@@ -450,6 +469,29 @@ export interface PrismaClientLike {
   settingInstance: SettingInstanceTable;
   itemDefinition: ItemDefinitionTable;
   itemInstance: ItemInstanceTable;
+  persona: {
+    findMany(args?: { where?: { userId?: string } }): Promise<PersonaRow[]>;
+    findUnique(args: { where: { id: string } }): Promise<PersonaRow | null>;
+    create(args: {
+      data: { id: string; userId: string; profileJson: string };
+    }): Promise<PersonaRow>;
+    update(args: {
+      where: { id: string };
+      data: { profileJson?: string; updatedAt?: string };
+    }): Promise<PersonaRow | null>;
+    delete(args: { where: { id: string } }): Promise<void>;
+  };
+  sessionPersona: {
+    findUnique(args: { where: { sessionId: string } }): Promise<SessionPersonaRow | null>;
+    create(args: {
+      data: { sessionId: string; personaId: string; profileJson: string; overridesJson?: string };
+    }): Promise<SessionPersonaRow>;
+    update(args: {
+      where: { sessionId: string };
+      data: { profileJson?: string; overridesJson?: string; updatedAt?: string };
+    }): Promise<SessionPersonaRow | null>;
+    delete(args: { where: { sessionId: string } }): Promise<void>;
+  };
 }
 
 export interface SessionsClientLike {

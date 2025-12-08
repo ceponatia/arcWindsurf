@@ -262,12 +262,6 @@ export class DefaultContextBuilder implements ContextBuilder {
       slice.physique = physique as CharacterSlice['physique'];
     }
 
-    // Legacy scent
-    const scent = character['scent'];
-    if (isStateObject(scent)) {
-      slice.scent = scent as CharacterSlice['scent'];
-    }
-
     // Body map for per-region sensory data
     const body = character['body'];
     if (isStateObject(body)) {

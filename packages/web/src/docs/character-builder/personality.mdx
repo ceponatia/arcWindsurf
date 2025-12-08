@@ -1,0 +1,166 @@
+# Personality Guide
+
+This page explains what the **Personality** section in the Character Builder actually does in the app: which fields the AI uses today, and which ones are mainly for organizing your ideas or future features.
+
+You do **not** need to fill in every advanced option to get good results.
+
+---
+
+## Two Layers of Personality
+
+The Character Builder stores personality in two places:
+
+1. **Quick Traits (`personality`)** - a simple comma-separated text field
+2. **Structured Personality Map (`personalityMap`)** - sliders and dropdowns (Big Five, values, fears, speech style, etc.)
+
+How they are used:
+
+- Quick Traits are still sent to the model as a **single line of text** (e.g., "Personality traits: friendly, cautious, curious") and shown in the UI.
+- The **Personality Map** is the main source of structured behavior data. Today, these parts are actively used in prompts:
+  - **Big Five sliders (`dimensions`)** - converted into a short temperament summary
+  - **Core Values (`values`)** - added as a line like "Core values: loyalty, curiosity"
+  - **Speech Style (`speech`)** - vocabulary level, formality, directness, etc., used to steer how the character talks
+- Other sections (fears, attachment style, social patterns, stress behavior) are **saved with the character and editable in the UI**, but are not yet heavily used by the runtime agents.
+
+If you are new to the tool, you can safely focus on:
+
+1. Quick Traits
+2. Big Five sliders
+3. 1-3 Core Values
+4. Speech Style
+
+Those are the fields that have the clearest effect on dialogue right now.
+
+---
+
+## Quick Traits (Legacy `personality` Field)
+
+At the top of the Personality section you will see **"Quick Traits (comma-separated keywords)"**. This maps to the `personality` field in the character profile.
+
+- Purpose: a **short human-readable summary** of how the character behaves
+- Format: plain text list, e.g. `friendly, cautious, curious`
+- How the app uses it today:
+  - Included as a single line in the character's system prompt
+  - Shown in the builder UI and used when mapping forms to the stored profile
+
+Good Quick Traits are:
+
+- Short and concrete: "protective of younger siblings" instead of just "nice"
+- About **visible behavior**, not backstory: "tends to over-explain" instead of "was orphaned young"
+
+> Recommendation: Use Quick Traits as a **label or elevator pitch**, not as your only source of personality detail. The sliders and values below give the model more structured guidance.
+
+---
+
+## Big Five Sliders (`personalityMap.dimensions`)
+
+The **Big Five Dimensions** subsection lets you set slider values (0-1) for personality dimensions such as openness, conscientiousness, extraversion, agreeableness, and neuroticism.
+
+These sliders are:
+
+- Stored in `personalityMap.dimensions`
+- Converted into short temperament phrases in the NPC agent
+- Injected into the dialogue system prompt so the AI sees a summary like "high openness, low extraversion".
+
+You do not need to know the psychology terms in detail. Rough guidance:
+
+- **Openness** - prefers novelty vs. routine
+- **Conscientiousness** - organized vs. improvisational
+- **Extraversion** - outgoing vs. reserved
+- **Agreeableness** - cooperative vs. combative
+- **Neuroticism** - emotionally volatile vs. steady
+
+Move the sliders to match how you imagine the character behaving in most situations.
+
+---
+
+## Core Values (`personalityMap.values`)
+
+The **Core Values** subsection lets you pick values from a dropdown and give each a priority.
+
+- Stored in `personalityMap.values`
+- Sent to the model as a line like **"Core values: loyalty (high), justice (medium)"**
+- Used to hint what the character cares about when making choices
+
+Suggestions:
+
+- Choose **2–4** values
+- Use the **priority** field to mark which ones are driving forces for the character
+
+Examples:
+
+- "Loyalty to friends above all"
+- "Justice, even when the law disagrees"
+- "Knowledge and secrets"
+
+---
+
+## Speech Style (`personalityMap.speech`)
+
+The **Speech Style** subsection controls how the character tends to talk. It includes fields like:
+
+- Vocabulary level (simple vs. complex)
+- Sentence structure (short vs. long/flowery)
+- Formality (casual vs. formal)
+- Humor frequency and type (none, dry, slapstick, etc.)
+- Expressiveness, directness, and pace
+
+These settings are:
+
+- Stored in `personalityMap.speech`
+- Included in the dialogue system prompt so the model is told, for example, to "use simple vocabulary, speak casually, and make occasional dry jokes".
+
+You can treat this section as a set of **style knobs**. If you leave them at defaults, the character will still work; adjusting them makes the voice feel more distinct.
+
+---
+
+## Fears, Attachment, Social Patterns, Stress (`personalityMap.fears`, `attachment`, `social`, `stress`)
+
+These subsections let you record richer psychological details:
+
+- **Fears** - categories (e.g. abandonment, confinement), specific fears, triggers, and intensity
+- **Attachment Style** - e.g. secure, anxious, avoidant
+- **Social Patterns** - stranger default, how quickly they warm up, preferred role in groups, conflict style, response to criticism, boundaries
+- **Stress Behavior** - primary/secondary stress responses, threshold, recovery rate, soothing activities, and stress indicators
+
+Current behavior:
+
+- All of this data is **saved on the character** and can be edited in the UI.
+- It is **not yet deeply woven into prompts** (beyond the Big Five, values, and speech style described above).
+
+You can still use these sections as structured notes about how you intend the character to behave. Future agent updates will be able to lean on this data more heavily.
+
+---
+
+## Trait Prompt IDs (`personalityMap.traits`)
+
+The **Trait Prompt IDs** input lets you specify internal trait IDs such as `friendliness:high` or `speech:formal`.
+
+Under the hood:
+
+- The string you type is stored in `personalityMap.traits`.
+- The builder validates combinations using `validateTraitSet` and will show **hard** and **soft conflict** warnings if you pick logically clashing traits.
+- A registry of trait IDs and their prompt fragments exists in the schema, ready to be used in prompts.
+
+As of now, these trait IDs are **validated and stored**, but not yet turned into additional prompt lines at runtime. Think of them as an **advanced, future-facing feature**.
+
+---
+
+## Practical Starting Recipe
+
+For a new character, you can keep things simple:
+
+1. Fill in **Quick Traits** with 3–5 short phrases.
+2. Adjust the **Big Five sliders** to match your mental picture.
+3. Add **2–3 Core Values** with priorities.
+4. Tweak **Speech Style** if you want a very formal, very casual, or very humorous voice.
+
+You can come back later to add detailed fears, attachment style, and stress patterns once you have seen the character in a few sessions.
+
+---
+
+## Related Pages
+
+- [Character Builder overview](#/docs/character-builder)
+- [Traits & Tags](#/docs/character-builder/traits-tags)
+- [Basic Fields](#/docs/character-builder/basic-fields)

@@ -14,6 +14,7 @@
  */
 
 import { type IntentType as AgentIntentType } from '@minimal-rpg/agents';
+import { SENSORY_INDICATORS } from '@minimal-rpg/utils';
 
 /**
  * Configuration for each intent type.
@@ -92,6 +93,48 @@ export const INTENT_TO_AGENT_MAP = Object.fromEntries(
 ) as Record<IntentType, AgentIntentType>;
 
 /**
+ * Build sensory intent aliases from SENSORY_INDICATORS.
+ * Maps each sensory keyword to its corresponding intent type.
+ *
+ * Example: 'sniff' → 'smell', 'lick' → 'taste', 'feel' → 'touch'
+ */
+function buildSensoryAliases(): Record<string, IntentType> {
+  const aliases: Record<string, IntentType> = {};
+
+  // Map scent indicators to 'smell' intent
+  for (const keyword of SENSORY_INDICATORS.scent) {
+    if (keyword !== 'smell') aliases[keyword as string] = 'smell';
+  }
+
+  // Map texture indicators to 'touch' intent
+  for (const keyword of SENSORY_INDICATORS.texture) {
+    if (keyword !== 'touch') aliases[keyword as string] = 'touch';
+  }
+
+  // Map visual indicators to 'look' intent (primary visual intent)
+  // Note: 'examine' -> 'examine' (both are valid intents)
+  for (const keyword of SENSORY_INDICATORS.visual) {
+    if (keyword === 'examine' || keyword === 'inspect') {
+      aliases[keyword as string] = 'examine';
+    } else if (keyword !== 'look') {
+      aliases[keyword as string] = 'look';
+    }
+  }
+
+  // Map flavor indicators to 'taste' intent
+  for (const keyword of SENSORY_INDICATORS.flavor) {
+    if (keyword !== 'taste') aliases[keyword as string] = 'taste';
+  }
+
+  // Map sound indicators to 'listen' intent
+  for (const keyword of SENSORY_INDICATORS.sound) {
+    if (keyword !== 'listen') aliases[keyword as string] = 'listen';
+  }
+
+  return aliases;
+}
+
+/**
  * Aliases that map alternative words to canonical intent types.
  *
  * These serve as a fallback when the LLM returns a non-canonical type.
@@ -102,15 +145,8 @@ export const INTENT_TO_AGENT_MAP = Object.fromEntries(
  * map to existing canonical types.
  */
 export const INTENT_ALIASES: Record<string, IntentType> = {
-  // Look/observe aliases
-  inspect: 'examine',
-  observe: 'look',
-  see: 'look',
-  view: 'look',
-  gaze: 'look',
-  peer: 'look',
-  survey: 'look',
-  scan: 'look',
+  // Look/observe aliases (supplemented by VISUAL_INDICATORS)
+  // 'inspect' already handled by VISUAL_INDICATORS.examine
 
   // Talk/speak aliases
   speak: 'talk',
@@ -193,36 +229,6 @@ export const INTENT_ALIASES: Record<string, IntentType> = {
   status: 'system',
   stats: 'system',
 
-  // Smell/scent aliases
-  sniff: 'smell',
-  inhale: 'smell',
-  scent: 'smell',
-  whiff: 'smell',
-  snuff: 'smell',
-
-  // Taste aliases
-  lick: 'taste',
-  sample: 'taste',
-  savor: 'taste',
-  sip: 'taste',
-  bite: 'taste',
-  chew: 'taste',
-
-  // Touch/feel aliases
-  feel: 'touch',
-  poke: 'touch',
-  prod: 'touch',
-  stroke: 'touch',
-  rub: 'touch',
-  pat: 'touch',
-  caress: 'touch',
-  tap: 'touch',
-
-  // Listen/hear aliases
-  hear: 'listen',
-  eavesdrop: 'listen',
-  hearken: 'listen',
-
   // Narrate/emote aliases (roleplay actions)
   emote: 'narrate',
   action: 'narrate',
@@ -230,6 +236,9 @@ export const INTENT_ALIASES: Record<string, IntentType> = {
   roleplay: 'narrate',
   rp: 'narrate',
   describe: 'narrate',
+
+  // Sensory aliases - dynamically added from SENSORY_INDICATORS below
+  ...buildSensoryAliases(),
 };
 
 /**

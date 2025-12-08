@@ -1,0 +1,12 @@
+/// <reference types="vite/client" />
+
+declare module '*.mdx' {
+  import type { ComponentType } from 'react';
+  const Component: ComponentType;
+  export default Component;
+  export const frontmatter: {
+    title?: string;
+    description?: string;
+    [key: string]: unknown;
+  };
+}

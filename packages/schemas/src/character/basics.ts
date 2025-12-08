@@ -1,11 +1,13 @@
 import { z } from 'zod';
+import { CoreIdentitySchema } from '../shared/basics.js';
 
-// Character basics schema
-export const CharacterBasicsSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1, { error: 'Name is required' }).max(120),
-  age: z.number().int().positive().optional(),
-  summary: z.string().min(1),
+/**
+ * Character basics schema - extends core identity with character-specific fields.
+ *
+ * Shared fields (id, name, age, gender, summary) are defined in:
+ * @see ../shared/basics.ts - CoreIdentitySchema
+ */
+export const CharacterBasicsSchema = CoreIdentitySchema.extend({
   backstory: z.string().min(1),
   tags: z.array(z.string().min(1)).default(['draft']),
 });

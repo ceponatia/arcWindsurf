@@ -1,8 +1,7 @@
 // Composite character profile schema and type used across the app
 import { z } from 'zod';
 import { PhysiqueSchema, type Physique } from './appearance.js';
-import { ScentSchema, type Scent } from './scent.js';
-import { BodyMapSchema, type BodyMap } from './body.js';
+import { BodyMapSchema } from './sensory.js';
 import { CharacterBasicsSchema, type CharacterBasics } from './basics.js';
 import { CharacterDetailSchema, type CharacterDetail } from './details.js';
 import { PersonalityMapSchema, type PersonalityMap } from './personality.js';
@@ -14,15 +13,8 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
   physique: z.union([z.string().min(1), PhysiqueSchema]).optional(),
 
   /**
-   * Legacy scent schema - simple flat structure for backwards compatibility.
-   * @deprecated Use `body` map for per-region sensory data.
-   */
-  scent: ScentSchema.optional(),
-
-  /**
-   * Body map with per-region sensory data (scent, texture, visual).
+   * Body map with per-region sensory data (scent, texture, visual, flavor).
    * Provides atomic access to body parts for detailed sensory descriptions.
-   * When both `scent` and `body` are present, `body` takes precedence.
    */
   body: BodyMapSchema.optional(),
 
@@ -41,4 +33,4 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
 export type CharacterProfile = z.infer<typeof CharacterProfileSchema>;
 
 // Useful named re-exports for consumers
-export type { Physique, Scent, BodyMap, CharacterBasics, CharacterDetail, PersonalityMap };
+export type { Physique, CharacterBasics, CharacterDetail, PersonalityMap };

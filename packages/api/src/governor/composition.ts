@@ -237,12 +237,11 @@ export function createGovernorForRequest(options: GovernorFactoryOptions = {}): 
   // Ensure core agents are wired into the registry before handling turns
   ensureAgentsRegistered();
 
-  return createGovernor({
+  const governorConfig: GovernorConfig = {
     stateManager,
     agentRegistry,
     retrievalService,
     intentDetector,
-    responseComposer,
     npcTranscriptLoader: async ({ sessionId, npcId, limit }) => {
       const rows = await getNpcMessages(sessionId, npcId, { limit: limit ?? 50 });
       return rows.map((row) => ({
@@ -259,6 +258,15 @@ export function createGovernorForRequest(options: GovernorFactoryOptions = {}): 
       intentConfidenceThreshold: 0.6,
       devMode: cfg.governorDevMode,
     },
-    logging: options.logging,
-  });
+  };
+
+  if (responseComposer) {
+    governorConfig.responseComposer = responseComposer;
+  }
+
+  if (options.logging) {
+    governorConfig.logging = options.logging;
+  }
+
+  return createGovernor(governorConfig);
 }

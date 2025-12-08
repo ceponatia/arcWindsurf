@@ -1,11 +1,5 @@
 import { type Operation } from 'fast-json-patch';
-import type {
-  BodyMap,
-  Physique,
-  PersonalityMap,
-  CharacterDetail,
-  Scent,
-} from '@minimal-rpg/schemas';
+import type { BodyMap, Physique, PersonalityMap, CharacterDetail } from '@minimal-rpg/schemas';
 
 // ============================================================================
 // Agent Input/Output Types
@@ -39,6 +33,15 @@ export interface AgentInput {
 
   /** NPC-specific transcript history when addressing a specific NPC */
   npcConversationHistory?: ConversationTurn[];
+
+  /** Player character persona (when attached to session) - NOT passed to intent detector */
+  persona?: {
+    name?: string;
+    age?: number;
+    gender?: string;
+    summary?: string;
+    appearance?: string;
+  };
 }
 
 /**
@@ -224,10 +227,7 @@ export interface CharacterSlice {
   /** Physique - appearance description or structured object */
   physique?: string | Physique | undefined;
 
-  /** Legacy scent schema (use body map for per-region) */
-  scent?: Scent | undefined;
-
-  /** Body map with per-region sensory data (scent, texture, visual) */
+  /** Body map with per-region sensory data (scent, texture, visual, flavor) */
   body?: BodyMap | undefined;
 
   /** Structured personality map for detailed NPC behavior */

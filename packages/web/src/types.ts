@@ -215,7 +215,8 @@ export type ViewMode =
   | 'character-builder'
   | 'setting-builder'
   | 'tag-builder'
-  | 'item-builder';
+  | 'item-builder'
+  | 'docs';
 
 export interface AppControllerStateSlice {
   selectedCharacterId: string | null;

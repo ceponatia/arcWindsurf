@@ -120,6 +120,27 @@ export class NpcAgent extends BaseAgent {
       parts.push(`\nBackstory: ${character.backstory}`);
     }
 
+    // Include player character (persona) context when available
+    if (input.persona) {
+      parts.push('\n--- PLAYER CHARACTER ---');
+      if (input.persona.name) {
+        parts.push(`The player character is named ${input.persona.name}.`);
+      }
+      if (input.persona.age !== undefined) {
+        parts.push(`Age: ${input.persona.age}`);
+      }
+      if (input.persona.gender) {
+        parts.push(`Gender: ${input.persona.gender}`);
+      }
+      if (input.persona.summary) {
+        parts.push(`${input.persona.summary}`);
+      }
+      if (input.persona.appearance) {
+        parts.push(`Appearance: ${input.persona.appearance}`);
+      }
+      parts.push('This information describes the USER, not your character.');
+    }
+
     // Handle personality (string or string[])
     if (character.personality) {
       const traits = Array.isArray(character.personality)

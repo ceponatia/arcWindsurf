@@ -21,6 +21,7 @@
     "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
     "@minimal-rpg/state-manager": "workspace:*",
+    "@minimal-rpg/utils": "workspace:*",
     "fast-json-patch": "^3.1.1"
   }
 }

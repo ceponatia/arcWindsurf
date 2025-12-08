@@ -1,22 +1,180 @@
-# Player Schema
+# Player Schema (Persona)
 
-This document outlines how the Minimal RPG system currently treats the "Player" concept and how a future explicit player schema is expected to evolve. The production design assumes players will be first-class entities; the current runtime has not implemented that layer yet.
+This document outlines how the Minimal RPG system represents player characters using the **Persona** schema. Unlike NPCs (which use `CharacterProfile`), personas are simplified character representations focused on identity and appearance without personality or backstory fields.
 
 ## Current Status
 
-**State (current runtime):** Implicit / Not Implemented.
+**State:** Schema, database, and API fully implemented. Session context integration complete.
 
-The current implementation treats the player as the user of the session rather than as a first-class game entity:
+The persona schema exists in `@minimal-rpg/schemas` under `packages/schemas/src/persona/`:
 
-- **User Identity** is managed via the `user_sessions` table (session ID).
-- There is no dedicated database table or schema definition for a player character or user profile beyond the session metadata.
+- **PersonaProfile** - Main composite schema for player characters
+- **PersonaBasics** - Core identity (id, name, age, gender, summary)
+- **PersonaAppearance** - Physical description (reuses `PhysiqueSchema` from character schema)
+- **Body Map** - Per-region sensory data (shared with character schema)
 
-## Player Avatar (Planned First-Class Entity)
+### What's Implemented
 
-The production version of Minimal RPG is expected to include a first-class player avatar (a character the user "plays as"), backed by its own schema and persistence layer:
+1. **Schema Definition** (`@minimal-rpg/schemas/persona`)
+   - `PersonaBasicsSchema` - id, name, age, gender, summary
+   - `PersonaAppearanceSchema` - Free-text or structured physique
+   - `PersonaProfileSchema` - Composite with basics, appearance, and optional body map
 
-- A player avatar will be modeled using the existing `CharacterProfileSchema` from `@minimal-rpg/schemas` (or a strict extension of it), plus additional semantics applied at runtime (e.g., ownership, permissions, inventory links).
-- The same validation and data loading mechanisms used for NPCs will apply to a player avatar, but players will also have dedicated storage (for example, player-focused tables or documents) rather than being inferred only from `user_sessions`.
+2. **Database Layer** (`packages/db/sql/008_personas.sql`)
+   - `personas` table - User-level persona definitions
+   - `session_personas` table - Per-session persona attachments with overrides
+   - Full CRUD support via db client methods
+
+3. **API Routes** (`packages/api/src/routes/personas.ts`)
+   - Persona CRUD endpoints (GET, POST, PUT, DELETE)
+   - Session persona attachment/detachment endpoints
+   - Session-specific overrides support
+
+4. **Session Context Integration** (`packages/api/src/routes/turns.ts`)
+   - Fetches active session persona when processing turns
+   - Passes persona data to NPC agents via `AgentInput.persona`
+   - **NOT passed to intent detector** - only available to agents
+
+5. **NPC Agent Integration** (`packages/agents/src/npc/npc-agent.ts`)
+   - Persona context included in system prompts
+   - Clear instruction that persona describes the USER, not the NPC character
+   - Includes name, age, gender, summary, and appearance fields
+
+6. **Type Exports** - Full TypeScript types available for import
+
+### What's Not Yet Implemented
+
+1. **Web UI** - No persona builder form in the web client
+2. **Persona Library** - No UI for browsing/selecting personas
+3. **Session Persona Selector** - No UI for attaching personas to sessions
+
+## Persona Profile Schema
+
+The persona schema is intentionally simpler than the NPC character schema:
+
+### PersonaBasics
+
+| Field     | Type   | Required | Description                       |
+| :-------- | :----- | :------- | :-------------------------------- |
+| `id`      | string | Yes      | Unique identifier                 |
+| `name`    | string | Yes      | Display name (max 120 chars)      |
+| `age`     | number | No       | Optional age in years             |
+| `gender`  | string | No       | Optional gender identity          |
+| `summary` | string | Yes      | Brief description (max 500 chars) |
+
+### PersonaAppearance (Optional)
+
+Can be either:
+
+- **Free-text string** - Simple appearance description
+- **Structured Physique object** - Reuses `PhysiqueSchema` from character schema
+
+### Body Map (Optional)
+
+- Reuses `BodyMapSchema` from character schema
+- Per-region sensory data (scent, texture, visual, flavor)
+- Only specify regions with notable characteristics
+
+## Key Differences: Persona vs. Character
+
+The persona schema intentionally **omits** several fields present in `CharacterProfile`:
+
+### Fields NOT in Persona (Player Controls These)
+
+| Field Omitted    | Reason                                            |
+| :--------------- | :------------------------------------------------ |
+| `personality`    | Player controls their own behavior                |
+| `personalityMap` | No Big Five scores, speech style, etc. for player |
+| `backstory`      | Player decides their backstory through play       |
+| `tags`           | Simpler categorization (no draft/published state) |
+| `details`        | No flexible fact storage (RAG for NPCs only)      |
+| `scent` (legacy) | Uses body map exclusively if sensory data needed  |
+
+### Fields Shared with Character
+
+| Field        | Source                 | Notes                           |
+| :----------- | :--------------------- | :------------------------------ |
+| `id`         | Both                   | Unique identifier               |
+| `name`       | Both                   | Display name                    |
+| `age`        | Both                   | Optional age                    |
+| `gender`     | Both                   | Optional gender identity        |
+| `appearance` | Both (as `physique`)   | Persona uses simpler field name |
+| `body`       | Shared `BodyMapSchema` | Per-region sensory data         |
+
+## Implementation Roadmap
+
+### Phase 1: Database Schema ✅ COMPLETE
+
+```sql
+-- Persona templates (user-created persona definitions)
+CREATE TABLE personas (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,  -- owner of this persona
+  profile_json JSONB NOT NULL,  -- PersonaProfile data
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Active persona in a session (session-scoped instance)
+CREATE TABLE session_personas (
+  session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+  persona_id TEXT NOT NULL,  -- reference to personas table
+  profile_json JSONB NOT NULL,  -- snapshot at session start
+  overrides_json JSONB DEFAULT '{}'::jsonb,  -- session-specific modifications
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### Phase 2: API Routes ✅ COMPLETE
+
+```typescript
+// Persona CRUD
+GET    /personas?user_id=<id>      // List user's personas
+POST   /personas?user_id=<id>      // Create new persona (user_id required)
+GET    /personas/:id                // Get persona details
+PUT    /personas/:id                // Update persona
+DELETE /personas/:id                // Delete persona
+
+// Session persona management
+POST   /sessions/:sessionId/persona              // Attach persona to session
+GET    /sessions/:sessionId/persona              // Get active session persona
+PUT    /sessions/:sessionId/persona/overrides    // Update session overrides
+DELETE /sessions/:sessionId/persona              // Detach persona from session
+```
+
+### Phase 3: Session Context Integration ✅ COMPLETE
+
+Persona data is now automatically loaded and passed to NPC agents during turn processing:
+
+1. **Load persona** - `turns.ts` fetches session persona if attached
+2. **Serialize data** - Converts PersonaProfile to agent-friendly format
+3. **Pass to governor** - Included in `TurnInput.persona` field
+4. **Skip intent detector** - Persona NOT passed to intent detection
+5. **NPC agent prompts** - Persona injected into system prompts with context
+
+The NPC agent receives persona as:
+
+```typescript
+{
+  name?: string;
+  age?: number;
+  gender?: string;
+  summary?: string;
+  appearance?: string;  // Serialized from structured or freeform
+}
+```
+
+And includes it in system prompts with the instruction:
+
+> "This information describes the USER, not your character."
+
+### Phase 4: Web UI (Not Yet Done)
+
+- **Persona Builder** - Form for creating/editing personas (simpler than character builder)
+- **Persona Library** - Browse/select personas
+- **Session Persona Selector** - Choose persona at session start
+- **Persona Preview** - Show persona in chat UI
 
 ## Inventory, Items, and Outfits (Planned)
 
