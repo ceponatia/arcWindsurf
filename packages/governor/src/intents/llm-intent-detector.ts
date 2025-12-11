@@ -7,19 +7,37 @@ import {
   type IntentSegment,
 } from './types.js';
 import { type IntentType, resolveIntentType } from './intents.js';
+import {
+  detectSensoryIntent,
+  detectAllSensoryTypes,
+  extractBodyPart,
+} from './rule-based-filter.js';
+import { SENSORY_INDICATORS } from '@minimal-rpg/utils';
 
 /**
  * Build the default system prompt for intent detection.
  * Compact version optimized for speed - fewer tokens = faster response.
  */
 function buildDefaultSystemPrompt(): string {
+  // Build keyword lists from SENSORY_INDICATORS
+  const smellKeywords = SENSORY_INDICATORS.scent.slice(0, 6).join('/');
+  const touchKeywords = SENSORY_INDICATORS.texture.slice(0, 6).join('/');
+  const tasteKeywords = SENSORY_INDICATORS.flavor.slice(0, 6).join('/');
+  const listenKeywords = SENSORY_INDICATORS.sound.slice(0, 5).join('/');
+  const lookKeywords = SENSORY_INDICATORS.visual.slice(0, 6).join('/');
+
   return `You are an RPG intent classifier. Parse player input into JSON.
 
 RULES:
 - Outside *asterisks* = talk (speech)
 - Inside *asterisks* = action/thought/emote/sensory (NEVER talk)
-- Physical contact/proximity = touch (even without "feel" keyword)
-- Smell/scent/odor/aroma keywords = smell
+
+SENSORY KEYWORDS (use these to classify sensory intents):
+- smell: ${smellKeywords}, etc.
+- taste: ${tasteKeywords}, etc.
+- touch: ${touchKeywords}, etc. (ONLY use touch when keyword present OR non-oral physical contact)
+- listen: ${listenKeywords}, etc.
+- look: ${lookKeywords}, etc.
 - bodyPart = the TARGET being sensed (e.g., "her feet" → "feet")
 
 OUTPUT FORMAT:
@@ -88,6 +106,63 @@ export class LlmIntentDetector implements IntentDetector {
   }
 
   async detect(input: string, context?: IntentDetectionContext): Promise<IntentDetectionResult> {
+    // Fast path: Try rule-based sensory detection first
+    const ruleBasedResult = detectSensoryIntent(input);
+
+    if (ruleBasedResult) {
+      // Deterministic match found! Skip expensive LLM call
+      // Still need to extract bodyPart and handle compound cases
+      const allSensoryTypes = detectAllSensoryTypes(input);
+
+      if (allSensoryTypes.length > 1) {
+        // Multiple sensory types detected - create segments with context-aware body parts
+        const segments: IntentSegment[] = allSensoryTypes.map((s) => ({
+          type: 'sensory',
+          content: input, // Full input for each sense
+          sensoryType: s.sensoryType,
+          // Extract body part relative to each sensory type's verb position
+          bodyPart: extractBodyPart(input, s.sensoryType),
+        }));
+
+        return {
+          intent: {
+            type: ruleBasedResult.type,
+            confidence: ruleBasedResult.confidence,
+            segments,
+          },
+          debug: {
+            detector: `${this.detectorName}-rule-based`,
+            prompt: { system: 'N/A (rule-based)', user: input },
+            historyPreview: [],
+            contextSummary: [],
+            rawResponse: `Rule-based match: ${ruleBasedResult.matchedKeyword} → ${ruleBasedResult.type}`,
+            parsed: { sensoryTypes: allSensoryTypes },
+            warnings: undefined,
+          },
+        };
+      }
+
+      // Single sensory type - simple intent with context-aware body part extraction
+      const bodyPart = extractBodyPart(input, ruleBasedResult.sensoryType);
+      return {
+        intent: {
+          type: ruleBasedResult.type,
+          confidence: ruleBasedResult.confidence,
+          params: bodyPart ? { bodyPart } : undefined,
+        },
+        debug: {
+          detector: `${this.detectorName}-rule-based`,
+          prompt: { system: 'N/A (rule-based)', user: input },
+          historyPreview: [],
+          contextSummary: [],
+          rawResponse: `Rule-based match: ${ruleBasedResult.matchedKeyword} → ${ruleBasedResult.type}`,
+          parsed: ruleBasedResult,
+          warnings: undefined,
+        },
+      };
+    }
+
+    // Fallback: Use LLM for complex/ambiguous inputs
     const prompt = this.buildPrompt(input, context);
     let response: LlmIntentGenerationResult;
 

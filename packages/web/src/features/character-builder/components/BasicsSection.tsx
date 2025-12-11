@@ -83,6 +83,22 @@ export const BasicsSection: React.FC<BasicsSectionProps> = ({ form, fieldErrors,
           onChange={(e) => updateField('tags', e.target.value)}
         />
       </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-slate-400">Profile Picture URL</span>
+        <input
+          type="url"
+          placeholder="https://..."
+          className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+          value={form.profilePic}
+          onChange={(e) => updateField('profilePic', e.target.value)}
+          {...getInlineErrorProps('profilePic', fieldErrors.profilePic)}
+        />
+        {fieldErrors.profilePic && (
+          <span id="profilePic-error" className="text-sm text-red-400">
+            {fieldErrors.profilePic}
+          </span>
+        )}
+      </label>
       <label className="flex flex-col gap-1 md:col-span-2">
         <span className="text-xs text-slate-400">Summary</span>
         <textarea

@@ -13,6 +13,18 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
   physique: z.union([z.string().min(1), PhysiqueSchema]).optional(),
 
   /**
+   * Profile picture URL for display in chat UI.
+   * User-uploadable via character builder.
+   */
+  profilePic: z.string().url().optional(),
+
+  /**
+   * Emote picture URL for dynamic emotional expressions.
+   * Not user-editable - reserved for future image generation pipeline.
+   */
+  emotePic: z.string().url().optional(),
+
+  /**
    * Body map with per-region sensory data (scent, texture, visual, flavor).
    * Provides atomic access to body parts for detailed sensory descriptions.
    */

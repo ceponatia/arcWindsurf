@@ -79,3 +79,11 @@ CREATE TABLE IF NOT EXISTS setting_profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Player persona profiles
+CREATE TABLE IF NOT EXISTS persona_profiles (
+  id TEXT PRIMARY KEY,
+  profile_json JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -1,4 +1,3 @@
-// src/routes/profiles.ts
 import type { Hono } from 'hono';
 import {
   CharacterProfileSchema,
@@ -8,7 +7,8 @@ import {
 } from '@minimal-rpg/schemas';
 import { deleteCharacterFile } from '../data/loader.js';
 import { db } from '../db/prismaClient.js';
-import type { LoadedDataGetter, CharacterSummary, SettingSummary, ApiError } from '../types.js';
+import type { ApiError } from '../types.js';
+import type { LoadedDataGetter, CharacterSummary, SettingSummary } from '../data/types.js';
 import { mapCharacterSummary, mapSettingSummary } from '../mappers/profileMappers.js';
 
 interface ProfilesRouteDeps {

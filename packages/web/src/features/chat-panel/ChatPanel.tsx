@@ -361,7 +361,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       disabled={disabled}
       editingIdx={editingIdx}
       editDraft={editDraft}
-      onDraftChange={(value) => {
+      onDraftChange={(value: string) => {
         if (editingIdx !== null) {
           setEditDraft(value);
         } else {
@@ -369,7 +369,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
         }
       }}
       onSend={onSend}
-      onStartEdit={(idx, currentContent) => {
+      onStartEdit={(idx: number, currentContent: string) => {
         setEditingIdx(idx);
         setEditDraft(currentContent);
       }}
@@ -377,13 +377,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
         setEditingIdx(null);
         setEditDraft('');
       }}
-      onSaveEdit={(idx) => {
+      onSaveEdit={(idx: number) => {
         void onSaveEdit(idx);
       }}
-      onDeleteMessage={(idx) => {
+      onDeleteMessage={(idx: number) => {
         void onDeleteMessage(idx);
       }}
-      onRedo={(idx) => {
+      onRedo={(idx: number) => {
         void onRedo(idx);
       }}
       renderAfterMessage={renderDebugAfterMessage}

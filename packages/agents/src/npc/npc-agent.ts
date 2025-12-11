@@ -9,7 +9,10 @@ import type {
   CharacterSlice,
   IntentSegment,
   IntentType,
+  AccumulatedSensoryContext,
 } from '../core/types.js';
+import type { NpcAgentInput } from './types.js';
+import type { SensoryDetail, NpcResponseConfig } from '@minimal-rpg/schemas';
 
 /**
  * Agent responsible for NPC dialogue and reactions.
@@ -60,20 +63,46 @@ export class NpcAgent extends BaseAgent {
     input: AgentInput,
     character: CharacterSlice
   ): Promise<AgentOutput> {
-    const systemPrompt = this.buildDialogueSystemPrompt(character, input);
+    // Use enhanced prompt if we have action sequences
+    const npcInput = input as NpcAgentInput;
+    const hasActionSequence =
+      npcInput.actionSequence && npcInput.actionSequence.completedActions.length > 0;
+
+    let systemPrompt: string;
+    if (hasActionSequence) {
+      // Import the default config at runtime to avoid circular dependencies
+      const responseConfig: NpcResponseConfig = npcInput.responseConfig ?? {
+        minSentencesPerAction: 2,
+        maxSentencesPerAction: 3,
+        minSensoryDetailsPerAction: 1,
+        enforceTemporalOrdering: true,
+        showPendingActions: true,
+      };
+      systemPrompt = this.buildEnhancedSystemPrompt(character, npcInput, responseConfig);
+    } else {
+      systemPrompt = this.buildDialogueSystemPrompt(character, input);
+    }
+
     const userPrompt = this.buildDialogueUserPrompt(input);
 
     try {
       const response = await this.llmProvider!.generate(userPrompt, {
         systemPrompt,
         temperature: this.config.temperature ?? 0.7,
-        maxTokens: this.config.maxTokens ?? 500,
+        maxTokens: this.config.maxTokens ?? 800, // Increased from 500 to allow richer responses with sensory details
       });
+
+      const promptDebug = {
+        system: systemPrompt,
+        user: userPrompt,
+        response: response.text,
+      };
 
       return {
         narrative: this.formatDialogueResponse(character.name, response.text),
         diagnostics: {
           tokenUsage: response.usage,
+          debug: promptDebug,
         },
       };
     } catch (error) {
@@ -82,6 +111,10 @@ export class NpcAgent extends BaseAgent {
         narrative: this.generateFallbackDialogue(character),
         diagnostics: {
           warnings: [`LLM generation failed: ${errorMessage}`],
+          debug: {
+            system: systemPrompt,
+            user: userPrompt,
+          },
         },
       };
     }
@@ -109,12 +142,124 @@ export class NpcAgent extends BaseAgent {
   }
 
   /**
+   * Count the total number of sensory details available in accumulated context.
+   */
+  private countSensoryDetails(context?: AccumulatedSensoryContext): number {
+    if (!context?.perAction) return 0;
+
+    let count = 0;
+    for (const action of context.perAction) {
+      if (action.sensory.smell?.length) count += action.sensory.smell.length;
+      if (action.sensory.touch?.length) count += action.sensory.touch.length;
+      if (action.sensory.taste?.length) count += action.sensory.taste.length;
+      if (action.sensory.sound?.length) count += action.sensory.sound.length;
+      if (action.sensory.sight?.length) count += action.sensory.sight.length;
+    }
+    return count;
+  }
+
+  /**
+   * Build enhanced system prompt with action sequence and response guidelines.
+   */
+  private buildEnhancedSystemPrompt(
+    character: CharacterSlice,
+    input: NpcAgentInput,
+    responseConfig: NpcResponseConfig
+  ): string {
+    const parts: string[] = [];
+
+    // Start with base character prompt
+    const basePrompt = this.buildDialogueSystemPrompt(character, input);
+    parts.push(basePrompt);
+
+    // Add action sequence section (NEW)
+    if (input.actionSequence?.completedActions.length) {
+      parts.push('\n--- ACTION SEQUENCE ---');
+      parts.push('The player performed these actions in order:');
+
+      for (const action of input.actionSequence.completedActions) {
+        const sensory = input.accumulatedContext?.perAction.find((p) => p.actionId === action.id);
+        parts.push(`\n${action.order}. ✅ ${action.description}`);
+
+        if (sensory?.sensory) {
+          const senses = Object.entries(sensory.sensory)
+            .filter(([, v]) => v?.length)
+            .map(([k, v]) => {
+              const details = v as SensoryDetail[];
+              return `${k}: ${details.map((s) => s.description).join(', ')}`;
+            });
+          if (senses.length) {
+            parts.push(`   Sensory: ${senses.join('; ')}`);
+          }
+        }
+      }
+
+      if (input.actionSequence.interruptedAt) {
+        parts.push(`\n❌ INTERRUPTED: ${input.actionSequence.interruptedAt.reason}`);
+        if (input.actionSequence.interruptedAt.consequence) {
+          parts.push(`   Consequence: ${input.actionSequence.interruptedAt.consequence}`);
+        }
+      }
+
+      if (responseConfig.showPendingActions && input.actionSequence.pendingActions.length) {
+        parts.push('\n⏸️ PENDING (not attempted):');
+        for (const action of input.actionSequence.pendingActions) {
+          parts.push(`   - ${action.description}`);
+        }
+      }
+    }
+
+    // Add response guidelines (NEW)
+    const actionCount = input.actionSequence?.completedActions.length ?? 1;
+    const sensoryCount = this.countSensoryDetails(input.accumulatedContext);
+
+    parts.push('\n--- RESPONSE GUIDELINES ---');
+    parts.push(`Actions to cover: ${actionCount}`);
+    parts.push(`Sensory details available: ${sensoryCount}`);
+
+    const minLength = actionCount * responseConfig.minSentencesPerAction;
+    const maxLength = actionCount * responseConfig.maxSentencesPerAction;
+    parts.push(`Minimum response length: ${minLength}-${maxLength} sentences`);
+    parts.push('');
+    parts.push('RULES:');
+    parts.push('1. Cover each action IN ORDER in your narrative');
+
+    if (responseConfig.enforceTemporalOrdering) {
+      parts.push('2. Do not describe action N+1 consequences before action N completes');
+    }
+
+    parts.push('3. Weave sensory details naturally where they enhance the scene');
+
+    if (input.actionSequence?.interruptedAt) {
+      parts.push('4. If interrupted, end narrative at the interruption point');
+      parts.push('5. Do NOT list what player "couldn\'t do" - let narrative imply it');
+    } else {
+      parts.push('4. Do NOT invent sensory details not provided');
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
    * Build the system prompt for dialogue generation.
    */
   private buildDialogueSystemPrompt(character: CharacterSlice, input: AgentInput): string {
     const parts: string[] = [];
 
-    parts.push(`You are ${character.name}.`);
+    // Core identity and POV instructions
+    parts.push(`You are writing for the character ${character.name}.`);
+    parts.push('\n--- CRITICAL FORMATTING RULES ---');
+    parts.push(
+      '1. Write in THIRD PERSON for all actions and descriptions ("she giggles", NOT "I giggle")'
+    );
+    parts.push('2. Use FIRST PERSON only inside quoted dialogue ("I love that!")');
+    parts.push(
+      '3. Do NOT prefix your response with the character name (no "Taylor Swift:" prefix)'
+    );
+    parts.push('4. Only wrap SPOKEN words in quotes. Actions go in *asterisks* without quotes.');
+    parts.push('5. Keep response concise (1-3 sentences).');
+    parts.push('\nCorrect: *She giggles softly.* "I love that!"');
+    parts.push('Wrong: Taylor Swift: "*I giggle softly.* I love that!"');
 
     if (character.backstory) {
       parts.push(`\nBackstory: ${character.backstory}`);
@@ -136,7 +281,12 @@ export class NpcAgent extends BaseAgent {
         parts.push(`${input.persona.summary}`);
       }
       if (input.persona.appearance) {
-        parts.push(`Appearance: ${input.persona.appearance}`);
+        const appearance = input.persona.appearance;
+        const appearanceDescription =
+          typeof appearance === 'string'
+            ? appearance
+            : `build: ${appearance.build.height} height, ${appearance.build.torso} torso, ${appearance.build.arms.build} arms, ${appearance.build.legs.build} legs`;
+        parts.push(`Appearance: ${appearanceDescription}`);
       }
       parts.push('This information describes the USER, not your character.');
     }
@@ -224,8 +374,81 @@ export class NpcAgent extends BaseAgent {
         parts.push('You may include actions (in *asterisks*) alongside or instead of dialogue.');
       }
     } else {
-      parts.push('\nRespond in character. Keep your response concise (1-3 sentences).');
+      parts.push('\nRespond in character using third person for actions.');
       parts.push('Do not include stage directions or actions in parentheses.');
+    }
+
+    // Add sensory context if provided (Phase 1 redesign)
+    if (input.sensoryContext) {
+      parts.push('\n--- SENSORY CONTEXT (available for narrative use) ---');
+      const sc = input.sensoryContext;
+
+      if (sc.playerFocus) {
+        parts.push(
+          `Player is focusing on: ${sc.playerFocus.sense}` +
+            (sc.playerFocus.target ? ` (${sc.playerFocus.target})` : '') +
+            (sc.playerFocus.bodyPart ? ` - ${sc.playerFocus.bodyPart}` : '')
+        );
+      }
+
+      if (sc.available.smell?.length) {
+        parts.push('\nSmell data:');
+        for (const s of sc.available.smell) {
+          parts.push(`- ${s.source}: ${s.description} (intensity: ${s.intensity})`);
+        }
+      }
+
+      if (sc.available.touch?.length) {
+        parts.push('\nTouch data:');
+        for (const t of sc.available.touch) {
+          parts.push(`- ${t.source}: ${t.description} (intensity: ${t.intensity})`);
+        }
+      }
+
+      if (sc.available.taste?.length) {
+        parts.push('\nTaste data:');
+        for (const t of sc.available.taste) {
+          parts.push(`- ${t.source}: ${t.description} (intensity: ${t.intensity})`);
+        }
+      }
+
+      if (sc.available.sound?.length) {
+        parts.push('\nSound data:');
+        for (const s of sc.available.sound) {
+          parts.push(`- ${s.source}: ${s.description}`);
+        }
+      }
+
+      if (sc.available.sight?.length) {
+        parts.push('\nSight data:');
+        for (const s of sc.available.sight) {
+          parts.push(`- ${s.source}: ${s.description}`);
+        }
+      }
+
+      // Stronger instruction when player is actively performing sensory action
+      if (sc.narrativeHints?.recentSensoryAction) {
+        parts.push('\n--- IMPORTANT: SENSORY NARRATION REQUIRED ---');
+        parts.push('The player is ACTIVELY experiencing a sensory moment. Your response MUST:');
+        parts.push(
+          '1. START with sensory narration: describe what the player experiences using the data above'
+        );
+        parts.push('2. Use SECOND PERSON for sensory narration ("You catch...", "You feel...")');
+        parts.push(
+          '3. Include the SPECIFIC sensory details from the data (e.g., "vinegary", "cheesy", "warm")'
+        );
+        parts.push('4. Then add NPC reaction in THIRD PERSON ("she giggles", NOT "I giggle")');
+        parts.push('5. Only wrap SPOKEN dialogue in quotes, actions in *asterisks*');
+        parts.push('\nCorrect format:');
+        parts.push(
+          '*You catch the vinegary aroma from her feet.* "We need to talk about this," *she giggles, pulling her foot back.*'
+        );
+        parts.push('\nWrong format:');
+        parts.push('Taylor Swift: "*You catch...* I giggle..."');
+      } else {
+        parts.push('\nWeave these details naturally into your response where appropriate.');
+      }
+      parts.push('Do NOT invent sensory details not listed above.');
     }
 
     return parts.join('\n');
@@ -319,7 +542,8 @@ export class NpcAgent extends BaseAgent {
       parts.push(`Player says: "${input.playerInput}"`);
     }
 
-    parts.push('\nRespond as your character:');
+    // Remind about format (do NOT say "Respond as [Name]:" which encourages prefixing)
+    parts.push('\nWrite your response now (no name prefix, third person for actions):');
 
     return parts.join('\n');
   }
@@ -345,22 +569,39 @@ export class NpcAgent extends BaseAgent {
   }
 
   /**
-   * Format the LLM response as dialogue.
+   * Format the LLM response, cleaning up common issues.
+   * Does NOT add character name prefix - that's handled by UI layer.
    */
   private formatDialogueResponse(characterName: string, response: string): string {
     // Clean up the response
     let cleaned = response.trim();
 
-    // Remove any leading character name if the LLM included it
-    const namePattern = new RegExp(`^${characterName}:?\\s*`, 'i');
-    cleaned = cleaned.replace(namePattern, '');
-
-    // Ensure it starts with a quote if it's dialogue
-    if (!cleaned.startsWith('"') && !cleaned.startsWith("'")) {
-      cleaned = `"${cleaned}"`;
+    // Remove any leading character name if the LLM included it (various formats)
+    const namePatterns = [
+      new RegExp(`^${characterName}:\\s*`, 'i'), // "Taylor Swift: ..."
+      new RegExp(`^${characterName.split(' ')[0]}:\\s*`, 'i'), // "Taylor: ..."
+      new RegExp(`^\\*?${characterName}\\*?:\\s*`, 'i'), // "*Taylor Swift*: ..."
+    ];
+    for (const pattern of namePatterns) {
+      cleaned = cleaned.replace(pattern, '');
     }
 
-    return `${characterName}: ${cleaned}`;
+    // Remove outer quotes if the entire response is wrapped in them
+    // (but keep individual dialogue quotes inside)
+    if (
+      (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+      (cleaned.startsWith("'") && cleaned.endsWith("'"))
+    ) {
+      const inner = cleaned.slice(1, -1);
+      // Only unwrap if it looks like the whole thing was wrapped
+      // (i.e., there's action content starting with *)
+      if (inner.startsWith('*') || inner.includes('*')) {
+        cleaned = inner;
+      }
+    }
+
+    // Return WITHOUT name prefix - UI will handle that
+    return cleaned;
   }
 
   /**

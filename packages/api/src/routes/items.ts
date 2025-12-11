@@ -2,7 +2,8 @@
 import type { Hono } from 'hono';
 import { ItemDefinitionSchema } from '@minimal-rpg/schemas';
 import { db } from '../db/prismaClient.js';
-import type { ApiError, ItemSummary } from '../types.js';
+import type { ApiError } from '../types.js';
+import type { ItemSummary } from '../data/types.js';
 import { mapItemSummary } from '../mappers/itemMappers.js';
 
 export function registerItemRoutes(app: Hono): void {

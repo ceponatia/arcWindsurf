@@ -10,14 +10,15 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 
 import { loadData } from './data/loader.js';
-import type { LoadedData, ApiError } from './types.js';
+import type { ApiError } from './types.js';
+import type { LoadedData } from './data/types.js';
 import { assertPromptConfigValid } from './llm/prompt.js';
 import { getConfig } from './util/config.js';
 
 // Route registrars
 import { registerConfigRoutes } from './routes/config.js';
 import { registerAdminDbRoutes } from './routes/adminDb.js';
-import { registerSessionRoutes } from './routes/sessions.js';
+import { registerSessionRoutes } from './routes/sessions/index.js';
 import { registerTurnRoutes } from './routes/turns.js';
 import { registerProfileRoutes } from './routes/profiles.js';
 import { registerTagRoutes } from './routes/tags.js';

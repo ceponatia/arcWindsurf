@@ -1,5 +1,11 @@
 // Core exports
-export { StateManager, StateValidationError, PatchValidationError } from './manager.js';
+export {
+  StateManager,
+  StateValidationError,
+  PatchValidationError,
+  SliceNotFoundError,
+  SliceRegistrationError,
+} from './manager.js';
 
 // Types
 export type {
@@ -27,6 +33,12 @@ export type {
   StateSnapshot,
   StateChangeMetadata,
   StateChangeSource,
+  // Slice types
+  MergeStrategy,
+  StateSlice,
+  StatePatches,
+  SliceState,
+  MultiSlicePatchResult,
   // Utility types
   PathsOf,
   TypeAtPath,

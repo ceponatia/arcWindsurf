@@ -1,257 +1,568 @@
-# State Manager and Embedding Lifecycle
+# State Manager and Tool-Calling Integration
 
-This document describes the **current** `@minimal-rpg/state-manager` package, how it is intended to be used by the Governor and API, and what is (and is not) implemented today around embeddings and knowledge nodes.
-
-Anything not clearly supported by the codebase is called out explicitly or moved to the TBD section.
+This document describes the redesigned `@minimal-rpg/state-manager` package with a focus on extensibility and integration with the LLM tool-calling system.
 
 ---
 
-## 1. Purpose and Scope
+## 1. Design Goals
 
-The State Manager is a small utility layer that:
-
-- Computes **effective state** by merging a baseline document (for example, a template snapshot) with per-session overrides.
-- Applies **JSON Patch (RFC 6902)** operations to derive new overrides from a baseline + existing overrides.
-
-It currently lives entirely in TypeScript in
-[packages/state-manager/src/manager.ts](packages/state-manager/src/manager.ts) and does **not** talk to the database, LLMs, or the HTTP API directly. It is a pure in-memory helper; higher layers are responsible for loading/storing state and for integrating it into the request/response loop.
-
-The State Manager is designed to support but is not yet fully wired into:
-
-- The **natural-language, time-based Governor turn loop** (see [dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md)), where each HTTP turn is freeform player text plus a unit of in-world time advancement.
-- A future knowledge-node + embedding pipeline (see [dev-docs/08-knowledge-node-model.md](dev-docs/08-knowledge-node-model.md) and [dev-docs/09-retrieval-and-scoring.md](dev-docs/09-retrieval-and-scoring.md)).
+1. **Extensible State Slices** - Add new state categories (proximity, inventory, dialogue history) without refactoring the core manager.
+2. **Tool-Aware Updates** - State changes flow from tool execution results, not brittle rule-based parsers.
+3. **Per-Turn Lifecycle** - State is loaded at turn start, updated via tools, and persisted at turn end.
+4. **Schema-Driven Validation** - Each state slice has a Zod schema; the manager validates but doesn't hard-code slice types.
 
 ---
 
-## 2. Current StateManager API
+## 2. Current Implementation
 
-The concrete implementation is in
-[packages/state-manager/src/manager.ts](packages/state-manager/src/manager.ts).
+The existing `StateManager` class in [manager.ts](../packages/state-manager/src/manager.ts) provides:
 
-### 2.1 Types
+- `getEffectiveState(baseline, overrides)` - Deep merge baseline + overrides
+- `applyPatches(baseline, overrides, patches)` - Apply JSON Patch operations and compute minimal diffs
+- `diff(original, modified)` - Compute differences between two states
+- `validate(state, schema)` - Validate against Zod schemas
 
-Supporting result types are defined in
-[packages/state-manager/src/types.ts](packages/state-manager/src/types.ts):
-
-- `StateMergeResult<T>` – shape: `{ effective: T }`.
-- `StatePatchResult<T>` – shape: `{ newOverrides: T }`.
-
-These are simple wrappers used to keep the public methods strongly typed and extensible (for example, to add diagnostics later).
-
-### 2.2 Class `StateManager`
-
-The public surface today is:
-
-- `getEffectiveState<T>(baseline: T, overrides: Partial<T>): StateMergeResult<T>`
-- `applyPatches<T>(baseline: T, overrides: Partial<T>, patches: Operation[]): StatePatchResult<T>`
-
-Where `Operation` comes from `fast-json-patch` (`import { applyPatch, type Operation } from 'fast-json-patch'`).
-
-#### `getEffectiveState`
-
-`getEffectiveState`:
-
-- Treats `baseline` as immutable JSON (for example, a template snapshot or stored profile).
-- Performs a **deep merge** of `baseline` and `overrides` using a local `deepMerge` helper:
-  - Objects are merged recursively.
-  - Primitive values in `overrides` replace values in `baseline`.
-  - Arrays are **not** treated specially; they are considered primitives by `isObject` and therefore entirely replaced when present in `overrides`.
-- Returns `{ effective }`, where `effective` is the merged view that higher layers should use when they want the “current” state.
-
-This method is intentionally generic and does not know about characters, settings, or any particular schema; callers supply strongly-typed generics such as `CharacterProfile` or `SettingProfile`.
-
-#### `applyPatches`
-
-`applyPatches` is scaffolded to support JSON Patch workflows:
-
-1. Calls `getEffectiveState(baseline, overrides)` to compute the current effective state.
-2. Deep-clones the effective state with `JSON.parse(JSON.stringify(effective))` to avoid mutating the original.
-3. Applies the provided `patches` (array of `Operation`) to the clone using `fast-json-patch`’s `applyPatch`.
-4. Returns `{ newOverrides }` where, for now, `newOverrides` is set to the entire patched effective state.
-
-Important:
-
-- The comments inside `applyPatches` explicitly describe a more refined design where only diffs vs `baseline` are persisted, but that diffing step is **not yet implemented**.
-- As written, `newOverrides` represents a **full document** rather than a minimal set of overrides. Callers must decide how to persist or interpret it.
+The implementation already supports minimal diff computation, schema validation, and partial failure handling. The redesign builds on this foundation.
 
 ---
 
-## 3. Relationship to Templates, Instances, and the DB
+## 3. State Slice Architecture
 
-The template/instance model and persistence layer are described in
-[dev-docs/05-state-and-persistence.md](dev-docs/05-state-and-persistence.md) and implemented in the `@minimal-rpg/db` package.
+Instead of monolithic character/setting state objects, the state manager works with **registered slices** - independent state categories with their own schemas and merge strategies.
 
-Key points from those docs/code:
+```typescript
+// Conceptual API
+interface StateSlice<T> {
+  /** Unique key for this slice (e.g., 'proximity', 'inventory', 'dialogue') */
+  key: string;
 
-- Templates (`character_profiles`, `setting_profiles`) are static JSONB documents.
-- Instances (`character_instances`, `setting_instances`) are per-session state with:
-  - `template_snapshot JSONB` – immutable copy captured at session creation.
-  - `profile_json JSONB` – mutable per-session JSON document.
+  /** Zod schema for validation */
+  schema: ZodSchema<T>;
 
-The State Manager **does not** talk to these tables directly. The intended usage is:
+  /** Default/empty state */
+  defaultState: T;
 
-- **Baseline**: pass `template_snapshot` or `profile_json` as the `baseline` argument.
-- **Overrides**: pass a separate overrides object (for example, per-session diffs) or treat `profile_json` itself as “overrides vs template_snapshot”, depending on how higher layers choose to model it.
+  /** How to merge baseline + overrides (deep-merge is default) */
+  mergeStrategy?: 'deep' | 'replace' | 'custom';
 
-Current implementation status:
+  /** Optional custom merge function */
+  customMerge?: (baseline: T, overrides: DeepPartial<T>) => T;
+}
+```
 
-- The API’s override endpoints (`/sessions/:id/overrides/character` and `/sessions/:id/overrides/setting`) implement their own deep-merge logic in the API layer today; they do **not** currently call into `@minimal-rpg/state-manager`.
-- The Governor package now uses `@minimal-rpg/state-manager` in its turn pipeline: `DefaultContextBuilder` calls `getEffectiveState` for recall, and the Governor’s state-update phase calls `applyPatches` to compute `TurnStateChanges`.
-- The `POST /sessions/:id/turns` route in `@minimal-rpg/api` constructs a `Governor` via `createGovernorForRequest` and passes a baseline `TurnStateContext` derived from DB-backed instance snapshots; it currently supplies an empty `overrides` object and **does not yet persist** `TurnResult.stateChanges` back to Postgres.
+### 3.1 Built-in Slices (Planned)
 
-As a result, the State Manager is part of the Governor-driven runtime loop for turns, but it is not yet used by the legacy overrides endpoints, nor is its patch output wired through to durable per-session overrides in the database.
+| Slice Key   | Purpose                                            | Persistence   |
+| ----------- | -------------------------------------------------- | ------------- |
+| `character` | NPC profile, personality, appearance               | DB (instance) |
+| `setting`   | Location details, atmosphere                       | DB (instance) |
+| `proximity` | Active sensory engagements between player and NPCs | Session-only  |
+| `inventory` | Player/NPC items                                   | DB (instance) |
+| `dialogue`  | Recent conversation state, tone, NPC disposition   | Session-only  |
+| `timeline`  | In-game time, event log                            | DB (instance) |
 
----
+### 3.2 Adding a New Slice
 
-## 4. Intended Turn-Level Usage
+```typescript
+// packages/schemas/src/state/proximity.ts
+import { z } from 'zod';
 
-The intended usage pattern (as described in
-[dev-docs/11-governor-and-agents.md](dev-docs/11-governor-and-agents.md) and in comments within `manager.ts`) is **per-turn, over freeform natural-language input**:
+export const SensoryEngagementSchema = z.object({
+  npcId: z.string(),
+  bodyPart: z.string(),
+  senseType: z.enum(['look', 'touch', 'smell', 'taste', 'hear']),
+  intensity: z.enum(['casual', 'focused', 'intimate']),
+  startedAt: z.number(), // turn number or timestamp
+  lastActiveAt: z.number(),
+});
 
-1. **Recall**
+export const ProximityStateSchema = z.object({
+  /** Active sensory engagements keyed by `${npcId}:${bodyPart}:${senseType}` */
+  engagements: z.record(z.string(), SensoryEngagementSchema),
+  /** General proximity level to each NPC */
+  npcProximity: z.record(z.string(), z.enum(['distant', 'near', 'close', 'intimate'])),
+});
 
-- Load `baseline` and `overrides` from persistence (for example, `template_snapshot` + `profile_json` or a template + override layer).
-- Compute `effective` via `getEffectiveState` and hand that to the Governor/agents as the current state for this turn.
+export type SensoryEngagement = z.infer<typeof SensoryEngagementSchema>;
+export type ProximityState = z.infer<typeof ProximityStateSchema>;
+```
 
-1. **Agent proposal**
+Register at runtime:
 
-- One or more agents generate JSON Patch operations (`Operation[]`) representing proposed state changes (movement, NPC reactions, inventory updates, time progression, etc.).
-- Patches are defined relative to **effective** state, not necessarily the raw overrides layer.
-
-1. **Commit**
-
-- Use `applyPatches(baseline, overrides, patches)` to produce `newOverrides`.
-- Persist `newOverrides` to the relevant store (for example, into `profile_json` for that instance, or into a dedicated overrides column once diffing is implemented).
-
-In the current scaffold:
-
-- All patch application happens in memory via `fast-json-patch`.
-- It is up to the caller to decide whether `newOverrides` replaces an existing overrides document, replaces `profile_json` wholesale, or is further diffed/normalized before storage.
-
----
-
-## 5. Embeddings and Knowledge Nodes: Current Reality
-
-The broader design for embeddings and knowledge nodes is covered in
-[dev-docs/06-knowledge-node-model.md](dev-docs/06-knowledge-node-model.md) and
-[dev-docs/07-retrieval-and-scoring.md](dev-docs/07-retrieval-and-scoring.md).
-
-From the perspective of the **current codebase**:
-
-- `packages/db/sql/001_init.sql` defines `pgvector` support, but there are **no tables** that store embeddings for profiles, messages, or knowledge nodes.
-- There is **no runtime code** that:
-  - Computes embeddings.
-  - Writes or reads vectors from Postgres.
-  - Performs similarity search or retrieval based on embeddings.
-- The State Manager does **not** reference any embedding APIs, models, or vector fields.
-
-Embeddings and knowledge nodes are therefore a **future concern**. The State Manager is designed to be compatible with that direction (because it works with arbitrary JSON, not specific tables), but there is no implemented embedding lifecycle today.
-
----
-
-## 6. How the State Manager Fits Into the Embedding Lifecycle (Planned)
-
-Based on the design docs and comments in the governor/state-manager scaffolding, the planned (but not yet implemented) relationship to embeddings looks roughly like this:
-
-### Source of truth
-
-The State Manager operates over structured JSON documents (for example, character and setting profiles). These documents will eventually be decomposed into knowledge nodes for embedding and retrieval. Parsed attribute fields (for example, structured `appearance` and `personality` derived from free-text notes such as `appearanceNotes` / `personalityNotes`) are part of the same JSON document and are treated just like any other structured fields; the State Manager does not distinguish between "hand-authored" and "parsed" keys.
-
-1. **Triggers for embedding updates**
-
-- When `applyPatches` or other write paths produce `newOverrides` that materially change important fields (appearance, personality, goals, relationships, backstory, etc.), higher layers may:
-  - Recompute one or more embeddings for affected nodes.
-  - Write updated vectors to Postgres.
-- Updates to `profile_json` are the primary trigger. This includes edits that come from the **free-text → partial profile** extraction pipeline (for example, inferring `appearance.hair.color` or `personality.traits` from `appearanceNotes` / `personalityNotes`).
-- This triggering logic does **not** exist in code yet and is expected to live outside the State Manager.
-
-1. **Recall path**
-
-- A future retrieval layer would:
-  - Use current effective state and recent input to construct a retrieval query.
-  - Fetch relevant knowledge nodes (via similarity search) to include as context for agents.
-- The State Manager itself only provides the structured base state used to derive or validate those nodes.
-
-1. **Consistency guarantees**
-
-- Once embeddings are wired in, there will be design questions about how quickly they must track changes in `newOverrides` and how to handle stale vectors.
-- None of those policies are implemented yet; see TBD section.
+```typescript
+stateManager.registerSlice({
+  key: 'proximity',
+  schema: ProximityStateSchema,
+  defaultState: { engagements: {}, npcProximity: {} },
+  mergeStrategy: 'deep',
+});
+```
 
 ---
 
-## 7. Interaction with Other Packages
+## 4. Tool-Calling Integration
 
-### 7.1 Governor
+### 4.1 State Updates from Tool Results
 
-The Governor package ([packages/governor/src/governor.ts](packages/governor/src/governor.ts)) depends conceptually on `@minimal-rpg/state-manager` for state recall and commit.
+Tools execute and return structured results. Some tools produce **state patches** that the state manager applies.
 
-Current status:
+```typescript
+interface ToolResult {
+  success: boolean;
+  error?: string;
+  /** Optional state patches to apply */
+  statePatches?: StatePatches;
+  /** Data for narrative generation */
+  [key: string]: unknown;
+}
 
-- `Governor.handleTurn` is a stub that logs the request and returns an echo-style response.
-- No production code constructs a `StateManager` instance or passes it into the Governor.
-- There is no place in the API or scripts where Governor + State Manager + DB are wired together.
+interface StatePatches {
+  /** Key is slice name, value is JSON Patch operations */
+  [sliceKey: string]: Operation[];
+}
+```
 
-So, while the Governor docs describe a full loop (intent → agents → JSON Patch → State Manager → DB), that loop is **not yet active**.
+Example: `get_sensory_detail` tool returns proximity updates:
 
-### 7.2 API Server
+```typescript
+// In SensoryAgent.getSensoryDetail()
+return {
+  success: true,
+  narrative_hints: ['her foot smells faintly of lavender...'],
+  statePatches: {
+    proximity: [
+      {
+        op: 'add',
+        path: '/engagements/taylor:foot:smell',
+        value: {
+          npcId: 'taylor',
+          bodyPart: 'foot',
+          senseType: 'smell',
+          intensity: 'focused',
+          startedAt: currentTurn,
+          lastActiveAt: currentTurn,
+        },
+      },
+    ],
+  },
+};
+```
 
-The API server ([packages/api/src](packages/api/src)) currently:
+### 4.2 Turn Lifecycle with Tools
 
-- Loads filesystem templates via `loadData`.
-- Performs DB CRUD for templates, sessions, instances, and messages.
-- Handles character/setting overrides using bespoke merge logic in the routes layer.
+```text
++-------------------------------------------------------------+
+|                        TURN START                           |
++-------------------------------------------------------------+
+|  1. Load state slices from DB/session                       |
+|  2. Compute effective state (baseline + overrides)          |
+|  3. Pass effective state to ToolBasedTurnHandler            |
++-------------------------------------------------------------+
+                              |
+                              v
++-------------------------------------------------------------+
+|                    TOOL EXECUTION LOOP                      |
++-------------------------------------------------------------+
+|  LLM receives:                                              |
+|    - System prompt with active state context                |
+|    - Player input                                           |
+|    - Tool definitions                                       |
+|                                                             |
+|  For each tool call:                                        |
+|    1. Execute tool (SensoryAgent, NpcAgent, etc.)           |
+|    2. Collect tool result + any statePatches                |
+|    3. Apply patches to in-memory state immediately          |
+|    4. Feed result back to LLM for next iteration            |
+|                                                             |
+|  LLM generates final narrative                              |
++-------------------------------------------------------------+
+                              |
+                              v
++-------------------------------------------------------------+
+|                        TURN END                             |
++-------------------------------------------------------------+
+|  1. Collect all state patches from tool results             |
+|  2. Compute new overrides via StateManager.applyPatches()   |
+|  3. Persist updated state to DB/session                     |
+|  4. Return TurnResult with narrative + state changes        |
++-------------------------------------------------------------+
+```
 
-It does **not** import or use `@minimal-rpg/state-manager` at this time.
+### 4.3 State Context in System Prompt
 
-### 7.3 Web/UI and Other Packages
+The `ToolBasedTurnHandler` includes active state in the system prompt so the LLM can reason about it:
 
-- The web client and utility packages do not reference the State Manager or any embedding logic.
-- The `@minimal-rpg/db` package has some pgvector wiring, but no higher-level embedding lifecycle.
+```typescript
+private buildStateContext(): string {
+  const proximity = this.stateSlices.proximity;
+  if (!proximity || Object.keys(proximity.engagements).length === 0) {
+    return '';
+  }
+
+  const activeEngagements = Object.values(proximity.engagements)
+    .filter(e => e.lastActiveAt >= currentTurn - 2) // Recent engagements
+    .map(e => `- ${e.senseType} engaged with ${e.npcId}'s ${e.bodyPart} (${e.intensity})`)
+    .join('\n');
+
+  return `
+## Active Sensory Context
+The following sensory engagements are currently active:
+${activeEngagements}
+
+Continue to acknowledge these in your narrative. If the player moves away or the NPC withdraws, call update_proximity to end the engagement.
+`;
+}
+```
 
 ---
 
-## 8. Current Guarantees and Limitations
+## 5. Proximity State Design
 
-Given the present implementation:
+### 5.1 Purpose
 
-- `StateManager.getEffectiveState` provides a deterministic deep-merged view of `baseline` + `overrides` for plain JSON objects.
-- `StateManager.applyPatches`:
-  - Correctly applies JSON Patch operations to a cloned effective state in memory.
-  - Returns a `newOverrides` document that callers can persist, but does **not** try to minimize diffs vs `baseline`.
-- There is no built-in support for:
-  - Concurrency control or versioning.
-  - Partial failure handling or validation against Zod schemas.
-  - Embedding computation, retrieval, or storage.
+Track ongoing physical/sensory relationships between player and NPCs across turns. This enables:
 
-All of those concerns are delegated to the layers that call the State Manager or are simply not implemented yet.
+- **Continuous sensory details**: If player's face is near NPC's foot, continue describing relevant sensations without re-prompting.
+- **Context-aware NPC reactions**: NPC knows the proximity state and can react naturally.
+- **Natural disengagement**: LLM can call `update_proximity` to end engagements when narratively appropriate.
+
+### 5.2 Engagement Lifecycle
+
+```text
+1. INITIATION
+   Player: "He leans in to smell her hair"
+   -> LLM calls get_sensory_detail(smell, taylor, hair)
+   -> Tool returns statePatches adding engagement
+   -> Engagement: { npcId: 'taylor', bodyPart: 'hair', senseType: 'smell', intensity: 'focused' }
+
+2. CONTINUATION
+   Player: "He breathes deeply"
+   -> LLM sees active hair:smell engagement in context
+   -> LLM generates narrative with continued sensory details
+   -> No tool call needed (engagement already active)
+   -> lastActiveAt updated to current turn
+
+3. ESCALATION
+   Player: "He buries his face in her hair"
+   -> LLM calls update_proximity(taylor, hair, smell, intimate)
+   -> Engagement intensity updated
+
+4. DISENGAGEMENT (player-initiated)
+   Player: "He steps back"
+   -> LLM calls update_proximity(taylor, hair, smell, ended)
+   -> Engagement removed from state
+
+5. DISENGAGEMENT (NPC-initiated)
+   NPC pulls away in dialogue
+   -> NpcAgent returns statePatches removing engagement
+   -> LLM acknowledges in narrative
+```
+
+### 5.3 New Tool: `update_proximity`
+
+```typescript
+const UPDATE_PROXIMITY_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'update_proximity',
+    description: 'Update the proximity/engagement state between player and an NPC body part',
+    parameters: {
+      type: 'object',
+      properties: {
+        npcId: { type: 'string', description: 'The NPC identifier' },
+        bodyPart: { type: 'string', description: 'The body part involved' },
+        senseType: {
+          type: 'string',
+          enum: ['look', 'touch', 'smell', 'taste', 'hear'],
+          description: 'The sense being engaged',
+        },
+        action: {
+          type: 'string',
+          enum: ['engage', 'intensify', 'reduce', 'end'],
+          description: 'What change to make',
+        },
+        newIntensity: {
+          type: 'string',
+          enum: ['casual', 'focused', 'intimate'],
+          description: 'New intensity level (for engage/intensify/reduce)',
+        },
+      },
+      required: ['npcId', 'bodyPart', 'senseType', 'action'],
+    },
+  },
+};
+```
 
 ---
 
-## 9. TBD / Open Questions
+## 6. Redesigned StateManager API
 
-The following aspects are intentionally left as TBD because they are not implemented and cannot be inferred safely from the current codebase:
+### 6.1 Core Interface
 
-- **Override modeling vs. full documents**
-  - Whether `profile_json` should be treated as the full effective state or as a minimal overrides layer relative to `template_snapshot`.
-  - Whether `applyPatches` should eventually compute true diffs vs `baseline` to keep overrides compact.
+```typescript
+interface StateManager {
+  /** Register a new state slice with its schema */
+  registerSlice<T>(slice: StateSlice<T>): void;
 
-- **StateManager ↔ DB integration**
-  - Exact helper functions or services that will connect `StateManager` to the `@minimal-rpg/db` API.
-  - How errors and validation (for example, via Zod schemas) will be surfaced.
+  /** Get effective state for a slice (baseline + overrides) */
+  getEffective<T>(sliceKey: string, baseline: T, overrides: DeepPartial<T>): T;
 
-- **Embedding lifecycle wiring**
-  - When and where embeddings are computed, updated, or deleted in response to state changes.
-  - Table names, schemas, and index choices for storing vectors.
-  - Policies for handling stale embeddings when state changes faster than vectors are refreshed.
+  /** Apply patches to a slice, returning new overrides */
+  applyPatches<T>(
+    sliceKey: string,
+    baseline: T,
+    overrides: DeepPartial<T>,
+    patches: Operation[]
+  ): StatePatchResult<T>;
 
-- **Governor/state-manager contracts**
-  - Concrete TypeScript interfaces for how the Governor will call into the State Manager (method names, argument shapes, error contracts).
-  - How multiple agents’ patches are combined and resolved before being passed to `applyPatches`.
+  /** Apply patches from multiple slices in one operation */
+  applyMultiSlicePatches(
+    slices: Map<string, { baseline: unknown; overrides: unknown }>,
+    patches: StatePatches
+  ): MultiSlicePatchResult;
 
-- **Performance and data-shape constraints**
-  - Maximum expected size/complexity of state documents passed through the State Manager.
-  - Whether we need more efficient cloning/diffing strategies than `JSON.parse(JSON.stringify(...))` and full-document overrides.
+  /** Validate state against its registered schema */
+  validate<T>(sliceKey: string, state: T): ValidationResult<T>;
+}
+```
 
-This document will need another update once:
+### 6.2 Multi-Slice Patch Application
 
-- A first end-to-end integration between State Manager, DB, and (optionally) embeddings is implemented.
+Tool results may update multiple slices. The state manager handles this atomically:
+
+```typescript
+interface MultiSlicePatchResult {
+  /** Results per slice */
+  results: Map<string, StatePatchResult<unknown>>;
+
+  /** Whether all patches succeeded */
+  allSucceeded: boolean;
+
+  /** Slices that failed (for partial failure mode) */
+  failedSlices?: string[];
+}
+```
+
+---
+
+## 7. Persistence Strategy
+
+### 7.1 Session vs. Persistent State
+
+| Category   | Storage            | Lifetime                    |
+| ---------- | ------------------ | --------------------------- |
+| Persistent | Postgres instances | Survives session boundaries |
+| Session    | In-memory / Redis  | Current session only        |
+
+**Persistent slices**: `character`, `setting`, `inventory`, `timeline`
+**Session slices**: `proximity`, `dialogue`, transient context
+
+### 7.2 State Loading Flow
+
+```typescript
+async function loadStateForTurn(sessionId: string): Promise<TurnStateContext> {
+  // 1. Load persistent state from DB
+  const characterInstance = await db.getCharacterInstance(sessionId);
+  const settingInstance = await db.getSettingInstance(sessionId);
+
+  // 2. Load session state from cache/memory
+  const sessionState = sessionStore.get(sessionId) ?? createDefaultSessionState();
+
+  // 3. Build TurnStateContext with all slices
+  return {
+    slices: {
+      character: {
+        baseline: characterInstance.template_snapshot,
+        overrides: characterInstance.profile_json,
+      },
+      setting: {
+        baseline: settingInstance.template_snapshot,
+        overrides: settingInstance.profile_json,
+      },
+      proximity: {
+        baseline: DEFAULT_PROXIMITY_STATE,
+        overrides: sessionState.proximity ?? {},
+      },
+      // ... other slices
+    },
+  };
+}
+```
+
+---
+
+## 8. Implementation Plan
+
+### Phase 1: Slice Registry (Current Sprint)
+
+- [x] Refactor `StateManager` to use slice registry pattern
+- [x] Add `registerSlice()` method
+- [x] Keep existing `getEffectiveState()` and `applyPatches()` working
+- [x] Add `applyMultiSlicePatches()` for batch updates
+
+### Phase 2: Proximity State
+
+- [x] Define `ProximityStateSchema` in `@minimal-rpg/schemas`
+- [x] Add `update_proximity` tool definition
+- [x] Implement `ProximityManager` (thin wrapper for proximity-specific logic)
+- [x] Update `ToolExecutor` to collect and apply state patches
+
+### Phase 3: Tool-State Integration
+
+- [x] Modify `ToolBasedTurnHandler` to:
+  - Include active state context in system prompt
+  - Collect `statePatches` from all tool results
+  - Apply patches at turn end
+- [x] Add state context injection to existing tools (`get_sensory_detail`, `npc_dialogue`)
+
+### Phase 4: Persistence Wiring
+
+- [x] Create `StateLoader` service for turn-start state loading
+- [x] Create `StatePersister` service for turn-end state saving
+- [x] Add session state cache (in-memory or Redis)
+- [x] Wire into `POST /sessions/:id/turns` route
+
+### Phase 5: Cleanup and Testing
+
+- [x] Remove legacy override endpoints that bypass state manager
+- [x] Document slice authoring guide in state manager README.md and schema/state README.md
+
+---
+
+## 9. Migration Notes
+
+### From Current Implementation
+
+The current `StateManager` already supports:
+
+- Deep merge via `getEffectiveState()`
+- JSON Patch application via `applyPatches()`
+- Minimal diff computation
+- Schema validation
+
+Changes needed:
+
+1. Add slice registry (additive, backward-compatible)
+2. Add `statePatches` field to tool result types
+3. Update `ToolBasedTurnHandler` to process patches
+
+No breaking changes to existing API surface.
+
+---
+
+## 10. Open Questions (Resolved)
+
+### Conflict Resolution
+
+**Question**: If two tools update the same slice path in one turn, which wins?
+
+**Current behavior**: Last write wins via sequential patch application.
+
+**Analysis**: This is acceptable for most cases because:
+
+1. **Tool execution is sequential** - The governor processes tool calls one at a time, so patches are applied in a deterministic order.
+2. **LLM has context** - Each subsequent tool call sees the result of previous tools, so the LLM can make informed decisions.
+3. **Semantic ordering matters** - If `get_sensory_detail` sets intensity to `focused` and then `update_proximity` sets it to `intimate`, the escalation is intentional.
+
+**When this breaks down**:
+
+- Parallel tool execution (not currently supported)
+- Independent agents updating the same state without coordination
+
+**Potential future strategies**:
+
+- **Merge patches**: For additive operations (e.g., adding to arrays), merge rather than replace
+- **Conflict markers**: Detect conflicts and return them to the LLM for resolution
+- **Priority system**: Assign priority to tool categories (NPC agent > sensory agent)
+- **Optimistic locking**: Include version numbers in patches, reject stale updates
+
+**Recommendation**: Keep last-write-wins for now. Add conflict detection logging to identify problematic patterns in production.
+
+---
+
+### Stale Engagement Cleanup
+
+**Question**: Should we auto-expire engagements after N turns of inactivity?
+
+**Answer**: Yes, but with intelligent, context-aware cleanup rather than blind expiration.
+
+**Design Principles**:
+
+1. **LLM-driven disengagement** - The NPC or narrative should naturally break off or progress engagements. The LLM sees `lastActiveAt` in context and can call `update_proximity(action: 'end')`.
+
+2. **Anatomical coherence** - When posture/position changes, incompatible engagements should auto-invalidate. Example:
+   - NPC goes from lying down → straddling player's lap
+   - Engagement `npc:feet:smell` with player's face becomes anatomically impossible
+   - System should flag or remove incompatible engagements
+
+3. **Hybrid approach**:
+   - **Soft expiry (warning)**: After 3 turns of inactivity, include a hint in the system prompt: "The following engagement appears stale: [engagement]. Consider ending it naturally or re-engaging."
+   - **Hard expiry (auto-remove)**: After 6+ turns, auto-remove with a narrative hook: "As the moment passed, [npc] shifted away..."
+
+**Implementation Sketch**:
+
+```typescript
+interface EngagementCleanupConfig {
+  softExpiryTurns: number; // Default: 3 - Add prompt hint
+  hardExpiryTurns: number; // Default: 6 - Auto-remove
+  postureDependencies: Map<string, string[]>; // bodyPart → required postures
+}
+
+function validateEngagementCoherence(
+  engagement: SensoryEngagement,
+  npcPosture: string,
+  playerPosition: string
+): 'valid' | 'stale' | 'impossible';
+```
+
+**Body Map Integration**: This ties into the body map system (dev-doc 19). When body positions update, run coherence validation on active engagements.
+
+---
+
+### Embedding Sync
+
+**Question**: When state changes, how/when do we update related embeddings?
+
+**Context**: The retrieval system uses embeddings to find relevant knowledge, character traits, and context. When state changes (e.g., NPC personality shifts, location changes), the embeddings that represent that content may become stale.
+
+**Types of Embedding-Relevant State**:
+
+| State Type                   | Embedding Impact                      | Update Strategy                       |
+| ---------------------------- | ------------------------------------- | ------------------------------------- |
+| Character personality/traits | High - affects similarity matching    | Re-embed changed fields               |
+| Character appearance         | Medium - affects sensory descriptions | Re-embed on significant change        |
+| Location description         | High - affects scene context          | Re-embed when location changes        |
+| Dialogue history             | Low - typically not embedded          | Summarize periodically, embed summary |
+| Proximity/engagements        | None - transient runtime state        | No embedding needed                   |
+
+**Sync Strategies**:
+
+1. **Immediate (sync)**: Re-embed on every state change. Simple but expensive, may slow down turns.
+
+2. **Deferred (async queue)**: Queue embedding updates for background processing. State and embeddings may be temporarily inconsistent.
+
+3. **On-demand (lazy)**: Only re-embed when the affected knowledge is actually retrieved. Risk of stale results.
+
+4. **Hybrid (dirty flag)**: Mark embeddings as stale when state changes. Re-embed lazily but prioritize stale items in retrieval scoring.
+
+**Recommended Approach** (for future sprint):
+
+```typescript
+interface EmbeddingSync {
+  // Called when state patches are applied
+  markStale(sliceKey: string, paths: string[]): void;
+
+  // Background worker processes stale queue
+  processStaleQueue(batchSize: number): Promise<void>;
+
+  // Retrieval penalizes stale embeddings
+  getStalePenalty(embeddingId: string): number;
+}
+```
+
+**Implementation Notes**:
+
+- Most state changes don't affect embeddings (proximity, dialogue tone)
+- Character personality changes are rare and warrant immediate re-embedding
+- Location description changes are moderate frequency, defer OK
+- Add `embeddingsAffected: string[]` field to state patches to track which embeddings need refresh

@@ -219,7 +219,7 @@ export const APPEARANCE_REGION_ATTRIBUTES: Record<
     shape: { label: 'Shape', placeholder: 'e.g., round, flat, toned' },
   },
   anus: {
-    description: { label: 'Description', placeholder: 'e.g., appearance details' },
+    description: { label: 'Description', placeholder: 'e.g., puckered, smooth' },
   },
   penis: {
     size: { label: 'Size', placeholder: 'e.g., small, average, large' },
@@ -227,6 +227,9 @@ export const APPEARANCE_REGION_ATTRIBUTES: Record<
   },
   vagina: {
     description: { label: 'Description', placeholder: 'e.g., appearance details' },
+    labia: { label: 'Labia', placeholder: 'e.g., puffy, smooth' },
+    clitoris: { label: 'Clitoris', placeholder: 'e.g., prominent, hidden' },
+    opening: { label: 'Opening', placeholder: 'e.g., tight, relaxed' },
   },
 
   // Legs & Feet

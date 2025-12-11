@@ -11,7 +11,9 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, classNa
   return (
     <div
       className={cn(
-        'prose prose-invert prose-sm max-w-full break-words overflow-hidden',
+        'prose prose-invert prose-base max-w-none w-full text-left break-words overflow-hidden',
+        // Customize prose sizing for chat context
+        'prose-p:text-base prose-p:leading-relaxed prose-headings:text-left prose-blockquote:text-left',
         className
       )}
     >

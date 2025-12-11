@@ -44,9 +44,6 @@ import {
   INTERESTS,
   LIFE_EVENTS,
   RELATIONSHIPS,
-  VISUAL_DESCRIPTIONS,
-  VISUAL_SKIN_CONDITIONS_WEIGHTED,
-  VISUAL_FEATURES_WEIGHTED,
   SKIN_FLAVORS_WEIGHTED,
 } from './pools/index.js';
 
@@ -278,14 +275,6 @@ function generateBodyMap(
 
     const scentPrimaries = regionPools?.scentPrimaries ?? generalPools.scentPrimaries;
     const texturePrimaries = regionPools?.texturePrimaries ?? generalPools.texturePrimaries;
-    const visualDescriptions =
-      regionPools?.visualDescriptions ?? generalPools.visualDescriptions ?? VISUAL_DESCRIPTIONS;
-    const visualSkinConditions =
-      regionPools?.visualSkinConditions ??
-      generalPools.visualSkinConditions ??
-      VISUAL_SKIN_CONDITIONS_WEIGHTED;
-    const visualFeatures =
-      regionPools?.visualFeatures ?? generalPools.visualFeatures ?? VISUAL_FEATURES_WEIGHTED;
     const flavorPrimaries = regionPools?.flavorPrimaries ?? generalPools.flavorPrimaries;
 
     // Build the region data
@@ -308,31 +297,7 @@ function generateBodyMap(
       };
     }
 
-    // Visual (50% chance to include for detail variety)
-    if (randomBool(0.5)) {
-      const skinCondition = pickFromPool(visualSkinConditions);
-      const features: string[] = [];
-
-      // 30% chance to add a distinguishing feature
-      if (randomBool(0.3)) {
-        const feature = pickFromPool(visualFeatures);
-        if (feature !== 'no distinguishing marks') {
-          features.push(feature);
-        }
-      }
-
-      regionData.visual = {
-        description: pickFromPool(visualDescriptions),
-        skinCondition: skinCondition as
-          | 'flawless'
-          | 'normal'
-          | 'freckled'
-          | 'scarred'
-          | 'tattooed'
-          | 'marked',
-        features: features.length > 0 ? features : undefined,
-      };
-    }
+    // Visual data is handled by the physique/appearance section, not body sensory
 
     // Flavor (only for specific intimate/mouth regions, with lower probability)
     const flavorRegions = ['mouth', 'neck', 'breasts', 'groin', 'vagina', 'penis'];
@@ -345,7 +310,7 @@ function generateBodyMap(
     }
 
     // Only add region if it has at least one sensory type
-    if (regionData.scent || regionData.texture || regionData.visual || regionData.flavor) {
+    if (regionData.scent || regionData.texture || regionData.flavor) {
       bodyMap[region] = regionData;
     }
   }

@@ -224,20 +224,22 @@ export const DbView: React.FC = () => {
   const [activeTable, setActiveTable] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
 
-  const reload = (signal?: AbortSignal) => {
+  const reload = React.useCallback((signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     return getDbOverview(signal)
       .then((d) => {
         setData(d);
         // Set first table as active if not already set
-        if (!activeTable && d.tables.length > 0) {
-          setActiveTable(d.tables[0]!.name);
-        }
+        setActiveTable((prev) => (prev ? prev : (d.tables[0]?.name ?? '')));
       })
-      .catch((e) => setError((e as Error).message || 'Failed to load DB overview'))
+      .catch((e) => {
+        // Ignore abort errors
+        if (e instanceof Error && e.name === 'AbortError') return;
+        setError(e instanceof Error ? e.message : 'Failed to load DB overview');
+      })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     abortRef.current?.abort();

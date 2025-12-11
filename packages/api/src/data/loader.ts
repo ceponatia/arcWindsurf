@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import type { LoadedData } from '../types.js';
+import type { LoadedData } from './types.js';
 
 // Narrowed view of process.env for this loader
 interface LoaderEnv extends NodeJS.ProcessEnv {

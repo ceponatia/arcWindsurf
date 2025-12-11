@@ -7,6 +7,8 @@ import {
   appendNpcMessage as rawAppendNpcMessage,
   getNpcMessages as rawGetNpcMessages,
   appendStateChangeLog as rawAppendStateChangeLog,
+  appendSessionHistoryEntry as rawAppendSessionHistoryEntry,
+  getSessionHistory as rawGetSessionHistory,
   getLocationState as rawGetLocationState,
   upsertLocationState as rawUpsertLocationState,
   getInventoryState as rawGetInventoryState,
@@ -26,8 +28,14 @@ import {
   toggleSessionTagBinding as rawToggleSessionTagBinding,
   deleteSessionTagBinding as rawDeleteSessionTagBinding,
   clearSessionTagBindings as rawClearSessionTagBindings,
+  // Scene action functions
+  createSceneAction as rawCreateSceneAction,
+  getSceneActions as rawGetSceneActions,
+  getRecentSceneActions as rawGetRecentSceneActions,
+  pruneOldSceneActions as rawPruneOldSceneActions,
+  deleteSceneActions as rawDeleteSceneActions,
 } from '@minimal-rpg/db/node';
-import type { SessionsClientLike } from '../types.js';
+import type { SessionsClientLike } from './types.js';
 
 export const createSession = rawCreateSession as SessionsClientLike['createSession'];
 export const getSession = rawGetSession as SessionsClientLike['getSession'];
@@ -38,6 +46,9 @@ export const appendNpcMessage = rawAppendNpcMessage as SessionsClientLike['appen
 export const getNpcMessages = rawGetNpcMessages as SessionsClientLike['getNpcMessages'];
 export const appendStateChangeLog =
   rawAppendStateChangeLog as SessionsClientLike['appendStateChangeLog'];
+export const appendSessionHistoryEntry =
+  rawAppendSessionHistoryEntry as SessionsClientLike['appendSessionHistoryEntry'];
+export const getSessionHistory = rawGetSessionHistory as SessionsClientLike['getSessionHistory'];
 
 // Per-session state slice helpers
 export const getLocationState = rawGetLocationState;
@@ -61,3 +72,10 @@ export const getSessionTagsWithDefinitions = rawGetSessionTagsWithDefinitions;
 export const toggleSessionTagBinding = rawToggleSessionTagBinding;
 export const deleteSessionTagBinding = rawDeleteSessionTagBinding;
 export const clearSessionTagBindings = rawClearSessionTagBindings;
+
+// Scene action functions
+export const createSceneAction = rawCreateSceneAction;
+export const getSceneActions = rawGetSceneActions;
+export const getRecentSceneActions = rawGetRecentSceneActions;
+export const pruneOldSceneActions = rawPruneOldSceneActions;
+export const deleteSceneActions = rawDeleteSceneActions;

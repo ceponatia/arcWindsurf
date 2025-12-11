@@ -5,6 +5,7 @@ import { SettingBuilder } from '../features/setting-builder/index.js';
 import { ItemBuilder } from '../features/item-builder/index.js';
 import { TagBuilder } from '../features/tag-builder/TagBuilder.js';
 import { SessionBuilder } from '../features/session-builder/index.js';
+import { PersonaBuilder } from '../features/persona-builder/PersonaBuilder.js';
 import { DocsViewer } from '../features/docs/index.js';
 import {
   CharacterLibrary,
@@ -12,6 +13,7 @@ import {
   TagLibrary,
   SessionLibrary,
   ItemLibrary,
+  PersonaLibrary,
 } from '../features/library/index.js';
 import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
@@ -162,15 +164,21 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     settingsError,
     settingsData,
     refreshSettings,
+    personasLoading,
+    personasError,
+    personasData,
+    refreshPersonas,
     refreshSessions,
     handleDeleteSession,
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
     navigateToTagBuilder,
+    navigateToPersonaBuilder,
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
     navigateToItemLibrary,
+    navigateToPersonaLibrary,
     navigateToSessionLibrary,
     navigateToSessionBuilder,
     navigateToHome,
@@ -223,6 +231,12 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               label="Characters"
               active={viewMode === 'character-library' || viewMode === 'character-builder'}
               onClick={navigateToCharacterLibrary}
+            />
+            <NavButton
+              icon={<UsersIcon className="w-5 h-5" />}
+              label="Personas"
+              active={viewMode === 'persona-library' || viewMode === 'persona-builder'}
+              onClick={navigateToPersonaLibrary}
             />
             <NavButton
               icon={<GlobeIcon className="w-5 h-5" />}
@@ -291,19 +305,25 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                 itemsLoading={itemsLoading}
                 itemsError={itemsError}
                 itemsData={itemsData ?? []}
+                personasLoading={personasLoading}
+                personasError={personasError}
+                personasData={personasData ?? []}
                 refreshCharacters={refreshCharacters}
                 refreshSettings={refreshSettings}
                 refreshSessions={refreshSessions}
                 refreshTags={refreshTags}
                 refreshItems={refreshItems}
+                refreshPersonas={refreshPersonas}
                 handleDeleteSession={handleDeleteSession}
                 navigateToCharacterBuilder={navigateToCharacterBuilder}
                 navigateToSettingBuilder={navigateToSettingBuilder}
                 navigateToTagBuilder={navigateToTagBuilder}
+                navigateToPersonaBuilder={navigateToPersonaBuilder}
                 navigateToCharacterLibrary={navigateToCharacterLibrary}
                 navigateToSettingLibrary={navigateToSettingLibrary}
                 navigateToTagLibrary={navigateToTagLibrary}
                 navigateToItemLibrary={navigateToItemLibrary}
+                navigateToPersonaLibrary={navigateToPersonaLibrary}
                 navigateToItemBuilder={controller.navigateToItemBuilder}
                 navigateToSessionBuilder={navigateToSessionBuilder}
                 navigateToSessionLibrary={navigateToSessionLibrary}
@@ -339,6 +359,10 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     settingsError,
     settingsData,
     refreshSettings,
+    personasLoading,
+    personasError,
+    personasData,
+    refreshPersonas,
     refreshSessions,
     handleDeleteSession,
     navigateToCharacterBuilder,
@@ -348,6 +372,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     navigateToSettingLibrary,
     navigateToTagLibrary,
     navigateToItemLibrary,
+    navigateToPersonaLibrary,
     navigateToSessionLibrary,
     navigateToSessionBuilder,
     navigateToHome,
@@ -424,6 +449,15 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               }}
             />
             <NavButton
+              icon={<UsersIcon className="w-5 h-5" />}
+              label="Personas"
+              active={viewMode === 'persona-library' || viewMode === 'persona-builder'}
+              onClick={() => {
+                navigateToPersonaLibrary();
+                handleNavClose();
+              }}
+            />
+            <NavButton
               icon={<GlobeIcon className="w-5 h-5" />}
               label="Settings"
               active={viewMode === 'setting-library' || viewMode === 'setting-builder'}
@@ -494,19 +528,25 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             itemsLoading={itemsLoading}
             itemsError={itemsError}
             itemsData={itemsData ?? []}
+            personasLoading={personasLoading}
+            personasError={personasError}
+            personasData={personasData ?? []}
             refreshCharacters={refreshCharacters}
             refreshSettings={refreshSettings}
             refreshSessions={refreshSessions}
             refreshTags={refreshTags}
             refreshItems={refreshItems}
+            refreshPersonas={refreshPersonas}
             handleDeleteSession={handleDeleteSession}
             navigateToCharacterBuilder={navigateToCharacterBuilder}
             navigateToSettingBuilder={navigateToSettingBuilder}
             navigateToTagBuilder={navigateToTagBuilder}
+            navigateToPersonaBuilder={controller.navigateToPersonaBuilder}
             navigateToCharacterLibrary={navigateToCharacterLibrary}
             navigateToSettingLibrary={navigateToSettingLibrary}
             navigateToTagLibrary={navigateToTagLibrary}
             navigateToItemLibrary={navigateToItemLibrary}
+            navigateToPersonaLibrary={controller.navigateToPersonaLibrary}
             navigateToItemBuilder={controller.navigateToItemBuilder}
             navigateToSessionBuilder={navigateToSessionBuilder}
             navigateToSessionLibrary={navigateToSessionLibrary}
@@ -542,19 +582,25 @@ interface MainContentProps {
   itemsLoading: boolean;
   itemsError: string | null;
   itemsData: import('../types.js').ItemSummary[];
+  personasLoading: boolean;
+  personasError: string | null;
+  personasData: import('../types.js').PersonaSummary[];
   refreshCharacters: () => void;
   refreshSettings: () => void;
   refreshSessions: () => void;
   refreshTags: () => void;
   refreshItems: () => void;
+  refreshPersonas: () => void;
   handleDeleteSession: (id: string) => Promise<void>;
   navigateToCharacterBuilder: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
+  navigateToPersonaBuilder: (id?: string | null) => void;
   navigateToCharacterLibrary: () => void;
   navigateToSettingLibrary: () => void;
   navigateToTagLibrary: () => void;
   navigateToItemLibrary: () => void;
+  navigateToPersonaLibrary: () => void;
   navigateToItemBuilder: (id?: string | null) => void;
   navigateToSessionBuilder: () => void;
   navigateToSessionLibrary: () => void;
@@ -584,19 +630,25 @@ const MainContent: React.FC<MainContentProps> = ({
   itemsLoading,
   itemsError,
   itemsData,
+  personasLoading,
+  personasError,
+  personasData,
   refreshCharacters,
   refreshSettings,
   refreshSessions,
   refreshTags,
   refreshItems,
+  refreshPersonas,
   handleDeleteSession,
   navigateToCharacterBuilder,
   navigateToSettingBuilder,
   navigateToTagBuilder,
+  navigateToPersonaBuilder,
   navigateToCharacterLibrary,
   navigateToSettingLibrary,
   navigateToTagLibrary,
   navigateToItemLibrary,
+  navigateToPersonaLibrary,
   navigateToItemBuilder,
   navigateToSessionBuilder,
   navigateToSessionLibrary,
@@ -677,6 +729,18 @@ const MainContent: React.FC<MainContentProps> = ({
         />
       );
 
+    case 'persona-library':
+      return (
+        <PersonaLibrary
+          personas={personasData}
+          loading={personasLoading}
+          error={personasError}
+          onRefresh={refreshPersonas}
+          onEdit={navigateToPersonaBuilder}
+          onCreateNew={() => navigateToPersonaBuilder(null)}
+        />
+      );
+
     case 'session-library':
       return (
         <SessionLibrary
@@ -685,7 +749,9 @@ const MainContent: React.FC<MainContentProps> = ({
           error={sessionsError}
           onRefresh={refreshSessions}
           onSelect={selectSession}
-          onDelete={(id) => void handleDeleteSession(id)}
+          onDelete={(id) => {
+            void handleDeleteSession(id);
+          }}
           onCreateNew={navigateToSessionBuilder}
           activeSessionId={currentSessionId}
         />
@@ -736,6 +802,15 @@ const MainContent: React.FC<MainContentProps> = ({
 
     case 'item-builder':
       return <ItemBuilder id={builderId} onCancel={navigateToItemLibrary} />;
+
+    case 'persona-builder':
+      return (
+        <PersonaBuilder
+          id={builderId}
+          onSave={refreshPersonas}
+          onCancel={navigateToPersonaLibrary}
+        />
+      );
 
     case 'chat':
       return <ChatPanel sessionId={currentSessionId} />;

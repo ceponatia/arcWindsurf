@@ -21,6 +21,8 @@ import {
   type TurnExecutionResult,
   type TurnContext,
   type ResponseComposer,
+  type ConversationTurn,
+  type ToolTurnHandler,
   DEFAULT_GOVERNOR_OPTIONS,
   TurnProcessingError,
 } from './types.js';
@@ -61,6 +63,8 @@ export class Governor {
   private readonly contextBuilder: DefaultContextBuilder;
   private readonly logging: GovernorConfig['logging'];
   private readonly responseComposer: ResponseComposer | undefined;
+  private readonly actionSequencer: import('./action-sequencer.js').ActionSequencer | undefined;
+  private readonly toolTurnHandler: ToolTurnHandler | undefined;
 
   constructor(config: GovernorConfig) {
     this.stateManager = config.stateManager;
@@ -69,6 +73,8 @@ export class Governor {
     this.intentDetector = config.intentDetector ?? createFallbackIntentDetector();
     this.logging = config.logging;
     this.responseComposer = config.responseComposer;
+    this.actionSequencer = config.actionSequencer;
+    this.toolTurnHandler = config.toolTurnHandler;
 
     // Merge options with defaults, ensuring all values are defined
     const opts = config.options ?? {};
@@ -82,6 +88,10 @@ export class Governor {
         opts.intentConfidenceThreshold ?? DEFAULT_GOVERNOR_OPTIONS.intentConfidenceThreshold,
       devMode: opts.devMode ?? DEFAULT_GOVERNOR_OPTIONS.devMode,
       agentTimeoutMs: opts.agentTimeoutMs ?? DEFAULT_GOVERNOR_OPTIONS.agentTimeoutMs,
+      npcInterjectionThreshold:
+        opts.npcInterjectionThreshold ?? DEFAULT_GOVERNOR_OPTIONS.npcInterjectionThreshold,
+      useActionSequencer: opts.useActionSequencer ?? DEFAULT_GOVERNOR_OPTIONS.useActionSequencer,
+      turnHandler: opts.turnHandler ?? DEFAULT_GOVERNOR_OPTIONS.turnHandler,
     };
 
     // Create context builder
@@ -111,15 +121,98 @@ export class Governor {
    * Handle a player turn.
    */
   async handleTurn(sessionIdOrInput: string | TurnInput, input?: string): Promise<TurnResult> {
-    const startTime = Date.now();
-    const phaseTiming: PhaseTiming = {};
-    const events: TurnEvent[] = [];
-
     // Normalize input
     const turnInput: TurnInput =
       typeof sessionIdOrInput === 'string'
         ? { sessionId: sessionIdOrInput, playerInput: input! }
         : sessionIdOrInput;
+
+    // Check if we should use tool-based turn handling
+    if (this.shouldUseToolHandler(turnInput)) {
+      return this.handleTurnWithTools(turnInput);
+    }
+
+    // Classic flow
+    return this.handleTurnClassic(turnInput);
+  }
+
+  /**
+   * Determine if we should use tool-based turn handling.
+   */
+  private shouldUseToolHandler(turnInput: TurnInput): boolean {
+    if (!this.toolTurnHandler) {
+      return false;
+    }
+
+    const mode = this.options.turnHandler;
+
+    if (mode === 'tool-calling') {
+      return true;
+    }
+
+    if (mode === 'hybrid') {
+      // Use tool-calling for complex inputs
+      return this.isComplexInput(turnInput.playerInput);
+    }
+
+    return false;
+  }
+
+  /**
+   * Assess if input is complex enough to warrant tool-calling.
+   * Used in hybrid mode to decide between classic and tool-based handling.
+   */
+  private isComplexInput(input: string): boolean {
+    // Multiple asterisk-wrapped actions suggest complex input
+    const hasMultipleActions = (input.match(/\*/g) ?? []).length >= 4;
+
+    // Sensory keywords suggest need for data retrieval
+    const hasSensoryKeywords = /\b(smell|sniff|touch|feel|taste|lick)\b/i.test(input);
+
+    // Direct dialogue suggests NPC interaction
+    const hasDirectDialogue = /["']/.test(input) || /\b(say|tell|ask)\b/i.test(input);
+
+    // Complex if has sensory + dialogue (compound action)
+    if (hasSensoryKeywords && hasDirectDialogue) {
+      return true;
+    }
+
+    // Complex if multiple actions
+    if (hasMultipleActions) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Handle a turn using tool-based LLM routing.
+   */
+  private async handleTurnWithTools(turnInput: TurnInput): Promise<TurnResult> {
+    if (!this.toolTurnHandler) {
+      throw new TurnProcessingError(
+        'Tool turn handler not configured',
+        'TOOL_HANDLER_NOT_CONFIGURED',
+        'initialization'
+      );
+    }
+
+    if (this.logging?.logTurns) {
+      console.log(
+        `[Governor] Using tool-based handler for: "${turnInput.playerInput.slice(0, 50)}..."`
+      );
+    }
+
+    return this.toolTurnHandler.handleTurn(turnInput);
+  }
+
+  /**
+   * Handle a turn using classic rule-based routing.
+   */
+  private async handleTurnClassic(turnInput: TurnInput): Promise<TurnResult> {
+    const startTime = Date.now();
+    const phaseTiming: PhaseTiming = {};
+    const events: TurnEvent[] = [];
 
     const { sessionId, playerInput } = turnInput;
 
@@ -198,7 +291,7 @@ export class Governor {
 
       // 4. Agent Routing
       const routingStart = Date.now();
-      const agents = this.routeToAgents(intent);
+      const agents = this.routeToAgents(intent, turnInput.conversationHistory);
       phaseTiming.agentRoutingMs = Date.now() - routingStart;
 
       if (agents.length === 0) {
@@ -341,7 +434,7 @@ export class Governor {
   // Phase 4: Agent Routing
   // ============================================================================
 
-  private routeToAgents(intent: DetectedIntent): Agent[] {
+  private routeToAgents(intent: DetectedIntent, conversationHistory?: ConversationTurn[]): Agent[] {
     if (!this.agentRegistry) {
       return [];
     }
@@ -400,8 +493,108 @@ export class Governor {
       }
     }
 
-    // Combine and limit to max agents per turn
-    return [...primaryAgents, ...additionalAgents].slice(0, this.options.maxAgentsPerTurn);
+    // Combine all agents
+    const allAgents = [...primaryAgents, ...additionalAgents];
+
+    // Phase 1 Redesign: When sensory agents are invoked, also invoke NPC agent
+    // to write prose using the structured sensory data. Sensory agents return
+    // structured context, NPC agent is the sole prose writer.
+    const hasSensoryAgent = allAgents.some((a) => a.agentType === 'sensory');
+    const hasNpcAgent = allAgents.some((a) => a.agentType === 'npc');
+
+    if (hasSensoryAgent && !hasNpcAgent) {
+      const npcNarrateIntent: AgentIntent = {
+        type: 'narrate',
+        params: {}, // NPC agent will get sensory context from enriched input
+        confidence: intent.confidence,
+      };
+      const npcAgents = this.agentRegistry.findForIntent(npcNarrateIntent);
+      for (const npcAgent of npcAgents) {
+        if (!allAgents.some((a) => a.agentType === npcAgent.agentType)) {
+          allAgents.push(npcAgent);
+          if (this.logging?.logAgents) {
+            console.log('[Governor] Adding NPC agent to write prose for sensory context');
+          }
+        }
+      }
+    }
+
+    // Check if NPC should auto-interject dialogue
+    if (this.shouldNpcInterject(conversationHistory, allAgents)) {
+      const npcInterjectionIntent: AgentIntent = {
+        type: 'talk',
+        params: { interject: true }, // Signal this is an auto-interjection
+        confidence: 0.75,
+      };
+      const npcAgents = this.agentRegistry.findForIntent(npcInterjectionIntent);
+
+      // Add NPC agent if not already present
+      for (const npcAgent of npcAgents) {
+        if (!allAgents.some((a) => a.agentType === npcAgent.agentType)) {
+          allAgents.push(npcAgent);
+          if (this.logging?.logAgents) {
+            console.log('[Governor] Auto-interjecting NPC dialogue (no dialogue in recent turns)');
+          }
+        }
+      }
+    }
+
+    // Limit to max agents per turn
+    return allAgents.slice(0, this.options.maxAgentsPerTurn);
+  }
+
+  /**
+   * Determine if NPC should auto-interject dialogue.
+   * Returns true if:
+   * - NPC interjection is enabled (threshold > 0)
+   * - NPC agent is not already being invoked this turn
+   * - N or more turns have passed without NPC dialogue
+   *
+   * This prevents long sequences of pure sensory narration by ensuring
+   * the NPC occasionally speaks to maintain immersion.
+   */
+  private shouldNpcInterject(
+    conversationHistory: ConversationTurn[] | undefined,
+    currentAgents: Agent[]
+  ): boolean {
+    // Feature disabled if threshold is 0
+    if (this.options.npcInterjectionThreshold === 0) {
+      return false;
+    }
+
+    // Don't interject if NPC agent already being invoked
+    const hasNpcAgent = currentAgents.some((a) => a.agentType === 'npc');
+    if (hasNpcAgent) {
+      return false;
+    }
+
+    // No history to analyze
+    if (!conversationHistory || conversationHistory.length === 0) {
+      return false;
+    }
+
+    // Count turns since last NPC/character dialogue
+    // We look backwards from most recent turn
+    let turnsSinceNpcSpoke = 0;
+    const recentTurns = conversationHistory.slice(-10); // Last 10 turns max
+
+    for (let i = recentTurns.length - 1; i >= 0; i--) {
+      const turn = recentTurns[i];
+      if (!turn) continue; // Skip if undefined
+
+      // Found NPC dialogue - stop counting
+      if (turn.speaker === 'character') {
+        break;
+      }
+
+      // Count player turns and narrator turns (sensory descriptions)
+      if (turn.speaker === 'player' || turn.speaker === 'narrator') {
+        turnsSinceNpcSpoke++;
+      }
+    }
+
+    // Trigger interjection if threshold exceeded
+    return turnsSinceNpcSpoke >= this.options.npcInterjectionThreshold;
   }
 
   /**
@@ -450,6 +643,7 @@ export class Governor {
       stateSlices: context.stateSlices,
       knowledgeContext: context.knowledgeContext,
       conversationHistory: context.conversationHistory,
+      ...(turnInput.persona && { persona: turnInput.persona }),
     };
 
     const targetNpcId = context.intent.params?.npcId;
@@ -459,11 +653,6 @@ export class Governor {
 
     if (context.npcConversationHistory) {
       agentInput.npcConversationHistory = context.npcConversationHistory;
-    }
-
-    // Pass persona to agents (NOT to intent detector)
-    if (turnInput.persona) {
-      agentInput.persona = turnInput.persona;
     }
 
     const agentTimeout = this.options.agentTimeoutMs ?? 30000; // 30s default
@@ -514,6 +703,15 @@ export class Governor {
   // ============================================================================
   // Phase 7: Response Aggregation
   // ============================================================================
+  //
+  // Phase 5 Note: ResponseComposer is now simplified to formatting only.
+  // The heavy LLM-based composition has been removed. NPC agents write complete
+  // prose with sensory details woven in. The ResponseComposer (if provided)
+  // just concatenates agent outputs with minimal formatting.
+  //
+  // For multi-NPC coordination, see npc-evaluator.ts which provides lightweight
+  // heuristic evaluation instead of expensive LLM calls.
+  //
 
   private async aggregateResponse(
     executionResult: TurnExecutionResult,

@@ -7,7 +7,9 @@ import {
   type CharacterProfile,
   type AppearanceRegion,
   type PersonalityMap,
+  type Gender,
 } from '@minimal-rpg/schemas';
+import { generateCharacter, getTheme } from '@minimal-rpg/generator';
 import { mapZodErrorsToFields, parseBodyEntries } from '@minimal-rpg/utils';
 import { splitList } from '../shared/stringLists.js';
 import { persistCharacter, removeCharacter } from './api.js';
@@ -17,7 +19,11 @@ import { BodySection } from './components/BodySection.js';
 import { DetailsSection } from './components/DetailsSection.js';
 import { PersonalitySection } from './components/PersonalitySection.js';
 import { PreviewSidebar } from './components/PreviewSidebar.js';
-import { useCharacterBuilderForm } from './hooks/useCharacterBuilderForm.js';
+import {
+  useCharacterBuilderForm,
+  mapProfileToForm,
+  mergeGeneratedIntoForm,
+} from './hooks/useCharacterBuilderForm.js';
 import {
   type AppearanceEntry,
   type BodySensoryEntry,
@@ -313,11 +319,18 @@ const buildProfile = (form: FormState): CharacterProfile => {
   const body = buildBody(form.bodySensory);
   const personalityMap = buildPersonalityMap(form.personalityMap);
 
+  // Cast gender to Gender type if valid
+  const genderValue = form.gender.trim();
+  const validGenders = ['male', 'female', 'other', 'unknown'] as const;
+  const gender = validGenders.includes(genderValue as Gender) ? (genderValue as Gender) : undefined;
+
+  const profilePicTrimmed = form.profilePic?.trim();
+
   const profile: CharacterProfile = {
     id: form.id.trim(),
     name: form.name.trim(),
     age: Number.parseInt(String(form.age), 10),
-    ...(form.gender.trim() ? { gender: form.gender.trim() } : {}),
+    ...(gender ? { gender } : {}),
     summary: form.summary.trim(),
     backstory: form.backstory.trim(),
     tags,
@@ -326,6 +339,7 @@ const buildProfile = (form: FormState): CharacterProfile => {
     ...(details.length ? { details } : {}),
     ...(body ? { body } : {}),
     ...(personalityMap ? { personalityMap } : {}),
+    ...(profilePicTrimmed ? { profilePic: profilePicTrimmed } : {}),
   };
 
   return profile;
@@ -338,6 +352,7 @@ export const CharacterBuilder: React.FC<{
 }> = ({ id, onSave: onSaveCallback, onCancel }) => {
   const {
     form,
+    setForm,
     fieldErrors,
     setFieldErrors,
     updateField,
@@ -355,6 +370,7 @@ export const CharacterBuilder: React.FC<{
   } = useCharacterBuilderForm(id);
 
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -365,6 +381,42 @@ export const CharacterBuilder: React.FC<{
     setError(null);
     await removeCharacter(id);
     window.location.hash = '';
+  };
+
+  /**
+   * Generate missing fields using the generator and merge into form.
+   * Uses fill-empty mode to preserve user-entered data.
+   */
+  const handleGenerate = () => {
+    setGenerating(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Determine theme based on gender (if set)
+      const gender = form.gender.trim().toLowerCase() as Gender | '';
+      const themeId =
+        gender === 'male' ? 'modern-man' : gender === 'female' ? 'modern-woman' : 'base';
+      const theme = getTheme(themeId);
+
+      // Generate a complete character
+      const { character } = generateCharacter({
+        theme,
+        mode: 'overwrite-all',
+      });
+
+      // Convert generated CharacterProfile to FormState
+      const generatedForm = mapProfileToForm(character);
+
+      // Merge generated data into existing form, preserving user values
+      setForm((current) => mergeGeneratedIntoForm(current, generatedForm));
+
+      setSuccess('Generated missing fields');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Generation failed');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleSave = async () => {
@@ -448,12 +500,14 @@ export const CharacterBuilder: React.FC<{
           form={form}
           disabled={disabled}
           saving={saving}
+          generating={generating}
           error={error}
           success={success}
           loadError={loadError}
           onSave={() => {
             void handleSave();
           }}
+          onGenerate={handleGenerate}
           onCancel={onCancel}
           onDelete={handleDelete}
           isEditing={isEditing}

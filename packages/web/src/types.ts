@@ -15,6 +15,13 @@ export interface SettingSummary {
   tone: string;
 }
 
+export interface PersonaSummary {
+  id: string;
+  name: string;
+  summary: string;
+  source: 'db';
+}
+
 export interface ItemSummary {
   id: string;
   name: string;
@@ -26,12 +33,23 @@ export interface ItemSummary {
 
 export type MessageRole = 'user' | 'assistant';
 
+/**
+ * Speaker metadata for assistant messages, identifying which NPC is speaking.
+ */
+export interface Speaker {
+  id: string;
+  name: string;
+  profilePic?: string;
+  emotePic?: string;
+}
+
 export interface Message {
   role: MessageRole;
   content: string;
   createdAt: string; // ISO timestamp
   idx?: number;
   turnMetadata?: TurnMetadata;
+  speaker?: Speaker;
 }
 
 export interface Session {
@@ -211,11 +229,13 @@ export type ViewMode =
   | 'tag-library'
   | 'item-library'
   | 'session-library'
+  | 'persona-library'
   | 'session-builder'
   | 'character-builder'
   | 'setting-builder'
   | 'tag-builder'
   | 'item-builder'
+  | 'persona-builder'
   | 'docs';
 
 export interface AppControllerStateSlice {
@@ -236,6 +256,9 @@ export interface AppControllerStateSlice {
   settingsLoading: boolean;
   settingsError: string | null;
   settingsData: SettingSummary[] | null;
+  personasLoading: boolean;
+  personasError: string | null;
+  personasData: PersonaSummary[] | null;
 }
 
 export interface AppControllerComputedState {
@@ -253,16 +276,19 @@ export interface AppControllerActions {
   refreshSessions: () => void;
   refreshCharacters: () => void;
   refreshSettings: () => void;
+  refreshPersonas: () => void;
   onStartSession: () => Promise<void>;
   handleDeleteSession: (sessionId: string) => Promise<void>;
   navigateToCharacterBuilder: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
   navigateToItemBuilder: (id?: string | null) => void;
+  navigateToPersonaBuilder: (id?: string | null) => void;
   navigateToCharacterLibrary: () => void;
   navigateToSettingLibrary: () => void;
   navigateToTagLibrary: () => void;
   navigateToItemLibrary: () => void;
+  navigateToPersonaLibrary: () => void;
   navigateToSessionLibrary: () => void;
   navigateToSessionBuilder: () => void;
   navigateToHome: () => void;

@@ -104,22 +104,21 @@ Stop all dev services and free ports 3001/5173:
 pnpm core:quit
 ```
 
-### Trait testing CLI (LLM personality experiments)
+### Test Scripts
 
-Run a small, standalone CLI to probe how the LLM responds to specific personality phrasings. This does not touch the DB or main app:
+**Tool calling test**: Test LLM function calling with RPG tools:
 
 ```bash
-OPENROUTER_API_KEY=sk-... pnpm test:trait -- --trait "quiet, highly introverted, conflict-avoidant but deeply empathetic"
+npx tsx scripts/test-tool-calling.ts                   # Default test prompts
+npx tsx scripts/test-tool-calling.ts --verbose         # Show API details
+npx tsx scripts/test-tool-calling.ts --prompt "..."    # Custom prompt
 ```
 
-Flags:
+**Personality test**: Test LLM responses to personality traits:
 
-- `--trait` – personality phrase(s) to emphasize (optional; a default introverted profile is used if omitted)
-- `--scenario` – custom test scene text (optional)
-- `--model` – override `OPENROUTER_MODEL` (defaults to `deepseek/deepseek-chat`)
-- `--dimensions` – comma-separated Big Five scores (e.g. `"openness=0.8,extraversion=0.1"`)
-
-If `--dimensions` is provided, the script uses the same slider → temperament mapping as the NPC agent to derive a trait prompt (you can still override it with `--trait`). It then prints the trait, scenario, model, any parsed dimensions, and the raw model response so you can judge how clearly the personality comes through.
+```bash
+pnpm test:trait -- --trait "quiet, introverted, empathetic"
+```
 
 ---
 
@@ -167,8 +166,8 @@ Base URL: <http://localhost:3001>
 - `GET /sessions/:id` – session details + messages
 - `POST /sessions/:id/messages` – send message `{ content }`
 - `POST /sessions/:id/turns` – governor-backed turn endpoint `{ input, npcId? }` that persists state slices, resolves the active NPC, and writes per-NPC transcripts
-- `PUT /sessions/:id/overrides/character` – upsert character overrides
-- `PUT /sessions/:id/overrides/setting` – upsert setting overrides
+- `PUT /sessions/:id/overrides/character` – upsert character overrides (**deprecated**: bypasses state manager)
+- `PUT /sessions/:id/overrides/setting` – upsert setting overrides (**deprecated**: bypasses state manager)
 - `GET /health` – health and reachability
 - `GET /config` – effective runtime config (no secrets)
 
@@ -182,45 +181,32 @@ Per-session overrides mutate the `character_instances` and `setting_instances` s
 
 ### Schema package
 
-- `@minimal-rpg/schemas` (in `packages/schemas`)
-- Zod schemas and types for characters, settings, locations, and inventory slices
-- **Shared schemas** (`packages/schemas/src/shared/`) provide common types used by both Character and Persona schemas:
-  - `CoreIdentitySchema` – shared identity fields (id, name, age, gender, summary)
-  - `PhysiqueSchema` – shared physical appearance schemas (build, appearance enums)
+`@minimal-rpg/schemas` provides Zod schemas and types for characters, settings, personas, locations, and inventory. Import directly: `CharacterProfileSchema`, `InventoryStateSchema`, `BuiltLocationSchema`, etc.
 
-Example:
+### Persona System
 
-```ts
-import {
-  CharacterProfileSchema,
-  InventoryStateSchema,
-  BuiltLocationSchema,
-  CoreIdentitySchema,
-  PhysiqueSchema,
-} from '@minimal-rpg/schemas';
+Player character profiles with identity and appearance (no personality fields since players control their own actions).
 
-const character = CharacterProfileSchema.parse(obj.character);
-const location = BuiltLocationSchema.parse(obj.location);
-const inventory = InventoryStateSchema.parse(obj.inventory);
-```
-
-Namespaced access (e.g. `Character.CharacterProfileSchema`, `Shared.CoreIdentitySchema`) is also available. Prefer importing directly from `@minimal-rpg/schemas`.
+- **API**: `/personas` endpoints (CRUD)
+- **Database**: `persona_profiles` table
+- **Governor**: Persona passed via `TurnInput.persona` for personalized NPC responses
+- **Web UI**: Builder and panel in `packages/web/src/features/persona-*`
 
 ### Monorepo packages
 
-- `@minimal-rpg/api` – Hono-based HTTP API server
-- `@minimal-rpg/web` – React + Vite SPA client
-- `@minimal-rpg/db` – PostgreSQL access layer + migrations (pgvector)
-- `@minimal-rpg/schemas` – Zod schemas/types for core domain
-- `@minimal-rpg/utils` – shared runtime utilities
-- `@minimal-rpg/ui` – shared UI primitives
-- `@minimal-rpg/governor` – turn orchestration (intent → agents → patches → response)
-- `@minimal-rpg/state-manager` – baseline + overrides merging and JSON Patch
-- `@minimal-rpg/agents` – specialized agents (Map, NPC, Rules, Parser, Sensory)
-- `@minimal-rpg/retrieval` – in-memory knowledge node retrieval and scoring used by the governor
-- `@minimal-rpg/generator` – random character generation with themed value pools (supports modern-woman, modern-man, and base themes; generates complete profiles with physique, body sensory data, personality maps, and details)
+- `@minimal-rpg/api` – Hono-based HTTP server with session state services (loader, persister, cache)
+- `@minimal-rpg/web` – React + Vite SPA
+- `@minimal-rpg/db` – PostgreSQL + pgvector + migrations
+- `@minimal-rpg/schemas` – Zod schemas for domain types + proximity state
+- `@minimal-rpg/governor` – Turn orchestration (intent → agents → response) with tool-based state patches
+- `@minimal-rpg/state-manager` – Extensible state slices + tool-aware JSON Patch
+- `@minimal-rpg/agents` – Map, NPC, Sensory, Rules agents with proximity slice support
+- `@minimal-rpg/retrieval` – Knowledge node retrieval/scoring
+- `@minimal-rpg/generator` – Random character generation
+- `@minimal-rpg/utils` – Shared utilities
+- `@minimal-rpg/ui` – Shared UI components
 
-For a deeper architecture walkthrough (DB schema, governor-backed turn flow, and how slices/overrides fit together), see [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md).
+See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md) for architecture details.
 
 ---
 
@@ -269,28 +255,44 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 
 ---
 
-## 9. Recent Highlights
+## 9. Key Features
 
-- **Character Gender Field**: Character profiles now include an optional `gender` field in the basic information section. This field is stored in the schema, editable in the character builder UI, and included in LLM prompts when specified.
-- **In-App Documentation System**: MDX-based docs with hierarchical navigation, syntax highlighting, and contextual help components. Access via the Documentation link in the sidebar or `#/docs`. Includes `HelpIcon` and `HelpPopover` components from `@minimal-rpg/ui` for inline assistance throughout the app.
-  - The docs include a **Self-Hosting** guide aimed at non-developers (`#/docs/self-hosting`) plus feature guides (Quick Start, Character Builder, Setting Builder, Sessions) so people can run and use the app without reading this README in detail.
-- Location and inventory slices validate via `BuiltLocationSchema` and `InventoryStateSchema` before persisting overrides.
-- Character profiles support flexible `details` entries (label/value with area, importance, tags) which feed directly into prompts.
-- Character profiles now support an optional `body` map with per-region sensory data (scent, texture, visual, flavor). Body regions include 33 anatomical zones from head to toes: head, face, ears, mouth, hair, neck, throat, shoulders, chest, breasts (female), nipples (female), back, lowerBack, torso, abdomen, navel, armpits, arms, hands, waist, hips, groin, buttocks, anus, penis (male), vagina (female), legs, thighs, knees, calves, ankles, feet, toes. Gender-specific regions (breasts, nipples, penis, vagina) are conditionally displayed in the character builder based on the character's gender field.
-- Body region aliases include equipment references (e.g., "shoes" → feet, "gloves" → hands, "hat" → head) so natural language queries about clothing resolve to the correct body region.
-- Equipment slot mapping (body region → clothing slots) is handled by `@minimal-rpg/governor`'s `resolveBodyWithEquipment()`, keeping character schemas decoupled from item schemas.
-- Character builder (web) uses the BodyMap schema exclusively for sensory data. Legacy flat scent fields have been removed from the form—use Body Sensory Data entries for per-region scent, texture, visual, and flavor descriptions. Input like "strong musk, lightly floral" is parsed into structured data with intensity extraction.
-- Character builder appearance section now uses a dynamic entry-based UI for per-region physical attributes (region → attribute → value), matching the body sensory data pattern. Appearance regions now include all 33 body regions (head, face, ears, mouth, hair, neck, throat, shoulders, chest, breasts, nipples, back, lowerBack, torso, abdomen, navel, armpits, arms, hands, waist, hips, groin, buttocks, anus, penis, vagina, legs, thighs, knees, calves, ankles, feet, toes) plus overall, eyes, and skin. Attributes vary by region (e.g., hair has color, style, length; buttocks has size, shape; arms has build, length). When all three fields (region, attribute, value) are populated on the last entry, a new empty entry is automatically added for convenience.
-- `speakingStyle` and `style` (speech style hints) have been removed from `CharacterProfileSchema` and the character builder. Dialogue style is now inferred from personality traits and details rather than explicit style parameters.
-- Character profiles now support an optional `personalityMap` for structured NPC personality data. The `PersonalityMapSchema` includes Big Five dimension scores, emotional baseline (Plutchik-based emotions), core values with priority ranking, fears with triggers and coping mechanisms, attachment style, social patterns (stranger default, warmth rate, conflict style), speech style (vocabulary, formality, humor type), and stress behavior (fight/flight/freeze/fawn responses). Trait prompts can be injected into NPC system prompts using the `TRAIT_PROMPTS` registry—each trait ID maps to a short prompt fragment (~10-25 words). Trait conflict detection (`validateTraitSet()`) catches polar opposites, logical contradictions, and behavioral clashes at character creation time.
-- Sensory intent detection extracts `bodyPart` from player input (e.g., "I smell her hair"). The `SensoryAgent` resolves raw body part references to canonical regions using `resolveBodyRegion()` from `@minimal-rpg/schemas`.
-- Body region aliases enable natural language parsing (e.g., "locks" → "hair", "belly" → "torso"). When unspecified, sensory queries default to "torso" for general body scent.
-- Web UI renders through a single responsive `AppShell` with mobile-optimized layout and shared controller/state logic.
-- Session management uses immutable templates plus per-session snapshots so template edits never break in-flight sessions.
-- OpenRouter is the sole LLM provider; legacy local Ollama support has been removed.
-- Per-NPC transcripts persist in `npc_messages`; API sessions client now exports helpers to append and read NPC dialogue for a session (use the character instance id as the NPC id).
-- Governor-backed turns now write per-NPC transcripts automatically, honor an optional `npcId` target, and persist overrides plus a `state_change_log` audit entry for applied patches and agents involved.
-- Per-session `location`, `inventory`, and `time` slices are now stored in dedicated tables (`session_location_state`, `session_inventory_state`, `session_time_state`) and are loaded/persisted by the governor-backed `/sessions/:id/turns` route.
-- Character and setting instances now store `overrides_json` alongside the mutable `profile_json`, and the turn route persists governor-produced overrides for future turns. Character instances also carry `role` + optional `label` so sessions can distinguish the primary PC from supporting NPCs.
-- **Enhanced Tags System (MVP)**: Tags now support categories (style, mechanic, content, world, behavior, trigger, meta), activation modes (always/conditional), target types (session, character, npc, player, location, setting), and trigger conditions (intent, keyword, emotion, relationship, time, location, state). The tag builder UI includes sections for basics, activation, triggers (for conditional tags), and a live preview sidebar. Tags are stored in `prompt_tags` with session bindings in `session_tag_bindings`. Run `pnpm -F @minimal-rpg/db db:seed` to populate 13 built-in tags across style, mechanic, content, and world categories.
-- **Compound Intent Detection**: The intent detector segments player input using the **asterisk rule**: text outside `*asterisks*` is speech (`talk`), text inside asterisks is classified as `action`, `thought`, `emote`, or `sensory`. Segment types are now first-class (no more `narrate` with subtypes). For example, `If I must *he jokes while noticing her scent*` becomes: talk("If I must") → action("he jokes") → sensory("noticing her scent", smell). The governor routes sensory segments to the SensoryAgent for body region lookups.
+### Character System
+
+- **Body Map**: 33 anatomical regions with per-region sensory data (scent, texture, visual, flavor)
+- **Personality Map**: Big Five dimensions, emotional baseline, values, fears, attachment style, social patterns, speech style
+- **Flexible Details**: Label/value entries with area, importance, tags
+- **Gender Field**: Optional gender with context-aware body regions in UI
+- **Random Generation**: Themed character generator with "Fill Missing Fields" button
+
+### Intent & Interaction
+
+- **Compound Intents**: Asterisk rule for parsing mixed speech/action/thought/sensory input
+- **Sensory Agents**: Body region resolution for natural language queries (e.g., "her hair" → hair region)
+- **Multi-Action Processing**: Enhanced NPC responses for action sequences with temporal ordering
+- **Tool-Based Turn Handler**: LLM intelligently decides when to call tools based on context
+  - Replaces brittle rule-based intent detection
+  - Supports `'classic'`, `'tool-calling'`, or `'hybrid'` modes via `GovernorOptions.turnHandler`
+  - The LLM understands: "He looks at Taylor's face" (sensory) vs "He looks up hopefully" (narrative)
+
+### Session Management
+
+- **Immutable Templates**: Character/setting templates + per-session snapshots with overrides
+- **Per-NPC Transcripts**: Separate conversation history for each NPC
+- **State Persistence**: Location, inventory, time slices in dedicated tables
+- **Speaker Metadata**: NPC avatars and names persist in messages
+
+### UI & Documentation
+
+- **In-App Docs**: MDX-based docs with navigation, syntax highlighting (`#/docs`)
+- **Character Builder**: Dynamic entry-based UI for appearance and body sensory data
+- **Persona Builder**: Player character profiles (identity + appearance)
+- **Tags System**: Categories, activation modes, trigger conditions, live preview
+- **Mobile-Optimized**: Responsive AppShell layout
+
+### Technical
+
+- **OpenRouter**: Sole LLM provider (DeepSeek V3 recommended)
+- **PostgreSQL + pgvector**: Embeddings and retrieval
+- **Governor Architecture**: Turn orchestration with agent routing and state patches
+- **LLM Efficiency**: SensoryAgent provides data, NpcAgent writes prose (1 LLM call vs 2-3)

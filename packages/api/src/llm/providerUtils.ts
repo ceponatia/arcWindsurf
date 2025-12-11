@@ -1,4 +1,4 @@
-import type { LlmGenerationOptions } from '../types.js';
+import type { LlmGenerationOptions } from './types.js';
 
 // Build provider options object excluding undefined values
 export function buildProviderOptions(opts?: LlmGenerationOptions): {

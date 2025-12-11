@@ -1,4 +1,4 @@
-import type { MapSessionListItem } from '../types.js';
+import type { MapSessionListItem } from '../sessions/types.js';
 
 export const mapSessionListItem: MapSessionListItem = (s, characterName, settingName) => {
   const base = {

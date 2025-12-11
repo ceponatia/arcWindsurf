@@ -1,5 +1,15 @@
 import { type Operation } from 'fast-json-patch';
-import type { BodyMap, Physique, PersonalityMap, CharacterDetail } from '@minimal-rpg/schemas';
+import type {
+  BodyMap,
+  Physique,
+  PersonalityMap,
+  CharacterDetail,
+  PersonaProfile,
+  SensoryContextForNpc,
+  ParsedAction,
+  ActionInterrupt,
+  AccumulatedSensoryContext,
+} from '@minimal-rpg/schemas';
 
 // ============================================================================
 // Agent Input/Output Types
@@ -35,13 +45,20 @@ export interface AgentInput {
   npcConversationHistory?: ConversationTurn[];
 
   /** Player character persona (when attached to session) - NOT passed to intent detector */
-  persona?: {
-    name?: string;
-    age?: number;
-    gender?: string;
-    summary?: string;
-    appearance?: string;
+  persona?: PersonaProfile;
+
+  /** Structured sensory context for NPC agents to weave into narrative */
+  sensoryContext?: SensoryContextForNpc;
+
+  /** Action sequence information for multi-action turns */
+  actionSequence?: {
+    completedActions: ParsedAction[];
+    interruptedAt?: ActionInterrupt;
+    pendingActions: ParsedAction[];
   };
+
+  /** Accumulated sensory context across all completed actions */
+  accumulatedContext?: AccumulatedSensoryContext;
 }
 
 /**
@@ -57,6 +74,11 @@ export interface ConversationTurn {
   /** Timestamp of the turn */
   timestamp: Date;
 }
+
+/**
+ * Re-export AccumulatedSensoryContext from schemas for convenience
+ */
+export type { AccumulatedSensoryContext } from '@minimal-rpg/schemas';
 
 /**
  * A segment of a compound intent input.
@@ -173,6 +195,13 @@ export interface IntentParams {
    */
   narrateType?: 'action' | 'thought' | 'emote' | 'narrative' | undefined;
 
+  /**
+   * When true, indicates this is an auto-interjection by the Governor
+   * to maintain conversation flow after extended non-dialogue turns.
+   * NPC agents should keep responses brief during interjections.
+   */
+  interject?: boolean | undefined;
+
   /** Additional free-form parameters */
   extra?: Record<string, unknown>;
 }
@@ -196,6 +225,9 @@ export interface AgentStateSlices {
 
   /** Inventory/items data */
   inventory?: InventorySlice;
+
+  /** Proximity/sensory engagement state (session-only) */
+  proximity?: ProximitySlice;
 
   /** Recent conversation history (deprecated, use AgentInput.conversationHistory) */
   recentHistory?: unknown[];
@@ -317,6 +349,56 @@ export interface InventoryItem {
 }
 
 /**
+ * Proximity slice for sensory engagement tracking.
+ * Tracks active sensory engagements between player and NPCs.
+ */
+export interface ProximitySlice {
+  /** Active sensory engagements keyed by `${npcId}:${bodyPart}:${senseType}` */
+  engagements: Record<string, SensoryEngagementData>;
+
+  /** General proximity level to each NPC, keyed by npcId */
+  npcProximity: Record<string, ProximityLevel>;
+}
+
+/**
+ * A single sensory engagement between player and an NPC body part.
+ */
+export interface SensoryEngagementData {
+  /** NPC identifier */
+  npcId: string;
+
+  /** Body part being engaged (e.g., 'hair', 'feet', 'hands') */
+  bodyPart: string;
+
+  /** Type of sense engaged */
+  senseType: SenseType;
+
+  /** Current intensity level */
+  intensity: EngagementIntensity;
+
+  /** Turn number or timestamp when engagement started */
+  startedAt: number;
+
+  /** Turn number or timestamp of last activity */
+  lastActiveAt: number;
+}
+
+/**
+ * The type of sense being engaged.
+ */
+export type SenseType = 'look' | 'touch' | 'smell' | 'taste' | 'hear';
+
+/**
+ * Intensity level of a sensory engagement.
+ */
+export type EngagementIntensity = 'casual' | 'focused' | 'intimate';
+
+/**
+ * General proximity level to an NPC.
+ */
+export type ProximityLevel = 'distant' | 'near' | 'close' | 'intimate';
+
+/**
  * A single knowledge context item retrieved for the agent.
  */
 export interface KnowledgeContextItem {
@@ -355,6 +437,9 @@ export interface AgentOutput {
 
   /** Whether this agent wants to continue (multi-step) */
   continueProcessing?: boolean;
+
+  /** Structured sensory context (for SensoryAgent output to NpcAgent) */
+  sensoryContext?: SensoryContextForNpc;
 }
 
 /**

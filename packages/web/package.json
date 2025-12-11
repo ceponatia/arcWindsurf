@@ -13,6 +13,7 @@
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",
     "@minimal-rpg/db": "workspace:*",
+    "@minimal-rpg/generator": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
     "@minimal-rpg/ui": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",

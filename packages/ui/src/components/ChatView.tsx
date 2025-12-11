@@ -2,10 +2,21 @@ import React, { useRef } from 'react';
 import type { ReactNode } from 'react';
 import { MessageContent } from './MessageContent.js';
 
+/**
+ * Speaker metadata for assistant messages.
+ */
+export interface ChatViewSpeaker {
+  id: string;
+  name: string;
+  profilePic?: string;
+  emotePic?: string;
+}
+
 export interface ChatViewMessage {
   role: string;
   content: string;
   idx?: number;
+  speaker?: ChatViewSpeaker;
 }
 
 export interface ChatViewProps {
@@ -177,11 +188,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           )}
                       </div>
                       {m.role === 'user' ? (
-                        <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans mr-6 overflow-hidden min-w-0">
+                        <div className="rounded-lg bg-slate-800/70 px-3 py-2 font-sans overflow-hidden min-w-0 w-full pr-10">
                           <MessageContent content={m.content} />
                         </div>
                       ) : (
-                        <div className="rounded-lg bg-violet-950/40 border border-violet-900/30 px-3 py-2 font-serif leading-relaxed mr-6 overflow-hidden min-w-0">
+                        <div className="rounded-lg bg-violet-950/40 border border-violet-900/30 px-3 py-2 font-serif leading-relaxed overflow-hidden min-w-0 w-full pr-10">
+                          {/* Speaker header with avatar */}
+                          {m.speaker && (
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-violet-900/30">
+                              {m.speaker.profilePic ? (
+                                <img
+                                  src={m.speaker.profilePic}
+                                  alt={m.speaker.name}
+                                  className="w-8 h-8 rounded-full object-cover border border-violet-700/50"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-violet-800/50 border border-violet-700/50 flex items-center justify-center text-violet-300 text-sm font-sans">
+                                  {m.speaker.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm font-sans text-violet-300/90">
+                                {m.speaker.name}
+                              </span>
+                            </div>
+                          )}
                           <MessageContent content={m.content} />
                         </div>
                       )}

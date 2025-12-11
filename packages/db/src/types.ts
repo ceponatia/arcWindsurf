@@ -102,6 +102,7 @@ export interface ProfileRow extends DbRow {
 
 export type CharacterProfileRow = ProfileRow;
 export type SettingProfileRow = ProfileRow;
+export type PersonaProfileRow = ProfileRow;
 
 // Deprecated aliases for backward compatibility during refactor
 export type CharacterTemplateRow = CharacterProfileRow;
@@ -156,6 +157,17 @@ export interface MessageRow extends DbRow {
   content: string;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface SessionHistoryRow extends DbRow {
+  id: string;
+  sessionId: string;
+  turnIdx: number;
+  ownerUserId?: string | null;
+  playerInput: string;
+  contextJson?: unknown;
+  debugJson?: unknown;
+  createdAt?: Date;
 }
 
 export interface UserSessionRow extends DbRow {
@@ -239,11 +251,26 @@ export interface ItemInstanceRow extends DbRow {
 // Session helpers exposed by sessions.ts
 export type MessageRole = 'user' | 'assistant' | 'system';
 
+/**
+ * Speaker metadata persisted with assistant messages.
+ * Enables UI to display NPC name/avatar on reload.
+ */
+export interface MessageSpeaker {
+  /** Character template ID of the NPC who spoke */
+  id: string;
+  /** Display name of the speaker at time of message */
+  name: string;
+  /** Profile picture URL of the speaker at time of message */
+  profilePic?: string;
+}
+
 export interface SessionMessage {
   role: MessageRole;
   content: string;
   createdAt: string;
   idx: number;
+  /** Speaker metadata for assistant messages */
+  speaker?: MessageSpeaker;
 }
 
 export interface SessionRecord {

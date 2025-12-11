@@ -4,30 +4,9 @@ import {
   type CharacterProfile,
   type SettingProfile,
 } from '@minimal-rpg/schemas';
-import type { OverridesObject, OverridesAudit } from '../types.js';
+import type { OverridesObject, OverridesAudit } from './types.js';
 import { db } from '../db/prismaClient.js';
-
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return Boolean(v && typeof v === 'object' && !Array.isArray(v));
-}
-
-export function deepMergeReplaceArrays<T>(base: T, override: unknown): T {
-  if (!isPlainObject(override)) return base;
-  const result = Array.isArray(base)
-    ? [...(base as unknown[])]
-    : { ...(base as Record<string, unknown>) };
-  for (const [k, v] of Object.entries(override)) {
-    const current = (result as Record<string, unknown>)[k];
-    if (Array.isArray(v)) {
-      (result as Record<string, unknown>)[k] = v;
-    } else if (isPlainObject(v) && isPlainObject(current)) {
-      (result as Record<string, unknown>)[k] = deepMergeReplaceArrays(current, v);
-    } else {
-      (result as Record<string, unknown>)[k] = v;
-    }
-  }
-  return result as T;
-}
+import { deepMergeReplaceArrays } from '../util/object.js';
 
 function parseJson<T>(text: string | null | undefined, fallback: T): T {
   if (!text) return fallback;

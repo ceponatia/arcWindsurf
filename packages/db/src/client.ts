@@ -5,6 +5,7 @@ import type {
   CharacterTemplateRow,
   CharacterProfileRow,
   SettingProfileRow,
+  PersonaProfileRow,
   DbRow,
   DbRows,
   ItemDefinitionRow,
@@ -329,6 +330,42 @@ export const db = {
   // Deprecated alias
   get settingTemplate() {
     return this.settingProfile;
+  },
+
+  personaProfile: {
+    async findMany(): Promise<PersonaProfileRow[]> {
+      const { rows } = await query('SELECT * FROM persona_profiles ORDER BY created_at DESC');
+      return rows.map((r) => camelizeRow<PersonaProfileRow>(r));
+    },
+    async findUnique(args: { where: { id: string } }): Promise<PersonaProfileRow | null> {
+      const { rows } = await query('SELECT * FROM persona_profiles WHERE id = $1 LIMIT 1', [
+        args.where.id,
+      ]);
+      return rows[0] ? camelizeRow<PersonaProfileRow>(rows[0]) : null;
+    },
+    async create(args: { data: { id: string; profileJson: string } }): Promise<PersonaProfileRow> {
+      const { id, profileJson } = args.data;
+      const { rows } = await query(
+        'INSERT INTO persona_profiles (id, profile_json) VALUES ($1, $2::jsonb) RETURNING *',
+        [id, profileJson]
+      );
+      return camelizeRow<PersonaProfileRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { id: string };
+      data: { profileJson: string };
+    }): Promise<PersonaProfileRow> {
+      const { id } = args.where;
+      const { profileJson } = args.data;
+      const { rows } = await query(
+        'UPDATE persona_profiles SET profile_json = $2::jsonb, updated_at = now() WHERE id = $1 RETURNING *',
+        [id, profileJson]
+      );
+      return camelizeRow<PersonaProfileRow>(rows[0]!);
+    },
+    async delete(args: { where: { id: string } }): Promise<void> {
+      await query('DELETE FROM persona_profiles WHERE id = $1', [args.where.id]);
+    },
   },
 
   characterInstance: {

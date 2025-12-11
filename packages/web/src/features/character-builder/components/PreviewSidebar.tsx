@@ -6,10 +6,12 @@ interface PreviewSidebarProps {
   form: FormState;
   disabled: boolean;
   saving: boolean;
+  generating?: boolean;
   error: string | null;
   success: string | null;
   loadError: string | null;
   onSave: () => void;
+  onGenerate?: () => void;
   onCancel?: (() => void) | undefined;
   onDelete?: (() => void | Promise<void>) | undefined;
   isEditing?: boolean | undefined;
@@ -19,10 +21,12 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
   form,
   disabled,
   saving,
+  generating = false,
   error,
   success,
   loadError,
   onSave,
+  onGenerate,
   onCancel,
   onDelete,
   isEditing,
@@ -64,6 +68,21 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
             ))}
           {form.details.filter((d) => d.label && d.value).length > 3 && <li>…</li>}
         </ul>
+      </div>
+    )}
+    {onGenerate && (
+      <div className="mt-4 pt-4 border-t border-slate-700">
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={disabled || generating}
+          className="w-full px-4 py-2 text-sm font-medium text-slate-200 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-md transition-colors"
+        >
+          {generating ? 'Generating…' : '✨ Fill Missing Fields'}
+        </button>
+        <p className="mt-2 text-xs text-slate-500">
+          Randomly generates missing fields while preserving your existing data.
+        </p>
       </div>
     )}
   </PreviewSidebarLayout>

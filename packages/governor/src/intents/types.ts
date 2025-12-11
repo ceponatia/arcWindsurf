@@ -118,6 +118,13 @@ export interface IntentParams {
    */
   narrateType?: 'action' | 'thought' | 'emote' | 'narrative' | undefined;
 
+  /**
+   * When true, indicates this is an auto-interjection by the Governor
+   * to maintain conversation flow after extended non-dialogue turns.
+   * NPC agents should keep responses brief during interjections.
+   */
+  interject?: boolean | undefined;
+
   /** Additional free-form parameters */
   extra?: Record<string, unknown> | undefined;
 }

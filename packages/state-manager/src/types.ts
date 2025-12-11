@@ -297,6 +297,102 @@ export type StateChangeSource =
   | { type: 'system'; reason: string };
 
 // ============================================================================
+// Action Tracking Types
+// ============================================================================
+
+/**
+ * A scene action that was performed and can be observed by NPCs.
+ */
+export interface SceneAction {
+  /** Unique identifier for the action */
+  id: string;
+
+  /** ID of the entity that performed the action */
+  actorId: string;
+
+  /** Type of action (speech, action, thought, observation, etc.) */
+  type: 'speech' | 'action' | 'thought' | 'observation' | 'other';
+
+  /** Description or content of the action */
+  content: string;
+
+  /** Timestamp when the action occurred */
+  timestamp: number;
+
+  /** List of entity IDs who can observe this action */
+  observableBy: string[];
+
+  /** Location where the action occurred */
+  locationId?: string;
+
+  /** Additional metadata about the action */
+  metadata?: Record<string, JsonValue>;
+}
+
+// ============================================================================
+// State Slice Types
+// ============================================================================
+
+/**
+ * Merge strategy for combining baseline and overrides.
+ */
+export type MergeStrategy = 'deep' | 'replace' | 'custom';
+
+/**
+ * A registered state slice with schema and merge configuration.
+ * Slices allow adding new state categories without modifying the core manager.
+ */
+export interface StateSlice<T = unknown> {
+  /** Unique key for this slice (e.g., 'proximity', 'inventory', 'dialogue') */
+  key: string;
+
+  /** Zod schema for validation */
+  schema: ZodSchema<T>;
+
+  /** Default/empty state used when no baseline is provided */
+  defaultState: T;
+
+  /** How to merge baseline + overrides (deep-merge is default) */
+  mergeStrategy?: MergeStrategy;
+
+  /** Optional custom merge function (required if mergeStrategy is 'custom') */
+  customMerge?: (baseline: T, overrides: DeepPartial<T>) => T;
+}
+
+/**
+ * State patches keyed by slice name.
+ * Used when tools return patches for multiple slices.
+ */
+export interface StatePatches {
+  [sliceKey: string]: Operation[];
+}
+
+/**
+ * Input for multi-slice patch operations.
+ */
+export interface SliceState<T = unknown> {
+  baseline: T;
+  overrides: DeepPartial<T>;
+}
+
+/**
+ * Result of applying patches to multiple slices.
+ */
+export interface MultiSlicePatchResult {
+  /** Results per slice (keyed by slice key) */
+  results: Record<string, StatePatchResult<unknown>>;
+
+  /** Whether all patches across all slices succeeded */
+  allSucceeded: boolean;
+
+  /** Slices that had failures (only populated if there were failures) */
+  failedSlices?: string[];
+
+  /** Total patches applied across all slices */
+  totalPatchesApplied: number;
+}
+
+// ============================================================================
 // Utility Types
 // ============================================================================
 

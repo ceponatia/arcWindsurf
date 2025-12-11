@@ -1,7 +1,10 @@
 import {
   type CharacterProfile,
   type SettingProfile,
+  type PersonaProfile,
   type SessionTagInstance,
+  type ParsedAction,
+  type ActionSequenceResult,
 } from '@minimal-rpg/schemas';
 import {
   type DetectedIntent,
@@ -20,6 +23,7 @@ import {
   type ConversationTurn as AgentConversationTurn,
 } from '@minimal-rpg/agents';
 import { type Operation } from 'fast-json-patch';
+import { type ActionSequencer } from './action-sequencer.js';
 
 // ============================================================================
 // Core Types
@@ -31,15 +35,27 @@ export interface GovernorConfig {
   agentRegistry?: AgentRegistry;
   intentDetector?: IntentDetector;
   npcTranscriptLoader?: NpcTranscriptLoader;
+  actionSequencer?: ActionSequencer;
+  /** Tool-based turn handler for LLM tool calling mode */
+  toolTurnHandler?: ToolTurnHandler;
   logging?: {
     logTurns?: boolean;
     logIntentDetection?: boolean;
     logRetrieval?: boolean;
     logStateChanges?: boolean;
     logAgents?: boolean;
+    logActionSequence?: boolean;
   };
   responseComposer?: ResponseComposer;
   options?: GovernorOptions;
+}
+
+/**
+ * Interface for tool-based turn handlers.
+ * Allows injection of different tool-calling implementations.
+ */
+export interface ToolTurnHandler {
+  handleTurn(input: TurnInput): Promise<TurnResult>;
 }
 
 export interface GovernorOptions {
@@ -49,6 +65,17 @@ export interface GovernorOptions {
   intentConfidenceThreshold?: number;
   devMode?: boolean;
   agentTimeoutMs?: number;
+  /** Number of turns without NPC dialogue before auto-interjection. Set to 0 to disable. Default: 3 */
+  npcInterjectionThreshold?: number;
+  /** Enable action sequencing for multi-action turns. Default: false */
+  useActionSequencer?: boolean;
+  /**
+   * Turn handler mode:
+   * - 'classic': Rule-based intent detection + agent routing (default)
+   * - 'tool-calling': LLM decides when to call tools based on context
+   * - 'hybrid': Use tool-calling for complex inputs, classic for simple ones
+   */
+  turnHandler?: 'classic' | 'tool-calling' | 'hybrid';
 }
 
 export const DEFAULT_GOVERNOR_OPTIONS: Required<GovernorOptions> = {
@@ -58,6 +85,9 @@ export const DEFAULT_GOVERNOR_OPTIONS: Required<GovernorOptions> = {
   intentConfidenceThreshold: 0.4,
   devMode: false,
   agentTimeoutMs: 30000,
+  npcInterjectionThreshold: 3,
+  useActionSequencer: false,
+  turnHandler: 'classic',
 };
 
 export interface TurnInput {
@@ -69,13 +99,9 @@ export interface TurnInput {
   conversationHistory?: ConversationTurn[];
   sessionTags?: SessionTagInstance[];
   /** Player character persona (when attached to session) */
-  persona?: {
-    name?: string;
-    age?: number;
-    gender?: string;
-    summary?: string;
-    appearance?: string;
-  };
+  persona?: PersonaProfile;
+  /** Parsed actions from pre-parser (optional, for multi-action sequencing) */
+  parsedActions?: ParsedAction[];
 }
 
 /**
@@ -138,6 +164,7 @@ export interface TurnMetadata {
   intent?: DetectedIntent;
   intentDebug?: IntentDetectionDebug;
   agentOutputs?: { agentType: string; output: AgentOutput }[];
+  actionSequenceResult?: ActionSequenceResult;
 }
 
 export interface TurnStateChanges {
@@ -156,6 +183,7 @@ export interface PhaseTiming {
   agentExecutionMs?: number;
   stateUpdateMs?: number;
   responseAggregationMs?: number;
+  actionSequencingMs?: number;
 }
 
 export interface TurnExecutionResult {
@@ -256,3 +284,61 @@ export type NpcTranscriptLoader = (params: NpcTranscriptRequest) => Promise<Conv
 
 // Session tags (DTO used by API when constructing TurnInput)
 export type SessionTag = SessionTagInstance;
+
+// ============================================================================
+// NPC Evaluation Types (Phase 5: Governor Simplification)
+// ============================================================================
+
+/**
+ * Result of evaluating whether an NPC would respond to player input.
+ */
+export interface NpcEvaluation {
+  /** NPC instance ID */
+  npcId: string;
+
+  /** Whether this NPC would respond to the current input */
+  wouldRespond: boolean;
+
+  /** Priority score (0-1) - higher means more urgent/important to respond */
+  priority: number;
+
+  /** Type of response this NPC would give */
+  responseType: 'speech' | 'action' | 'observation' | 'silent';
+
+  /** Explanation of why the NPC would/wouldn't respond */
+  reason: string;
+}
+
+/**
+ * Result of governor's NPC selection phase.
+ */
+export interface GovernorSelection {
+  /** NPCs selected to respond this turn (0-2 typically) */
+  selectedNpcs: string[];
+
+  /** All NPC evaluations performed */
+  evaluations: NpcEvaluation[];
+
+  /** Whether selection was automatic (heuristic) or LLM-based */
+  selectionMethod: 'heuristic' | 'llm';
+}
+
+/**
+ * Context for scene actions (for multi-NPC coordination).
+ */
+export interface SceneAction {
+  /** Actor entity ID (player or NPC) */
+  actor: string;
+
+  /** Action type */
+  type: 'speech' | 'action' | 'thought' | 'observation';
+
+  /** Action content/description */
+  content: string;
+
+  /** Timestamp */
+  timestamp: Date;
+
+  /** Entity IDs who can observe this action */
+  observableBy: string[];
+}

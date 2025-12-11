@@ -8,6 +8,31 @@ import {
 } from './types.js';
 
 // ============================================================================
+// Third-Person Narrative Detection
+// ============================================================================
+
+/**
+ * Patterns that indicate third-person roleplay narration.
+ * When input starts with these, it's describing an action rather than commanding one.
+ */
+const THIRD_PERSON_PATTERNS = [
+  /^he\s+/i,
+  /^she\s+/i,
+  /^they\s+/i,
+  /^it\s+/i,
+  /^the\s+\w+\s+/i, // "The man looks..."
+  /^\w+\s+(looks|walks|moves|runs|goes|sits|stands|leans|turns|nods|shakes|smiles|frowns|laughs|sighs|glances|gazes|stares|watches)\b/i,
+];
+
+/**
+ * Check if input appears to be third-person narrative.
+ */
+function isThirdPersonNarrative(input: string): boolean {
+  const trimmed = input.trim();
+  return THIRD_PERSON_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+// ============================================================================
 // Intent Patterns
 // ============================================================================
 
@@ -183,6 +208,29 @@ export class RuleBasedIntentDetector implements IntentDetector {
 
   detect(input: string, context?: IntentDetectionContext): Promise<IntentDetectionResult> {
     const normalizedInput = input.trim().toLowerCase();
+
+    // Check for third-person narrative phrasing first.
+    // "He looks up hopefully" is narrate, not look.
+    // "She walks over" is narrate, not move.
+    if (isThirdPersonNarrative(input)) {
+      const debug: IntentDetectionDebug = {
+        detector: 'rule-based',
+        parsed: {
+          bestType: 'narrate',
+          bestScore: 0.85,
+          reason: 'third-person-narrative',
+        },
+      };
+      return Promise.resolve({
+        intent: {
+          type: 'narrate',
+          confidence: 0.85,
+          params: { narrateType: 'action' },
+          signals: ['third-person'],
+        },
+        debug,
+      });
+    }
 
     // Score each intent pattern
     const scores = this.patterns.map((pattern) => ({

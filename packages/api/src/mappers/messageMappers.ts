@@ -1,4 +1,5 @@
-import type { MapMessageResponse, DbMessage } from '../types.js';
+import type { DbMessage } from '../db/types.js';
+import type { MapMessageResponse } from '../sessions/types.js';
 
 export const mapMessageResponse: MapMessageResponse = (m: DbMessage) => ({
   role: m.role,

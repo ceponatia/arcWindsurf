@@ -186,14 +186,14 @@ export function registerPersonaRoutes(app: Hono): void {
   app.post('/sessions/:sessionId/persona', async (c) => {
     const sessionId = c.req.param('sessionId');
 
-    let body: { personaId: string };
+    let body: { personaId: string } | undefined;
     try {
-      body = (await c.req.json()) as { personaId: string };
+      body = await c.req.json<{ personaId: string }>();
     } catch {
       return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
     }
 
-    if (!body.personaId) {
+    if (!body?.personaId) {
       return c.json({ ok: false, error: 'personaId required' } satisfies ApiError, 400);
     }
 
@@ -263,8 +263,8 @@ export function registerPersonaRoutes(app: Hono): void {
 
     try {
       const profile = PersonaProfileSchema.parse(JSON.parse(sessionPersona.profileJson));
-      const overrides = sessionPersona.overridesJson
-        ? JSON.parse(sessionPersona.overridesJson)
+      const overrides: Record<string, unknown> = sessionPersona.overridesJson
+        ? (JSON.parse(sessionPersona.overridesJson) as Record<string, unknown>)
         : {};
 
       return c.json(
@@ -281,7 +281,10 @@ export function registerPersonaRoutes(app: Hono): void {
   });
 
   // PUT /sessions/:sessionId/persona/overrides - update session persona overrides
+  // @deprecated Use POST /sessions/:id/turns with tool-based state patches instead.
+  // This endpoint bypasses the state manager turn lifecycle. Retained for debugging/admin use.
   app.put('/sessions/:sessionId/persona/overrides', async (c) => {
+    console.warn('[DEPRECATED] PUT /sessions/:sessionId/persona/overrides bypasses state manager');
     const sessionId = c.req.param('sessionId');
 
     let body: unknown;
@@ -311,11 +314,14 @@ export function registerPersonaRoutes(app: Hono): void {
       },
     });
 
-    if (!updated) {
-      return c.json({ ok: false, error: 'update failed' } satisfies ApiError, 500);
+    if (!updated?.overridesJson) {
+      return c.json({ ok: false, error: 'Failed to update persona overrides' }, 500);
     }
 
-    return c.json({ ok: true, overrides: body }, 200);
+    return c.json(
+      { ok: true, overrides: JSON.parse(updated.overridesJson) as Record<string, unknown> },
+      200
+    );
   });
 
   // DELETE /sessions/:sessionId/persona - detach persona from session

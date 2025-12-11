@@ -20,6 +20,8 @@ import {
   DEFAULT_BODY_REGION,
   BODY_REGIONS,
   isBodyReference,
+  type SensoryContextForNpc,
+  type SensoryDetail,
 } from '@minimal-rpg/schemas';
 
 /**
@@ -116,7 +118,7 @@ export class SensoryAgent extends BaseAgent {
     return isBodyReference(value);
   }
 
-  protected async process(input: AgentInput): Promise<AgentOutput> {
+  protected process(input: AgentInput): Promise<AgentOutput> {
     const intentType = input.intent?.type;
 
     // For compound intents, check segments for sensory content
@@ -124,18 +126,174 @@ export class SensoryAgent extends BaseAgent {
       (seg) => seg.type === 'sensory' && seg.sensoryType
     );
 
-    // If we have multiple sensory segments, batch them into one LLM call
+    // Build structured sensory context (no LLM, just data)
     if (sensorySegments && sensorySegments.length > 0) {
-      return this.handleCombinedSensory(input, sensorySegments);
+      return Promise.resolve(this.buildStructuredSensoryContext(input, sensorySegments));
     }
 
     // Handle single primary sensory intent
     if (intentType && isSensoryIntent(intentType)) {
-      return this.handleSensoryIntent(intentType, input);
+      return Promise.resolve(
+        this.buildStructuredSensoryContext(input, [
+          {
+            type: 'sensory',
+            content: input.playerInput,
+            sensoryType: intentType,
+            bodyPart: input.intent?.params?.bodyPart,
+          },
+        ])
+      );
     }
 
     // No sensory intent found
-    return this.createIgnoreResponse('Invalid intent type for SensoryAgent');
+    return Promise.resolve(this.createIgnoreResponse('Invalid intent type for SensoryAgent'));
+  }
+
+  /**
+   * Build structured sensory context for NPC agents to use (Phase 1 redesign).
+   * This does NOT generate prose - it provides data that the NPC agent will weave into narrative.
+   */
+  private buildStructuredSensoryContext(
+    input: AgentInput,
+    segments: NonNullable<AgentInput['intent']>['segments']
+  ): AgentOutput {
+    if (!segments || segments.length === 0) {
+      return this.createIgnoreResponse('No sensory segments to process');
+    }
+
+    // Get target character
+    const npc = input.stateSlices.npc;
+    const character = input.stateSlices.character;
+    const targetCharacter = npc ?? character;
+
+    if (!targetCharacter) {
+      return this.createIgnoreResponse('No character target for sensory input');
+    }
+
+    const sensoryContext: SensoryContextForNpc = {
+      available: {},
+      narrativeHints: {
+        playerIsSniffing: false,
+        playerIsTouching: false,
+        playerIsTasting: false,
+        recentSensoryAction: false,
+      },
+    };
+
+    // Collect sensory details from character profile
+    const smellDetails: SensoryDetail[] = [];
+    const touchDetails: SensoryDetail[] = [];
+    const tasteDetails: SensoryDetail[] = [];
+    const soundDetails: SensoryDetail[] = [];
+    const sightDetails: SensoryDetail[] = [];
+
+    for (const seg of segments) {
+      if (seg.type !== 'sensory' || !seg.sensoryType) continue;
+
+      const bodyRegion = this.resolveBodyPart(seg.bodyPart);
+      const regionData = targetCharacter.body?.[bodyRegion];
+
+      if (!regionData) continue;
+
+      // Determine which sense and collect data
+      switch (seg.sensoryType) {
+        case 'smell':
+          sensoryContext.narrativeHints.playerIsSniffing = true;
+          if (regionData.scent) {
+            const description = regionData.scent.notes?.length
+              ? `${regionData.scent.primary} with notes of ${regionData.scent.notes.join(', ')}`
+              : regionData.scent.primary;
+            smellDetails.push({
+              source: `${targetCharacter.name}'s ${this.getRegionLabel(bodyRegion)}`,
+              bodyPart: this.getRegionLabel(bodyRegion),
+              description,
+              intensity: regionData.scent.intensity ?? 0.5,
+            });
+          }
+          break;
+
+        case 'touch':
+          sensoryContext.narrativeHints.playerIsTouching = true;
+          if (regionData.texture) {
+            const parts: string[] = [regionData.texture.primary];
+            if (regionData.texture.temperature && regionData.texture.temperature !== 'neutral') {
+              parts.push(regionData.texture.temperature);
+            }
+            if (regionData.texture.moisture && regionData.texture.moisture !== 'normal') {
+              parts.push(regionData.texture.moisture);
+            }
+            if (regionData.texture.notes?.length) {
+              parts.push(...regionData.texture.notes);
+            }
+            touchDetails.push({
+              source: `${targetCharacter.name}'s ${this.getRegionLabel(bodyRegion)}`,
+              bodyPart: this.getRegionLabel(bodyRegion),
+              description: parts.join(', '),
+              intensity: 0.7,
+            });
+          }
+          break;
+
+        case 'taste':
+          sensoryContext.narrativeHints.playerIsTasting = true;
+          if (regionData.flavor) {
+            const description = regionData.flavor.notes?.length
+              ? `${regionData.flavor.primary} with notes of ${regionData.flavor.notes.join(', ')}`
+              : regionData.flavor.primary;
+            tasteDetails.push({
+              source: `${targetCharacter.name}'s ${this.getRegionLabel(bodyRegion)}`,
+              bodyPart: this.getRegionLabel(bodyRegion),
+              description,
+              intensity: regionData.flavor.intensity ?? 0.5,
+            });
+          }
+          break;
+
+        case 'listen':
+          // TBD: Implement sound data when available
+          break;
+      }
+    }
+
+    // Populate available sensory data
+    if (smellDetails.length) sensoryContext.available.smell = smellDetails;
+    if (touchDetails.length) sensoryContext.available.touch = touchDetails;
+    if (tasteDetails.length) sensoryContext.available.taste = tasteDetails;
+    if (soundDetails.length) sensoryContext.available.sound = soundDetails;
+    if (sightDetails.length) sensoryContext.available.sight = sightDetails;
+
+    // Determine player focus (what they're primarily trying to sense)
+    if (segments.length > 0 && segments[0]?.sensoryType) {
+      sensoryContext.playerFocus = {
+        sense: segments[0].sensoryType as 'smell' | 'touch' | 'taste' | 'sound' | 'sight',
+        target: targetCharacter.name,
+        bodyPart: segments[0].bodyPart,
+      };
+    }
+
+    sensoryContext.narrativeHints.recentSensoryAction =
+      sensoryContext.narrativeHints.playerIsSniffing ||
+      sensoryContext.narrativeHints.playerIsTouching ||
+      sensoryContext.narrativeHints.playerIsTasting;
+
+    // Return structured context with empty narrative
+    return {
+      narrative: '', // Empty - NPC agent writes prose
+      sensoryContext,
+      diagnostics: {
+        debug: {
+          targetName: targetCharacter.name,
+          sensoryDetailsCount: {
+            smell: smellDetails.length,
+            touch: touchDetails.length,
+            taste: tasteDetails.length,
+            sound: soundDetails.length,
+            sight: sightDetails.length,
+          },
+          source: 'structured-data',
+        },
+      },
+    };
   }
 
   /**
@@ -202,6 +360,11 @@ export class SensoryAgent extends BaseAgent {
 
   /**
    * Collect all relevant sensory data from character profile for the requested senses.
+   * Now collects ALL sensory attributes (scent, texture, flavor, visual) for each body region,
+   * allowing the LLM to use any attribute that makes contextual sense.
+   *
+   * Example: If player "smells her foot by pressing nose to it", we provide both scent AND texture
+   * data, letting the LLM decide to also describe how the foot feels on the nose.
    */
   private collectCharacterSensoryData(
     character: CharacterSlice,
@@ -210,38 +373,54 @@ export class SensoryAgent extends BaseAgent {
     const data: Record<string, string> = {};
     const body = character.body;
 
+    // Collect unique body regions from all requests
+    const bodyRegions = new Set<BodyRegion>();
     for (const req of requests) {
-      const bodyRegion = this.resolveBodyPart(req.bodyPart);
+      bodyRegions.add(this.resolveBodyPart(req.bodyPart));
+    }
 
-      if (req.type === 'smell') {
-        // Check body map for region-specific scent
-        const regionData = body?.[bodyRegion];
-        if (regionData?.scent?.primary) {
-          data[`smell_${bodyRegion}`] = regionData.scent.primary;
-        }
-        if (regionData?.scent?.intensity !== undefined) {
-          data[`smell_${bodyRegion}_intensity`] = String(regionData.scent.intensity);
-        }
-        if (regionData?.scent?.notes?.length) {
-          data[`smell_${bodyRegion}_notes`] = regionData.scent.notes.join(', ');
-        }
+    // For each body region, collect ALL available sensory data
+    for (const bodyRegion of bodyRegions) {
+      const regionData = body?.[bodyRegion];
+      if (!regionData) continue;
+
+      // Scent data
+      if (regionData.scent?.primary) {
+        data[`smell_${bodyRegion}`] = regionData.scent.primary;
+      }
+      if (regionData.scent?.intensity !== undefined) {
+        data[`smell_${bodyRegion}_intensity`] = String(regionData.scent.intensity);
+      }
+      if (regionData.scent?.notes?.length) {
+        data[`smell_${bodyRegion}_notes`] = regionData.scent.notes.join(', ');
       }
 
-      if (req.type === 'touch') {
-        // Check body map for region-specific texture
-        const regionData = body?.[bodyRegion];
-        if (regionData?.texture?.primary) {
-          data[`touch_${bodyRegion}`] = regionData.texture.primary;
-        }
-        if (regionData?.texture?.temperature) {
-          data[`touch_${bodyRegion}_temp`] = regionData.texture.temperature;
-        }
-        if (regionData?.texture?.moisture) {
-          data[`touch_${bodyRegion}_moisture`] = regionData.texture.moisture;
-        }
+      // Texture data
+      if (regionData.texture?.primary) {
+        data[`touch_${bodyRegion}`] = regionData.texture.primary;
+      }
+      if (regionData.texture?.temperature && regionData.texture.temperature !== 'neutral') {
+        data[`touch_${bodyRegion}_temp`] = regionData.texture.temperature;
+      }
+      if (regionData.texture?.moisture && regionData.texture.moisture !== 'normal') {
+        data[`touch_${bodyRegion}_moisture`] = regionData.texture.moisture;
       }
 
-      // Taste and listen TBD - no data sources yet
+      // Flavor data (for taste intents)
+      if (regionData.flavor?.primary) {
+        data[`taste_${bodyRegion}`] = regionData.flavor.primary;
+      }
+      if (regionData.flavor?.intensity !== undefined) {
+        data[`taste_${bodyRegion}_intensity`] = String(regionData.flavor.intensity);
+      }
+      if (regionData.flavor?.notes?.length) {
+        data[`taste_${bodyRegion}_notes`] = regionData.flavor.notes.join(', ');
+      }
+
+      // Visual data
+      if (regionData.visual?.description) {
+        data[`visual_${bodyRegion}`] = regionData.visual.description;
+      }
     }
 
     return data;
@@ -315,10 +494,12 @@ CRITICAL POV RULES:
 - Use "your" for the player's body parts, "her/his" for the NPC's body parts
 
 Rules:
-- Describe ALL requested senses in 1-3 sentences total
-- Be evocative and immersive
-- Use the provided data when available
-- Infer naturally when data is missing`;
+- You MUST ONLY use sensory attributes explicitly listed in the "Available sensory data" section above
+- DO NOT invent, infer, or hallucinate any sensory details not provided in the data
+- If the player requests a sense for which no data is listed, describe only the senses that have data
+- Be evocative and immersive in 1-3 sentences total
+- Rephrase the provided data naturally - do not copy verbatim, but stay faithful to the listed attributes
+- Example: If data lists "smell_feet: musky", you can say "catching her musky scent" but NOT "catching her musky scent mixed with lotion" (lotion was not provided)`;
 
     const userPrompt = `Player action: "${input.playerInput}"`;
 
@@ -329,6 +510,12 @@ Rules:
         maxTokens: 150,
       });
 
+      const prompts = {
+        system: systemPrompt,
+        user: userPrompt,
+        response: response.text,
+      };
+
       return {
         narrative: response.text.trim(),
         diagnostics: {
@@ -337,6 +524,7 @@ Rules:
             source: 'llm-combined',
             sensesRequested: requests.map((r) => r.type),
             contextParts: Object.keys(availableData).length,
+            prompts,
           },
           tokenUsage: response.usage,
         },
@@ -750,6 +938,12 @@ Rules:
         maxTokens: this.config.maxTokens ?? 100,
       });
 
+      const prompts = {
+        system: systemPrompt,
+        user: userPrompt,
+        response: response.text,
+      };
+
       return {
         narrative: response.text.trim(),
         diagnostics: {
@@ -760,6 +954,7 @@ Rules:
             bodyRegion,
             isExplicitBodyPart,
             source: 'llm',
+            prompts,
           },
         },
       };
@@ -859,7 +1054,16 @@ ${contextParts.join('\n')}`;
         narrative: text,
         diagnostics: {
           tokenUsage: response.usage,
-          debug: { targetName, source: 'llm-inference', contextParts: contextParts.length },
+          debug: {
+            targetName,
+            source: 'llm-inference',
+            contextParts: contextParts.length,
+            prompts: {
+              system: systemPrompt,
+              user: userPrompt,
+              response: response.text,
+            },
+          },
         },
       };
     } catch {
@@ -1080,6 +1284,12 @@ ${contextParts.join('\n')}`;
         maxTokens: 100,
       });
 
+      const prompts = {
+        system: systemPrompt,
+        user: userPrompt,
+        response: response.text,
+      };
+
       return {
         narrative: response.text.trim(),
         diagnostics: {
@@ -1090,6 +1300,7 @@ ${contextParts.join('\n')}`;
             bodyRegion,
             isExplicitBodyPart,
             source: 'llm',
+            prompts,
           },
         },
       };
@@ -1136,10 +1347,11 @@ ${contextParts.join('\n')}`;
     parts.push('');
     parts.push('RULES:');
     parts.push(
-      '- Describe ONLY the textures/sensations listed above. Do not invent additional details.'
+      '- Use the texture data as STRONG GUIDANCE - do not copy verbatim, craft a vivid description around those qualities.'
     );
+    parts.push('- Do NOT invent textures/sensations not listed above.');
     parts.push('- Keep it to 1-2 sentences.');
-    parts.push('- Be evocative but factual to the provided data.');
+    parts.push('- Be evocative and immersive while staying faithful to the provided data.');
     parts.push('- Do not mention game mechanics or meta information.');
 
     return parts.join('\n');
@@ -1208,7 +1420,16 @@ ${contextParts.join('\n')}`;
         narrative: text,
         diagnostics: {
           tokenUsage: response.usage,
-          debug: { targetName, source: 'llm-inference', contextParts: contextParts.length },
+          debug: {
+            targetName,
+            source: 'llm-inference',
+            contextParts: contextParts.length,
+            prompts: {
+              system: systemPrompt,
+              user: userPrompt,
+              response: response.text,
+            },
+          },
         },
       };
     } catch {
@@ -1254,9 +1475,12 @@ ${contextParts.join('\n')}`;
     parts.push('- Use "your" for player body parts, "her/his" for NPC body parts');
     parts.push('');
     parts.push('RULES:');
-    parts.push('- Describe ONLY the scents listed above. Do not invent additional scents.');
+    parts.push(
+      '- Use the scent data as STRONG GUIDANCE - do not copy verbatim, craft a vivid description around those qualities.'
+    );
+    parts.push('- Do NOT invent scents not listed above.');
     parts.push('- Keep it to 1-2 sentences.');
-    parts.push('- Be evocative but factual to the provided data.');
+    parts.push('- Be evocative and immersive while staying faithful to the provided data.');
     parts.push('- Do not mention game mechanics or meta information.');
 
     return parts.join('\n');

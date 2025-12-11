@@ -4,3 +4,4 @@ export * from './formErrors.js';
 export * from './deleteSetting.js';
 export * from './attributeParser/attribute-parser.js';
 export * from './bodyParser/index.js';
+export * from './parsing/input-parser.js';

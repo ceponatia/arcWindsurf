@@ -80,6 +80,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     // Auto-add: if this is the last entry and value is now populated, add a new entry
     const isLastEntry = idx === appearances.length - 1;
     const entry = appearances[idx];
+    if (!entry) return;
     const hasRegion = entry.region && entry.region.trim() !== '';
     const hasAttribute = entry.attribute && entry.attribute.trim() !== '';
     const hasValue = newValue.trim() !== '';

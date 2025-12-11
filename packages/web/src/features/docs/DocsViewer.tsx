@@ -8,15 +8,15 @@ export const DocsViewer: React.FC = () => {
   useEffect(() => {
     // Parse the current hash to get the doc path
     const hash = window.location.hash;
-    const match = hash.match(/#\/docs\/?(.*)$/);
-    const path = match?.[1] || 'index';
+    const match = /#\/docs\/?(.*)$/.exec(hash);
+    const path = match?.[1] ?? 'index';
     setCurrentPath(path);
 
     // Listen for hash changes
     const handleHashChange = () => {
       const newHash = window.location.hash;
-      const newMatch = newHash.match(/#\/docs\/?(.*)$/);
-      const newPath = newMatch?.[1] || 'index';
+      const newMatch = /#\/docs\/?(.*)$/.exec(newHash);
+      const newPath = newMatch?.[1] ?? 'index';
       setCurrentPath(newPath);
     };
 

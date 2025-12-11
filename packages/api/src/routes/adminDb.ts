@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { getDbOverview, getDbPathInfo, deleteDbRow } from '@minimal-rpg/db/node';
-import type { AdminDbOverview, AdminDbPathInfo, ApiError } from '../types.js';
+import type { ApiError } from '../types.js';
+import type { AdminDbOverview, AdminDbPathInfo } from '../db/types.js';
 
 // Narrowed env view for admin DB tools
 interface AdminEnv extends NodeJS.ProcessEnv {

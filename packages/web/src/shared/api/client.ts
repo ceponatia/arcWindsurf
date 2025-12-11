@@ -2,6 +2,7 @@ import { isAbortError } from '@minimal-rpg/utils';
 import type {
   CharacterSummary,
   SettingSummary,
+  PersonaSummary,
   ItemSummary,
   Message,
   Session,
@@ -13,18 +14,21 @@ import type {
 import type {
   CharacterProfile,
   SettingProfile,
+  PersonaProfile,
   ItemDefinition,
   TagResponse,
   CreateTagRequest,
   UpdateTagRequest,
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS, USE_TURNS_API } from '../../config.js';
+import type { Speaker } from '../../types.js';
 
 interface TurnEndpointResponse {
   message: string;
   events: unknown[];
   stateChanges?: unknown;
   metadata?: TurnMetadata;
+  speaker?: Speaker;
   success: boolean;
 }
 
@@ -231,6 +235,7 @@ export async function sendMessage(
       content: result.message,
       createdAt: new Date().toISOString(),
       ...(result.metadata ? { turnMetadata: result.metadata } : {}),
+      ...(result.speaker ? { speaker: result.speaker } : {}),
     };
 
     return { message: assistant };
@@ -363,6 +368,36 @@ export async function saveSetting(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(profile),
+    ...(signal && { signal }),
+  });
+}
+
+export async function getPersonas(signal?: AbortSignal): Promise<PersonaSummary[]> {
+  return http<PersonaSummary[]>('/personas', signal ? { signal } : undefined);
+}
+
+export async function getPersona(personaId: string, signal?: AbortSignal): Promise<PersonaProfile> {
+  return http<PersonaProfile>(
+    `/personas/${encodeURIComponent(personaId)}`,
+    signal ? { signal } : undefined
+  );
+}
+
+export async function savePersona(
+  profile: PersonaProfile,
+  signal?: AbortSignal
+): Promise<{ persona: PersonaSummary }> {
+  return http<{ persona: PersonaSummary }>('/personas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+    ...(signal && { signal }),
+  });
+}
+
+export async function deletePersona(personaId: string, signal?: AbortSignal): Promise<void> {
+  return http<void>(`/personas/${encodeURIComponent(personaId)}`, {
+    method: 'DELETE',
     ...(signal && { signal }),
   });
 }

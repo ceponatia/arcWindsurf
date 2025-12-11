@@ -7,6 +7,9 @@ import {
   createRuleBasedIntentDetector,
   type IntentDetector,
   type LlmIntentMessage,
+  createToolBasedTurnHandler,
+  type ToolTurnHandlerConfig,
+  ToolExecutor,
 } from '@minimal-rpg/governor';
 import { StateManager, DEFAULT_STATE_MANAGER_CONFIG } from '@minimal-rpg/state-manager';
 import {
@@ -18,9 +21,10 @@ import {
   type LlmProvider as AgentLlmProvider,
   type LlmGenerateOptions as AgentLlmGenerateOptions,
   type LlmResponse as AgentLlmResponse,
+  type AgentStateSlices,
 } from '@minimal-rpg/agents';
 import { InMemoryRetrievalService } from '@minimal-rpg/retrieval';
-import { generateWithOpenRouter } from '../llm/openrouter.js';
+import { generateWithOpenRouter, chatWithOpenRouterTools } from '../llm/openrouter.js';
 import { getConfig } from '../util/config.js';
 import { getNpcMessages } from '../db/sessionsClient.js';
 
@@ -119,59 +123,36 @@ function ensureAgentsRegistered(): void {
   agentRegistry.register(new SensoryAgent(llmProvider ? { llmProvider } : {}));
 }
 
+/**
+ * Get response composer for Phase 5: Simplified formatting only.
+ *
+ * Phase 5 redesign: NPC agent is now the sole prose writer.
+ * This composer just formats/concatenates outputs without LLM rewriting.
+ * The ResponseComposer LLM call has been removed - agents write complete prose.
+ */
 function getResponseComposer(): ResponseComposer | undefined {
   if (sharedResponseComposer) {
     return sharedResponseComposer;
   }
 
-  const cfg = getConfig();
-  if (!cfg.openrouterApiKey) {
-    // Without an LLM provider, fall back to raw agent narratives.
-    return undefined;
-  }
-
-  sharedResponseComposer = async ({ executionResult, sessionTags }) => {
+  // Simple concatenation - NPC agent has already woven in sensory details
+  sharedResponseComposer = ({ executionResult }) => {
     // Get successful agent outputs
-    const agentOutputs = executionResult.agentResults
+    const narratives = executionResult.agentResults
       .filter((r) => r.success && r.output.narrative?.trim())
-      .map((r) => `[${r.agentType.toUpperCase()}] ${r.output.narrative.trim()}`);
+      .map((r) => r.output.narrative.trim());
 
-    // If only one agent or no agents, skip LLM composition
-    if (agentOutputs.length <= 1) {
-      return agentOutputs[0]?.replace(/^\[[A-Z]+\]\s*/, '') ?? '';
+    // Simple concatenation with scene dividers for multiple NPCs
+    if (narratives.length === 0) {
+      return Promise.resolve(undefined);
     }
 
-    // Build compact system prompt
-    const styleParts = sessionTags?.length ? sessionTags.map((t) => t.promptText).join('; ') : '';
-
-    const systemPrompt = `Weave these agent outputs into ONE response. Keep all content. NPC dialogue in quotes, actions in *asterisks*. 2-4 sentences max.${styleParts ? ` Style: ${styleParts}` : ''}`;
-
-    // Compact user prompt
-    const userPrompt = agentOutputs.join('\n');
-
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      { role: 'user' as const, content: userPrompt },
-    ];
-
-    const result = await generateWithOpenRouter(
-      {
-        apiKey: cfg.openrouterApiKey,
-        model: cfg.openrouterModel,
-        messages,
-      },
-      {
-        temperature: 0.5,
-        max_tokens: 200,
-      }
-    );
-
-    if ('ok' in result) {
-      const err = typeof result.error === 'string' ? result.error : JSON.stringify(result.error);
-      throw new Error(`Response composer LLM failed: ${err}`);
+    if (narratives.length === 1) {
+      return Promise.resolve(narratives[0]);
     }
 
-    return result.content.trim();
+    // Multiple outputs - join with scene dividers
+    return Promise.resolve(narratives.join('\n\n---\n\n'));
   };
 
   return sharedResponseComposer;
@@ -227,6 +208,59 @@ function resolveIntentDetector(): IntentDetector {
 export interface GovernorFactoryOptions {
   logging?: GovernorConfig['logging'];
   intentDetector?: IntentDetector;
+  sessionId?: string;
+  stateSlices?: AgentStateSlices;
+}
+
+/**
+ * Create a tool-based turn handler if tool calling mode is enabled.
+ */
+function createToolTurnHandler(
+  sessionId: string,
+  stateSlices: AgentStateSlices
+): ReturnType<typeof createToolBasedTurnHandler> | undefined {
+  const cfg = getConfig();
+
+  if (cfg.turnHandler === 'classic') {
+    return undefined;
+  }
+
+  if (!cfg.openrouterApiKey) {
+    console.warn('[ToolTurnHandler] OPENROUTER_API_KEY not set; falling back to classic mode');
+    return undefined;
+  }
+
+  // Ensure agents are registered for tool executor
+  ensureAgentsRegistered();
+
+  const sensoryAgent = agentRegistry.get('sensory') as SensoryAgent | undefined;
+  const npcAgent = agentRegistry.get('npc') as NpcAgent | undefined;
+
+  if (!sensoryAgent || !npcAgent) {
+    console.warn('[ToolTurnHandler] Required agents not registered; falling back to classic mode');
+    return undefined;
+  }
+
+  const toolExecutor = new ToolExecutor({
+    sensoryAgent,
+    npcAgent,
+    sessionId,
+    stateSlices,
+  });
+
+  const config: ToolTurnHandlerConfig = {
+    chatWithTools: async (opts) => {
+      return chatWithOpenRouterTools(opts);
+    },
+    apiKey: cfg.openrouterApiKey,
+    model: cfg.openrouterModel,
+    toolExecutor,
+    sessionId,
+    stateSlices,
+    debug: cfg.governorDevMode,
+  };
+
+  return createToolBasedTurnHandler(config);
 }
 
 export function createGovernorForRequest(options: GovernorFactoryOptions = {}): Governor {
@@ -257,8 +291,17 @@ export function createGovernorForRequest(options: GovernorFactoryOptions = {}): 
       applyPatchesOnPartialFailure: false,
       intentConfidenceThreshold: 0.6,
       devMode: cfg.governorDevMode,
+      turnHandler: cfg.turnHandler,
     },
   };
+
+  // Add tool turn handler if enabled and we have the required context
+  if (cfg.turnHandler !== 'classic' && options.sessionId && options.stateSlices) {
+    const toolHandler = createToolTurnHandler(options.sessionId, options.stateSlices);
+    if (toolHandler) {
+      governorConfig.toolTurnHandler = toolHandler;
+    }
+  }
 
   if (responseComposer) {
     governorConfig.responseComposer = responseComposer;

@@ -257,6 +257,9 @@ importers:
       '@minimal-rpg/db':
         specifier: workspace:*
         version: link:../db
+      '@minimal-rpg/generator':
+        specifier: workspace:*
+        version: link:../generator
       '@minimal-rpg/schemas':
         specifier: workspace:*
         version: link:../schemas

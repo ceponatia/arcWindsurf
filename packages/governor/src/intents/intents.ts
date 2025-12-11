@@ -57,9 +57,6 @@ export const INTENT_CONFIG = {
   // Sensory Intents
   // ============================================================================
   // Handled by SensoryAgent in @minimal-rpg/agents.
-  // Currently only 'smell' is fully implemented for characters (via ScentSchema).
-  // Other sensory intents (taste, touch, listen) are TBD - no data source yet.
-  // See: packages/agents/src/sensory/sensory-agent.ts
   // ============================================================================
   smell: { agentType: 'smell', description: 'Player wants to smell/sniff something' },
   taste: { agentType: 'taste', description: 'Player wants to taste something' },

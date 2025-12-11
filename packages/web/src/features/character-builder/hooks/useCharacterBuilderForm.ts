@@ -7,7 +7,7 @@ import {
   BODY_REGIONS,
   PERSONALITY_DIMENSIONS,
 } from '@minimal-rpg/schemas';
-import { formatScent, formatTexture, formatVisual, formatFlavor } from '@minimal-rpg/utils';
+import { formatScent, formatTexture, formatFlavor } from '@minimal-rpg/utils';
 import { loadCharacter } from '../api.js';
 import {
   createDetailEntry,
@@ -49,13 +49,7 @@ function bodyMapToEntries(bodyMap: BodyMap | undefined): BodySensoryEntry[] {
         raw: formatTexture(data.texture),
       });
     }
-    if (data.visual) {
-      entries.push({
-        region,
-        type: 'visual',
-        raw: formatVisual(data.visual),
-      });
-    }
+    // Visual is handled by the appearance section, not body sensory
     if (data.flavor) {
       entries.push({
         region,
@@ -252,6 +246,7 @@ function mapProfileToForm(profile: CharacterProfile): FormState {
   next.summary = profile.summary;
   next.backstory = profile.backstory ?? '';
   next.tags = (profile.tags ?? []).join(', ');
+  next.profilePic = profile.profilePic ?? '';
   next.personality = Array.isArray(profile.personality)
     ? profile.personality.join(', ')
     : (profile.personality ?? '');
@@ -288,8 +283,92 @@ function mapProfileToForm(profile: CharacterProfile): FormState {
   return next;
 }
 
+/**
+ * Merge generated form state into existing form, only filling empty fields.
+ * This preserves user-entered values while populating missing data.
+ */
+export function mergeGeneratedIntoForm(current: FormState, generated: FormState): FormState {
+  const merged = { ...current };
+
+  // Simple string fields - only fill if empty
+  if (!merged.id.trim()) merged.id = generated.id;
+  if (!merged.name.trim()) merged.name = generated.name;
+  if (!merged.age || merged.age === '') merged.age = generated.age;
+  if (!merged.gender.trim()) merged.gender = generated.gender;
+  if (!merged.summary.trim()) merged.summary = generated.summary;
+  if (!merged.backstory.trim()) merged.backstory = generated.backstory;
+  if (!merged.tags.trim()) merged.tags = generated.tags;
+  if (!merged.personality.trim()) merged.personality = generated.personality;
+
+  // Personality map - merge sub-fields
+  if (!merged.personalityMap.traits.trim()) {
+    merged.personalityMap = {
+      ...merged.personalityMap,
+      traits: generated.personalityMap.traits,
+    };
+  }
+
+  // Check if dimensions are all default (0.5)
+  const allDimensionsDefault = merged.personalityMap.dimensions.every((d) => d.score === 0.5);
+  if (allDimensionsDefault) {
+    merged.personalityMap = {
+      ...merged.personalityMap,
+      dimensions: generated.personalityMap.dimensions,
+    };
+  }
+
+  // Values - only fill if empty
+  if (merged.personalityMap.values.length === 0) {
+    merged.personalityMap = {
+      ...merged.personalityMap,
+      values: generated.personalityMap.values,
+    };
+  }
+
+  // Fears - only fill if empty
+  if (merged.personalityMap.fears.length === 0) {
+    merged.personalityMap = {
+      ...merged.personalityMap,
+      fears: generated.personalityMap.fears,
+    };
+  }
+
+  // Appearance entries - only fill if single empty entry
+  const firstAppearance = merged.appearances[0];
+  const hasEmptyAppearances =
+    merged.appearances.length === 1 && firstAppearance && !firstAppearance.value.trim();
+  if (hasEmptyAppearances) {
+    merged.appearances = generated.appearances;
+  }
+
+  // Body sensory entries - only fill if single empty entry
+  const firstBodySensory = merged.bodySensory[0];
+  const hasEmptyBodySensory =
+    merged.bodySensory.length === 1 && firstBodySensory && !firstBodySensory.raw.trim();
+  if (hasEmptyBodySensory) {
+    merged.bodySensory = generated.bodySensory;
+  }
+
+  // Details - only fill if single empty entry
+  const firstDetail = merged.details[0];
+  const hasEmptyDetails =
+    merged.details.length === 1 &&
+    firstDetail &&
+    !firstDetail.label.trim() &&
+    !firstDetail.value.trim();
+  if (hasEmptyDetails) {
+    merged.details = generated.details;
+  }
+
+  return merged;
+}
+
+/** Export mapProfileToForm for use by the generate feature */
+export { mapProfileToForm };
+
 export interface UseCharacterBuilderFormResult {
   form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
   fieldErrors: FormFieldErrors;
   setFieldErrors: React.Dispatch<React.SetStateAction<FormFieldErrors>>;
   updateField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
@@ -441,6 +520,7 @@ export function useCharacterBuilderForm(id?: string | null): UseCharacterBuilder
 
   return {
     form,
+    setForm,
     fieldErrors,
     setFieldErrors,
     updateField,

@@ -53,8 +53,8 @@ export interface DetailFormEntry {
 export interface BodySensoryEntry {
   /** Body region (hair, torso, feet, etc.) */
   region: BodyRegion;
-  /** Sensory type: scent, texture, visual, or flavor */
-  type: 'scent' | 'texture' | 'visual' | 'flavor';
+  /** Sensory type: scent, texture, or flavor (visual is covered by appearance section) */
+  type: 'scent' | 'texture' | 'flavor';
   /** Raw text description (parsed on save) */
   raw: string;
 }
@@ -184,6 +184,8 @@ export interface FormState {
   summary: string;
   backstory: string;
   tags: string;
+  /** Profile picture URL for chat display */
+  profilePic: string;
   personality: string;
   /** Structured personality data (dimensions, values, fears, etc.) */
   personalityMap: PersonalityFormState;
@@ -200,7 +202,7 @@ export type FormKey = keyof FormState;
 export type FormFieldErrors = Partial<Record<FormKey, string>>;
 export type UpdateFieldFn = <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 
-export const SENSORY_TYPES = ['scent', 'texture', 'visual', 'flavor'] as const;
+export const SENSORY_TYPES = ['scent', 'texture', 'flavor'] as const;
 export type SensoryType = (typeof SENSORY_TYPES)[number];
 
 export const createDetailEntry = (): DetailFormEntry => ({
@@ -302,6 +304,7 @@ export const createInitialState = (): FormState => ({
   summary: '',
   backstory: '',
   tags: '',
+  profilePic: '',
   personality: '',
   personalityMap: createPersonalityFormState(),
   appearance: '',

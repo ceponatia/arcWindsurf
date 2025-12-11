@@ -1,5 +1,6 @@
 import { getErrorMessage, safeJson, safeText } from '@minimal-rpg/utils';
-import type { ChatRole, LlmGenerationOptions, LlmResponse, ApiError } from '../types.js';
+import type { ApiError, ChatRole } from '../types.js';
+import type { LlmGenerationOptions, LlmResponse } from './types.js';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

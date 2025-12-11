@@ -4,6 +4,7 @@ import { createSession, deleteSession } from '../../shared/api/client.js';
 import { useSessions } from '../../shared/hooks/useSessions.js';
 import { useSettings } from '../../shared/hooks/useSettings.js';
 import { useCharacters } from '../../shared/hooks/useCharacters.js';
+import { usePersonas } from '../../shared/hooks/usePersonas.js';
 import type { AppControllerValue, ViewMode } from '../../types.js';
 
 function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
@@ -38,10 +39,18 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
       builderId: new URLSearchParams(query).get('id'),
     };
   }
+  if (hash.startsWith('#/persona-builder')) {
+    const query = hash.split('?')[1];
+    return {
+      viewMode: 'persona-builder',
+      builderId: new URLSearchParams(query).get('id'),
+    };
+  }
   if (hash.startsWith('#/characters')) return { viewMode: 'character-library', builderId: null };
   if (hash.startsWith('#/settings')) return { viewMode: 'setting-library', builderId: null };
   if (hash.startsWith('#/tags')) return { viewMode: 'tag-library', builderId: null };
   if (hash.startsWith('#/items')) return { viewMode: 'item-library', builderId: null };
+  if (hash.startsWith('#/personas')) return { viewMode: 'persona-library', builderId: null };
   if (hash.startsWith('#/session-builder')) return { viewMode: 'session-builder', builderId: null };
   if (hash.startsWith('#/sessions')) return { viewMode: 'session-library', builderId: null };
   if (hash.startsWith('#/chat')) return { viewMode: 'chat', builderId: null };
@@ -84,6 +93,13 @@ export function useAppController(): AppControllerValue {
     retry: refreshSettings,
   } = useSettings();
 
+  const {
+    loading: personasLoading,
+    error: personasError,
+    data: personasData,
+    retry: refreshPersonas,
+  } = usePersonas();
+
   const sessions = sessionsData ?? [];
   const canStart = !!(selectedCharacterId && selectedSettingId);
 
@@ -120,6 +136,10 @@ export function useAppController(): AppControllerValue {
 
   const navigateToItemLibrary = () => {
     window.location.hash = '#/items';
+  };
+
+  const navigateToPersonaLibrary = () => {
+    window.location.hash = '#/personas';
   };
 
   const navigateToSessionLibrary = () => {
@@ -159,6 +179,14 @@ export function useAppController(): AppControllerValue {
       window.location.hash = `#/item-builder?id=${id}`;
     } else {
       window.location.hash = '#/item-builder';
+    }
+  };
+
+  const navigateToPersonaBuilder = (id?: string | null) => {
+    if (id) {
+      window.location.hash = `#/persona-builder?id=${id}`;
+    } else {
+      window.location.hash = '#/persona-builder';
     }
   };
 
@@ -234,6 +262,10 @@ export function useAppController(): AppControllerValue {
     settingsError,
     settingsData,
     refreshSettings,
+    personasLoading,
+    personasError,
+    personasData,
+    refreshPersonas,
     sessions,
     canStart,
     onStartSession,
@@ -244,10 +276,12 @@ export function useAppController(): AppControllerValue {
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToItemBuilder,
+    navigateToPersonaBuilder,
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
     navigateToItemLibrary,
+    navigateToPersonaLibrary,
     navigateToSessionLibrary,
     navigateToSessionBuilder,
     navigateToHome,

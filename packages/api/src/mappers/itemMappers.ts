@@ -1,5 +1,5 @@
 import type { ItemDefinition } from '@minimal-rpg/schemas';
-import type { ItemSummary, MapItemSummary } from '../types.js';
+import type { ItemSummary, MapItemSummary } from '../data/types.js';
 
 export const mapItemSummary: MapItemSummary = (item: ItemDefinition): ItemSummary => {
   const dto: ItemSummary = {

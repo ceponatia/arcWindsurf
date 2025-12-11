@@ -74,56 +74,68 @@ export async function executeAgentsWithTimeout(
   const successfulAgents: AgentType[] = [];
   const failedAgents: AgentType[] = [];
   const narratives: string[] = [];
+  const allResults: AgentExecutionResult[] = [];
 
   const { agentTimeoutMs, logAgents } = options;
 
-  // Emit start events for all agents
-  for (const agent of agents) {
+  // Phase 1 redesign: Run SensoryAgent first to build structured context
+  const sensoryAgent = agents.find((a) => a.agentType === 'sensory');
+  const otherAgents = agents.filter((a) => a.agentType !== 'sensory');
+
+  let enrichedInput = input;
+
+  if (sensoryAgent) {
     events.push({
       type: 'agent-started',
       timestamp: new Date(),
-      payload: { agentType: agent.agentType },
-      source: agent.agentType,
+      payload: { agentType: sensoryAgent.agentType },
+      source: sensoryAgent.agentType,
     });
 
     if (logAgents) {
-      console.log(`[Governor] Executing agent: ${agent.name} (${agent.agentType})`);
+      console.log(`[Governor] Executing agent: ${sensoryAgent.name} (${sensoryAgent.agentType})`);
     }
-  }
 
-  // Execute all agents in parallel
-  const agentPromises = agents.map((agent) =>
-    executeAgentWithTimeout(agent, input, agentTimeoutMs)
-  );
-
-  const agentResults = await Promise.all(agentPromises);
-
-  // Process results
-  for (let i = 0; i < agents.length; i++) {
-    const agent = agents[i]!;
-    const result = agentResults[i]!;
+    const sensoryResult = await executeAgentWithTimeout(sensoryAgent, input, agentTimeoutMs);
+    allResults.push(sensoryResult);
 
     events.push({
       type: 'agent-completed',
       timestamp: new Date(),
       payload: {
-        agentType: agent.agentType,
-        success: result.success,
-        executionTimeMs: result.executionTimeMs,
+        agentType: sensoryAgent.agentType,
+        success: sensoryResult.success,
+        executionTimeMs: sensoryResult.executionTimeMs,
       },
-      source: agent.agentType,
+      source: sensoryAgent.agentType,
     });
 
-    if (result.success) {
-      successfulAgents.push(agent.agentType);
-      narratives.push(result.output.narrative);
+    if (sensoryResult.success) {
+      successfulAgents.push(sensoryAgent.agentType);
 
-      if (result.output.statePatches) {
-        combinedPatches.push(...result.output.statePatches);
+      // If sensory agent provided structured context, enrich input for other agents
+      if (sensoryResult.output.sensoryContext) {
+        enrichedInput = {
+          ...input,
+          sensoryContext: sensoryResult.output.sensoryContext,
+        };
+
+        if (logAgents) {
+          console.log(`[Governor] Sensory context enriched for downstream agents`);
+        }
       }
 
-      if (result.output.events) {
-        for (const agentEvent of result.output.events) {
+      // Note: sensory agent should return empty narrative in Phase 1
+      if (sensoryResult.output.narrative) {
+        narratives.push(sensoryResult.output.narrative);
+      }
+
+      if (sensoryResult.output.statePatches) {
+        combinedPatches.push(...sensoryResult.output.statePatches);
+      }
+
+      if (sensoryResult.output.events) {
+        for (const agentEvent of sensoryResult.output.events) {
           combinedEvents.push({
             type: 'custom',
             timestamp: new Date(),
@@ -133,12 +145,74 @@ export async function executeAgentsWithTimeout(
         }
       }
     } else {
-      failedAgents.push(agent.agentType);
+      failedAgents.push(sensoryAgent.agentType);
+    }
+  }
+
+  // Execute remaining agents in parallel with enriched input
+  if (otherAgents.length > 0) {
+    for (const agent of otherAgents) {
+      events.push({
+        type: 'agent-started',
+        timestamp: new Date(),
+        payload: { agentType: agent.agentType },
+        source: agent.agentType,
+      });
+
+      if (logAgents) {
+        console.log(`[Governor] Executing agent: ${agent.name} (${agent.agentType})`);
+      }
+    }
+
+    const agentPromises = otherAgents.map((agent) =>
+      executeAgentWithTimeout(agent, enrichedInput, agentTimeoutMs)
+    );
+
+    const agentResults = await Promise.all(agentPromises);
+    allResults.push(...agentResults);
+
+    // Process results
+    for (let i = 0; i < otherAgents.length; i++) {
+      const agent = otherAgents[i]!;
+      const result = agentResults[i]!;
+
+      events.push({
+        type: 'agent-completed',
+        timestamp: new Date(),
+        payload: {
+          agentType: agent.agentType,
+          success: result.success,
+          executionTimeMs: result.executionTimeMs,
+        },
+        source: agent.agentType,
+      });
+
+      if (result.success) {
+        successfulAgents.push(agent.agentType);
+        narratives.push(result.output.narrative);
+
+        if (result.output.statePatches) {
+          combinedPatches.push(...result.output.statePatches);
+        }
+
+        if (result.output.events) {
+          for (const agentEvent of result.output.events) {
+            combinedEvents.push({
+              type: 'custom',
+              timestamp: new Date(),
+              payload: agentEvent.payload,
+              source: agentEvent.source,
+            });
+          }
+        }
+      } else {
+        failedAgents.push(agent.agentType);
+      }
     }
   }
 
   return {
-    agentResults,
+    agentResults: allResults,
     combinedNarrative: narratives.join('\n\n'),
     combinedPatches,
     combinedEvents,

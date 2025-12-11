@@ -81,14 +81,12 @@ function getAvailableRegions(gender?: string): BodyRegion[] {
 const SENSORY_LABELS: Record<SensoryType, string> = {
   scent: 'Scent/Smell',
   texture: 'Texture/Touch',
-  visual: 'Visual/Look',
   flavor: 'Flavor/Taste',
 };
 
 const SENSORY_PLACEHOLDERS: Record<SensoryType, string> = {
   scent: 'e.g., "strong musk, lightly floral" or "lavender shampoo, intensity 0.7"',
   texture: 'e.g., "soft, warm" or "calloused, slightly rough"',
-  visual: 'e.g., "long auburn waves, slight freckles"',
   flavor: 'e.g., "salty, slightly sweet" or "strong metallic, intensity 0.8"',
 };
 
@@ -106,7 +104,7 @@ export const BodySection: React.FC<BodySectionProps> = ({
       <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">
         <div className="flex items-center justify-between">
           <span>Body Sensory Data</span>
-          <span className="text-xs text-slate-500">Per-region scent, texture, visual, flavor</span>
+          <span className="text-xs text-slate-500">Per-region scent, texture, and flavor</span>
         </div>
       </div>
       <div className="p-4 space-y-4">

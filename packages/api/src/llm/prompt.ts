@@ -1,5 +1,6 @@
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import type { BuildPromptOptions, BuildPromptResult, DbMessage } from '../types.js';
+import type { DbMessage } from '../db/types.js';
+import type { BuildPromptOptions, BuildPromptResult } from './types.js';
 import safetyModeJson from './prompts/safety-mode.json' with { type: 'json' };
 import systemPromptJson from './prompts/system-prompt.json' with { type: 'json' };
 import safetyRulesJson from './prompts/safety-rules.json' with { type: 'json' };

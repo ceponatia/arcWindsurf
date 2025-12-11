@@ -13,6 +13,7 @@ This monorepo uses pnpm + Turbo with these packages:
 
 - Read the folder's README.md files for package-specific info.
 - Follow existing code style and patterns.
+- Markdown file code fences require a language tag. If you are not using a language tab (trees or other notes in structured format), use `text`.
 - Each package should have a src/types.ts file for shared types. Use existing types in these files when possible, or add a new type there. Make sure types are STRONGLY typed.
 - After finishing a task, update the root `README.md` with any relevant changes and keep it accurate and concise. Do not remove unrelated information.
 - Put requested developer notes or docs in `/dev-docs`.
@@ -37,6 +38,7 @@ This monorepo uses pnpm + Turbo with these packages:
 ## Developer Workflows
 
 - Install/build all: `pnpm -w install` then `pnpm -w build` (Turbo runs `tsc` into `dist/`).
+- Rebuild docker container when necessary (e.g., after dependency changes, updates to db, migrations, api changes): `docker compose build`.
 - Typecheck + lint: prefer `pnpm -w typecheck` / `pnpm -w lint`.
 
 ## Patterns to Follow

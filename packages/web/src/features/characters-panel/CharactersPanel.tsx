@@ -52,7 +52,7 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
       (() => {
         // no-op refresh handler when none provided
       }),
-    onDeleteRequest: (idToDelete) => {
+    onDeleteRequest: (idToDelete: string) => {
       void handleDelete(idToDelete);
     },
   };
