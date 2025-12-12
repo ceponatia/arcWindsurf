@@ -30,7 +30,133 @@ In the **API layer**, a concrete composition factory `createGovernorForRequest` 
 
 The current Governor behavior supports LLM-based intent detection, optional agent routing, and a deterministic fallback narrative. If no agents are registered in the `AgentRegistry` (the current default), the Governor generates a simple branch based on the detected intent type (for example, move/look/talk/wait) instead of invoking domain-specific agents.
 
-## 2. High-level Turn Flow (Natural Language + Time)
+## 2. Tool Calling Integration
+
+> **Status**: Phases 1-3 COMPLETE, Phases 4-6 PENDING (see [24-tool-calling-integration-plan.md](24-tool-calling-integration-plan.md))
+
+The Governor now supports LLM tool calling via OpenRouter + DeepSeek. Instead of relying solely on rule-based intent detection and agent routing, the LLM can directly invoke structured tools to gather information and perform actions.
+
+### 2.1 Architecture Overview
+
+```text
+Player Input
+     │
+     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    TURN HANDLER                             │
+│  ┌─────────────────┐    ┌─────────────────────────────────┐ │
+│  │ Classic Handler │ OR │ Tool-Based Turn Handler         │ │
+│  │ (intent detect) │    │ (LLM + tool calls)              │ │
+│  └─────────────────┘    └─────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    TOOL EXECUTOR                            │
+│  Dispatches tool calls to appropriate handlers:             │
+│  • get_sensory_detail → SensoryAgent                        │
+│  • npc_dialogue → NpcAgent                                  │
+│  • update_proximity → ProximityManager                      │
+│  • navigate_player → (future)                               │
+│  • examine_object → (future)                                │
+└─────────────────────────────────────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    STATE MANAGER                            │
+│  Collects statePatches from tool results                    │
+│  Applies patches at turn end                                │
+│  Persists updated overrides                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Available Tools
+
+The following tools are defined in `@minimal-rpg/governor`:
+
+| Tool                  | Status         | Purpose                                                                 |
+| --------------------- | -------------- | ----------------------------------------------------------------------- |
+| `get_sensory_detail`  | ✅ Implemented | Retrieve sensory information (smell, touch, taste) about NPC body parts |
+| `npc_dialogue`        | ✅ Implemented | Generate in-character NPC dialogue responses                            |
+| `update_proximity`    | ✅ Implemented | Update physical/sensory proximity between player and NPCs               |
+| `navigate_player`     | 🔧 Defined     | Move player to a new location                                           |
+| `examine_object`      | 🔧 Defined     | Get details about objects in the environment                            |
+| `use_item`            | 🔧 Defined     | Use an inventory item                                                   |
+| `get_npc_memory`      | 🔧 Defined     | Retrieve what an NPC remembers about the player                         |
+| `update_relationship` | 🔧 Defined     | Modify relationship stats between player and NPC                        |
+
+Tool definitions live in [packages/governor/src/tools/definitions.ts](../packages/governor/src/tools/definitions.ts).
+
+### 2.3 Turn Handler Modes
+
+The API supports three turn handler modes via the `TURN_HANDLER` environment variable:
+
+- **`classic`** (default): Uses intent detection → agent routing flow
+- **`tool-calling`**: Uses LLM tool calls exclusively
+- **`hybrid`**: Attempts tool-calling first, falls back to classic on failure
+
+### 2.4 Tool Execution Flow
+
+When using tool-calling mode:
+
+1. **System prompt construction**: Includes state context, available tools, and player input
+2. **LLM invocation**: OpenRouter calls DeepSeek with tool definitions
+3. **Tool call loop**: For each tool call in the response:
+   - `ToolExecutor` dispatches to the appropriate handler
+   - Handler returns `ToolResult` with optional `statePatches`
+   - Results are fed back to LLM for next iteration
+4. **Final response**: LLM generates narrative incorporating tool results
+5. **State persistence**: All `statePatches` are applied via StateManager
+
+### 2.5 State Patches from Tools
+
+Tools can return state patches that are applied at turn end:
+
+```typescript
+interface ToolResult {
+  success: boolean;
+  error?: string;
+  statePatches?: {
+    [sliceKey: string]: Operation[]; // JSON Patch operations
+  };
+  // Tool-specific data for narrative generation
+  [key: string]: unknown;
+}
+```
+
+Example: `get_sensory_detail` returns proximity updates:
+
+```typescript
+{
+  success: true,
+  narrative_hints: ['her hair smells faintly of lavender...'],
+  statePatches: {
+    proximity: [{
+      op: 'add',
+      path: '/engagements/taylor:hair:smell',
+      value: { npcId: 'taylor', bodyPart: 'hair', senseType: 'smell', intensity: 'focused' }
+    }]
+  }
+}
+```
+
+### 2.6 Integration Points
+
+- **API layer**: `POST /sessions/:id/turns` uses `TURN_HANDLER` env to select handler
+- **Composition**: `createGovernorForRequest` wires up `ToolExecutor` with dependencies
+- **OpenRouter adapter**: `chatWithOpenRouterTools()` in `@minimal-rpg/api` handles tool-enabled calls
+
+### 2.7 Pending Work
+
+Per [24-tool-calling-integration-plan.md](24-tool-calling-integration-plan.md):
+
+- **Phase 4**: Make tool-based handler the primary path
+- **Phase 5**: Integrate remaining tools (navigation, items, relationships)
+- **Phase 6**: Remove classic handler, full tool-calling rollout
+
+---
+
+## 3. High-level Turn Flow (Natural Language + Time)
 
 The intended per-turn flow for the Governor is **natural-language-first** and **time-aware**. A turn is not a special syntax like `go north`; it is a point where the system:
 
@@ -83,7 +209,7 @@ In addition to turns initiated by player input, the Governor (or a closely relat
 
 By contrast, when characters are initially **created or updated** in the builder UI, parsing is initiated directly from the character builder page and is **not turn-based**. The turn system only comes into play once a session is running and the player is sending freeform chat to advance time and state.
 
-## 3. Governor Configuration and Dependencies
+## 4. Governor Configuration and Dependencies
 
 The Governor is instantiated with a `GovernorConfig` object. In production, `createGovernorForRequest` wires this up as follows (see [packages/api/src/governor/composition.ts](packages/api/src/governor/composition.ts)):
 
@@ -105,7 +231,7 @@ Key points about this configuration:
 - LLM configuration is isolated to the API’s OpenRouter adapter; the Governor only sees an abstract `IntentDetector`.
 - Retrieval and agents are optional: if either is omitted, the Governor still produces a coherent intent-based fallback narrative.
 
-## 4. Interaction with the State Manager
+## 5. Interaction with the State Manager
 
 The State Manager lives in the @minimal-rpg/state-manager package and encapsulates all logic for managing baseline templates, per-session overrides, and effective state computation.
 
@@ -124,7 +250,7 @@ Important design constraints:
 - All mutations go through StateManager; the Governor should never bypass it and touch DB clients directly.
 - StateManager is responsible for reconciling immutable templates with mutable per-session overrides, and for any JSON patch application.
 
-## 5. Specialized Agents (Conceptual)
+## 6. Specialized Agents (Conceptual)
 
 The Governor is designed to orchestrate one or more specialized agents, but these agents are not yet implemented as concrete classes in the codebase. Instead, the design is informed by earlier architecture docs and the high-level responsibilities already referenced in packages/governor/README.md.
 
@@ -146,14 +272,14 @@ Each agent is expected to:
 - Receive:
   - A slice of effective state relevant to its domain (e.g., current location, nearby entities, character profile).
   - The normalized player intent and raw input.
-  - Optional retrieved knowledge/context (see Section 6).
+  - Optional retrieved knowledge/context (see Section 7).
 - Return:
   - Narrative output (what the player sees or hears).
   - Structured state changes (e.g., JSON patches or higher-level operations) that can be fed into StateManager.
 
 The exact TypeScript interfaces for these agents are still evolving and are not yet part of the codebase.
 
-## 6. Context Retrieval and Embeddings (Future)
+## 7. Context Retrieval and Embeddings (Future)
 
 Earlier design documents describe a knowledge-node and vector-based retrieval system where character and setting profiles are decomposed into nodes, embedded, and retrieved via pgvector. The current implementation splits this into two layers:
 
@@ -171,7 +297,7 @@ Because the DB-backed retrieval layer is still in flux, details like table names
 
 In the meantime, the in-memory service provides a convenient seam for experimentation and for unit tests that want to validate how agents behave when `knowledgeContext` is populated.
 
-## 7. Error Handling and Observability
+## 8. Error Handling and Observability
 
 Planned responsibilities for the Governor around robustness include:
 
@@ -188,7 +314,7 @@ Planned responsibilities for the Governor around robustness include:
 
 The current scaffold only logs a single console line when handleTurn is called; richer observability will be added as the orchestration logic is implemented.
 
-## 8. Open Questions and TBDs
+## 9. Open Questions and TBDs
 
 The following aspects are intentionally left as TBD because they are not yet implemented or are still being designed:
 
@@ -215,7 +341,7 @@ The following aspects are intentionally left as TBD because they are not yet imp
 
 These items should be updated once corresponding implementations land in the codebase.
 
-## 9. Quickstart: Governor-Driven Turn
+## 10. Quickstart: Governor-Driven Turn
 
 This section describes how to run a Governor-backed turn both via HTTP and from the web UI.
 

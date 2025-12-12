@@ -68,6 +68,9 @@ export interface ToolTurnHandlerConfig {
   /** Request timeout in milliseconds */
   timeoutMs?: number;
 
+  /** Additional tool definitions to include alongside core tools */
+  additionalTools?: ToolDefinition[];
+
   /** Enable debug logging */
   debug?: boolean;
 }
@@ -110,6 +113,7 @@ export class ToolBasedTurnHandler {
   private readonly currentTurn: number;
   private readonly maxToolIterations: number;
   private readonly timeoutMs: number;
+  private readonly additionalTools: ToolDefinition[];
   private readonly debug: boolean;
 
   constructor(config: ToolTurnHandlerConfig) {
@@ -123,6 +127,7 @@ export class ToolBasedTurnHandler {
     this.currentTurn = config.currentTurn ?? 1;
     this.maxToolIterations = config.maxToolIterations ?? 5;
     this.timeoutMs = config.timeoutMs ?? 60000;
+    this.additionalTools = config.additionalTools ?? [];
     this.debug = config.debug ?? false;
   }
 
@@ -150,7 +155,7 @@ export class ToolBasedTurnHandler {
       // 1. Build initial messages with system prompt
       const contextStart = Date.now();
       const messages = this.buildInitialMessages(input);
-      const tools = getActiveTools();
+      const tools = [...getActiveTools(), ...this.additionalTools];
       phaseTiming.contextRetrievalMs = Date.now() - contextStart;
 
       // 2. Call LLM with tools

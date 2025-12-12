@@ -74,6 +74,16 @@ interface UpdateProximityToolArgs {
 }
 
 // =============================================================================
+// Fallback Handler Type
+// =============================================================================
+
+/**
+ * A fallback handler for tools not handled by the main executor.
+ * Returns null if the tool is not recognized, allowing chaining.
+ */
+export type FallbackToolHandler = (toolCall: ToolCall) => Promise<ToolResult | null>;
+
+// =============================================================================
 // Executor Configuration
 // =============================================================================
 
@@ -95,6 +105,12 @@ export interface ToolExecutorConfig {
 
   /** Current turn number (for proximity engagement timestamps) */
   currentTurn?: number;
+
+  /**
+   * Optional fallback handler for tools not handled by this executor.
+   * Called before returning "Unknown tool" error.
+   */
+  fallbackHandler?: FallbackToolHandler;
 }
 
 // =============================================================================
@@ -114,6 +130,7 @@ export class ToolExecutor {
   private readonly stateSlices: AgentStateSlices;
   private readonly proximityState: ProximityState;
   private readonly currentTurn: number;
+  private readonly fallbackHandler?: FallbackToolHandler;
 
   constructor(config: ToolExecutorConfig) {
     this.sensoryAgent = config.sensoryAgent;
@@ -122,6 +139,9 @@ export class ToolExecutor {
     this.stateSlices = config.stateSlices;
     this.proximityState = config.proximityState ?? createDefaultProximityState();
     this.currentTurn = config.currentTurn ?? 1;
+    if (config.fallbackHandler) {
+      this.fallbackHandler = config.fallbackHandler;
+    }
   }
 
   /**
@@ -165,11 +185,19 @@ export class ToolExecutor {
       case 'update_relationship':
         return this.executeUpdateRelationship(args as UpdateRelationshipToolArgs);
 
-      default:
+      default: {
+        // Try fallback handler before returning unknown error
+        if (this.fallbackHandler) {
+          const fallbackResult = await this.fallbackHandler(toolCall);
+          if (fallbackResult !== null) {
+            return fallbackResult;
+          }
+        }
         return {
           success: false,
           error: `Unknown tool: ${toolCall.function.name}`,
         };
+      }
     }
   }
 

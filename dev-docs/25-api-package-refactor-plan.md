@@ -442,15 +442,15 @@ Split the monolithic types.ts file.
 
 Break up monolithic route files.
 
-- [ ] **3.1** Create `src/routes/sessions/` directory
-- [ ] **3.2** Extract session list handler to `sessions/list-sessions.ts`
-- [ ] **3.3** Extract session CRUD to `sessions/session-crud.ts`
-- [ ] **3.4** Extract message handlers to `sessions/session-messages.ts`
-- [ ] **3.5** Extract NPC handlers to `sessions/session-npcs.ts`
-- [ ] **3.6** Extract effective profiles to `sessions/session-effective.ts`
-- [ ] **3.7** Create `sessions/index.ts` that registers all routes
-- [ ] **3.8** Fix duplicate persona routes (remove from profiles.ts)
-- [ ] **3.9** Refactor `profiles.ts` to use extracted utilities
+- [x] **3.1** Create `src/routes/sessions/` directory
+- [x] **3.2** Extract session list handler to `sessions/list-sessions.ts`
+- [x] **3.3** Extract session CRUD to `sessions/session-crud.ts`
+- [x] **3.4** Extract message handlers to `sessions/session-messages.ts`
+- [x] **3.5** Extract NPC handlers to `sessions/session-npcs.ts`
+- [x] **3.6** Extract effective profiles to `sessions/session-effective.ts`
+- [x] **3.7** Create `sessions/index.ts` that registers all routes
+- [x] **3.8** Fix duplicate persona routes (remove from profiles.ts)
+- [x] **3.9** Refactor `profiles.ts` to use extracted utilities
 
 ### Phase 4: Turns Route Refactor
 
@@ -466,25 +466,25 @@ Clean up the complex turns handler.
 
 Split prompt building from LLM interaction.
 
-- [ ] **5.1** Create `src/llm/types.ts` for LLM-specific internal types
-- [ ] **5.2** Create `src/llm/prompts/serializers.ts` for character/setting serialization
-- [ ] **5.3** Create `src/llm/prompts/summarizers.ts` for history summarization
-- [ ] **5.4** Create `src/llm/prompts/filters.ts` for content filtering
-- [ ] **5.5** Simplify `prompt.ts` to use extracted modules
-- [ ] **5.6** Move `buildProviderOptions` from `providerUtils.ts` to appropriate location
+- [x] **5.1** Create `src/llm/types.ts` for LLM-specific internal types
+- [x] **5.2** Create `src/llm/prompts/serializers.ts` for character/setting serialization
+- [x] **5.3** Create `src/llm/prompts/summarizers.ts` for history summarization
+- [x] **5.4** Create `src/llm/prompts/filters.ts` for content filtering
+- [x] **5.5** Simplify `prompt.ts` to use extracted modules
+- [x] **5.6** Move `buildProviderOptions` from `providerUtils.ts` to appropriate location
 
 ### Phase 6: Tool-Calling Enhancements
 
 Add new tools for enhanced LLM capabilities.
 
-- [ ] **6.1** Create `src/llm/tools/` directory structure
-- [ ] **6.2** Create `src/llm/tools/definitions.ts` for API-specific tools
-- [ ] **6.3** Implement `get_session_tags` tool
-- [ ] **6.4** Implement `get_session_persona` tool
-- [ ] **6.5** Implement `query_npc_list` tool
-- [ ] **6.6** Implement `get_npc_transcript` tool (uses existing getNpcMessages)
-- [ ] **6.7** Create tool schemas in `@minimal-rpg/schemas`
-- [ ] **6.8** Wire new tools into governor's ToolExecutor
+- [x] **6.1** Create `src/llm/tools/` directory structure
+- [x] **6.2** Create `src/llm/tools/definitions.ts` for API-specific tools
+- [x] **6.3** Implement `get_session_tags` tool
+- [x] **6.4** Implement `get_session_persona` tool
+- [x] **6.5** Implement `query_npc_list` tool
+- [x] **6.6** Implement `get_npc_transcript` tool (uses existing getNpcMessages)
+- [x] **6.7** ~~Create tool schemas in `@minimal-rpg/schemas`~~ — Skipped: tool types live in governor; schemas package is Zod-only
+- [x] **6.8** Wire new tools into governor's ToolExecutor
 - [ ] **6.9** Add environment/time tools (Priority 2)
 - [ ] **6.10** Add character state tools (Priority 2)
 

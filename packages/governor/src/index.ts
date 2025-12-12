@@ -101,6 +101,7 @@ export {
   ToolExecutor,
   createToolExecutor,
   type ToolExecutorConfig,
+  type FallbackToolHandler,
 } from './tools/index.js';
 
 // Proximity State Management

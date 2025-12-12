@@ -208,6 +208,13 @@ Player character profiles with identity and appearance (no personality fields si
 
 See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md) for architecture details.
 
+**Brainstorm documents** (status: design/research):
+
+- [26-time-system.md](dev-docs/26-time-system.md) – Game time tracking and configuration
+- [27-npc-schedules-and-routines.md](dev-docs/27-npc-schedules-and-routines.md) – Background NPC behavior
+- [28-affinity-and-relationship-dynamics.md](dev-docs/28-affinity-and-relationship-dynamics.md) – Multi-dimensional relationship tracking
+- [29-time-triggered-behaviors.md](dev-docs/29-time-triggered-behaviors.md) – Time-aware NPC responses
+
 ---
 
 ## 7. Configuration

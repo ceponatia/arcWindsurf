@@ -118,6 +118,31 @@ export type GenerateWithOpenRouterFn = (
   options?: LlmGenerationOptions
 ) => Promise<LlmResponse | ApiError>;
 
+// =============================================================================
+// Provider Utilities
+// =============================================================================
+
+/**
+ * Build provider options object, excluding undefined values.
+ * This ensures we only send non-undefined values to the LLM provider.
+ */
+export function buildProviderOptions(opts?: LlmGenerationOptions): {
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+} {
+  if (!opts) return {};
+  const out: { temperature?: number; top_p?: number; max_tokens?: number } = {};
+  if (opts.temperature !== undefined) out.temperature = opts.temperature;
+  if (opts.top_p !== undefined) out.top_p = opts.top_p;
+  if (opts.max_tokens !== undefined) out.max_tokens = opts.max_tokens;
+  return out;
+}
+
+// =============================================================================
+// Prompt Building
+// =============================================================================
+
 // Prompt building
 export interface BuildPromptOptions {
   character: CharacterProfile;

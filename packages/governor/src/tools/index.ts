@@ -38,4 +38,9 @@ export {
 } from './definitions.js';
 
 // Tool Executor
-export { ToolExecutor, createToolExecutor, type ToolExecutorConfig } from './executor.js';
+export {
+  ToolExecutor,
+  createToolExecutor,
+  type ToolExecutorConfig,
+  type FallbackToolHandler,
+} from './executor.js';

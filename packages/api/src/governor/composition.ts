@@ -10,6 +10,7 @@ import {
   createToolBasedTurnHandler,
   type ToolTurnHandlerConfig,
   ToolExecutor,
+  type FallbackToolHandler,
 } from '@minimal-rpg/governor';
 import { StateManager, DEFAULT_STATE_MANAGER_CONFIG } from '@minimal-rpg/state-manager';
 import {
@@ -27,6 +28,7 @@ import { InMemoryRetrievalService } from '@minimal-rpg/retrieval';
 import { generateWithOpenRouter, chatWithOpenRouterTools } from '../llm/openrouter.js';
 import { getConfig } from '../util/config.js';
 import { getNpcMessages } from '../db/sessionsClient.js';
+import { createSessionToolHandler, getSessionTools } from '../llm/tools/index.js';
 
 // Simple process-local singletons for now; can be replaced with
 // request-scoped or DI-driven instances later if needed.
@@ -241,11 +243,16 @@ function createToolTurnHandler(
     return undefined;
   }
 
+  // Create session tool handler as fallback for session-focused tools
+  const sessionToolHandler = createSessionToolHandler({ sessionId });
+  const fallbackHandler: FallbackToolHandler = (toolCall) => sessionToolHandler.execute(toolCall);
+
   const toolExecutor = new ToolExecutor({
     sensoryAgent,
     npcAgent,
     sessionId,
     stateSlices,
+    fallbackHandler,
   });
 
   const config: ToolTurnHandlerConfig = {
@@ -257,6 +264,7 @@ function createToolTurnHandler(
     toolExecutor,
     sessionId,
     stateSlices,
+    additionalTools: getSessionTools(),
     debug: cfg.governorDevMode,
   };
 
