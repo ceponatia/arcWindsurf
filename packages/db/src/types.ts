@@ -350,3 +350,24 @@ export interface LocationOccupancyCacheRow extends DbRow {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+// =============================================================================
+// NPC Hygiene State Types
+// =============================================================================
+
+/**
+ * Row type for npc_hygiene_state table.
+ * Tracks hygiene decay per body part for NPCs.
+ */
+export interface NpcHygieneStateRow extends DbRow {
+  id: string;
+  sessionId: string;
+  npcId: string;
+  bodyPart: string;
+  /** Accumulated decay points */
+  points: number;
+  /** Computed hygiene level 0-4 */
+  level: number;
+  lastUpdatedAt?: Date;
+  createdAt?: Date;
+}

@@ -11,6 +11,7 @@ import type {
   ItemDefinitionRow,
   ItemInstanceRow,
   MessageRow,
+  NpcHygieneStateRow,
   PgClientLike,
   PgPoolStrict,
   PersonaRow,
@@ -771,6 +772,126 @@ export const db = {
     },
     async delete(args: { where: { sessionId: string } }): Promise<void> {
       await query('DELETE FROM session_personas WHERE session_id = $1', [args.where.sessionId]);
+    },
+  },
+
+  npcHygieneState: {
+    async findMany(args?: {
+      where?: { sessionId?: string; npcId?: string; bodyPart?: string };
+    }): Promise<NpcHygieneStateRow[]> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.sessionId) {
+        params.push(args.where.sessionId);
+        clauses.push(`session_id = $${params.length}`);
+      }
+      if (args?.where?.npcId) {
+        params.push(args.where.npcId);
+        clauses.push(`npc_id = $${params.length}`);
+      }
+      if (args?.where?.bodyPart) {
+        params.push(args.where.bodyPart);
+        clauses.push(`body_part = $${params.length}`);
+      }
+
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const { rows } = await query(
+        `SELECT * FROM npc_hygiene_state ${where} ORDER BY body_part ASC`,
+        params
+      );
+      return rows.map((r) => camelizeRow<NpcHygieneStateRow>(r));
+    },
+    async findUnique(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+    }): Promise<NpcHygieneStateRow | null> {
+      const { sessionId, npcId, bodyPart } = args.where.sessionId_npcId_bodyPart;
+      const { rows } = await query(
+        'SELECT * FROM npc_hygiene_state WHERE session_id = $1 AND npc_id = $2 AND body_part = $3 LIMIT 1',
+        [sessionId, npcId, bodyPart]
+      );
+      return rows[0] ? camelizeRow<NpcHygieneStateRow>(rows[0]) : null;
+    },
+    async upsert(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+      create: {
+        sessionId: string;
+        npcId: string;
+        bodyPart: string;
+        points: number;
+        level: number;
+        lastUpdatedAt?: Date;
+      };
+      update: { points?: number; level?: number; lastUpdatedAt?: Date };
+    }): Promise<NpcHygieneStateRow> {
+      const { sessionId, npcId, bodyPart } = args.where.sessionId_npcId_bodyPart;
+      const { points, level, lastUpdatedAt } = args.create;
+      const { rows } = await query(
+        `INSERT INTO npc_hygiene_state (session_id, npc_id, body_part, points, level, last_updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (session_id, npc_id, body_part) DO UPDATE SET
+           points = COALESCE($7, npc_hygiene_state.points),
+           level = COALESCE($8, npc_hygiene_state.level),
+           last_updated_at = COALESCE($9, npc_hygiene_state.last_updated_at)
+         RETURNING *`,
+        [
+          sessionId,
+          npcId,
+          bodyPart,
+          points,
+          level,
+          lastUpdatedAt ?? new Date(),
+          args.update.points ?? null,
+          args.update.level ?? null,
+          args.update.lastUpdatedAt ?? null,
+        ]
+      );
+      return camelizeRow<NpcHygieneStateRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+      data: { points?: number; level?: number; lastUpdatedAt?: Date };
+    }): Promise<NpcHygieneStateRow> {
+      const { sessionId, npcId, bodyPart } = args.where.sessionId_npcId_bodyPart;
+      const { points, level, lastUpdatedAt } = args.data;
+      const { rows } = await query(
+        `UPDATE npc_hygiene_state SET
+           points = COALESCE($4, points),
+           level = COALESCE($5, level),
+           last_updated_at = COALESCE($6, last_updated_at)
+         WHERE session_id = $1 AND npc_id = $2 AND body_part = $3
+         RETURNING *`,
+        [sessionId, npcId, bodyPart, points ?? null, level ?? null, lastUpdatedAt ?? null]
+      );
+      return camelizeRow<NpcHygieneStateRow>(rows[0]!);
+    },
+    async delete(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+    }): Promise<void> {
+      const { sessionId, npcId, bodyPart } = args.where.sessionId_npcId_bodyPart;
+      await query(
+        'DELETE FROM npc_hygiene_state WHERE session_id = $1 AND npc_id = $2 AND body_part = $3',
+        [sessionId, npcId, bodyPart]
+      );
+    },
+    async deleteMany(args?: { where?: { sessionId?: string; npcId?: string } }): Promise<void> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.sessionId) {
+        params.push(args.where.sessionId);
+        clauses.push(`session_id = $${params.length}`);
+      }
+      if (args?.where?.npcId) {
+        params.push(args.where.npcId);
+        clauses.push(`npc_id = $${params.length}`);
+      }
+
+      if (clauses.length > 0) {
+        await query(`DELETE FROM npc_hygiene_state WHERE ${clauses.join(' AND ')}`, params);
+      } else {
+        await query('TRUNCATE TABLE npc_hygiene_state');
+      }
     },
   },
 };

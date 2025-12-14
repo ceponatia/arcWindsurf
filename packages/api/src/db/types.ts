@@ -153,6 +153,18 @@ export interface SessionPersonaRow {
   updatedAt?: string | Date | null;
 }
 
+// NPC hygiene state row
+export interface NpcHygieneStateRow {
+  id: string;
+  sessionId: string;
+  npcId: string;
+  bodyPart: string;
+  points: number;
+  level: number;
+  lastUpdatedAt?: Date | null;
+  createdAt?: Date | null;
+}
+
 export interface ProfileTable<T extends ProfileRow> {
   findMany(): Promise<T[]>;
   findUnique(args: { where: { id: string } }): Promise<T | null>;
@@ -293,6 +305,34 @@ export interface PrismaClientLike {
       data: { profileJson?: string; overridesJson?: string; updatedAt?: string };
     }): Promise<SessionPersonaRow | null>;
     delete(args: { where: { sessionId: string } }): Promise<void>;
+  };
+  npcHygieneState: {
+    findMany(args?: {
+      where?: { sessionId?: string; npcId?: string; bodyPart?: string };
+    }): Promise<NpcHygieneStateRow[]>;
+    findUnique(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+    }): Promise<NpcHygieneStateRow | null>;
+    upsert(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+      create: {
+        sessionId: string;
+        npcId: string;
+        bodyPart: string;
+        points: number;
+        level: number;
+        lastUpdatedAt?: Date;
+      };
+      update: { points?: number; level?: number; lastUpdatedAt?: Date };
+    }): Promise<NpcHygieneStateRow>;
+    update(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+      data: { points?: number; level?: number; lastUpdatedAt?: Date };
+    }): Promise<NpcHygieneStateRow>;
+    delete(args: {
+      where: { sessionId_npcId_bodyPart: { sessionId: string; npcId: string; bodyPart: string } };
+    }): Promise<void>;
+    deleteMany(args?: { where?: { sessionId?: string; npcId?: string } }): Promise<void>;
   };
 }
 

@@ -441,6 +441,114 @@ export const UPDATE_RELATIONSHIP_TOOL: ToolDefinition = {
 };
 
 // =============================================================================
+// PRIORITY 6: Hygiene & Sensory System Tools
+// =============================================================================
+
+/**
+ * Update NPC hygiene tool - tracks hygiene decay for NPCs.
+ * Called after activity-based turns to accumulate decay points.
+ *
+ * STATUS: IMPLEMENTED - Uses hygiene state system
+ * @see dev-docs/planning/opus-refactor.md Phase 5
+ */
+export const UPDATE_NPC_HYGIENE_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'update_npc_hygiene',
+    description:
+      "Update an NPC's hygiene state based on their recent activity. Use this after " +
+      'narrative events that would affect body cleanliness (physical exertion, sweating, ' +
+      'environmental exposure, bathing). This affects sensory descriptions.',
+    parameters: {
+      type: 'object',
+      properties: {
+        npc_id: {
+          type: 'string',
+          description: 'The NPC whose hygiene to update',
+        },
+        activity: {
+          type: 'string',
+          enum: ['idle', 'walking', 'running', 'labor', 'combat'],
+          description:
+            "Activity level that affects decay rate. 'idle' (resting), 'walking' (normal movement), " +
+            "'running' (fast movement/light exercise), 'labor' (physical work), 'combat' (fighting/intense exertion)",
+        },
+        turns_elapsed: {
+          type: 'number',
+          description: 'Number of turns since last hygiene update (default: 1)',
+        },
+        footwear: {
+          type: 'string',
+          enum: [
+            'barefoot',
+            'sandals',
+            'shoes_with_socks',
+            'shoes_no_socks',
+            'boots_heavy',
+            'boots_sealed',
+          ],
+          description:
+            "Current footwear, affects feet hygiene decay. 'barefoot' (minimal decay), " +
+            "'sandals' (low decay), 'shoes_with_socks' (normal), 'shoes_no_socks' (high), " +
+            "'boots_heavy' (high), 'boots_sealed' (very high)",
+        },
+        environment: {
+          type: 'string',
+          enum: ['dry', 'humid', 'rain', 'swimming'],
+          description:
+            "Environmental conditions. 'dry' (reduced decay), 'humid' (increased decay), " +
+            "'rain' (slight cleaning), 'swimming' (full cleaning effect)",
+        },
+        cleaned_parts: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            "Body parts that were cleaned during this turn (e.g., ['hands', 'face'] if washing)",
+        },
+      },
+      required: ['npc_id', 'activity'],
+    },
+  },
+};
+
+/**
+ * Get sensory modifier tool - retrieves hygiene-based sensory description modifiers.
+ * Used to enrich sensory descriptions with hygiene state.
+ *
+ * STATUS: IMPLEMENTED - Uses hygiene state system
+ */
+export const GET_HYGIENE_SENSORY_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'get_hygiene_sensory',
+    description:
+      "Get sensory description modifiers based on an NPC's hygiene state. Use this " +
+      'when generating smell, touch, or taste descriptions to add realism based on ' +
+      'accumulated body state.',
+    parameters: {
+      type: 'object',
+      properties: {
+        npc_id: {
+          type: 'string',
+          description: 'The NPC to get hygiene modifiers for',
+        },
+        body_part: {
+          type: 'string',
+          description:
+            'Specific body part (e.g., feet, armpits, hair, torso, neck, hands, legs)',
+        },
+        sense_type: {
+          type: 'string',
+          enum: ['smell', 'touch', 'taste'],
+          description: 'Type of sensory perception to get modifier for',
+        },
+      },
+      required: ['npc_id', 'body_part', 'sense_type'],
+    },
+  },
+};
+
+// =============================================================================
 // Tool Collections
 // =============================================================================
 
@@ -466,6 +574,9 @@ export const TIME_TOOLS: ToolDefinition[] = [ADVANCE_TIME_TOOL];
 /** Priority 5 tools - future implementation */
 export const RELATIONSHIP_TOOLS: ToolDefinition[] = [GET_NPC_MEMORY_TOOL, UPDATE_RELATIONSHIP_TOOL];
 
+/** Priority 6 tools - hygiene and sensory system */
+export const HYGIENE_TOOLS: ToolDefinition[] = [UPDATE_NPC_HYGIENE_TOOL, GET_HYGIENE_SENSORY_TOOL];
+
 /** All game tools - use for full tool-calling mode */
 export const ALL_GAME_TOOLS: ToolDefinition[] = [
   ...CORE_TOOLS,
@@ -474,6 +585,7 @@ export const ALL_GAME_TOOLS: ToolDefinition[] = [
   ...INVENTORY_TOOLS,
   ...TIME_TOOLS,
   ...RELATIONSHIP_TOOLS,
+  ...HYGIENE_TOOLS,
 ];
 
 /**
