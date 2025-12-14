@@ -5,7 +5,7 @@
 -- Stores hygiene state for each body part per NPC in a session
 CREATE TABLE IF NOT EXISTS npc_hygiene_state (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES user_sessions(id) ON DELETE CASCADE,
     npc_id TEXT NOT NULL,
     body_part TEXT NOT NULL,
     points REAL NOT NULL DEFAULT 0,

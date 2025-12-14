@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_schedule_templates_is_system ON schedule_template
 -- NPC schedule instances - resolved schedules for specific NPCs in sessions
 CREATE TABLE IF NOT EXISTS npc_schedules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES user_sessions(id) ON DELETE CASCADE,
     npc_id VARCHAR(100) NOT NULL,
     -- Optional reference to the template used to generate this schedule
     template_id UUID REFERENCES schedule_templates(id) ON DELETE SET NULL,

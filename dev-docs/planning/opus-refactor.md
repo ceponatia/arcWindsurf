@@ -868,7 +868,7 @@ From any entity page, show "Where is this used?":
 
 - [x] Unit tests for workspace state management (26 tests in web package)
 - [x] Integration tests for transactional session creation (39 tests in API package)
-- [ ] E2E tests for complete session creation flow (deferred - requires Playwright setup)
+- [x] E2E tests for complete session creation flow (validated with Playwright)
 - [ ] User testing of new flow (manual testing milestone)
 - [ ] Performance profiling and optimization (defer until user testing identifies bottlenecks)
 
@@ -877,7 +877,17 @@ From any entity page, show "Where is this used?":
 - `pnpm test` runs all tests across monorepo via turbo
 - Web package: vitest + @testing-library/react for component/store testing
 - API package: vitest for schema validation and business logic testing
+- E2E: Manual Playwright testing validated full flow (character/setting creation → session builder → chat)
 - Pre-existing sensory-agent tests have 13 failures (unrelated to this refactor)
+
+**E2E Test Flow Validated**:
+
+1. Navigate to Characters → Create character (ID, name, gender, summary, backstory, traits)
+2. Navigate to Settings → Create setting (ID, name, themes, lore)
+3. Navigate to Sessions → New Session
+4. Select character and setting from session builder
+5. Click "Start Session" → redirects to chat interface
+6. Verify NPC selector shows created character
 
 ### 7.4 Future Work (Not in this plan)
 
