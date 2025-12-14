@@ -866,11 +866,18 @@ From any entity page, show "Where is this used?":
 
 ### 7.3 Testing & Validation
 
-- [x] Unit tests for workspace state management
-- [x] Integration tests for transactional session creation
-- [ ] E2E tests for complete session creation flow
-- [ ] User testing of new flow
-- [ ] Performance profiling and optimization
+- [x] Unit tests for workspace state management (26 tests in web package)
+- [x] Integration tests for transactional session creation (39 tests in API package)
+- [ ] E2E tests for complete session creation flow (deferred - requires Playwright setup)
+- [ ] User testing of new flow (manual testing milestone)
+- [ ] Performance profiling and optimization (defer until user testing identifies bottlenecks)
+
+**Test Infrastructure Notes**:
+
+- `pnpm test` runs all tests across monorepo via turbo
+- Web package: vitest + @testing-library/react for component/store testing
+- API package: vitest for schema validation and business logic testing
+- Pre-existing sensory-agent tests have 13 failures (unrelated to this refactor)
 
 ### 7.4 Future Work (Not in this plan)
 
