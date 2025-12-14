@@ -212,6 +212,93 @@ export async function createSession(
   });
 }
 
+/**
+ * Request payload for creating a full session via /sessions/create-full
+ */
+export interface CreateFullSessionRequest {
+  settingId: string;
+  personaId?: string;
+  startLocationId?: string;
+  startTime?: {
+    year?: number;
+    month?: number;
+    day?: number;
+    hour: number;
+    minute: number;
+  };
+  secondsPerTurn?: number;
+  npcs: Array<{
+    characterId: string;
+    role: string;
+    tier: string;
+    startLocationId?: string;
+    label?: string;
+  }>;
+  relationships?: Array<{
+    fromActorId: string;
+    toActorId: string;
+    relationshipType: string;
+    affinitySeed?: {
+      trust?: number;
+      fondness?: number;
+      fear?: number;
+    };
+  }>;
+  tags?: Array<{
+    tagId: string;
+    scope: string;
+    targetId?: string;
+  }>;
+}
+
+/**
+ * Response from /sessions/create-full endpoint
+ */
+export interface CreateFullSessionResponse {
+  id: string;
+  settingTemplateId: string;
+  settingInstanceId: string;
+  personaId: string | null;
+  startLocationId: string | null;
+  secondsPerTurn: number;
+  createdAt: string;
+  npcs: Array<{
+    instanceId: string;
+    templateId: string;
+    role: string;
+    tier: string;
+    label: string | null;
+    startLocationId: string | null;
+  }>;
+  tagBindings: Array<{
+    id: string;
+    tagId: string;
+    targetType: string;
+    targetEntityId: string | null;
+  }>;
+  relationships: Array<{
+    fromActorId: string;
+    toActorId: string;
+    relationshipType: string;
+  }>;
+}
+
+/**
+ * Create a full session with all related entities in a single transaction.
+ * Uses the /sessions/create-full endpoint.
+ */
+export async function createSessionFull(
+  config: CreateFullSessionRequest,
+  signal?: AbortSignal
+): Promise<CreateFullSessionResponse> {
+  return http<CreateFullSessionResponse>('/sessions/create-full', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+    ...(signal && { signal }),
+  });
+}
+
 export async function sendMessage(
   sessionId: string,
   content: string,

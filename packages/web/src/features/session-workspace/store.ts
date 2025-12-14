@@ -9,6 +9,7 @@
  * - Draft persistence
  */
 
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 import type { CharacterProfile, SettingProfile, PersonaProfile } from '@minimal-rpg/schemas';
@@ -557,4 +558,31 @@ export const usePlayerState = () => useWorkspaceStore((s) => s.player);
 export const useTagsState = () => useWorkspaceStore((s) => s.tags);
 export const useWorkspaceMode = () => useWorkspaceStore((s) => s.mode);
 export const useIsDirty = () => useWorkspaceStore((s) => s.isDirty);
-export const useValidation = () => useWorkspaceStore((s) => s.validate());
+
+/**
+ * Use validation state. This hook memoizes the validation result
+ * based on the actual data that affects validation (setting + npcs).
+ */
+export const useValidation = (): ValidationResult => {
+  const setting = useWorkspaceStore((s) => s.setting);
+  const npcs = useWorkspaceStore((s) => s.npcs);
+  const player = useWorkspaceStore((s) => s.player);
+  const tags = useWorkspaceStore((s) => s.tags);
+  const locations = useWorkspaceStore((s) => s.locations);
+  const relationships = useWorkspaceStore((s) => s.relationships);
+  const validate = useWorkspaceStore((s) => s.validate);
+
+  // Memoize validation result to avoid infinite re-renders
+  return useMemo(
+    () => validate(),
+    [
+      setting.settingId,
+      npcs.length,
+      player.personaId,
+      tags.length,
+      locations.mapId,
+      relationships.length,
+      validate,
+    ]
+  );
+};

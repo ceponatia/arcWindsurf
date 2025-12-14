@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { getErrorMessage } from '@minimal-rpg/utils';
-import { createSession, deleteSession } from '../../shared/api/client.js';
+import {
+  createSession,
+  createSessionFull,
+  deleteSession,
+  type CreateFullSessionRequest,
+} from '../../shared/api/client.js';
 import { useSessions } from '../../shared/hooks/useSessions.js';
 import { useSettings } from '../../shared/hooks/useSettings.js';
 import { useCharacters } from '../../shared/hooks/useCharacters.js';
@@ -232,6 +237,38 @@ export function useAppController(): AppControllerValue {
     }
   };
 
+  /**
+   * Create a full session using the new transactional API.
+   * Returns the session ID on success.
+   */
+  const onCreateSessionFull = async (config: CreateFullSessionRequest): Promise<string> => {
+    setCreating(true);
+    setCreateError(null);
+    createAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    createAbortRef.current = ctrl;
+    try {
+      const response = await createSessionFull(config, ctrl.signal);
+      refreshSessions();
+      return response.id;
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Failed to create session');
+      setCreateError(msg);
+      throw new Error(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  /**
+   * Callback for SessionWorkspace after session is created.
+   * Navigates to chat.
+   */
+  const onSessionCreated = (sessionId: string) => {
+    setCurrentSessionId(sessionId);
+    navigateToChat();
+  };
+
   const selectSession = (id: string) => {
     setCurrentSessionId(id);
     navigateToChat();
@@ -269,6 +306,8 @@ export function useAppController(): AppControllerValue {
     sessions,
     canStart,
     onStartSession,
+    onCreateSessionFull,
+    onSessionCreated,
     handleDeleteSession,
     activeCharacterId,
     activeSettingId,

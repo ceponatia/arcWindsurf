@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { Build, ItemCategory } from '@minimal-rpg/schemas';
+import type { CreateFullSessionRequest } from './shared/api/client.js';
 
 export interface CharacterSummary {
   id: string;
@@ -280,6 +281,8 @@ export interface AppControllerActions {
   refreshSettings: () => void;
   refreshPersonas: () => void;
   onStartSession: () => Promise<void>;
+  onCreateSessionFull: (config: CreateFullSessionRequest) => Promise<string>;
+  onSessionCreated: (sessionId: string) => void;
   handleDeleteSession: (sessionId: string) => Promise<void>;
   navigateToCharacterBuilder: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;

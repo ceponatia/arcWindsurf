@@ -4,7 +4,7 @@ import { CharacterBuilder } from '../features/character-builder/index.js';
 import { SettingBuilder } from '../features/setting-builder/index.js';
 import { ItemBuilder } from '../features/item-builder/index.js';
 import { TagBuilder } from '../features/tag-builder/TagBuilder.js';
-import { SessionBuilder } from '../features/session-builder/index.js';
+import { SessionWorkspace } from '../features/session-workspace/index.js';
 import { PersonaBuilder } from '../features/persona-builder/PersonaBuilder.js';
 import { DocsViewer } from '../features/docs/index.js';
 import {
@@ -185,6 +185,8 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     selectSession,
     creating,
     createError,
+    onCreateSessionFull,
+    onSessionCreated,
   } = controller;
 
   const { loading: tagsLoading, error: tagsError, data: tagsData, retry: refreshTags } = useTags();
@@ -332,6 +334,8 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                 creating={creating}
                 createError={createError}
                 onStartSession={handleStartSession}
+                onCreateSessionFull={onCreateSessionFull}
+                onSessionCreated={onSessionCreated}
               />
             </div>
           </section>
@@ -379,6 +383,8 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     selectSession,
     creating,
     createError,
+    onCreateSessionFull,
+    onSessionCreated,
   } = controller;
 
   const { loading: tagsLoading, error: tagsError, data: tagsData, retry: refreshTags } = useTags();
@@ -555,6 +561,8 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             creating={creating}
             createError={createError}
             onStartSession={handleStartSession}
+            onCreateSessionFull={onCreateSessionFull}
+            onSessionCreated={onSessionCreated}
           />
         </div>
         <AppFooter />
@@ -609,6 +617,10 @@ interface MainContentProps {
   creating: boolean;
   createError: string | null;
   onStartSession: (characterId: string, settingId: string, tagIds: string[]) => Promise<void>;
+  onCreateSessionFull: (
+    config: import('../shared/api/client.js').CreateFullSessionRequest
+  ) => Promise<string>;
+  onSessionCreated: (sessionId: string) => void;
 }
 
 const MainContent: React.FC<MainContentProps> = ({
@@ -656,6 +668,8 @@ const MainContent: React.FC<MainContentProps> = ({
   creating,
   createError,
   onStartSession,
+  onCreateSessionFull,
+  onSessionCreated,
 }) => {
   switch (viewMode) {
     case 'home':
@@ -759,23 +773,24 @@ const MainContent: React.FC<MainContentProps> = ({
 
     case 'session-builder':
       return (
-        <SessionBuilder
-          characters={charactersData}
-          charactersLoading={charactersLoading}
-          charactersError={charactersError}
-          onRefreshCharacters={refreshCharacters}
+        <SessionWorkspace
           settings={settingsData}
           settingsLoading={settingsLoading}
-          settingsError={settingsError}
-          onRefreshSettings={refreshSettings}
+          characters={charactersData}
+          charactersLoading={charactersLoading}
+          personas={personasData}
+          personasLoading={personasLoading}
           tags={tagsData}
           tagsLoading={tagsLoading}
-          tagsError={tagsError}
+          onRefreshSettings={refreshSettings}
+          onRefreshCharacters={refreshCharacters}
+          onRefreshPersonas={refreshPersonas}
           onRefreshTags={refreshTags}
-          creating={creating}
-          createError={createError}
-          onStartSession={onStartSession}
-          onCancel={navigateToSessionLibrary}
+          onNavigateToSettingBuilder={() => navigateToSettingBuilder(null)}
+          onNavigateToCharacterBuilder={() => navigateToCharacterBuilder(null)}
+          onNavigateToPersonaBuilder={() => navigateToPersonaBuilder(null)}
+          onCreateSession={onCreateSessionFull}
+          onSessionCreated={onSessionCreated}
         />
       );
 
