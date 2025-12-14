@@ -6,6 +6,7 @@ import type { Hono } from 'hono';
 import type { LoadedDataGetter } from '../../data/types.js';
 import { handleListSessions } from './list-sessions.js';
 import { handleGetSession, handleCreateSession, handleDeleteSession } from './session-crud.js';
+import { handleCreateFullSession } from './session-create-full.js';
 import { handlePostMessage, handlePatchMessage, handleDeleteMessage } from './session-messages.js';
 import { handleListNpcs, handleCreateNpc } from './session-npcs.js';
 import { handleGetEffective } from './session-effective.js';
@@ -22,6 +23,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
   // Session CRUD
   app.get('/sessions/:id', (c) => handleGetSession(c));
   app.post('/sessions', (c) => handleCreateSession(c, deps.getLoaded));
+  app.post('/sessions/create-full', (c) => handleCreateFullSession(c, deps.getLoaded));
   app.delete('/sessions/:id', (c) => handleDeleteSession(c));
 
   // Session messages
