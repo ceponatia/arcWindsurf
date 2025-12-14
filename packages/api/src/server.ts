@@ -24,6 +24,7 @@ import { registerProfileRoutes } from './routes/profiles.js';
 import { registerTagRoutes } from './routes/tags.js';
 import { registerItemRoutes } from './routes/items.js';
 import { registerPersonaRoutes } from './routes/personas.js';
+import { registerWorkspaceDraftRoutes } from './routes/workspaceDrafts.js';
 
 const app = new Hono();
 
@@ -85,6 +86,7 @@ async function start(): Promise<void> {
   registerTagRoutes(app);
   registerItemRoutes(app);
   registerPersonaRoutes(app);
+  registerWorkspaceDraftRoutes(app);
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });

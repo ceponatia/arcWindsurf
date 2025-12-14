@@ -1483,3 +1483,178 @@ function playerInterestFromRow(row: Record<string, unknown>): PlayerInterestReco
     updatedAt,
   };
 }
+
+// ============================================================================
+// Session Workspace Drafts
+// ============================================================================
+
+/**
+ * Session workspace draft record.
+ * Stores in-progress session configurations before finalization.
+ */
+export interface WorkspaceDraftRecord {
+  id: UUID;
+  userId: string;
+  name: string | null;
+  workspaceState: Record<string, unknown>;
+  currentStep: string;
+  validationState: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Create a new workspace draft.
+ */
+export async function createWorkspaceDraft(params: {
+  userId?: string;
+  name?: string;
+  workspaceState?: Record<string, unknown>;
+  currentStep?: string;
+}): Promise<WorkspaceDraftRecord> {
+  const id = genUUID();
+  const userId = params.userId ?? 'default';
+  const name = params.name ?? null;
+  const workspaceState = params.workspaceState ?? {};
+  const currentStep = params.currentStep ?? 'setting';
+
+  const res: QueryResult<DbRow> = await pool.query(
+    `INSERT INTO session_workspace_drafts 
+     (id, user_id, name, workspace_state, current_step)
+     VALUES ($1, $2, $3, $4::jsonb, $5)
+     RETURNING *`,
+    [id, userId, name, JSON.stringify(workspaceState), currentStep]
+  );
+
+  const row = res.rows[0] as Record<string, unknown>;
+  return workspaceDraftFromRow(row)!;
+}
+
+/**
+ * Get a workspace draft by ID.
+ */
+export async function getWorkspaceDraft(id: UUID): Promise<WorkspaceDraftRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT * FROM session_workspace_drafts WHERE id = $1 LIMIT 1',
+    [id]
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return workspaceDraftFromRow(row);
+}
+
+/**
+ * List workspace drafts for a user.
+ */
+export async function listWorkspaceDrafts(
+  userId: string,
+  options?: { limit?: number }
+): Promise<WorkspaceDraftRecord[]> {
+  const limit = options?.limit ?? 20;
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_workspace_drafts 
+     WHERE user_id = $1 
+     ORDER BY updated_at DESC 
+     LIMIT $2`,
+    [userId, limit]
+  );
+
+  return res.rows
+    .map((row) => workspaceDraftFromRow(row as Record<string, unknown>))
+    .filter((d): d is WorkspaceDraftRecord => d !== null);
+}
+
+/**
+ * Update a workspace draft.
+ */
+export async function updateWorkspaceDraft(
+  id: UUID,
+  updates: {
+    name?: string | null;
+    workspaceState?: Record<string, unknown>;
+    currentStep?: string;
+    validationState?: Record<string, unknown>;
+  }
+): Promise<WorkspaceDraftRecord | null> {
+  const setClauses: string[] = [];
+  const values: unknown[] = [id];
+  let idx = 2;
+
+  if (updates.name !== undefined) {
+    setClauses.push(`name = $${idx++}`);
+    values.push(updates.name);
+  }
+  if (updates.workspaceState !== undefined) {
+    setClauses.push(`workspace_state = $${idx++}::jsonb`);
+    values.push(JSON.stringify(updates.workspaceState));
+  }
+  if (updates.currentStep !== undefined) {
+    setClauses.push(`current_step = $${idx++}`);
+    values.push(updates.currentStep);
+  }
+  if (updates.validationState !== undefined) {
+    setClauses.push(`validation_state = $${idx++}::jsonb`);
+    values.push(JSON.stringify(updates.validationState));
+  }
+
+  if (setClauses.length === 0) {
+    return getWorkspaceDraft(id);
+  }
+
+  setClauses.push('updated_at = now()');
+
+  const res: QueryResult<DbRow> = await pool.query(
+    `UPDATE session_workspace_drafts 
+     SET ${setClauses.join(', ')} 
+     WHERE id = $1 
+     RETURNING *`,
+    values
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return workspaceDraftFromRow(row);
+}
+
+/**
+ * Delete a workspace draft.
+ */
+export async function deleteWorkspaceDraft(id: UUID): Promise<boolean> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_workspace_drafts WHERE id = $1',
+    [id]
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+/**
+ * Delete old workspace drafts (older than specified days).
+ */
+export async function pruneOldWorkspaceDrafts(olderThanDays = 30): Promise<number> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `DELETE FROM session_workspace_drafts 
+     WHERE created_at < now() - interval '1 day' * $1`,
+    [olderThanDays]
+  );
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Helper to convert a database row to a WorkspaceDraftRecord.
+ */
+function workspaceDraftFromRow(row: Record<string, unknown>): WorkspaceDraftRecord | null {
+  const id = readStr(row, 'id');
+  if (!id) return null;
+
+  return {
+    id: id as UUID,
+    userId: readStr(row, 'user_id', 'default'),
+    name: readStr(row, 'name', '') || null,
+    workspaceState: readJsonRecord(row['workspace_state']) ?? {},
+    currentStep: readStr(row, 'current_step', 'setting'),
+    validationState: readJsonRecord(row['validation_state']) ?? {},
+    createdAt: toIsoDate(row['created_at']),
+    updatedAt: toIsoDate(row['updated_at']),
+  };
+}
