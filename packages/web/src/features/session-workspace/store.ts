@@ -9,10 +9,17 @@
  * - Draft persistence
  */
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { create } from 'zustand';
-import { persist, devtools } from 'zustand/middleware';
+import { persist, devtools, subscribeWithSelector } from 'zustand/middleware';
 import type { CharacterProfile, SettingProfile, PersonaProfile } from '@minimal-rpg/schemas';
+import {
+  createWorkspaceDraft,
+  updateWorkspaceDraft,
+  deleteWorkspaceDraft as apiDeleteWorkspaceDraft,
+  getWorkspaceModePreference,
+  setWorkspaceModePreference,
+} from '../../shared/api/client.js';
 
 // ============================================================================
 // Types
@@ -153,6 +160,8 @@ export interface WorkspaceActions {
   markDirty: () => void;
   markSaved: () => void;
   setIsSaving: (saving: boolean) => void;
+  saveDraftToServer: () => Promise<void>;
+  deleteDraftFromServer: () => Promise<void>;
 
   // Mode
   setMode: (mode: 'wizard' | 'compact') => void;
@@ -252,300 +261,512 @@ function validateReviewStep(state: WorkspaceState): StepValidationState {
 // ============================================================================
 
 export const useWorkspaceStore = create<WorkspaceStore>()(
-  devtools(
-    persist(
-      (set, get) => ({
-        ...initialState,
+  subscribeWithSelector(
+    devtools(
+      persist(
+        (set, get) => ({
+          ...initialState,
 
-        // Navigation
-        setStep: (step) => set({ currentStep: step }, false, 'setStep'),
-        markStepComplete: (step) =>
-          set(
-            (state) => ({
-              completedSteps: new Set([...state.completedSteps, step]),
-            }),
-            false,
-            'markStepComplete'
-          ),
+          // Navigation
+          setStep: (step) => set({ currentStep: step }, false, 'setStep'),
+          markStepComplete: (step) =>
+            set(
+              (state) => ({
+                completedSteps: new Set([...state.completedSteps, step]),
+              }),
+              false,
+              'markStepComplete'
+            ),
 
-        // Setting
-        updateSetting: (partial) =>
-          set(
-            (state) => ({
-              setting: { ...state.setting, ...partial },
-              isDirty: true,
-            }),
-            false,
-            'updateSetting'
-          ),
-        selectSetting: (settingId, profile) =>
-          set(
-            (state) => ({
-              setting: { ...state.setting, settingId, settingProfile: profile },
-              isDirty: true,
-            }),
-            false,
-            'selectSetting'
-          ),
-        clearSetting: () =>
-          set(
-            () => ({
-              setting: { settingId: null, settingProfile: null },
-              isDirty: true,
-            }),
-            false,
-            'clearSetting'
-          ),
-
-        // Locations
-        updateLocations: (partial) =>
-          set(
-            (state) => ({
-              locations: { ...state.locations, ...partial },
-              isDirty: true,
-            }),
-            false,
-            'updateLocations'
-          ),
-        setLocations: (locations) =>
-          set(
-            () => ({
-              locations: locations ?? { mapId: null, startLocationId: null },
-              isDirty: true,
-            }),
-            false,
-            'setLocations'
-          ),
-
-        // NPCs
-        addNpc: (npc) =>
-          set(
-            (state) => ({
-              npcs: [...state.npcs, npc],
-              isDirty: true,
-            }),
-            false,
-            'addNpc'
-          ),
-        updateNpc: (characterId, partial) =>
-          set(
-            (state) => ({
-              npcs: state.npcs.map((n) =>
-                n.characterId === characterId ? { ...n, ...partial } : n
-              ),
-              isDirty: true,
-            }),
-            false,
-            'updateNpc'
-          ),
-        removeNpc: (characterId) =>
-          set(
-            (state) => ({
-              npcs: state.npcs.filter((n) => n.characterId !== characterId),
-              isDirty: true,
-            }),
-            false,
-            'removeNpc'
-          ),
-        clearNpcs: () => set(() => ({ npcs: [], isDirty: true }), false, 'clearNpcs'),
-
-        // Player
-        updatePlayer: (partial) =>
-          set(
-            (state) => ({
-              player: { ...state.player, ...partial },
-              isDirty: true,
-            }),
-            false,
-            'updatePlayer'
-          ),
-        selectPersona: (personaId, profile) =>
-          set(
-            (state) => ({
-              player: { ...state.player, personaId, personaProfile: profile },
-              isDirty: true,
-            }),
-            false,
-            'selectPersona'
-          ),
-        clearPersona: () =>
-          set(
-            (state) => {
-              // Destructure to omit personaProfile
-              const { personaProfile: _, ...rest } = state.player;
-              return {
-                player: { ...rest, personaId: null },
+          // Setting
+          updateSetting: (partial) =>
+            set(
+              (state) => ({
+                setting: { ...state.setting, ...partial },
                 isDirty: true,
+              }),
+              false,
+              'updateSetting'
+            ),
+          selectSetting: (settingId, profile) =>
+            set(
+              (state) => ({
+                setting: { ...state.setting, settingId, settingProfile: profile },
+                isDirty: true,
+              }),
+              false,
+              'selectSetting'
+            ),
+          clearSetting: () =>
+            set(
+              () => ({
+                setting: { settingId: null, settingProfile: null },
+                isDirty: true,
+              }),
+              false,
+              'clearSetting'
+            ),
+
+          // Locations
+          updateLocations: (partial) =>
+            set(
+              (state) => ({
+                locations: { ...state.locations, ...partial },
+                isDirty: true,
+              }),
+              false,
+              'updateLocations'
+            ),
+          setLocations: (locations) =>
+            set(
+              () => ({
+                locations: locations ?? { mapId: null, startLocationId: null },
+                isDirty: true,
+              }),
+              false,
+              'setLocations'
+            ),
+
+          // NPCs
+          addNpc: (npc) =>
+            set(
+              (state) => ({
+                npcs: [...state.npcs, npc],
+                isDirty: true,
+              }),
+              false,
+              'addNpc'
+            ),
+          updateNpc: (characterId, partial) =>
+            set(
+              (state) => ({
+                npcs: state.npcs.map((n) =>
+                  n.characterId === characterId ? { ...n, ...partial } : n
+                ),
+                isDirty: true,
+              }),
+              false,
+              'updateNpc'
+            ),
+          removeNpc: (characterId) =>
+            set(
+              (state) => ({
+                npcs: state.npcs.filter((n) => n.characterId !== characterId),
+                isDirty: true,
+              }),
+              false,
+              'removeNpc'
+            ),
+          clearNpcs: () => set(() => ({ npcs: [], isDirty: true }), false, 'clearNpcs'),
+
+          // Player
+          updatePlayer: (partial) =>
+            set(
+              (state) => ({
+                player: { ...state.player, ...partial },
+                isDirty: true,
+              }),
+              false,
+              'updatePlayer'
+            ),
+          selectPersona: (personaId, profile) =>
+            set(
+              (state) => ({
+                player: { ...state.player, personaId, personaProfile: profile },
+                isDirty: true,
+              }),
+              false,
+              'selectPersona'
+            ),
+          clearPersona: () =>
+            set(
+              (state) => {
+                // Destructure to omit personaProfile
+                const { personaProfile: _, ...rest } = state.player;
+                return {
+                  player: { ...rest, personaId: null },
+                  isDirty: true,
+                };
+              },
+              false,
+              'clearPersona'
+            ),
+
+          // Tags
+          addTag: (tag) =>
+            set(
+              (state) => ({
+                tags: [...state.tags, tag],
+                isDirty: true,
+              }),
+              false,
+              'addTag'
+            ),
+          updateTag: (tagId, partial) =>
+            set(
+              (state) => ({
+                tags: state.tags.map((t) => (t.tagId === tagId ? { ...t, ...partial } : t)),
+                isDirty: true,
+              }),
+              false,
+              'updateTag'
+            ),
+          removeTag: (tagId, targetId) =>
+            set(
+              (state) => ({
+                tags: state.tags.filter(
+                  (t) => !(t.tagId === tagId && (targetId === undefined || t.targetId === targetId))
+                ),
+                isDirty: true,
+              }),
+              false,
+              'removeTag'
+            ),
+          clearTags: () => set(() => ({ tags: [], isDirty: true }), false, 'clearTags'),
+
+          // Relationships
+          addRelationship: (rel) =>
+            set(
+              (state) => ({
+                relationships: [...state.relationships, rel],
+                isDirty: true,
+              }),
+              false,
+              'addRelationship'
+            ),
+          updateRelationship: (fromActorId, toActorId, partial) =>
+            set(
+              (state) => ({
+                relationships: state.relationships.map((r) =>
+                  r.fromActorId === fromActorId && r.toActorId === toActorId
+                    ? { ...r, ...partial }
+                    : r
+                ),
+                isDirty: true,
+              }),
+              false,
+              'updateRelationship'
+            ),
+          removeRelationship: (fromActorId, toActorId) =>
+            set(
+              (state) => ({
+                relationships: state.relationships.filter(
+                  (r) => !(r.fromActorId === fromActorId && r.toActorId === toActorId)
+                ),
+                isDirty: true,
+              }),
+              false,
+              'removeRelationship'
+            ),
+
+          // Persistence
+          setDraftId: (id) => set({ draftId: id }, false, 'setDraftId'),
+          markDirty: () => set({ isDirty: true }, false, 'markDirty'),
+          markSaved: () => set({ isDirty: false, lastSavedAt: Date.now() }, false, 'markSaved'),
+          setIsSaving: (saving) => set({ isSaving: saving }, false, 'setIsSaving'),
+
+          /**
+           * Save the current workspace state to the server.
+           * Creates a new draft if none exists, otherwise updates.
+           */
+          saveDraftToServer: async () => {
+            const state = get();
+            if (state.isSaving) return; // Already saving
+
+            set({ isSaving: true }, false, 'saveDraftToServer:start');
+
+            try {
+              // Serialize state for API
+              const workspaceState: Record<string, unknown> = {
+                setting: state.setting,
+                locations: state.locations,
+                npcs: state.npcs,
+                player: state.player,
+                tags: state.tags,
+                relationships: state.relationships,
+                completedSteps: Array.from(state.completedSteps),
+                mode: state.mode,
               };
-            },
-            false,
-            'clearPersona'
-          ),
 
-        // Tags
-        addTag: (tag) =>
-          set(
-            (state) => ({
-              tags: [...state.tags, tag],
-              isDirty: true,
-            }),
-            false,
-            'addTag'
-          ),
-        updateTag: (tagId, partial) =>
-          set(
-            (state) => ({
-              tags: state.tags.map((t) => (t.tagId === tagId ? { ...t, ...partial } : t)),
-              isDirty: true,
-            }),
-            false,
-            'updateTag'
-          ),
-        removeTag: (tagId, targetId) =>
-          set(
-            (state) => ({
-              tags: state.tags.filter(
-                (t) => !(t.tagId === tagId && (targetId === undefined || t.targetId === targetId))
-              ),
-              isDirty: true,
-            }),
-            false,
-            'removeTag'
-          ),
-        clearTags: () => set(() => ({ tags: [], isDirty: true }), false, 'clearTags'),
+              if (state.draftId) {
+                // Update existing draft
+                await updateWorkspaceDraft(state.draftId, {
+                  workspaceState,
+                  currentStep: state.currentStep,
+                });
+                console.log('[Workspace] Draft updated:', state.draftId);
+              } else {
+                // Create new draft
+                const draft = await createWorkspaceDraft({
+                  workspaceState,
+                  currentStep: state.currentStep,
+                });
+                set({ draftId: draft.id }, false, 'saveDraftToServer:created');
+                console.log('[Workspace] Draft created:', draft.id);
+              }
 
-        // Relationships
-        addRelationship: (rel) =>
-          set(
-            (state) => ({
-              relationships: [...state.relationships, rel],
-              isDirty: true,
-            }),
-            false,
-            'addRelationship'
-          ),
-        updateRelationship: (fromActorId, toActorId, partial) =>
-          set(
-            (state) => ({
-              relationships: state.relationships.map((r) =>
-                r.fromActorId === fromActorId && r.toActorId === toActorId
-                  ? { ...r, ...partial }
-                  : r
-              ),
-              isDirty: true,
-            }),
-            false,
-            'updateRelationship'
-          ),
-        removeRelationship: (fromActorId, toActorId) =>
-          set(
-            (state) => ({
-              relationships: state.relationships.filter(
-                (r) => !(r.fromActorId === fromActorId && r.toActorId === toActorId)
-              ),
-              isDirty: true,
-            }),
-            false,
-            'removeRelationship'
-          ),
-
-        // Persistence
-        setDraftId: (id) => set({ draftId: id }, false, 'setDraftId'),
-        markDirty: () => set({ isDirty: true }, false, 'markDirty'),
-        markSaved: () => set({ isDirty: false, lastSavedAt: Date.now() }, false, 'markSaved'),
-        setIsSaving: (saving) => set({ isSaving: saving }, false, 'setIsSaving'),
-
-        // Mode
-        setMode: (mode) => set({ mode }, false, 'setMode'),
-
-        // Validation
-        validateStep: (step) => {
-          const state = get();
-          switch (step) {
-            case 'setting':
-              return validateSettingStep(state);
-            case 'locations':
-              return validateLocationsStep(state);
-            case 'npcs':
-              return validateNpcsStep(state);
-            case 'player':
-              return validatePlayerStep(state);
-            case 'tags':
-              return validateTagsStep(state);
-            case 'review':
-              return validateReviewStep(state);
-            default:
-              return { valid: true, errors: [] };
-          }
-        },
-        validate: () => {
-          const state = get();
-          const steps: WorkspaceStep[] = [
-            'setting',
-            'locations',
-            'npcs',
-            'player',
-            'tags',
-            'review',
-          ];
-          const stepErrors: Partial<Record<WorkspaceStep, StepValidationState>> = {};
-          let isValid = true;
-
-          for (const step of steps) {
-            const validation = get().validateStep(step);
-            stepErrors[step] = validation;
-            if (!validation.valid && (step === 'setting' || step === 'npcs')) {
-              isValid = false;
+              set({ isDirty: false, lastSavedAt: Date.now() }, false, 'saveDraftToServer:done');
+            } catch (err) {
+              console.error('[Workspace] Failed to save draft to server:', err);
+              // Don't throw - just log. Next save attempt will retry
+            } finally {
+              set({ isSaving: false }, false, 'saveDraftToServer:end');
             }
-          }
+          },
 
-          return { isValid, stepErrors };
-        },
+          /**
+           * Delete the current draft from the server (after session creation or reset).
+           */
+          deleteDraftFromServer: async () => {
+            const state = get();
+            if (!state.draftId) return;
 
-        // Reset
-        reset: () => set({ ...initialState, completedSteps: new Set() }, false, 'reset'),
-        loadFromDraft: (draft) =>
-          set(
-            (state) => ({
-              ...state,
-              ...draft,
-              completedSteps: draft.completedSteps
-                ? new Set(draft.completedSteps)
-                : state.completedSteps,
-              isDirty: false,
-            }),
-            false,
-            'loadFromDraft'
-          ),
-      }),
-      {
-        name: 'session-workspace',
-        // Only persist essential state, not UI state
-        partialize: (state) => ({
+            try {
+              await apiDeleteWorkspaceDraft(state.draftId);
+              console.log('[Workspace] Draft deleted:', state.draftId);
+              set({ draftId: null }, false, 'deleteDraftFromServer');
+            } catch (err) {
+              console.error('[Workspace] Failed to delete draft:', err);
+            }
+          },
+
+          // Mode
+          setMode: (mode) => {
+            set({ mode }, false, 'setMode');
+            // Persist to server (fire and forget)
+            void setWorkspaceModePreference(mode).catch((err) => {
+              console.warn('[Workspace] Failed to persist mode preference:', err);
+            });
+          },
+
+          // Validation
+          validateStep: (step) => {
+            const state = get();
+            switch (step) {
+              case 'setting':
+                return validateSettingStep(state);
+              case 'locations':
+                return validateLocationsStep(state);
+              case 'npcs':
+                return validateNpcsStep(state);
+              case 'player':
+                return validatePlayerStep(state);
+              case 'tags':
+                return validateTagsStep(state);
+              case 'review':
+                return validateReviewStep(state);
+              default:
+                return { valid: true, errors: [] };
+            }
+          },
+          validate: () => {
+            const state = get();
+            const steps: WorkspaceStep[] = [
+              'setting',
+              'locations',
+              'npcs',
+              'player',
+              'tags',
+              'review',
+            ];
+            const stepErrors: Partial<Record<WorkspaceStep, StepValidationState>> = {};
+            let isValid = true;
+
+            for (const step of steps) {
+              const validation = get().validateStep(step);
+              stepErrors[step] = validation;
+              if (!validation.valid && (step === 'setting' || step === 'npcs')) {
+                isValid = false;
+              }
+            }
+
+            return { isValid, stepErrors };
+          },
+
+          // Reset
+          reset: () => set({ ...initialState, completedSteps: new Set() }, false, 'reset'),
+          loadFromDraft: (draft) =>
+            set(
+              (state) => ({
+                ...state,
+                ...draft,
+                completedSteps: draft.completedSteps
+                  ? new Set(draft.completedSteps)
+                  : state.completedSteps,
+                isDirty: false,
+              }),
+              false,
+              'loadFromDraft'
+            ),
+        }),
+        {
+          name: 'session-workspace',
+          // Only persist essential state, not UI state
+          partialize: (state) => ({
+            setting: state.setting,
+            locations: state.locations,
+            npcs: state.npcs,
+            player: state.player,
+            tags: state.tags,
+            relationships: state.relationships,
+            draftId: state.draftId,
+            currentStep: state.currentStep,
+            mode: state.mode,
+            completedSteps: Array.from(state.completedSteps),
+          }),
+          // Custom merge to handle Set conversion
+          merge: (persistedState, currentState) => ({
+            ...currentState,
+            ...(persistedState as Partial<WorkspaceState>),
+            completedSteps: new Set(
+              (persistedState as { completedSteps?: WorkspaceStep[] })?.completedSteps ?? []
+            ),
+          }),
+        }
+      ),
+      { name: 'SessionWorkspace' }
+    )
+  )
+);
+
+// ============================================================================
+// Server Sync Configuration
+// ============================================================================
+
+/** Debounce interval for server sync (60 seconds as per spec) */
+const SYNC_DEBOUNCE_MS = 60_000;
+
+/** Minimum time between syncs */
+const MIN_SYNC_INTERVAL_MS = 5_000;
+
+/** Track debounce timer globally */
+let syncTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let lastSyncTime = 0;
+
+/**
+ * Schedule a debounced sync to the server.
+ * Called automatically when state changes.
+ */
+function scheduleDebouncedSync(): void {
+  // Clear any existing timeout
+  if (syncTimeoutId) {
+    clearTimeout(syncTimeoutId);
+  }
+
+  syncTimeoutId = setTimeout(() => {
+    const state = useWorkspaceStore.getState();
+    if (state.isDirty && !state.isSaving) {
+      void state.saveDraftToServer();
+    }
+    syncTimeoutId = null;
+  }, SYNC_DEBOUNCE_MS);
+}
+
+/**
+ * Trigger immediate sync if enough time has passed.
+ * Used for step changes and beforeunload.
+ */
+function triggerImmediateSync(): void {
+  const now = Date.now();
+  if (now - lastSyncTime < MIN_SYNC_INTERVAL_MS) {
+    return; // Too soon, let debounce handle it
+  }
+
+  const state = useWorkspaceStore.getState();
+  if (state.isDirty && !state.isSaving) {
+    lastSyncTime = now;
+    void state.saveDraftToServer();
+  }
+}
+
+/**
+ * Subscribe to store changes and schedule syncs.
+ * Called once at module load.
+ */
+function setupServerSync(): void {
+  // Subscribe to isDirty changes
+  useWorkspaceStore.subscribe(
+    (state) => state.isDirty,
+    (isDirty) => {
+      if (isDirty) {
+        scheduleDebouncedSync();
+      }
+    }
+  );
+
+  // Sync on step changes (more aggressive)
+  useWorkspaceStore.subscribe(
+    (state) => state.currentStep,
+    () => {
+      triggerImmediateSync();
+    }
+  );
+
+  // Sync on page unload
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      const state = useWorkspaceStore.getState();
+      if (state.isDirty && state.draftId) {
+        // Use sendBeacon for reliable delivery on page close
+        const workspaceState: Record<string, unknown> = {
           setting: state.setting,
           locations: state.locations,
           npcs: state.npcs,
           player: state.player,
           tags: state.tags,
           relationships: state.relationships,
-          draftId: state.draftId,
-          currentStep: state.currentStep,
-          mode: state.mode,
           completedSteps: Array.from(state.completedSteps),
-        }),
-        // Custom merge to handle Set conversion
-        merge: (persistedState, currentState) => ({
-          ...currentState,
-          ...(persistedState as Partial<WorkspaceState>),
-          completedSteps: new Set(
-            (persistedState as { completedSteps?: WorkspaceStep[] })?.completedSteps ?? []
-          ),
-        }),
+          mode: state.mode,
+        };
+
+        const payload = JSON.stringify({
+          workspaceState,
+          currentStep: state.currentStep,
+        });
+
+        // Try sendBeacon first (most reliable for unload)
+        const url = `/api/workspace-drafts/${state.draftId}`;
+        const success = navigator.sendBeacon(
+          url,
+          new Blob([payload], { type: 'application/json' })
+        );
+
+        if (!success) {
+          console.warn('[Workspace] sendBeacon failed, data may be lost');
+        }
       }
-    ),
-    { name: 'SessionWorkspace' }
-  )
-);
+    });
+  }
+}
+
+// Initialize server sync on module load
+setupServerSync();
+
+/**
+ * Load user's mode preference from the server and apply to store.
+ * Called once on module load to sync with persisted preference.
+ */
+async function loadModePreference(): Promise<void> {
+  try {
+    const mode = await getWorkspaceModePreference();
+    const currentMode = useWorkspaceStore.getState().mode;
+    if (mode !== currentMode) {
+      // Use setState directly to avoid triggering the server save
+      useWorkspaceStore.setState({ mode }, false, 'loadModePreference');
+      console.log('[Workspace] Loaded mode preference from server:', mode);
+    }
+  } catch (err) {
+    console.warn('[Workspace] Failed to load mode preference:', err);
+    // Keep localStorage/default mode
+  }
+}
+
+// Load mode preference on module init (after a small delay to not block initial render)
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    void loadModePreference();
+  }, 100);
+}
 
 // ============================================================================
 // Selector Hooks
@@ -585,4 +806,26 @@ export const useValidation = (): ValidationResult => {
       validate,
     ]
   );
+};
+
+/**
+ * Hook that returns save status and actions for the workspace.
+ * Provides manual save trigger and status indicators.
+ */
+export const useSaveStatus = () => {
+  const isDirty = useWorkspaceStore((s) => s.isDirty);
+  const isSaving = useWorkspaceStore((s) => s.isSaving);
+  const lastSavedAt = useWorkspaceStore((s) => s.lastSavedAt);
+  const draftId = useWorkspaceStore((s) => s.draftId);
+  const saveDraftToServer = useWorkspaceStore((s) => s.saveDraftToServer);
+  const deleteDraftFromServer = useWorkspaceStore((s) => s.deleteDraftFromServer);
+
+  return {
+    isDirty,
+    isSaving,
+    lastSavedAt,
+    hasDraft: !!draftId,
+    save: saveDraftToServer,
+    deleteDraft: deleteDraftFromServer,
+  };
 };

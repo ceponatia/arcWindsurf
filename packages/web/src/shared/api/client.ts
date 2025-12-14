@@ -299,6 +299,129 @@ export async function createSessionFull(
   });
 }
 
+// ============================================================================
+// Workspace Drafts API
+// ============================================================================
+
+/**
+ * A workspace draft stored on the server
+ */
+export interface WorkspaceDraft {
+  id: string;
+  userId: string;
+  name: string | null;
+  workspaceState: Record<string, unknown>;
+  currentStep: string;
+  validationState: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * List workspace drafts for a user
+ */
+export async function listWorkspaceDrafts(
+  userId: string = 'default',
+  limit: number = 20
+): Promise<WorkspaceDraft[]> {
+  const result = await http<{ ok: true; drafts: WorkspaceDraft[] }>(
+    `/workspace-drafts?user_id=${encodeURIComponent(userId)}&limit=${limit}`
+  );
+  return result.drafts;
+}
+
+/**
+ * Get a single workspace draft by ID
+ */
+export async function getWorkspaceDraft(id: string): Promise<WorkspaceDraft | null> {
+  try {
+    const result = await http<{ ok: true; draft: WorkspaceDraft }>(
+      `/workspace-drafts/${encodeURIComponent(id)}`
+    );
+    return result.draft;
+  } catch (err) {
+    // 404 returns null
+    if (err instanceof Error && err.message.includes('404')) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Create a new workspace draft
+ */
+export async function createWorkspaceDraft(params: {
+  userId?: string;
+  name?: string;
+  workspaceState?: Record<string, unknown>;
+  currentStep?: string;
+}): Promise<WorkspaceDraft> {
+  const userId = params.userId ?? 'default';
+  const result = await http<{ ok: true; draft: WorkspaceDraft }>(
+    `/workspace-drafts?user_id=${encodeURIComponent(userId)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: params.name,
+        workspaceState: params.workspaceState,
+        currentStep: params.currentStep,
+      }),
+    }
+  );
+  return result.draft;
+}
+
+/**
+ * Update an existing workspace draft
+ */
+export async function updateWorkspaceDraft(
+  id: string,
+  updates: {
+    name?: string | null;
+    workspaceState?: Record<string, unknown>;
+    currentStep?: string;
+    validationState?: Record<string, unknown>;
+  }
+): Promise<WorkspaceDraft | null> {
+  try {
+    const result = await http<{ ok: true; draft: WorkspaceDraft }>(
+      `/workspace-drafts/${encodeURIComponent(id)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }
+    );
+    return result.draft;
+  } catch (err) {
+    // 404 returns null
+    if (err instanceof Error && err.message.includes('404')) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Delete a workspace draft
+ */
+export async function deleteWorkspaceDraft(id: string): Promise<boolean> {
+  try {
+    await http<null>(`/workspace-drafts/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return true;
+  } catch (err) {
+    // 404 returns false
+    if (err instanceof Error && err.message.includes('404')) {
+      return false;
+    }
+    throw err;
+  }
+}
+
 export async function sendMessage(
   sessionId: string,
   content: string,
@@ -637,5 +760,73 @@ export async function getPersonaUsage(
   return http<EntityUsageSummary>(
     `/entity-usage/personas/${encodeURIComponent(personaId)}`,
     signal ? { signal } : undefined
+  );
+}
+
+// =============================================================================
+// User Preferences API
+// =============================================================================
+
+export type WorkspaceMode = 'wizard' | 'compact';
+
+export interface UserPreferences {
+  workspaceMode?: WorkspaceMode;
+  [key: string]: unknown;
+}
+
+/**
+ * Get user preferences
+ */
+export async function getUserPreferences(userId: string = 'default'): Promise<UserPreferences> {
+  const result = await http<{ ok: true; preferences: UserPreferences }>(
+    `/user/preferences?user_id=${encodeURIComponent(userId)}`
+  );
+  return result.preferences;
+}
+
+/**
+ * Update user preferences (merges with existing)
+ */
+export async function updateUserPreferences(
+  preferences: Partial<UserPreferences>,
+  userId: string = 'default'
+): Promise<UserPreferences> {
+  const result = await http<{ ok: true; preferences: UserPreferences }>(
+    `/user/preferences?user_id=${encodeURIComponent(userId)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(preferences),
+    }
+  );
+  return result.preferences;
+}
+
+/**
+ * Get workspace mode preference
+ */
+export async function getWorkspaceModePreference(
+  userId: string = 'default'
+): Promise<WorkspaceMode> {
+  const result = await http<{ ok: true; mode: WorkspaceMode }>(
+    `/user/preferences/workspace-mode?user_id=${encodeURIComponent(userId)}`
+  );
+  return result.mode;
+}
+
+/**
+ * Set workspace mode preference
+ */
+export async function setWorkspaceModePreference(
+  mode: WorkspaceMode,
+  userId: string = 'default'
+): Promise<void> {
+  await http<{ ok: true; mode: WorkspaceMode }>(
+    `/user/preferences/workspace-mode?user_id=${encodeURIComponent(userId)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    }
   );
 }

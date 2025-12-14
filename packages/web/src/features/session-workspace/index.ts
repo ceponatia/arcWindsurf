@@ -15,6 +15,7 @@ export {
   useCurrentStep,
   useWorkspaceMode,
   useIsDirty,
+  useSaveStatus,
 } from './store.js';
 export type {
   WorkspaceStep,
