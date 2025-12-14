@@ -8,4 +8,5 @@ export * from './components/PersonasPanel.js';
 export * from './components/ChatView.js';
 export * from './components/HelpIcon.js';
 export * from './components/HelpPopover.js';
+export * from './components/EntityUsagePanel.js';
 export * from './lib/utils.js';

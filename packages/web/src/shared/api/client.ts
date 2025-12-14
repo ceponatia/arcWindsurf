@@ -498,3 +498,57 @@ export async function deleteItem(id: string, signal?: AbortSignal): Promise<void
     ...(signal && { signal }),
   });
 }
+
+// ============ ENTITY USAGE ============
+
+export interface SessionUsageInfo {
+  sessionId: string;
+  createdAt: string;
+  role?: string;
+}
+
+export interface EntityUsageSummary {
+  entityId: string;
+  entityType: 'character' | 'setting' | 'persona' | 'location';
+  sessions: SessionUsageInfo[];
+  totalCount: number;
+}
+
+/**
+ * Get sessions that use a specific character template.
+ */
+export async function getCharacterUsage(
+  characterId: string,
+  signal?: AbortSignal
+): Promise<EntityUsageSummary> {
+  return http<EntityUsageSummary>(
+    `/entity-usage/characters/${encodeURIComponent(characterId)}`,
+    signal ? { signal } : undefined
+  );
+}
+
+/**
+ * Get sessions that use a specific setting template.
+ */
+export async function getSettingUsage(
+  settingId: string,
+  signal?: AbortSignal
+): Promise<EntityUsageSummary> {
+  return http<EntityUsageSummary>(
+    `/entity-usage/settings/${encodeURIComponent(settingId)}`,
+    signal ? { signal } : undefined
+  );
+}
+
+/**
+ * Get sessions that use a specific persona.
+ */
+export async function getPersonaUsage(
+  personaId: string,
+  signal?: AbortSignal
+): Promise<EntityUsageSummary> {
+  return http<EntityUsageSummary>(
+    `/entity-usage/personas/${encodeURIComponent(personaId)}`,
+    signal ? { signal } : undefined
+  );
+}

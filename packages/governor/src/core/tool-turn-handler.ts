@@ -424,8 +424,11 @@ ${input.conversationSummary}
 `
       : '';
 
-    return `You are a narrative game master for a roleplay scenario. The player writes in third person, describing their character's actions.
+    // Build session tags context (rules/behavior modifiers)
+    const tagsContext = this.buildSessionTagsContext(input?.sessionTags);
 
+    return `You are a narrative game master for a roleplay scenario. The player writes in third person, describing their character's actions.
+${tagsContext}
 ## Current Scene
 **NPC Present:** ${npcName}
 **Location:** ${locationName ?? settingName}
@@ -639,6 +642,31 @@ The following sensory engagements are currently active:
 ${engagementLines}
 
 Continue to acknowledge these in your narrative. If the player moves away or the NPC withdraws, call update_proximity(end) to end the engagement.
+`;
+  }
+
+  /**
+   * Build session tags context section for system prompt.
+   * Session tags provide rules/behavior modifiers that affect how the scene plays out.
+   */
+  private buildSessionTagsContext(
+    sessionTags?: NonNullable<TurnInput['sessionTags']>
+  ): string {
+    if (!sessionTags || sessionTags.length === 0) {
+      return '';
+    }
+
+    const tagLines = sessionTags.map((tag) => {
+      const description = tag.shortDescription ? ` - ${tag.shortDescription}` : '';
+      return `### ${tag.name}${description}
+${tag.promptText}`;
+    });
+
+    return `
+## Active Session Rules & Modifiers
+The following rules and modifiers are active for this session. Incorporate them into your narrative:
+
+${tagLines.join('\n\n')}
 `;
   }
 

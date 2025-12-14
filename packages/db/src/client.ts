@@ -396,7 +396,7 @@ export const db = {
       return null;
     },
     async findMany(args?: {
-      where?: { sessionId?: string; role?: string };
+      where?: { sessionId?: string; templateId?: string; role?: string };
       orderBy?: { createdAt?: 'asc' | 'desc' };
     }): Promise<CharacterInstanceRow[]> {
       const clauses: string[] = [];
@@ -405,6 +405,11 @@ export const db = {
       if (args?.where?.sessionId) {
         params.push(args.where.sessionId);
         clauses.push(`session_id = $${params.length}`);
+      }
+
+      if (args?.where?.templateId) {
+        params.push(args.where.templateId);
+        clauses.push(`template_id = $${params.length}`);
       }
 
       if (args?.where?.role) {
@@ -494,6 +499,33 @@ export const db = {
         return rows[0] ? camelizeRow<SettingInstanceRow>(rows[0]) : null;
       }
       return null;
+    },
+    async findMany(args?: {
+      where?: { sessionId?: string; templateId?: string };
+      orderBy?: { createdAt?: 'asc' | 'desc' };
+    }): Promise<SettingInstanceRow[]> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.sessionId) {
+        params.push(args.where.sessionId);
+        clauses.push(`session_id = $${params.length}`);
+      }
+
+      if (args?.where?.templateId) {
+        params.push(args.where.templateId);
+        clauses.push(`template_id = $${params.length}`);
+      }
+
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const order = args?.orderBy?.createdAt === 'asc' ? 'ASC' : 'DESC';
+
+      const { rows } = await query(
+        `SELECT * FROM setting_instances ${where} ORDER BY created_at ${order}`,
+        params
+      );
+
+      return rows.map((r) => camelizeRow<SettingInstanceRow>(r));
     },
     async create(args: {
       data: {
@@ -731,6 +763,33 @@ export const db = {
   },
 
   sessionPersona: {
+    async findMany(args?: {
+      where?: { sessionId?: string; personaId?: string };
+      orderBy?: { createdAt?: 'asc' | 'desc' };
+    }): Promise<SessionPersonaRow[]> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.sessionId) {
+        params.push(args.where.sessionId);
+        clauses.push(`session_id = $${params.length}`);
+      }
+
+      if (args?.where?.personaId) {
+        params.push(args.where.personaId);
+        clauses.push(`persona_id = $${params.length}`);
+      }
+
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const order = args?.orderBy?.createdAt === 'asc' ? 'ASC' : 'DESC';
+
+      const { rows } = await query(
+        `SELECT * FROM session_personas ${where} ORDER BY created_at ${order}`,
+        params
+      );
+
+      return rows.map((r) => camelizeRow<SessionPersonaRow>(r));
+    },
     async findUnique(args: { where: { sessionId: string } }): Promise<SessionPersonaRow | null> {
       const { rows } = await query('SELECT * FROM session_personas WHERE session_id = $1 LIMIT 1', [
         args.where.sessionId,

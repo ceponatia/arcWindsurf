@@ -259,6 +259,19 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **Flexible Details**: Label/value entries with area, importance, tags
 - **Gender Field**: Optional gender with context-aware body regions in UI
 - **Random Generation**: Themed character generator with "Fill Missing Fields" button
+- **Progressive Disclosure**: Three complexity modes in Character Builder
+  - Quick Mode (5 fields): Name, age, gender, summary, profile picture
+  - Standard Mode (~20 fields): Quick + personality traits, backstory, key appearance, tags
+  - Advanced Mode (~100 fields): Standard + detailed physique, body sensory map, detailed personality
+
+### Hygiene & Sensory System
+
+- **Dynamic Hygiene State**: Per-NPC, per-body-part hygiene tracking with decay over time
+- **Activity Multipliers**: Different activities (idle, walking, running, labor, combat) affect decay rate
+- **Footwear Modifiers**: Barefoot/sandals/shoes/boots affect feet hygiene decay
+- **Environment Effects**: Dry/humid/rain/swimming conditions modify decay
+- **Sensory Modifiers**: Context-aware smell/touch/taste descriptions based on hygiene level (0-4)
+- **Governor Tools**: `update_npc_hygiene` and `get_hygiene_sensory` for runtime state management
 
 ### Intent & Interaction
 
@@ -285,6 +298,12 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
   - Step 5: Review and launch
   - Compact Builder mode for power users
 - **Transactional Creation**: `POST /sessions/create-full` atomic endpoint
+- **Entity Usage Tracking**: "Where is this used?" API endpoints
+  - `GET /entity-usage/characters/:id` - Sessions using a character
+  - `GET /entity-usage/settings/:id` - Sessions using a setting
+  - `GET /entity-usage/personas/:id` - Sessions using a persona
+  - UI component: EntityUsagePanel with collapsible session list
+- **Session Tags Injection**: Active tags injected into Governor system prompts
 - **Draft Persistence**: Auto-save workspace drafts to database
 - **Immutable Templates**: Character/setting templates + per-session snapshots with overrides
 - **Per-NPC Transcripts**: Separate conversation history for each NPC
@@ -344,6 +363,10 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **Schedule Templates**: Reusable patterns (shopkeeper, guard, tavern keeper, noble, wanderer)
 - **Placeholder Resolution**: Templates with $workLocation, $homeLocation substitution
 - **Common Activities**: Pre-defined activities (sleeping, working, socializing, etc.)
+- **Governor Tools**: 
+  - `generate_npc_schedule`: Create schedule from template with placeholder resolution
+  - `assign_npc_location`: Match NPC profile to appropriate location
+  - `get_schedule_resolution`: Resolve current location/activity from schedule
 
 ### NPC Simulation System
 
