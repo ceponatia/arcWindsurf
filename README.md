@@ -106,6 +106,15 @@ pnpm core:quit
 
 ### Test Scripts
 
+**Unit tests** (vitest): Run tests for packages with test coverage:
+
+```bash
+pnpm -F @minimal-rpg/web test              # Web package (workspace store)
+pnpm -F @minimal-rpg/agents test           # Agents package
+pnpm -F @minimal-rpg/state-manager test    # State manager package
+pnpm -F @minimal-rpg/retrieval test        # Retrieval package
+```
+
 **Tool calling test**: Test LLM function calling with RPG tools:
 
 ```bash
