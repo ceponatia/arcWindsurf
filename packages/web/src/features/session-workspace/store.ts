@@ -34,8 +34,8 @@ export interface SettingWorkspaceState {
 
 export interface LocationMapState {
   mapId: string | null;
+  mapName?: string;
   startLocationId: string | null;
-  // Future: locations, connections, etc.
 }
 
 export type NpcRole = 'primary' | 'supporting' | 'background' | 'antagonist';
@@ -119,6 +119,7 @@ export interface WorkspaceActions {
 
   // Locations
   updateLocations: (partial: Partial<LocationMapState>) => void;
+  setLocations: (locations: LocationMapState | null) => void;
 
   // NPCs
   addNpc: (npc: NpcSessionConfig) => void;
@@ -303,6 +304,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
             }),
             false,
             'updateLocations'
+          ),
+        setLocations: (locations) =>
+          set(
+            () => ({
+              locations: locations ?? { mapId: null, startLocationId: null },
+              isDirty: true,
+            }),
+            false,
+            'setLocations'
           ),
 
         // NPCs
