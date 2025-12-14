@@ -276,6 +276,16 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 
 ### Session Management
 
+- **Session Workspace**: Multi-step wizard for session configuration (WIP)
+  - Zustand store with localStorage persistence and server sync
+  - Step 1: Setting selection with time configuration
+  - Step 2: NPC cast configuration with role/tier assignment
+  - Step 3: Player persona selection or anonymous play
+  - Step 4: Tags and rules selection
+  - Step 5: Review and launch
+  - Compact Builder mode for power users
+- **Transactional Creation**: `POST /sessions/create-full` atomic endpoint
+- **Draft Persistence**: Auto-save workspace drafts to database
 - **Immutable Templates**: Character/setting templates + per-session snapshots with overrides
 - **Per-NPC Transcripts**: Separate conversation history for each NPC
 - **State Persistence**: Location, inventory, time slices in dedicated tables
