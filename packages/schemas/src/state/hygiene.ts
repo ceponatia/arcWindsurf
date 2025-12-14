@@ -280,10 +280,7 @@ export function isFootRelatedPart(bodyPart: string): boolean {
 /**
  * Reset hygiene for specific body parts (cleaning action).
  */
-export function resetBodyPartHygiene(
-  state: NpcHygieneState,
-  bodyParts: string[]
-): NpcHygieneState {
+export function resetBodyPartHygiene(state: NpcHygieneState, bodyParts: string[]): NpcHygieneState {
   const newBodyParts = { ...state.bodyParts };
 
   for (const part of bodyParts) {
@@ -310,10 +307,7 @@ export function resetBodyPartHygiene(
  * @param modifier - Hygiene-based modifier text to append
  * @returns Combined description with hygiene modifier
  */
-export function combineSensoryWithHygiene(
-  baseDescription: string,
-  modifier: string
-): string {
+export function combineSensoryWithHygiene(baseDescription: string, modifier: string): string {
   if (!modifier || modifier.trim() === '') {
     return baseDescription;
   }

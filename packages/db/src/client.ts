@@ -960,9 +960,7 @@ export const db = {
   // Schedule Template Operations
   // =========================================================================
   scheduleTemplate: {
-    async findMany(args?: {
-      where?: { isSystem?: boolean };
-    }): Promise<ScheduleTemplateRow[]> {
+    async findMany(args?: { where?: { isSystem?: boolean } }): Promise<ScheduleTemplateRow[]> {
       const clauses: string[] = [];
       const params: SqlParams = [];
 
@@ -998,7 +996,13 @@ export const db = {
         `INSERT INTO schedule_templates (name, description, template_data, required_placeholders, is_system)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [name, description ?? null, JSON.stringify(templateData), requiredPlaceholders, isSystem ?? false]
+        [
+          name,
+          description ?? null,
+          JSON.stringify(templateData),
+          requiredPlaceholders,
+          isSystem ?? false,
+        ]
       );
       return camelizeRow<ScheduleTemplateRow>(rows[0]!);
     },
@@ -1059,7 +1063,10 @@ export const db = {
       }
 
       const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-      const { rows } = await query(`SELECT * FROM npc_schedules ${where} ORDER BY npc_id ASC`, params);
+      const { rows } = await query(
+        `SELECT * FROM npc_schedules ${where} ORDER BY npc_id ASC`,
+        params
+      );
       return rows.map((r) => camelizeRow<NpcScheduleRow>(r));
     },
     async findUnique(args: {

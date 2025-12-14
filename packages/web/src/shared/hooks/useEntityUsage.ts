@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { EntityUsageSummary } from '../api/client.js';
-import {
-  getCharacterUsage,
-  getSettingUsage,
-  getPersonaUsage,
-} from '../api/client.js';
+import { getCharacterUsage, getSettingUsage, getPersonaUsage } from '../api/client.js';
 
 export type EntityType = 'character' | 'setting' | 'persona';
 
@@ -52,7 +48,7 @@ export function useEntityUsage({
 
     try {
       let result: EntityUsageSummary;
-      
+
       switch (entityType) {
         case 'character':
           result = await getCharacterUsage(entityId);

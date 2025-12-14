@@ -649,9 +649,7 @@ Continue to acknowledge these in your narrative. If the player moves away or the
    * Build session tags context section for system prompt.
    * Session tags provide rules/behavior modifiers that affect how the scene plays out.
    */
-  private buildSessionTagsContext(
-    sessionTags?: NonNullable<TurnInput['sessionTags']>
-  ): string {
+  private buildSessionTagsContext(sessionTags?: NonNullable<TurnInput['sessionTags']>): string {
     if (!sessionTags || sessionTags.length === 0) {
       return '';
     }

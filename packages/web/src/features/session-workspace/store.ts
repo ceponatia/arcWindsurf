@@ -394,9 +394,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         updateTag: (tagId, partial) =>
           set(
             (state) => ({
-              tags: state.tags.map((t) =>
-                t.tagId === tagId ? { ...t, ...partial } : t
-              ),
+              tags: state.tags.map((t) => (t.tagId === tagId ? { ...t, ...partial } : t)),
               isDirty: true,
             }),
             false,

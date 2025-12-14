@@ -101,9 +101,7 @@ export const EntityUsagePanel: React.FC<EntityUsagePanelProps> = ({
             <div className="py-4 text-center text-slate-400 text-sm">Loading usage data...</div>
           )}
 
-          {error && (
-            <div className="py-4 text-center text-red-400 text-sm">{error}</div>
-          )}
+          {error && <div className="py-4 text-center text-red-400 text-sm">{error}</div>}
 
           {!loading && !error && totalCount === 0 && (
             <div className="py-4 text-center text-slate-500 text-sm">

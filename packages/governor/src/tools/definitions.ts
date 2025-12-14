@@ -534,8 +534,7 @@ export const GET_HYGIENE_SENSORY_TOOL: ToolDefinition = {
         },
         body_part: {
           type: 'string',
-          description:
-            'Specific body part (e.g., feet, armpits, hair, torso, neck, hands, legs)',
+          description: 'Specific body part (e.g., feet, armpits, hair, torso, neck, hands, legs)',
         },
         sense_type: {
           type: 'string',
@@ -655,7 +654,8 @@ export const GET_SCHEDULE_RESOLUTION_TOOL: ToolDefinition = {
         },
         hour: {
           type: 'number',
-          description: 'Hour (0-23) to resolve schedule for. If not provided, uses current game time.',
+          description:
+            'Hour (0-23) to resolve schedule for. If not provided, uses current game time.',
         },
         minute: {
           type: 'number',

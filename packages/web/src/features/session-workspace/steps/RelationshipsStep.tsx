@@ -13,14 +13,26 @@ import { Users, Plus, X, AlertCircle, ChevronDown, ChevronRight } from 'lucide-r
  */
 const RELATIONSHIP_PRESETS = [
   { value: 'stranger', label: 'Stranger', affinity: { trust: 0.5, fondness: 0.5, fear: 0.2 } },
-  { value: 'acquaintance', label: 'Acquaintance', affinity: { trust: 0.55, fondness: 0.55, fear: 0.15 } },
+  {
+    value: 'acquaintance',
+    label: 'Acquaintance',
+    affinity: { trust: 0.55, fondness: 0.55, fear: 0.15 },
+  },
   { value: 'friend', label: 'Friend', affinity: { trust: 0.7, fondness: 0.75, fear: 0.1 } },
-  { value: 'close_friend', label: 'Close Friend', affinity: { trust: 0.85, fondness: 0.85, fear: 0.05 } },
+  {
+    value: 'close_friend',
+    label: 'Close Friend',
+    affinity: { trust: 0.85, fondness: 0.85, fear: 0.05 },
+  },
   { value: 'rival', label: 'Rival', affinity: { trust: 0.3, fondness: 0.3, fear: 0.4 } },
   { value: 'enemy', label: 'Enemy', affinity: { trust: 0.1, fondness: 0.15, fear: 0.6 } },
   { value: 'colleague', label: 'Colleague', affinity: { trust: 0.6, fondness: 0.5, fear: 0.15 } },
   { value: 'family', label: 'Family', affinity: { trust: 0.8, fondness: 0.8, fear: 0.1 } },
-  { value: 'romantic', label: 'Romantic Partner', affinity: { trust: 0.9, fondness: 0.95, fear: 0.05 } },
+  {
+    value: 'romantic',
+    label: 'Romantic Partner',
+    affinity: { trust: 0.9, fondness: 0.95, fear: 0.05 },
+  },
   { value: 'mentor', label: 'Mentor', affinity: { trust: 0.75, fondness: 0.65, fear: 0.15 } },
   { value: 'student', label: 'Student', affinity: { trust: 0.6, fondness: 0.6, fear: 0.2 } },
 ] as const;
@@ -30,11 +42,15 @@ interface RelationshipsStepProps {
 }
 
 /** Get character name by ID */
-function getCharacterName(characters: CharacterSummary[], npcs: NpcSessionConfig[], actorId: string): string {
+function getCharacterName(
+  characters: CharacterSummary[],
+  npcs: NpcSessionConfig[],
+  actorId: string
+): string {
   if (actorId === 'player') return 'Player';
-  const char = characters.find(c => c.id === actorId);
+  const char = characters.find((c) => c.id === actorId);
   if (char) return char.name;
-  const npc = npcs.find(n => n.characterId === actorId);
+  const npc = npcs.find((n) => n.characterId === actorId);
   if (npc?.label) return npc.label;
   return 'Unknown';
 }
@@ -45,12 +61,17 @@ interface MatrixViewProps {
   characters: CharacterSummary[];
   npcs: NpcSessionConfig[];
   relationships: RelationshipConfig[];
-  onUpdate: (fromId: string, toId: string, type: string, affinity?: RelationshipConfig['affinitySeed']) => void;
+  onUpdate: (
+    fromId: string,
+    toId: string,
+    type: string,
+    affinity?: RelationshipConfig['affinitySeed']
+  ) => void;
 }
 
 function MatrixView({ actorIds, characters, npcs, relationships, onUpdate }: MatrixViewProps) {
   const getRelationship = (fromId: string, toId: string): RelationshipConfig | undefined => {
-    return relationships.find(r => r.fromActorId === fromId && r.toActorId === toId);
+    return relationships.find((r) => r.fromActorId === fromId && r.toActorId === toId);
   };
 
   return (
@@ -61,23 +82,29 @@ function MatrixView({ actorIds, characters, npcs, relationships, onUpdate }: Mat
             <th className="p-2 border border-slate-700 bg-slate-800/50 text-slate-300 text-left">
               From / To
             </th>
-            {actorIds.map(id => (
-              <th key={id} className="p-2 border border-slate-700 bg-slate-800/50 text-slate-300 text-center min-w-[100px]">
+            {actorIds.map((id) => (
+              <th
+                key={id}
+                className="p-2 border border-slate-700 bg-slate-800/50 text-slate-300 text-center min-w-[100px]"
+              >
                 {getCharacterName(characters, npcs, id)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {actorIds.map(fromId => (
+          {actorIds.map((fromId) => (
             <tr key={fromId}>
               <td className="p-2 border border-slate-700 bg-slate-800/30 text-slate-300 font-medium">
                 {getCharacterName(characters, npcs, fromId)}
               </td>
-              {actorIds.map(toId => {
+              {actorIds.map((toId) => {
                 if (fromId === toId) {
                   return (
-                    <td key={toId} className="p-2 border border-slate-700 bg-slate-900/50 text-center text-slate-600">
+                    <td
+                      key={toId}
+                      className="p-2 border border-slate-700 bg-slate-900/50 text-center text-slate-600"
+                    >
                       -
                     </td>
                   );
@@ -88,13 +115,15 @@ function MatrixView({ actorIds, characters, npcs, relationships, onUpdate }: Mat
                     <select
                       value={rel?.relationshipType ?? 'stranger'}
                       onChange={(e) => {
-                        const preset = RELATIONSHIP_PRESETS.find(p => p.value === e.target.value);
+                        const preset = RELATIONSHIP_PRESETS.find((p) => p.value === e.target.value);
                         onUpdate(fromId, toId, e.target.value, preset?.affinity);
                       }}
                       className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-slate-200 text-xs"
                     >
-                      {RELATIONSHIP_PRESETS.map(p => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
+                      {RELATIONSHIP_PRESETS.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
                       ))}
                     </select>
                   </td>
@@ -114,16 +143,28 @@ interface ListViewProps {
   characters: CharacterSummary[];
   npcs: NpcSessionConfig[];
   relationships: RelationshipConfig[];
-  onUpdate: (fromId: string, toId: string, type: string, affinity?: RelationshipConfig['affinitySeed']) => void;
+  onUpdate: (
+    fromId: string,
+    toId: string,
+    type: string,
+    affinity?: RelationshipConfig['affinitySeed']
+  ) => void;
   onRemove: (fromId: string, toId: string) => void;
 }
 
-function ListView({ actorIds, characters, npcs, relationships, onUpdate, onRemove }: ListViewProps) {
+function ListView({
+  actorIds,
+  characters,
+  npcs,
+  relationships,
+  onUpdate,
+  onRemove,
+}: ListViewProps) {
   const [expandedActors, setExpandedActors] = useState<Set<string>>(new Set(['player']));
   const [addingFor, setAddingFor] = useState<string | null>(null);
 
   const toggleExpanded = (actorId: string) => {
-    setExpandedActors(prev => {
+    setExpandedActors((prev) => {
       const next = new Set(prev);
       if (next.has(actorId)) {
         next.delete(actorId);
@@ -135,23 +176,26 @@ function ListView({ actorIds, characters, npcs, relationships, onUpdate, onRemov
   };
 
   const getRelationshipsFrom = (fromId: string): RelationshipConfig[] => {
-    return relationships.filter(r => r.fromActorId === fromId);
+    return relationships.filter((r) => r.fromActorId === fromId);
   };
 
   const getAvailableTargets = (fromId: string): string[] => {
-    const existing = new Set(getRelationshipsFrom(fromId).map(r => r.toActorId));
-    return actorIds.filter(id => id !== fromId && !existing.has(id));
+    const existing = new Set(getRelationshipsFrom(fromId).map((r) => r.toActorId));
+    return actorIds.filter((id) => id !== fromId && !existing.has(id));
   };
 
   return (
     <div className="space-y-3">
-      {actorIds.map(actorId => {
+      {actorIds.map((actorId) => {
         const isExpanded = expandedActors.has(actorId);
         const actorRelationships = getRelationshipsFrom(actorId);
         const availableTargets = getAvailableTargets(actorId);
 
         return (
-          <div key={actorId} className="border border-slate-700 rounded-lg bg-slate-900/30 overflow-hidden">
+          <div
+            key={actorId}
+            className="border border-slate-700 rounded-lg bg-slate-900/30 overflow-hidden"
+          >
             {/* Actor header */}
             <button
               onClick={() => toggleExpanded(actorId)}
@@ -181,7 +225,7 @@ function ListView({ actorIds, characters, npcs, relationships, onUpdate, onRemov
                   </p>
                 )}
 
-                {actorRelationships.map(rel => (
+                {actorRelationships.map((rel) => (
                   <div
                     key={`${rel.fromActorId}-${rel.toActorId}`}
                     className="flex items-center gap-3 p-2 bg-slate-800/30 rounded"
@@ -192,13 +236,15 @@ function ListView({ actorIds, characters, npcs, relationships, onUpdate, onRemov
                     <select
                       value={rel.relationshipType}
                       onChange={(e) => {
-                        const preset = RELATIONSHIP_PRESETS.find(p => p.value === e.target.value);
+                        const preset = RELATIONSHIP_PRESETS.find((p) => p.value === e.target.value);
                         onUpdate(actorId, rel.toActorId, e.target.value, preset?.affinity);
                       }}
                       className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs"
                     >
-                      {RELATIONSHIP_PRESETS.map(p => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
+                      {RELATIONSHIP_PRESETS.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
                       ))}
                     </select>
                     <button
@@ -228,7 +274,7 @@ function ListView({ actorIds, characters, npcs, relationships, onUpdate, onRemov
                           className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs"
                         >
                           <option value="">Select character...</option>
-                          {availableTargets.map(targetId => (
+                          {availableTargets.map((targetId) => (
                             <option key={targetId} value={targetId}>
                               {getCharacterName(characters, npcs, targetId)}
                             </option>
@@ -263,7 +309,8 @@ function ListView({ actorIds, characters, npcs, relationships, onUpdate, onRemov
 
 export function RelationshipsStep({ characters }: RelationshipsStepProps) {
   const npcs = useNpcsState();
-  const { relationships, addRelationship, updateRelationship, removeRelationship } = useWorkspaceStore();
+  const { relationships, addRelationship, updateRelationship, removeRelationship } =
+    useWorkspaceStore();
   const [viewMode, setViewMode] = useState<'auto' | 'matrix' | 'list'>('auto');
 
   // Build actor IDs list: player + all NPC character IDs
@@ -284,9 +331,7 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
     type: string,
     affinity?: RelationshipConfig['affinitySeed']
   ) => {
-    const existing = relationships.find(
-      r => r.fromActorId === fromId && r.toActorId === toId
-    );
+    const existing = relationships.find((r) => r.fromActorId === fromId && r.toActorId === toId);
 
     if (existing) {
       updateRelationship(fromId, toId, {
@@ -350,9 +395,9 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
         <AlertCircle className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-slate-400">
           <p>
-            Relationships define how characters know each other at the start of the session.
-            Each relationship has an affinity seed (trust, fondness, fear) that influences
-            initial interactions.
+            Relationships define how characters know each other at the start of the session. Each
+            relationship has an affinity seed (trust, fondness, fear) that influences initial
+            interactions.
           </p>
           <p className="mt-2 text-slate-500">
             By default, all relationships start as "Stranger" with neutral affinity.

@@ -42,10 +42,10 @@ The current UI suffers from fragmentation (6+ isolated builders), complexity ove
 
 The Persona Builder currently errors on save. This must be fixed before the Session Workspace can reliably create sessions with personas.
 
-- [ ] Debug and identify root cause of save failures
-- [ ] Fix API endpoint or validation logic
-- [ ] Add error handling and user feedback
-- [ ] Verify persona data is correctly loaded by LLM context
+- [x] Debug and identify root cause of save failures
+- [x] Fix API endpoint or validation logic
+- [x] Add error handling and user feedback
+- [x] Verify persona data is correctly loaded by LLM context
 
 ### 0.2 Transactional Session Creation API
 
@@ -77,10 +77,10 @@ interface CreateFullSessionRequest {
 }
 ```
 
-- [ ] Create `/sessions/create-full` endpoint
-- [ ] Implement transactional creation (all-or-nothing)
-- [ ] Return complete session state including all created instances
-- [ ] Add validation for all nested entities
+- [x] Create `/sessions/create-full` endpoint
+- [x] Implement transactional creation (all-or-nothing)
+- [x] Return complete session state including all created instances
+- [x] Add validation for all nested entities
 
 ### 0.3 Draft Persistence Schema
 
@@ -100,9 +100,9 @@ CREATE TABLE session_workspace_drafts (
 );
 ```
 
-- [ ] Create migration for `session_workspace_drafts` table
-- [ ] Create API endpoints: `GET/POST/PUT /workspace-drafts`
-- [ ] Add auto-cleanup for stale drafts (>30 days)
+- [x] Create migration for `session_workspace_drafts` table
+- [x] Create API endpoints: `GET/POST/PUT /workspace-drafts`
+- [x] Add auto-cleanup for stale drafts (>30 days)
 
 ---
 
@@ -125,12 +125,12 @@ CREATE TABLE session_workspace_drafts (
 
 **Implementation**:
 
-- [ ] Create `SessionWorkspace.tsx` with step navigation
-- [ ] Implement Zustand store for workspace state
-- [ ] Add localStorage persistence middleware (instant recovery)
-- [ ] Add server sync middleware (debounced writes to drafts table)
-- [ ] Non-linear navigation: steps are guides, not gates
-- [ ] Completed steps show checkmarks; incomplete show missing requirements
+- [x] Create `SessionWorkspace.tsx` with step navigation
+- [x] Implement Zustand store for workspace state
+- [x] Add localStorage persistence middleware (instant recovery)
+- [x] Add server sync middleware (debounced writes to drafts table)
+- [x] Non-linear navigation: steps are guides, not gates
+- [x] Completed steps show checkmarks; incomplete show missing requirements
 
 ### 1.2 State Management (Zustand Store)
 
@@ -166,10 +166,10 @@ interface SessionWorkspaceStore {
 }
 ```
 
-- [ ] Implement Zustand store with TypeScript types
-- [ ] Add `persist` middleware for localStorage
-- [ ] Add custom `syncToServer` middleware with 60s debounce
-- [ ] Add step change auto-save trigger
+- [x] Implement Zustand store with TypeScript types
+- [x] Add `persist` middleware for localStorage
+- [x] Add custom `syncToServer` middleware with 60s debounce
+- [x] Add step change auto-save trigger
 
 ### 1.3 Power User Mode (Compact Builder)
 
@@ -194,20 +194,20 @@ For returning users with existing entities:
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Create `CompactBuilder.tsx` component
-- [ ] Two-panel layout: selectors left, live summary right
-- [ ] Default to Compact Mode for users with 3+ existing sessions
-- [ ] Store mode preference (future: user settings)
+- [x] Create `CompactBuilder.tsx` component
+- [x] Two-panel layout: selectors left, live summary right
+- [x] Default to Compact Mode for users with 3+ existing sessions
+- [x] Store mode preference (future: user settings)
 
 ### 1.4 Step 1: Setting & World
 
 **Selection-first approach**: Pick existing → Quick-create → Full builder link
 
-- [ ] Create `SettingStep.tsx` component
-- [ ] Setting library selector with search/filter
-- [ ] "Quick Create" inline form (name, lore, genre preset)
-- [ ] Link to full SettingBuilder (saves and returns to workspace)
-- [ ] Genre presets that set sensible defaults:
+- [x] Create `SettingStep.tsx` component
+- [x] Setting library selector with search/filter
+- [x] "Quick Create" inline form (name, lore, genre preset)
+- [x] Link to full SettingBuilder (saves and returns to workspace)
+- [x] Genre presets that set sensible defaults:
   - Modern Urban: Earth calendar, 24h days
   - High Fantasy: Custom calendar, witching hour
   - Sci-Fi Station: 20h cycles, shift-based periods
@@ -225,22 +225,22 @@ For returning users with existing entities:
 └─────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Add TimeConfigEditor component
-- [ ] Integrate with Setting advanced section
-- [ ] Session-level overrides: start time + seconds per turn only
+- [x] Add TimeConfigEditor component
+- [x] Integrate with Setting advanced section
+- [x] Session-level overrides: start time + seconds per turn only
 
 ### 1.5 Step 3: NPCs & Cast
 
 **Primary selection with optional additional NPCs**:
 
-- [ ] Create `NpcStep.tsx` component
-- [ ] Character library picker for NPC selection
-- [ ] Support for adding multiple NPCs to cast
-- [ ] Per-NPC configuration:
+- [x] Create `NpcStep.tsx` component
+- [x] Character library picker for NPC selection
+- [x] Support for adding multiple NPCs to cast
+- [x] Per-NPC configuration:
   - Role: primary, supporting, background, antagonist
   - Tier: major, minor, transient
   - Starting location (from map, if available)
-- [ ] "Create New" links to Character Builder
+- [x] "Create New" links to Character Builder
 
 **NPC Session Config**:
 
@@ -257,18 +257,18 @@ interface NpcSessionConfig {
 
 ### 1.6 Step 4: Player Configuration
 
-- [ ] Create `PlayerStep.tsx` component
-- [ ] Persona library selector
-- [ ] Quick-create persona form (name, age, gender, summary)
-- [ ] Starting location selection
-- [ ] Starting inventory (items from library)
+- [x] Create `PlayerStep.tsx` component
+- [x] Persona library selector
+- [x] Quick-create persona form (name, age, gender, summary)
+- [x] Starting location selection
+- [x] Starting inventory (items from library)
 
 ### 1.7 Step 5: Rules & Tags
 
-- [ ] Create `TagsStep.tsx` component
-- [ ] Tag selection with scope assignment (session-wide or per-NPC)
-- [ ] Visual grouping by scope
-- [ ] "Create Custom Tag" link
+- [x] Create `TagsStep.tsx` component
+- [x] Tag selection with scope assignment (session-wide or per-NPC)
+- [x] Visual grouping by scope
+- [x] "Create Custom Tag" link
 
 **MVP Tag Scopes**:
 
@@ -299,12 +299,12 @@ interface NpcSessionConfig {
 └─────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Create `ReviewStep.tsx` component
-- [ ] Compact summary with entity counts
-- [ ] Expandable sections for large casts/locations
-- [ ] Per-step validation with clear error messages
-- [ ] Quick-edit links back to relevant steps
-- [ ] Launch button calls transactional API
+- [x] Create `ReviewStep.tsx` component
+- [x] Compact summary with entity counts
+- [x] Expandable sections for large casts/locations
+- [x] Per-step validation with clear error messages
+- [x] Quick-edit links back to relevant steps
+- [x] Launch button calls transactional API
 
 ---
 
@@ -355,18 +355,18 @@ interface LocationConnection {
 }
 ```
 
-- [ ] Create migration for `location_maps` table
-- [ ] Create migration for `locations` table with named exits
-- [ ] Create migration for `location_connections` table
-- [ ] Create API endpoints: CRUD for maps, locations, connections
+- [x] Create migration for `location_maps` table
+- [x] Create migration for `locations` table with named exits
+- [x] Create migration for `location_connections` table
+- [x] Create API endpoints: CRUD for maps, locations, connections
 
 ### 2.2 Location Builder UI
 
 **Two-tab interface** (ship both simultaneously per PM/Opus agreement):
 
-- [ ] Create `LocationBuilder.tsx` with tab navigation
-- [ ] Tab 1: Hierarchy View (tree)
-- [ ] Tab 2: Graph View (visual canvas)
+- [x] Create `LocationBuilder.tsx` with tab navigation
+- [x] Tab 1: Hierarchy View (tree)
+- [x] Tab 2: Graph View (visual canvas)
 
 **Hierarchy View**:
 
@@ -385,9 +385,9 @@ interface LocationConnection {
 └─────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Tree component with expand/collapse
-- [ ] Inline add/edit/delete
-- [ ] Drag-and-drop reordering
+- [x] Tree component with expand/collapse
+- [x] Inline add/edit/delete
+- [x] Drag-and-drop reordering
 
 **Graph View** (React Flow):
 
@@ -409,12 +409,12 @@ interface LocationConnection {
 └─────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Install and configure React Flow (XYFlow)
-- [ ] Custom node component with location info
-- [ ] Multi-handle nodes for named exits
-- [ ] Edge drawing between specific exit/entrance ports
-- [ ] Zoom/pan controls
-- [ ] Semantic zoom: filter nodes by depth level
+- [x] Install and configure React Flow (XYFlow)
+- [x] Custom node component with location info
+- [x] Multi-handle nodes for named exits
+- [x] Edge drawing between specific exit/entrance ports
+- [x] Zoom/pan controls
+- [x] Semantic zoom: filter nodes by depth level
 
 ### 2.3 Prefab System
 
@@ -454,9 +454,9 @@ interface LocationPrefab {
 └─────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Create quick-add modal
-- [ ] Template selection pre-fills structure
-- [ ] Templates reference prefabs
+- [x] Create quick-add modal
+- [x] Template selection pre-fills structure
+- [x] Templates reference prefabs
 
 ### 2.5 Travel Time Integration
 
@@ -464,17 +464,17 @@ Travel time advances the game clock:
 
 $$\text{turnsToAdvance} = \left\lceil \frac{\text{travelMinutes} \times 60}{\text{secondsPerTurn}} \right\rceil$$
 
-- [ ] Add `travelMinutes` to connection schema
-- [ ] Governor integration: advance time on location change
-- [ ] Display travel time in UI on connections
+- [x] Add `travelMinutes` to connection schema
+- [x] Governor integration: advance time on location change
+- [x] Display travel time in UI on connections
 
 ### 2.6 Session Workspace Integration
 
-- [ ] Add `LocationsStep.tsx` to workspace
-- [ ] Map selector (existing maps for setting)
-- [ ] "Create New Map" opens LocationBuilder
-- [ ] Starting location picker from map
-- [ ] Mini-map preview in Review step
+- [x] Add `LocationsStep.tsx` to workspace
+- [x] Map selector (existing maps for setting)
+- [x] "Create New Map" opens LocationBuilder
+- [x] Starting location picker from map
+- [x] Mini-map preview in Review step
 
 ---
 
@@ -504,9 +504,9 @@ interface RelationshipEdge {
 }
 ```
 
-- [ ] Create migration for `session_relationship_state` table (or JSON field on session)
-- [ ] API endpoints for relationship CRUD
-- [ ] Default relationship = "stranger" with neutral affinity (0.5)
+- [x] Create migration for `session_relationship_state` table (or JSON field on session)
+- [x] API endpoints for relationship CRUD
+- [x] Default relationship = "stranger" with neutral affinity (0.5)
 
 ### 3.2 Relationship Matrix UI
 
@@ -526,8 +526,8 @@ interface RelationshipEdge {
 
 **For larger casts**: List view
 
-- [ ] Create `RelationshipMatrix.tsx` component
-- [ ] Click cell → dropdown of relationship presets + "Other..."
+- [x] Create `RelationshipMatrix.tsx` component
+- [x] Click cell → dropdown of relationship presets + "Other..."
 - [ ] Visual relationship graph: **TODO for future** (polish phase)
 
 ### 3.3 Scoped Tags Implementation
@@ -557,9 +557,9 @@ interface TagSelection {
 
 - Location-scoped tags: Requires location detection in Governor (see TODO)
 
-- [ ] Update tag schema with `target` field
-- [ ] Update tag selection UI with scope dropdown
-- [ ] Update Governor to inject session tags
+- [x] Update tag schema with `target` field
+- [x] Update tag selection UI with scope dropdown
+- [x] Update Governor to inject session tags
 - [ ] Update NPC agents to inject per-NPC tags
 
 ### 3.4 TODO: Location Detection in Governor
@@ -620,10 +620,10 @@ interface CharacterBuilderConfig {
 }
 ```
 
-- [ ] Add mode selector to CharacterBuilder
-- [ ] Implement section visibility based on mode
-- [ ] Preserve data when switching modes (don't lose advanced fields)
-- [ ] Default to Standard mode for new characters
+- [x] Add mode selector to CharacterBuilder
+- [x] Implement section visibility based on mode
+- [x] Preserve data when switching modes (don't lose advanced fields)
+- [x] Default to Standard mode for new characters
 
 ### 4.2 Template Characters
 
@@ -691,9 +691,9 @@ interface HygieneConfig {
 }
 ```
 
-- [ ] Create `npc_hygiene_state` table
-- [ ] Default: all body parts start at level 0 (clean)
-- [ ] Character builder (Advanced mode): set initial hygiene level
+- [x] Create `npc_hygiene_state` table
+- [x] Default: all body parts start at level 0 (clean)
+- [x] Character builder (Advanced mode): set initial hygiene level
 
 ### 5.2 Sensory Modifier Data File
 
@@ -724,9 +724,9 @@ Create `data/sensory-modifiers.json`:
 }
 ```
 
-- [ ] Create sensory modifiers data file
-- [ ] Loader function to read at runtime
-- [ ] Validation schema for data file
+- [x] Create sensory modifiers data file
+- [x] Loader function to read at runtime
+- [x] Validation schema for data file
 
 ### 5.3 Hygiene Update Tool
 
@@ -760,9 +760,9 @@ Clothing modifiers:
 | boots_heavy      | 1.5        |
 | boots_sealed     | 2.0        |
 
-- [ ] Create `update_npc_hygiene` tool for Governor
-- [ ] Activity inference from turn narrative (LLM tool call)
-- [ ] Apply modifiers and update state
+- [x] Create `update_npc_hygiene` tool for Governor
+- [x] Activity inference from turn narrative (LLM tool call)
+- [x] Apply modifiers and update state
 
 ### 5.4 Sensory Description Generation
 
@@ -779,9 +779,9 @@ function getSensoryDescription(
 }
 ```
 
-- [ ] Implement sensory description function
-- [ ] Integrate with NPC sensory tool calls
-- [ ] Read runtime state, not character profile
+- [x] Implement sensory description function
+- [x] Integrate with NPC sensory tool calls
+- [x] Read runtime state, not character profile
 
 ---
 
@@ -811,9 +811,9 @@ interface ScheduleOverride {
 }
 ```
 
-- [ ] Create `schedule_templates` table
-- [ ] Seed default templates (Professional, Student, etc.)
-- [ ] Create schedule template builder UI
+- [x] Create `schedule_templates` table
+- [x] Seed default templates (Professional, Student, etc.)
+- [x] Create schedule template builder UI
 
 ### 6.2 LLM Schedule Assignment Tool
 
@@ -823,8 +823,8 @@ interface ScheduleOverride {
 - Output: Concrete schedule with location IDs
 - Example: "skill_practice" + dancer profile + [dance_studio, gym] → dance_studio
 
-- [ ] Implement `generate_npc_schedule` tool
-- [ ] Use in Session Workspace for NPCs without explicit locations
+- [x] Implement `generate_npc_schedule` tool
+- [x] Use in Session Workspace for NPCs without explicit locations
 
 ### 6.3 Fallback Location Assignment
 
@@ -836,8 +836,8 @@ For NPCs without a defined starting location:
 - Match against available location types
 - Assign best-fit location
 
-- [ ] Implement `assign_npc_location` tool
-- [ ] Use as fallback in Session Workspace
+- [x] Implement `assign_npc_location` tool
+- [x] Use as fallback in Session Workspace
 
 ---
 
@@ -853,16 +853,16 @@ From any entity page, show "Where is this used?":
 - Setting → sessions started in it
 - Location map → settings that reference it
 
-- [ ] Add usage tracking (denormalized counts or JOINs)
-- [ ] Add "Where is this used?" section to entity detail pages
-- [ ] Add reverse navigation from session to entities
+- [x] Add usage tracking (denormalized counts or JOINs)
+- [x] Add "Where is this used?" section to entity detail pages
+- [x] Add reverse navigation from session to entities
 
 ### 7.2 Backend Integration
 
-- [ ] Wire location data to LLM context (include description, exits, occupants)
-- [ ] Implement NPC scheduling with locations
-- [ ] Time advancement on travel between locations
-- [ ] Tag injection at correct points (Governor, NPC agents)
+- [x] Wire location data to LLM context (include description, exits, occupants)
+- [x] Implement NPC scheduling with locations
+- [x] Time advancement on travel between locations
+- [x] Tag injection at correct points (Governor, NPC agents)
 
 ### 7.3 Testing & Validation
 

@@ -20,7 +20,10 @@ import {
 } from '@minimal-rpg/schemas';
 import { db } from '../db/prismaClient.js';
 import type { ApiError } from '../types.js';
-import { loadSensoryModifiers, type LoadedSensoryModifiers } from '../data/sensoryModifiersLoader.js';
+import {
+  loadSensoryModifiers,
+  type LoadedSensoryModifiers,
+} from '../data/sensoryModifiersLoader.js';
 
 // Cache for sensory modifiers
 let sensoryModifiersCache: LoadedSensoryModifiers | null = null;
@@ -38,10 +41,7 @@ async function getSensoryModifiers(): Promise<LoadedSensoryModifiers> {
 /**
  * Get hygiene state for all body parts of an NPC.
  */
-async function getNpcHygieneState(
-  sessionId: string,
-  npcId: string
-): Promise<NpcHygieneState> {
+async function getNpcHygieneState(sessionId: string, npcId: string): Promise<NpcHygieneState> {
   const rows = await db.npcHygieneState.findMany({
     where: {
       sessionId,
@@ -67,10 +67,7 @@ async function getNpcHygieneState(
 /**
  * Initialize hygiene state for an NPC (all body parts at level 0).
  */
-async function initializeHygieneState(
-  sessionId: string,
-  npcId: string
-): Promise<NpcHygieneState> {
+async function initializeHygieneState(sessionId: string, npcId: string): Promise<NpcHygieneState> {
   const now = new Date();
   const bodyParts: Record<string, BodyPartHygieneState> = {};
 
@@ -224,10 +221,7 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json(state, 200);
     } catch (error) {
       console.error('Error fetching hygiene state:', error);
-      return c.json(
-        { ok: false, error: 'Failed to fetch hygiene state' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to fetch hygiene state' } satisfies ApiError, 500);
     }
   });
 
@@ -261,13 +255,10 @@ export function registerHygieneRoutes(app: Hono): void {
     }
 
     // Parse and validate input
-    const inputWithNpc = { ...body as object, npcId };
+    const inputWithNpc = { ...(body as object), npcId };
     const parsed = HygieneUpdateInputSchema.safeParse(inputWithNpc);
     if (!parsed.success) {
-      return c.json(
-        { ok: false, error: parsed.error.flatten() } satisfies ApiError,
-        400
-      );
+      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
     try {
@@ -275,10 +266,7 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json(state, 200);
     } catch (error) {
       console.error('Error updating hygiene state:', error);
-      return c.json(
-        { ok: false, error: 'Failed to update hygiene state' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to update hygiene state' } satisfies ApiError, 500);
     }
   });
 
@@ -300,10 +288,7 @@ export function registerHygieneRoutes(app: Hono): void {
 
     const parsed = cleanSchema.safeParse(body);
     if (!parsed.success) {
-      return c.json(
-        { ok: false, error: parsed.error.flatten() } satisfies ApiError,
-        400
-      );
+      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
     const now = new Date();
@@ -339,55 +324,46 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json(state, 200);
     } catch (error) {
       console.error('Error cleaning body parts:', error);
-      return c.json(
-        { ok: false, error: 'Failed to clean body parts' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to clean body parts' } satisfies ApiError, 500);
     }
   });
 
   // GET /sessions/:sessionId/npcs/:npcId/hygiene/sensory/:bodyPart/:senseType - Get sensory modifier
-  app.get(
-    '/sessions/:sessionId/npcs/:npcId/hygiene/sensory/:bodyPart/:senseType',
-    async (c) => {
-      const sessionId = c.req.param('sessionId');
-      const npcId = c.req.param('npcId');
-      const bodyPart = c.req.param('bodyPart');
-      const senseType = c.req.param('senseType') as 'smell' | 'touch' | 'taste';
+  app.get('/sessions/:sessionId/npcs/:npcId/hygiene/sensory/:bodyPart/:senseType', async (c) => {
+    const sessionId = c.req.param('sessionId');
+    const npcId = c.req.param('npcId');
+    const bodyPart = c.req.param('bodyPart');
+    const senseType = c.req.param('senseType') as 'smell' | 'touch' | 'taste';
 
-      if (!['smell', 'touch', 'taste'].includes(senseType)) {
-        return c.json(
-          { ok: false, error: 'Invalid sense type' } satisfies ApiError,
-          400
-        );
-      }
-
-      try {
-        const modifiers = await getSensoryModifiers();
-        const state = await getNpcHygieneState(sessionId, npcId);
-        const partState = state.bodyParts[bodyPart];
-        const level = (partState?.level ?? 0) as HygieneLevel;
-
-        const partModifiers = modifiers.bodyParts[bodyPart];
-        const senseModifiers = partModifiers?.[senseType];
-        const modifier = senseModifiers ? getSensoryModifierByLevel(senseModifiers, level) : '';
-
-        return c.json(
-          {
-            bodyPart,
-            senseType,
-            level,
-            modifier,
-          },
-          200
-        );
-      } catch (error) {
-        console.error('Error fetching sensory modifier:', error);
-        return c.json(
-          { ok: false, error: 'Failed to fetch sensory modifier' } satisfies ApiError,
-          500
-        );
-      }
+    if (!['smell', 'touch', 'taste'].includes(senseType)) {
+      return c.json({ ok: false, error: 'Invalid sense type' } satisfies ApiError, 400);
     }
-  );
+
+    try {
+      const modifiers = await getSensoryModifiers();
+      const state = await getNpcHygieneState(sessionId, npcId);
+      const partState = state.bodyParts[bodyPart];
+      const level = (partState?.level ?? 0) as HygieneLevel;
+
+      const partModifiers = modifiers.bodyParts[bodyPart];
+      const senseModifiers = partModifiers?.[senseType];
+      const modifier = senseModifiers ? getSensoryModifierByLevel(senseModifiers, level) : '';
+
+      return c.json(
+        {
+          bodyPart,
+          senseType,
+          level,
+          modifier,
+        },
+        200
+      );
+    } catch (error) {
+      console.error('Error fetching sensory modifier:', error);
+      return c.json(
+        { ok: false, error: 'Failed to fetch sensory modifier' } satisfies ApiError,
+        500
+      );
+    }
+  });
 }

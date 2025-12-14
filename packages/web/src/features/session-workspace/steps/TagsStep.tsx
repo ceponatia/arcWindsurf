@@ -15,7 +15,12 @@ interface TagsStepProps {
   onRefresh: () => void;
 }
 
-export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, characters, loading, onRefresh }) => {
+export const TagsStep: React.FC<TagsStepProps> = ({
+  availableTags,
+  characters,
+  loading,
+  onRefresh,
+}) => {
   const tags = useTagsState();
   const npcs = useNpcsState();
   const { addTag, removeTag, updateTag, clearTags } = useWorkspaceStore();
@@ -178,12 +183,13 @@ export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, characters, l
                           </div>
 
                           {/* Warning if NPC scope without target */}
-                          {getTagConfig(tag.id)?.scope === 'npc' && !getTagConfig(tag.id)?.targetId && (
-                            <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3" />
-                              Select an NPC for this tag
-                            </p>
-                          )}
+                          {getTagConfig(tag.id)?.scope === 'npc' &&
+                            !getTagConfig(tag.id)?.targetId && (
+                              <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Select an NPC for this tag
+                              </p>
+                            )}
                         </div>
 
                         {tag.promptText && (
@@ -233,14 +239,9 @@ export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, characters, l
               >
                 <span>{tag.tagName ?? tag.tagId}</span>
                 {tag.scope === 'npc' && tag.targetId && (
-                  <span className="text-xs opacity-70">
-                    ({getCharacterName(tag.targetId)})
-                  </span>
+                  <span className="text-xs opacity-70">({getCharacterName(tag.targetId)})</span>
                 )}
-                <button
-                  onClick={() => removeTag(tag.tagId)}
-                  className="hover:text-red-400"
-                >
+                <button onClick={() => removeTag(tag.tagId)} className="hover:text-red-400">
                   ×
                 </button>
               </div>

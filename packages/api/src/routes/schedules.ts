@@ -65,12 +65,14 @@ export function registerScheduleRoutes(app: Hono): void {
    */
   app.get('/schedule-templates', async (c) => {
     const isSystemParam = c.req.query('isSystem');
-    const isSystem = isSystemParam === 'true' ? true : isSystemParam === 'false' ? false : undefined;
+    const isSystem =
+      isSystemParam === 'true' ? true : isSystemParam === 'false' ? false : undefined;
 
     try {
-      const templates = isSystem !== undefined
-        ? await db.scheduleTemplate.findMany({ where: { isSystem } })
-        : await db.scheduleTemplate.findMany();
+      const templates =
+        isSystem !== undefined
+          ? await db.scheduleTemplate.findMany({ where: { isSystem } })
+          : await db.scheduleTemplate.findMany();
 
       return c.json({
         ok: true,
@@ -105,10 +107,7 @@ export function registerScheduleRoutes(app: Hono): void {
       const template = await db.scheduleTemplate.findUnique({ where: { id } });
 
       if (!template) {
-        return c.json(
-          { ok: false, error: 'Schedule template not found' } satisfies ApiError,
-          404
-        );
+        return c.json({ ok: false, error: 'Schedule template not found' } satisfies ApiError, 404);
       }
 
       return c.json({
@@ -144,7 +143,11 @@ export function registerScheduleRoutes(app: Hono): void {
 
       if (!parsed.success) {
         return c.json(
-          { ok: false, error: 'Invalid request body', details: parsed.error.format() } satisfies ApiError,
+          {
+            ok: false,
+            error: 'Invalid request body',
+            details: parsed.error.format(),
+          } satisfies ApiError,
           400
         );
       }
@@ -155,7 +158,11 @@ export function registerScheduleRoutes(app: Hono): void {
       const templateValidation = ScheduleTemplateSchema.safeParse(templateData);
       if (!templateValidation.success) {
         return c.json(
-          { ok: false, error: 'Invalid template data', details: templateValidation.error.format() } satisfies ApiError,
+          {
+            ok: false,
+            error: 'Invalid template data',
+            details: templateValidation.error.format(),
+          } satisfies ApiError,
           400
         );
       }
@@ -218,10 +225,7 @@ export function registerScheduleRoutes(app: Hono): void {
       // Check if template exists and is not a system template
       const existing = await db.scheduleTemplate.findUnique({ where: { id } });
       if (!existing) {
-        return c.json(
-          { ok: false, error: 'Schedule template not found' } satisfies ApiError,
-          404
-        );
+        return c.json({ ok: false, error: 'Schedule template not found' } satisfies ApiError, 404);
       }
       if (existing.isSystem) {
         return c.json(
@@ -235,7 +239,11 @@ export function registerScheduleRoutes(app: Hono): void {
 
       if (!parsed.success) {
         return c.json(
-          { ok: false, error: 'Invalid request body', details: parsed.error.format() } satisfies ApiError,
+          {
+            ok: false,
+            error: 'Invalid request body',
+            details: parsed.error.format(),
+          } satisfies ApiError,
           400
         );
       }
@@ -247,7 +255,11 @@ export function registerScheduleRoutes(app: Hono): void {
         const templateValidation = ScheduleTemplateSchema.safeParse(templateData);
         if (!templateValidation.success) {
           return c.json(
-            { ok: false, error: 'Invalid template data', details: templateValidation.error.format() } satisfies ApiError,
+            {
+              ok: false,
+              error: 'Invalid template data',
+              details: templateValidation.error.format(),
+            } satisfies ApiError,
             400
           );
         }
@@ -263,7 +275,8 @@ export function registerScheduleRoutes(app: Hono): void {
       if (name !== undefined) updateData.name = name;
       if (description !== undefined) updateData.description = description;
       if (templateData !== undefined) updateData.templateData = templateData;
-      if (requiredPlaceholders !== undefined) updateData.requiredPlaceholders = requiredPlaceholders;
+      if (requiredPlaceholders !== undefined)
+        updateData.requiredPlaceholders = requiredPlaceholders;
 
       const template = await db.scheduleTemplate.update({
         where: { id },
@@ -303,10 +316,7 @@ export function registerScheduleRoutes(app: Hono): void {
     try {
       const existing = await db.scheduleTemplate.findUnique({ where: { id } });
       if (!existing) {
-        return c.json(
-          { ok: false, error: 'Schedule template not found' } satisfies ApiError,
-          404
-        );
+        return c.json({ ok: false, error: 'Schedule template not found' } satisfies ApiError, 404);
       }
       if (existing.isSystem) {
         return c.json(
@@ -357,10 +367,7 @@ export function registerScheduleRoutes(app: Hono): void {
       });
     } catch (error) {
       console.error('Error listing NPC schedules:', error);
-      return c.json(
-        { ok: false, error: 'Failed to list NPC schedules' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to list NPC schedules' } satisfies ApiError, 500);
     }
   });
 
@@ -377,10 +384,7 @@ export function registerScheduleRoutes(app: Hono): void {
       });
 
       if (!schedule) {
-        return c.json(
-          { ok: false, error: 'NPC schedule not found' } satisfies ApiError,
-          404
-        );
+        return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
       return c.json({
@@ -398,10 +402,7 @@ export function registerScheduleRoutes(app: Hono): void {
       });
     } catch (error) {
       console.error('Error fetching NPC schedule:', error);
-      return c.json(
-        { ok: false, error: 'Failed to fetch NPC schedule' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to fetch NPC schedule' } satisfies ApiError, 500);
     }
   });
 
@@ -418,7 +419,11 @@ export function registerScheduleRoutes(app: Hono): void {
 
       if (!parsed.success) {
         return c.json(
-          { ok: false, error: 'Invalid request body', details: parsed.error.format() } satisfies ApiError,
+          {
+            ok: false,
+            error: 'Invalid request body',
+            details: parsed.error.format(),
+          } satisfies ApiError,
           400
         );
       }
@@ -429,7 +434,11 @@ export function registerScheduleRoutes(app: Hono): void {
       const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
       if (!scheduleValidation.success) {
         return c.json(
-          { ok: false, error: 'Invalid schedule data', details: scheduleValidation.error.format() } satisfies ApiError,
+          {
+            ok: false,
+            error: 'Invalid schedule data',
+            details: scheduleValidation.error.format(),
+          } satisfies ApiError,
           400
         );
       }
@@ -482,10 +491,7 @@ export function registerScheduleRoutes(app: Hono): void {
       );
     } catch (error) {
       console.error('Error creating NPC schedule:', error);
-      return c.json(
-        { ok: false, error: 'Failed to create NPC schedule' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to create NPC schedule' } satisfies ApiError, 500);
     }
   });
 
@@ -501,10 +507,7 @@ export function registerScheduleRoutes(app: Hono): void {
         where: { sessionId_npcId: { sessionId, npcId } },
       });
       if (!existing) {
-        return c.json(
-          { ok: false, error: 'NPC schedule not found' } satisfies ApiError,
-          404
-        );
+        return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
       const body = await c.req.json();
@@ -512,7 +515,11 @@ export function registerScheduleRoutes(app: Hono): void {
 
       if (!parsed.success) {
         return c.json(
-          { ok: false, error: 'Invalid request body', details: parsed.error.format() } satisfies ApiError,
+          {
+            ok: false,
+            error: 'Invalid request body',
+            details: parsed.error.format(),
+          } satisfies ApiError,
           400
         );
       }
@@ -524,7 +531,11 @@ export function registerScheduleRoutes(app: Hono): void {
         const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
         if (!scheduleValidation.success) {
           return c.json(
-            { ok: false, error: 'Invalid schedule data', details: scheduleValidation.error.format() } satisfies ApiError,
+            {
+              ok: false,
+              error: 'Invalid schedule data',
+              details: scheduleValidation.error.format(),
+            } satisfies ApiError,
             400
           );
         }
@@ -585,10 +596,7 @@ export function registerScheduleRoutes(app: Hono): void {
       });
     } catch (error) {
       console.error('Error updating NPC schedule:', error);
-      return c.json(
-        { ok: false, error: 'Failed to update NPC schedule' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to update NPC schedule' } satisfies ApiError, 500);
     }
   });
 
@@ -604,10 +612,7 @@ export function registerScheduleRoutes(app: Hono): void {
         where: { sessionId_npcId: { sessionId, npcId } },
       });
       if (!existing) {
-        return c.json(
-          { ok: false, error: 'NPC schedule not found' } satisfies ApiError,
-          404
-        );
+        return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
       await db.npcSchedule.delete({
@@ -616,10 +621,7 @@ export function registerScheduleRoutes(app: Hono): void {
       return c.json({ ok: true });
     } catch (error) {
       console.error('Error deleting NPC schedule:', error);
-      return c.json(
-        { ok: false, error: 'Failed to delete NPC schedule' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to delete NPC schedule' } satisfies ApiError, 500);
     }
   });
 }

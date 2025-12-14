@@ -57,9 +57,7 @@ export function registerEntityUsageRoutes(app: Hono): void {
       }));
 
       // Deduplicate by sessionId (in case of multiple instances per session)
-      const uniqueSessions = Array.from(
-        new Map(sessions.map((s) => [s.sessionId, s])).values()
-      );
+      const uniqueSessions = Array.from(new Map(sessions.map((s) => [s.sessionId, s])).values());
 
       const result: EntityUsageSummary = {
         entityId: characterId,
@@ -111,10 +109,7 @@ export function registerEntityUsageRoutes(app: Hono): void {
       return c.json(result, 200);
     } catch (error) {
       console.error('Error fetching setting usage:', error);
-      return c.json(
-        { ok: false, error: 'Failed to fetch setting usage' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to fetch setting usage' } satisfies ApiError, 500);
     }
   });
 
@@ -151,10 +146,7 @@ export function registerEntityUsageRoutes(app: Hono): void {
       return c.json(result, 200);
     } catch (error) {
       console.error('Error fetching persona usage:', error);
-      return c.json(
-        { ok: false, error: 'Failed to fetch persona usage' } satisfies ApiError,
-        500
-      );
+      return c.json({ ok: false, error: 'Failed to fetch persona usage' } satisfies ApiError, 500);
     }
   });
 }

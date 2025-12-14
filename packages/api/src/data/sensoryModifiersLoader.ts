@@ -30,7 +30,11 @@ export interface LoadedSensoryModifiers {
   /** Decay rate configuration lookup */
   decayRates: Record<string, BodyPartHygieneConfig>;
   /** Get sensory modifier text for a body part, sense type, and hygiene level */
-  getModifier: (bodyPart: string, senseType: 'smell' | 'touch' | 'taste', level: HygieneLevel) => string;
+  getModifier: (
+    bodyPart: string,
+    senseType: 'smell' | 'touch' | 'taste',
+    level: HygieneLevel
+  ) => string;
 }
 
 /**

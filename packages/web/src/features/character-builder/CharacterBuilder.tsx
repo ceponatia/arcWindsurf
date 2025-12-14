@@ -480,7 +480,7 @@ export const CharacterBuilder: React.FC<{
       {/* Header with Mode Selector */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-200">Character Builder</h2>
-        
+
         {/* Mode Selector */}
         <div className="flex items-center gap-1 p-1 bg-slate-800 rounded-lg">
           {(['quick', 'standard', 'advanced'] as const).map((m) => {
@@ -492,9 +492,10 @@ export const CharacterBuilder: React.FC<{
                 onClick={() => handleModeChange(m)}
                 className={`
                   px-3 py-1.5 text-sm rounded transition-all
-                  ${isActive
-                    ? 'bg-violet-600 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                  ${
+                    isActive
+                      ? 'bg-violet-600 text-white'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                   }
                 `}
                 title={`${config.label}: ${config.description} (${config.fieldCount})`}

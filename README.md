@@ -363,7 +363,7 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **Schedule Templates**: Reusable patterns (shopkeeper, guard, tavern keeper, noble, wanderer)
 - **Placeholder Resolution**: Templates with $workLocation, $homeLocation substitution
 - **Common Activities**: Pre-defined activities (sleeping, working, socializing, etc.)
-- **Governor Tools**: 
+- **Governor Tools**:
   - `generate_npc_schedule`: Create schedule from template with placeholder resolution
   - `assign_npc_location`: Match NPC profile to appropriate location
   - `get_schedule_resolution`: Resolve current location/activity from schedule

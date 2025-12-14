@@ -392,9 +392,7 @@ export interface PrismaClientLike {
     delete(args: { where: { id: string } }): Promise<void>;
   };
   npcSchedule: {
-    findMany(args?: {
-      where?: { sessionId?: string; npcId?: string };
-    }): Promise<NpcScheduleRow[]>;
+    findMany(args?: { where?: { sessionId?: string; npcId?: string } }): Promise<NpcScheduleRow[]>;
     findUnique(args: {
       where: { sessionId_npcId: { sessionId: string; npcId: string } };
     }): Promise<NpcScheduleRow | null>;
