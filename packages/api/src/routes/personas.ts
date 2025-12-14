@@ -75,7 +75,7 @@ export function registerPersonaRoutes(app: Hono): void {
     }
   });
 
-  // POST /personas - create new persona
+  // POST /personas - create or update persona (upsert)
   app.post('/personas', async (c) => {
     let body: unknown;
     try {
@@ -90,14 +90,8 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     const profile = parsed.data;
-    const userId = c.req.query('user_id'); // Required for multi-user support
-
-    if (!userId) {
-      return c.json(
-        { ok: false, error: 'user_id query parameter required' } satisfies ApiError,
-        400
-      );
-    }
+    // user_id is optional - defaults to 'default' for single-user scenarios
+    const userId = c.req.query('user_id') ?? 'default';
 
     // Check if persona with this ID already exists
     const existing = await db.persona.findUnique({
@@ -105,7 +99,15 @@ export function registerPersonaRoutes(app: Hono): void {
     });
 
     if (existing) {
-      return c.json({ ok: false, error: 'persona id already exists' } satisfies ApiError, 409);
+      // Update existing persona instead of erroring
+      const updated = await db.persona.update({
+        where: { id: profile.id },
+        data: {
+          profileJson: JSON.stringify(profile),
+        },
+      });
+      const summary = mapPersonaSummary(profile, updated.createdAt, updated.updatedAt);
+      return c.json({ ok: true, persona: summary }, 200);
     }
 
     const created = await db.persona.create({
