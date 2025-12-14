@@ -140,9 +140,7 @@ describe('Workspace Validation Logic', () => {
     });
 
     it('should pass when at least one NPC is added', () => {
-      const npcs = [
-        { characterId: 'npc-1', role: 'primary' as const, tier: 'major' as const },
-      ];
+      const npcs = [{ characterId: 'npc-1', role: 'primary' as const, tier: 'major' as const }];
       const isValid = npcs.length > 0;
       expect(isValid).toBe(true);
     });

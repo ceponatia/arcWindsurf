@@ -109,7 +109,9 @@ pnpm core:quit
 **Unit tests** (vitest): Run tests for packages with test coverage:
 
 ```bash
+pnpm test                                  # Run all tests across monorepo
 pnpm -F @minimal-rpg/web test              # Web package (workspace store)
+pnpm -F @minimal-rpg/api test              # API package (session creation)
 pnpm -F @minimal-rpg/agents test           # Agents package
 pnpm -F @minimal-rpg/state-manager test    # State manager package
 pnpm -F @minimal-rpg/retrieval test        # Retrieval package

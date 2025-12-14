@@ -867,7 +867,7 @@ From any entity page, show "Where is this used?":
 ### 7.3 Testing & Validation
 
 - [x] Unit tests for workspace state management
-- [ ] Integration tests for transactional session creation
+- [x] Integration tests for transactional session creation
 - [ ] E2E tests for complete session creation flow
 - [ ] User testing of new flow
 - [ ] Performance profiling and optimization

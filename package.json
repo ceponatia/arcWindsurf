@@ -16,6 +16,7 @@
     "docker:up:detached": "docker compose up --build -d",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
+    "test": "turbo test",
     "test:trait": "node scripts/test-trait.mjs",
     "typecheck": "turbo typecheck"
   },
