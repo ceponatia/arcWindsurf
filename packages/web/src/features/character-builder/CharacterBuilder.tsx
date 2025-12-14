@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   CharacterProfileSchema,
   type BodyMap,
@@ -25,8 +25,10 @@ import {
   mergeGeneratedIntoForm,
 } from './hooks/useCharacterBuilderForm.js';
 import {
+  MODE_CONFIGS,
   type AppearanceEntry,
   type BodySensoryEntry,
+  type CharacterBuilderMode,
   type DetailFormEntry,
   type FormFieldErrors,
   type FormKey,
@@ -350,7 +352,8 @@ export const CharacterBuilder: React.FC<{
   id?: string | null;
   onSave?: () => void;
   onCancel?: () => void;
-}> = ({ id, onSave: onSaveCallback, onCancel }) => {
+  initialMode?: CharacterBuilderMode;
+}> = ({ id, onSave: onSaveCallback, onCancel, initialMode = 'standard' }) => {
   const {
     form,
     setForm,
@@ -370,12 +373,19 @@ export const CharacterBuilder: React.FC<{
     loadError,
   } = useCharacterBuilderForm(id);
 
+  const [mode, setMode] = useState<CharacterBuilderMode>(initialMode);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const modeConfig = MODE_CONFIGS[mode];
   const isEditing = Boolean(id);
+
+  // Change mode handler - preserves data when switching modes
+  const handleModeChange = useCallback((newMode: CharacterBuilderMode) => {
+    setMode(newMode);
+  }, []);
 
   const handleDelete = async () => {
     if (!id) return;
@@ -467,34 +477,96 @@ export const CharacterBuilder: React.FC<{
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-200">Character Builder</h2>
+      {/* Header with Mode Selector */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-slate-200">Character Builder</h2>
+        
+        {/* Mode Selector */}
+        <div className="flex items-center gap-1 p-1 bg-slate-800 rounded-lg">
+          {(['quick', 'standard', 'advanced'] as const).map((m) => {
+            const config = MODE_CONFIGS[m];
+            const isActive = mode === m;
+            return (
+              <button
+                key={m}
+                onClick={() => handleModeChange(m)}
+                className={`
+                  px-3 py-1.5 text-sm rounded transition-all
+                  ${isActive
+                    ? 'bg-violet-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                  }
+                `}
+                title={`${config.label}: ${config.description} (${config.fieldCount})`}
+              >
+                {config.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mode Description */}
+      <p className="text-xs text-slate-500">
+        {modeConfig.label} mode: {modeConfig.description} ({modeConfig.fieldCount})
+      </p>
+
       {loading && <p className="text-sm text-slate-400">Loading character…</p>}
       {loadError && !loading && <p className="text-sm text-amber-300">{loadError}</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
-          <BasicsSection form={form} fieldErrors={fieldErrors} updateField={updateField} />
-          <AppearanceSection
-            appearances={form.appearances}
-            gender={form.gender}
-            updateAppearanceEntry={updateAppearanceEntry}
-            addAppearanceEntry={addAppearanceEntry}
-            removeAppearanceEntry={removeAppearanceEntry}
-          />
-          <PersonalitySection form={form} fieldErrors={fieldErrors} updateField={updateField} />
-          <BodySection
-            bodySensory={form.bodySensory}
-            gender={form.gender}
-            updateBodyEntry={updateBodyEntry}
-            addBodyEntry={addBodyEntry}
-            removeBodyEntry={removeBodyEntry}
-          />
-          <DetailsSection
-            details={form.details}
-            updateDetailEntry={updateDetailEntry}
-            addDetailEntry={addDetailEntry}
-            removeDetailEntry={removeDetailEntry}
-          />
+          {/* Basics Section - always visible */}
+          {modeConfig.sections.basics && (
+            <BasicsSection
+              form={form}
+              fieldErrors={fieldErrors}
+              updateField={updateField}
+              visibleFields={modeConfig.basicFields}
+            />
+          )}
+
+          {/* Appearance Section - Standard and Advanced */}
+          {modeConfig.sections.appearance && (
+            <AppearanceSection
+              appearances={form.appearances}
+              gender={form.gender}
+              updateAppearanceEntry={updateAppearanceEntry}
+              addAppearanceEntry={addAppearanceEntry}
+              removeAppearanceEntry={removeAppearanceEntry}
+            />
+          )}
+
+          {/* Personality Section - Standard and Advanced */}
+          {modeConfig.sections.personality && (
+            <PersonalitySection
+              form={form}
+              fieldErrors={fieldErrors}
+              updateField={updateField}
+              isAdvanced={mode === 'advanced'}
+            />
+          )}
+
+          {/* Body Section - Advanced only */}
+          {modeConfig.sections.body && (
+            <BodySection
+              bodySensory={form.bodySensory}
+              gender={form.gender}
+              updateBodyEntry={updateBodyEntry}
+              addBodyEntry={addBodyEntry}
+              removeBodyEntry={removeBodyEntry}
+            />
+          )}
+
+          {/* Details Section - Advanced only */}
+          {modeConfig.sections.details && (
+            <DetailsSection
+              details={form.details}
+              updateDetailEntry={updateDetailEntry}
+              addDetailEntry={addDetailEntry}
+              removeDetailEntry={removeDetailEntry}
+            />
+          )}
         </div>
 
         <PreviewSidebar

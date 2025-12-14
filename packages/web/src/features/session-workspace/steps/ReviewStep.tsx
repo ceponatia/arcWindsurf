@@ -62,7 +62,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   // Flatten validation errors for display
   const validationErrors = useMemo(() => {
     const errors: { message: string; step?: string }[] = [];
-    for (const [step, state] of Object.entries(validation.stepErrors) as [string, StepValidationState | undefined][]) {
+    for (const [step, state] of Object.entries(validation.stepErrors) as [
+      string,
+      StepValidationState | undefined,
+    ][]) {
       if (state && !state.valid) {
         for (const err of state.errors) {
           errors.push({ message: err, step });

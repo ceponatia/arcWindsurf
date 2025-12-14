@@ -255,10 +255,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                 value={selectedNpcConfig.startLocationId ?? ''}
                 onChange={(e) => {
                   const value = e.target.value;
-                  updateNpc(
-                    selectedNpcConfig.characterId,
-                    value ? { startLocationId: value } : {}
-                  );
+                  updateNpc(selectedNpcConfig.characterId, value ? { startLocationId: value } : {});
                 }}
                 placeholder="Default location"
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-200 placeholder-slate-500"

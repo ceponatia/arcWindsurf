@@ -13,7 +13,13 @@ import {
   useValidation,
 } from './store.js';
 import type { SettingSummary, CharacterSummary, PersonaSummary, TagSummary } from '../../types.js';
-import type { NpcSessionConfig, TagSelection, NpcRole, NpcTier, StepValidationState } from './store.js';
+import type {
+  NpcSessionConfig,
+  TagSelection,
+  NpcRole,
+  NpcTier,
+  StepValidationState,
+} from './store.js';
 import type { SettingProfile, PersonaProfile } from '@minimal-rpg/schemas';
 
 interface CompactBuilderProps {
@@ -100,7 +106,10 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
 
   // Flatten validation errors for display
   const validationErrors: string[] = [];
-  for (const [, state] of Object.entries(validation.stepErrors) as [string, StepValidationState | undefined][]) {
+  for (const [, state] of Object.entries(validation.stepErrors) as [
+    string,
+    StepValidationState | undefined,
+  ][]) {
     if (state && !state.valid) {
       validationErrors.push(...state.errors);
     }

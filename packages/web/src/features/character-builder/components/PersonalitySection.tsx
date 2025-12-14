@@ -40,6 +40,8 @@ interface PersonalitySectionProps {
   form: FormState;
   fieldErrors: FormFieldErrors;
   updateField: UpdateFieldFn;
+  /** When true, shows all advanced personality subsections */
+  isAdvanced?: boolean;
 }
 
 /** Collapsible section wrapper */
@@ -118,6 +120,7 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
   form,
   fieldErrors,
   updateField,
+  isAdvanced = false,
 }) => {
   const pm = form.personalityMap;
 
@@ -144,7 +147,7 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
     <div className="border border-slate-800 rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Personality</div>
       <div className="p-4 space-y-4">
-        {/* Quick Traits (simple text) */}
+        {/* Quick Traits (simple text) - always visible */}
         <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-400">Quick Traits (comma-separated keywords)</span>
           <input
@@ -161,32 +164,34 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
           )}
         </label>
 
-        {/* Trait prompts (structured) */}
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-slate-400">
-            Trait Prompt IDs (e.g., friendliness:high, speech:formal)
-          </span>
-          <input
-            className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-            value={pm.traits}
-            onChange={(e) => updatePM('traits', e.target.value)}
-            placeholder="e.g., friendliness:high, trust:low, speech:formal"
-          />
-          {traitValidation && traitValidation.hardConflicts.length > 0 && (
-            <div className="text-xs text-red-400 mt-1">
-              Conflicts:{' '}
-              {traitValidation.hardConflicts.map((c) => `${c.trait1} ↔ ${c.trait2}`).join(', ')}
-            </div>
-          )}
-          {traitValidation && traitValidation.softConflicts.length > 0 && (
-            <div className="text-xs text-yellow-400 mt-1">
-              Soft conflicts:{' '}
-              {traitValidation.softConflicts.map((c) => `${c.trait1} ↔ ${c.trait2}`).join(', ')}
-            </div>
-          )}
-        </label>
+        {/* Trait prompts (structured) - advanced only */}
+        {isAdvanced && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-400">
+              Trait Prompt IDs (e.g., friendliness:high, speech:formal)
+            </span>
+            <input
+              className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+              value={pm.traits}
+              onChange={(e) => updatePM('traits', e.target.value)}
+              placeholder="e.g., friendliness:high, trust:low, speech:formal"
+            />
+            {traitValidation && traitValidation.hardConflicts.length > 0 && (
+              <div className="text-xs text-red-400 mt-1">
+                Conflicts:{' '}
+                {traitValidation.hardConflicts.map((c) => `${c.trait1} ↔ ${c.trait2}`).join(', ')}
+              </div>
+            )}
+            {traitValidation && traitValidation.softConflicts.length > 0 && (
+              <div className="text-xs text-yellow-400 mt-1">
+                Soft conflicts:{' '}
+                {traitValidation.softConflicts.map((c) => `${c.trait1} ↔ ${c.trait2}`).join(', ')}
+              </div>
+            )}
+          </label>
+        )}
 
-        {/* Big Five Dimensions */}
+        {/* Big Five Dimensions - always visible */}
         <Subsection title="Big Five Dimensions" defaultOpen={true}>
           {PERSONALITY_DIMENSIONS.map((dim) => {
             const entry = pm.dimensions.find((d) => d.dimension === dim);
@@ -207,8 +212,11 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
           })}
         </Subsection>
 
-        {/* Emotional Baseline */}
-        <Subsection title="Emotional Baseline">
+        {/* Advanced subsections - only visible in advanced mode */}
+        {isAdvanced && (
+          <>
+            {/* Emotional Baseline */}
+            <Subsection title="Emotional Baseline">
           <div className="grid grid-cols-2 gap-3">
             <SelectInput
               label="Current Emotion"
@@ -677,6 +685,8 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
             />
           </label>
         </Subsection>
+          </>
+        )}
       </div>
     </div>
   );

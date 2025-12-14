@@ -196,10 +196,7 @@ export async function handleCreateFullSession(
   // Validate tags exist if provided
   if (request.tags && request.tags.length > 0) {
     const tagIds = request.tags.map((t) => t.tagId);
-    const tagResult = await pool.query(
-      'SELECT id FROM prompt_tags WHERE id = ANY($1)',
-      [tagIds]
-    );
+    const tagResult = await pool.query('SELECT id FROM prompt_tags WHERE id = ANY($1)', [tagIds]);
     const foundTagIds = new Set((tagResult.rows as Array<{ id: string }>).map((r) => r.id));
     const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
     if (missingTags.length > 0) {
@@ -254,13 +251,7 @@ export async function handleCreateFullSession(
     await client.query(
       `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json)
        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)`,
-      [
-        settingInstanceId,
-        sessionId,
-        setting.id,
-        JSON.stringify(setting),
-        JSON.stringify(setting),
-      ]
+      [settingInstanceId, sessionId, setting.id, JSON.stringify(setting), JSON.stringify(setting)]
     );
 
     // 3. Create NPC character instances
@@ -404,11 +395,7 @@ export async function handleCreateFullSession(
       await client.query(
         `INSERT INTO session_location_state (id, session_id, state_json)
          VALUES ($1, $2, $3::jsonb)`,
-        [
-          generateId(),
-          sessionId,
-          JSON.stringify({ currentLocationId: request.startLocationId }),
-        ]
+        [generateId(), sessionId, JSON.stringify({ currentLocationId: request.startLocationId })]
       );
     }
 

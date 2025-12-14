@@ -37,6 +37,119 @@ import {
   type CopingMechanism,
 } from '@minimal-rpg/schemas';
 
+// ============================================================================
+// Character Builder Complexity Modes
+// ============================================================================
+
+/**
+ * Complexity mode for the Character Builder.
+ * Controls which sections and fields are visible.
+ */
+export type CharacterBuilderMode = 'quick' | 'standard' | 'advanced';
+
+/**
+ * Configuration for which sections are visible in each mode.
+ */
+export interface ModeConfig {
+  /** Display name for the mode */
+  label: string;
+  /** Description of what fields are shown */
+  description: string;
+  /** Approximate field count for UI display */
+  fieldCount: string;
+  /** Which sections are visible */
+  sections: {
+    basics: boolean;
+    appearance: boolean;
+    personality: boolean;
+    body: boolean;
+    details: boolean;
+  };
+  /** Which fields in basics are visible */
+  basicFields: {
+    name: boolean;
+    age: boolean;
+    gender: boolean;
+    summary: boolean;
+    backstory: boolean;
+    tags: boolean;
+    profilePic: boolean;
+    personality: boolean;
+  };
+}
+
+/**
+ * Mode configurations for each complexity level.
+ */
+export const MODE_CONFIGS: Record<CharacterBuilderMode, ModeConfig> = {
+  quick: {
+    label: 'Quick',
+    description: 'Essential character info',
+    fieldCount: '5 fields',
+    sections: {
+      basics: true,
+      appearance: false,
+      personality: false,
+      body: false,
+      details: false,
+    },
+    basicFields: {
+      name: true,
+      age: true,
+      gender: true,
+      summary: true,
+      backstory: false,
+      tags: false,
+      profilePic: true,
+      personality: false,
+    },
+  },
+  standard: {
+    label: 'Standard',
+    description: 'Common character details',
+    fieldCount: '~20 fields',
+    sections: {
+      basics: true,
+      appearance: true,
+      personality: true,
+      body: false,
+      details: false,
+    },
+    basicFields: {
+      name: true,
+      age: true,
+      gender: true,
+      summary: true,
+      backstory: true,
+      tags: true,
+      profilePic: true,
+      personality: true,
+    },
+  },
+  advanced: {
+    label: 'Advanced',
+    description: 'Full character profile',
+    fieldCount: '~100 fields',
+    sections: {
+      basics: true,
+      appearance: true,
+      personality: true,
+      body: true,
+      details: true,
+    },
+    basicFields: {
+      name: true,
+      age: true,
+      gender: true,
+      summary: true,
+      backstory: true,
+      tags: true,
+      profilePic: true,
+      personality: true,
+    },
+  },
+};
+
 export interface DetailFormEntry {
   label: string;
   value: string;
