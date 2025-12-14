@@ -1,7 +1,8 @@
 # Session Builder & UI Overhaul - Implementation Audit
 
 > **Audit Date**: December 2024
-> **Status**: INCOMPLETE - Critical integration missing
+> **Last Updated**: December 14, 2025
+> **Status**: IN PROGRESS - Core integration complete
 > **Branch**: `refactor/opus`
 
 This document provides an **accurate audit** of what has been implemented versus what was planned in [opus-refactor.md](opus-refactor.md), cross-referenced against the requirements in [opus-session-builder-and-ui-overhaul.md](opus-session-builder-and-ui-overhaul.md).
@@ -10,18 +11,18 @@ This document provides an **accurate audit** of what has been implemented versus
 
 ## Executive Summary
 
-**CRITICAL FINDING**: The new Session Workspace components exist but are **NOT wired into the application**. The old `SessionBuilder` is still used in the UI routing.
+**UPDATE**: SessionWorkspace has been wired to AppShell.tsx and is now functional. The core session creation flow works end-to-end.
 
-| Phase | Planned Items | Implemented | Wired/Functional | Status                          |
-| ----- | ------------- | ----------- | ---------------- | ------------------------------- |
-| 0     | 10            | 10          | 10               | ✅ Complete                     |
-| 1     | 26            | 20          | **0**            | 🔴 **Built but not integrated** |
-| 2     | 21            | 14          | **0**            | 🔴 **Built but not integrated** |
-| 3     | 9             | 6           | **0**            | 🔴 **Partial**                  |
-| 4     | 11            | 4           | 4                | 🟡 Partial                      |
-| 5     | 9             | 9           | 9                | ✅ Complete                     |
-| 6     | 7             | 5           | 5                | 🟡 Partial                      |
-| 7     | 11            | 6           | 6                | 🟡 Partial                      |
+| Phase | Planned Items | Implemented | Wired/Functional | Status                      |
+| ----- | ------------- | ----------- | ---------------- | --------------------------- |
+| 0     | 10            | 10          | 10               | ✅ Complete                 |
+| 1     | 26            | 20          | **18**           | ✅ **Core functional**      |
+| 2     | 21            | 14          | **0**            | 🔴 Built but not integrated |
+| 3     | 9             | 6           | **0**            | 🔴 Partial                  |
+| 4     | 11            | 4           | 4                | 🟡 Partial                  |
+| 5     | 9             | 9           | 9                | ✅ Complete                 |
+| 6     | 7             | 5           | 5                | 🟡 Partial                  |
+| 7     | 11            | 8           | 8                | ✅ **E2E tested**           |
 
 ---
 
@@ -55,41 +56,37 @@ This document provides an **accurate audit** of what has been implemented versus
 
 ---
 
-## Phase 1: Session Workspace Foundation 🔴 BUILT BUT NOT INTEGRATED
+## Phase 1: Session Workspace Foundation ✅ CORE FUNCTIONAL
 
-### Critical Issue: Not Wired to UI
+### Integration Status: COMPLETE ✅
 
-**Problem**: The `SessionWorkspace` component exists at `packages/web/src/features/session-workspace/` but `AppShell.tsx` still uses the **old** `SessionBuilder`:
+**FIXED (Dec 14, 2025)**: SessionWorkspace is now wired to AppShell.tsx and fully functional.
 
-```typescript
-// AppShell.tsx line ~500 - STILL USING OLD BUILDER
-case 'session-builder':
-  return (
-    <SessionBuilder .../>  // OLD component from session-builder/
-  );
-```
-
-**Fix Required**: Replace `SessionBuilder` import with `SessionWorkspace` and update props.
+Changes made:
+- Replaced `SessionBuilder` with `SessionWorkspace` in `AppShell.tsx`
+- Added `createSessionFull` API client for transactional session creation
+- Added `onCreateSessionFull` and `onSessionCreated` to `useAppController`
+- Fixed infinite re-render bug in `useValidation` hook using `useMemo`
 
 ### 1.1 Workspace Shell & Navigation
 
 | Item                                               | Status                 | Evidence                                                                                 |
 | -------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------- |
-| Create `SessionWorkspace.tsx` with step navigation | ✅ Built               | [SessionWorkspace.tsx](packages/web/src/features/session-workspace/SessionWorkspace.tsx) |
-| Implement Zustand store                            | ✅ Built               | [store.ts](packages/web/src/features/session-workspace/store.ts) - 450 lines             |
-| Add localStorage persistence middleware            | ✅ Built               | Uses `persist` middleware                                                                |
+| Create `SessionWorkspace.tsx` with step navigation | ✅ Functional          | [SessionWorkspace.tsx](packages/web/src/features/session-workspace/SessionWorkspace.tsx) |
+| Implement Zustand store                            | ✅ Functional          | [store.ts](packages/web/src/features/session-workspace/store.ts) - 580 lines             |
+| Add localStorage persistence middleware            | ✅ Functional          | Uses `persist` middleware                                                                |
 | Add server sync middleware                         | 🔴 **NOT IMPLEMENTED** | Comment says "TODO: Implement auto-save to server"                                       |
-| Non-linear navigation                              | ✅ Built               | `setStep()` allows any step                                                              |
-| Completed steps show checkmarks                    | ✅ Built               | `StepNavigation` component                                                               |
+| Non-linear navigation                              | ✅ Functional          | `setStep()` allows any step                                                              |
+| Completed steps show checkmarks                    | ✅ Functional          | E2E tested - checkmarks appear on completed steps                                        |
 
 ### 1.2 State Management (Zustand Store) ✅
 
-| Item                                      | Status                 | Evidence                          |
-| ----------------------------------------- | ---------------------- | --------------------------------- |
-| Implement Zustand store with types        | ✅                     | Full TypeScript types defined     |
-| Add `persist` middleware for localStorage | ✅                     | `persist()` middleware configured |
-| Add custom `syncToServer` middleware      | 🔴 **NOT IMPLEMENTED** | Only localStorage, no API sync    |
-| Add step change auto-save trigger         | 🔴 **NOT IMPLEMENTED** | No auto-save on step change       |
+| Item                                      | Status                 | Evidence                                       |
+| ----------------------------------------- | ---------------------- | ---------------------------------------------- |
+| Implement Zustand store with types        | ✅                     | Full TypeScript types defined                  |
+| Add `persist` middleware for localStorage | ✅                     | `persist()` middleware configured              |
+| Add custom `syncToServer` middleware      | 🔴 **NOT IMPLEMENTED** | Only localStorage, no API sync                 |
+| Add step change auto-save trigger         | 🔴 **NOT IMPLEMENTED** | No auto-save on step change                    |
 
 ### 1.3 Power User Mode (Compact Builder)
 
@@ -102,17 +99,17 @@ case 'session-builder':
 
 ### 1.4-1.8 Step Components
 
-| Component             | Built | Functional   | Evidence                        |
-| --------------------- | ----- | ------------ | ------------------------------- |
-| SettingStep.tsx       | ✅    | ❌ Not wired | Exists but not accessible in UI |
-| NpcsStep.tsx          | ✅    | ❌ Not wired | Exists but not accessible in UI |
-| PlayerStep.tsx        | ✅    | ❌ Not wired | Exists but not accessible in UI |
-| TagsStep.tsx          | ✅    | ❌ Not wired | Exists but not accessible in UI |
-| ReviewStep.tsx        | ✅    | ❌ Not wired | Exists but not accessible in UI |
-| LocationsStep.tsx     | ✅    | ❌ Not wired | Exists but not accessible in UI |
-| RelationshipsStep.tsx | ✅    | ❌ Not wired | Exists but not accessible in UI |
+| Component             | Built | Functional   | Evidence                                      |
+| --------------------- | ----- | ------------ | --------------------------------------------- |
+| SettingStep.tsx       | ✅    | ✅ Functional | E2E tested - setting selection works          |
+| NpcsStep.tsx          | ✅    | ✅ Functional | E2E tested - NPC addition works               |
+| PlayerStep.tsx        | ✅    | ✅ Functional | Visible in wizard, persona selection works    |
+| TagsStep.tsx          | ✅    | ✅ Functional | Visible in wizard                             |
+| ReviewStep.tsx        | ✅    | ✅ Functional | E2E tested - session creation works           |
+| LocationsStep.tsx     | ✅    | 🟡 Partial   | Built but not in default STEPS array          |
+| RelationshipsStep.tsx | ✅    | 🟡 Partial   | Built but not in default STEPS array          |
 
-**Missing Features in Step Components:**
+**Remaining Features for Step Components:**
 
 - TimeConfigEditor not implemented (SettingStep)
 - Genre presets not implemented
