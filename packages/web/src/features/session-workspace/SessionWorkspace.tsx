@@ -327,7 +327,14 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
           />
         );
       case 'tags':
-        return <TagsStep availableTags={tags} loading={tagsLoading} onRefresh={onRefreshTags} />;
+        return (
+          <TagsStep
+            availableTags={tags}
+            characters={characters}
+            loading={tagsLoading}
+            onRefresh={onRefreshTags}
+          />
+        );
       case 'review':
         return (
           <ReviewStep

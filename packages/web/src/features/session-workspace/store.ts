@@ -134,6 +134,7 @@ export interface WorkspaceActions {
 
   // Tags
   addTag: (tag: TagSelection) => void;
+  updateTag: (tagId: string, partial: Partial<TagSelection>) => void;
   removeTag: (tagId: string, targetId?: string) => void;
   clearTags: () => void;
 
@@ -389,6 +390,17 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
             }),
             false,
             'addTag'
+          ),
+        updateTag: (tagId, partial) =>
+          set(
+            (state) => ({
+              tags: state.tags.map((t) =>
+                t.tagId === tagId ? { ...t, ...partial } : t
+              ),
+              isDirty: true,
+            }),
+            false,
+            'updateTag'
           ),
         removeTag: (tagId, targetId) =>
           set(

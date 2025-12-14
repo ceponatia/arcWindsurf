@@ -1,24 +1,36 @@
 /**
- * Tags Step - Select rules, scenarios, and modifier tags
+ * Tags Step - Select rules, scenarios, and modifier tags with scope assignment
  */
 
 import React, { useState } from 'react';
-import { useWorkspaceStore, useTagsState } from '../store.js';
-import type { TagSelection } from '../store.js';
-import type { TagSummary } from '../../../types.js';
+import { useWorkspaceStore, useTagsState, useNpcsState } from '../store.js';
+import type { TagSelection, NpcSessionConfig } from '../store.js';
+import type { TagSummary, CharacterSummary } from '../../../types.js';
+import { AlertCircle } from 'lucide-react';
 
 interface TagsStepProps {
   availableTags: TagSummary[];
+  characters: CharacterSummary[];
   loading: boolean;
   onRefresh: () => void;
 }
 
-export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, loading, onRefresh }) => {
+export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, characters, loading, onRefresh }) => {
   const tags = useTagsState();
-  const { addTag, removeTag, clearTags } = useWorkspaceStore();
+  const npcs = useNpcsState();
+  const { addTag, removeTag, updateTag, clearTags } = useWorkspaceStore();
   const [showConfigFor, setShowConfigFor] = useState<string | null>(null);
 
   const selectedTagIds = tags.map((t: TagSelection) => t.tagId);
+
+  // Get character name by ID
+  const getCharacterName = (characterId: string): string => {
+    const char = characters.find((c) => c.id === characterId);
+    if (char) return char.name;
+    const npc = npcs.find((n: NpcSessionConfig) => n.characterId === characterId);
+    if (npc?.label) return npc.label;
+    return 'Unknown';
+  };
 
   const handleToggleTag = (tag: TagSummary) => {
     if (selectedTagIds.includes(tag.id)) {
@@ -31,6 +43,20 @@ export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, loading, onRe
       };
       addTag(selection);
     }
+  };
+
+  // Handle scope change
+  const handleScopeChange = (tagId: string, scope: 'session' | 'npc', targetId?: string) => {
+    const update: Partial<TagSelection> = { scope };
+    if (targetId !== undefined) {
+      update.targetId = targetId;
+    }
+    updateTag(tagId, update);
+  };
+
+  // Get tag selection config
+  const getTagConfig = (tagId: string): TagSelection | undefined => {
+    return tags.find((t: TagSelection) => t.tagId === tagId);
   };
 
   return (
@@ -116,11 +142,50 @@ export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, loading, onRe
 
                     {/* Inline Config */}
                     {isSelected && showConfigFor === tag.id && (
-                      <div className="mt-3 pt-3 border-t border-slate-700 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs text-slate-400">Scope</label>
-                          <span className="text-xs text-slate-500">Session-wide</span>
+                      <div className="mt-3 pt-3 border-t border-slate-700 space-y-3">
+                        {/* Scope selection */}
+                        <div>
+                          <label className="text-xs text-slate-400 block mb-1">Scope</label>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={getTagConfig(tag.id)?.scope ?? 'session'}
+                              onChange={(e) => {
+                                const newScope = e.target.value as 'session' | 'npc';
+                                handleScopeChange(tag.id, newScope);
+                              }}
+                              className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs"
+                            >
+                              <option value="session">Session-wide</option>
+                              <option value="npc">Specific NPC</option>
+                            </select>
+
+                            {getTagConfig(tag.id)?.scope === 'npc' && (
+                              <select
+                                value={getTagConfig(tag.id)?.targetId ?? ''}
+                                onChange={(e) => {
+                                  handleScopeChange(tag.id, 'npc', e.target.value || undefined);
+                                }}
+                                className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs"
+                              >
+                                <option value="">Select NPC...</option>
+                                {npcs.map((npc: NpcSessionConfig) => (
+                                  <option key={npc.characterId} value={npc.characterId}>
+                                    {getCharacterName(npc.characterId)}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+
+                          {/* Warning if NPC scope without target */}
+                          {getTagConfig(tag.id)?.scope === 'npc' && !getTagConfig(tag.id)?.targetId && (
+                            <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              Select an NPC for this tag
+                            </p>
+                          )}
                         </div>
+
                         {tag.promptText && (
                           <div>
                             <label className="text-xs text-slate-400">Prompt Effect</label>
@@ -146,21 +211,35 @@ export const TagsStep: React.FC<TagsStepProps> = ({ availableTags, loading, onRe
             <span className="text-sm font-medium text-slate-300">
               Selected Tags ({tags.length})
             </span>
-            <button onClick={clearTags} className="text-xs text-slate-500 hover:text-red-400">
-              Clear All
-            </button>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-slate-500">
+                {tags.filter((t: TagSelection) => t.scope === 'session').length} session-wide,{' '}
+                {tags.filter((t: TagSelection) => t.scope === 'npc').length} NPC-scoped
+              </span>
+              <button onClick={clearTags} className="text-xs text-slate-500 hover:text-red-400">
+                Clear All
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {tags.map((tag: TagSelection) => (
               <div
                 key={tag.tagId}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-violet-900/50 text-violet-300"
+                className={`
+                  flex items-center gap-2 px-3 py-1.5 rounded-full text-sm
+                  ${tag.scope === 'npc' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-violet-900/50 text-violet-300'}
+                `}
               >
                 <span>{tag.tagName ?? tag.tagId}</span>
+                {tag.scope === 'npc' && tag.targetId && (
+                  <span className="text-xs opacity-70">
+                    ({getCharacterName(tag.targetId)})
+                  </span>
+                )}
                 <button
                   onClick={() => removeTag(tag.tagId)}
-                  className="text-violet-400 hover:text-red-400"
+                  className="hover:text-red-400"
                 >
                   ×
                 </button>
