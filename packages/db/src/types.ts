@@ -371,3 +371,43 @@ export interface NpcHygieneStateRow extends DbRow {
   lastUpdatedAt?: Date;
   createdAt?: Date;
 }
+
+// =============================================================================
+// Schedule Template Types
+// =============================================================================
+
+/**
+ * Row type for schedule_templates table.
+ * Reusable schedule templates for NPC daily routines.
+ */
+export interface ScheduleTemplateRow extends DbRow {
+  id: string;
+  name: string;
+  description: string | null;
+  /** JSONB schedule template structure */
+  templateData: unknown;
+  /** Required placeholders that must be provided */
+  requiredPlaceholders: string[];
+  /** Whether this is a built-in system template */
+  isSystem: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Row type for npc_schedules table.
+ * Resolved schedules for specific NPCs in sessions.
+ */
+export interface NpcScheduleRow extends DbRow {
+  id: string;
+  sessionId: string;
+  npcId: string;
+  /** Reference to the template used */
+  templateId: string | null;
+  /** JSONB resolved schedule with actual location IDs */
+  scheduleData: unknown;
+  /** JSONB map of placeholder key to resolved location ID */
+  placeholderMappings: unknown;
+  createdAt?: Date;
+  updatedAt?: Date;
+}

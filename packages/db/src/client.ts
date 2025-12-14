@@ -12,10 +12,12 @@ import type {
   ItemInstanceRow,
   MessageRow,
   NpcHygieneStateRow,
+  NpcScheduleRow,
   PgClientLike,
   PgPoolStrict,
   PersonaRow,
   QueryResult,
+  ScheduleTemplateRow,
   SessionPersonaRow,
   SettingInstanceRow,
   SettingTemplateRow,
@@ -891,6 +893,178 @@ export const db = {
         await query(`DELETE FROM npc_hygiene_state WHERE ${clauses.join(' AND ')}`, params);
       } else {
         await query('TRUNCATE TABLE npc_hygiene_state');
+      }
+    },
+  },
+
+  // =========================================================================
+  // Schedule Template Operations
+  // =========================================================================
+  scheduleTemplate: {
+    async findMany(args?: {
+      where?: { isSystem?: boolean };
+    }): Promise<ScheduleTemplateRow[]> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.isSystem !== undefined) {
+        params.push(args.where.isSystem);
+        clauses.push(`is_system = $${params.length}`);
+      }
+
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const { rows } = await query(
+        `SELECT * FROM schedule_templates ${where} ORDER BY name ASC`,
+        params
+      );
+      return rows.map((r) => camelizeRow<ScheduleTemplateRow>(r));
+    },
+    async findUnique(args: { where: { id: string } }): Promise<ScheduleTemplateRow | null> {
+      const { rows } = await query('SELECT * FROM schedule_templates WHERE id = $1 LIMIT 1', [
+        args.where.id,
+      ]);
+      return rows[0] ? camelizeRow<ScheduleTemplateRow>(rows[0]) : null;
+    },
+    async create(args: {
+      data: {
+        name: string;
+        description?: string;
+        templateData: unknown;
+        requiredPlaceholders: string[];
+        isSystem?: boolean;
+      };
+    }): Promise<ScheduleTemplateRow> {
+      const { name, description, templateData, requiredPlaceholders, isSystem } = args.data;
+      const { rows } = await query(
+        `INSERT INTO schedule_templates (name, description, template_data, required_placeholders, is_system)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [name, description ?? null, JSON.stringify(templateData), requiredPlaceholders, isSystem ?? false]
+      );
+      return camelizeRow<ScheduleTemplateRow>(rows[0]!);
+    },
+    async update(args: {
+      where: { id: string };
+      data: {
+        name?: string;
+        description?: string;
+        templateData?: unknown;
+        requiredPlaceholders?: string[];
+      };
+    }): Promise<ScheduleTemplateRow> {
+      const { id } = args.where;
+      const { name, description, templateData, requiredPlaceholders } = args.data;
+      const { rows } = await query(
+        `UPDATE schedule_templates SET
+           name = COALESCE($2, name),
+           description = COALESCE($3, description),
+           template_data = COALESCE($4, template_data),
+           required_placeholders = COALESCE($5, required_placeholders)
+         WHERE id = $1 AND is_system = FALSE
+         RETURNING *`,
+        [
+          id,
+          name ?? null,
+          description ?? null,
+          templateData ? JSON.stringify(templateData) : null,
+          requiredPlaceholders ?? null,
+        ]
+      );
+      return camelizeRow<ScheduleTemplateRow>(rows[0]!);
+    },
+    async delete(args: { where: { id: string } }): Promise<void> {
+      // Only allow deletion of non-system templates
+      await query('DELETE FROM schedule_templates WHERE id = $1 AND is_system = FALSE', [
+        args.where.id,
+      ]);
+    },
+  },
+
+  // =========================================================================
+  // NPC Schedule Operations
+  // =========================================================================
+  npcSchedule: {
+    async findMany(args?: {
+      where?: { sessionId?: string; npcId?: string };
+    }): Promise<NpcScheduleRow[]> {
+      const clauses: string[] = [];
+      const params: SqlParams = [];
+
+      if (args?.where?.sessionId) {
+        params.push(args.where.sessionId);
+        clauses.push(`session_id = $${params.length}`);
+      }
+      if (args?.where?.npcId) {
+        params.push(args.where.npcId);
+        clauses.push(`npc_id = $${params.length}`);
+      }
+
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const { rows } = await query(`SELECT * FROM npc_schedules ${where} ORDER BY npc_id ASC`, params);
+      return rows.map((r) => camelizeRow<NpcScheduleRow>(r));
+    },
+    async findUnique(args: {
+      where: { sessionId_npcId: { sessionId: string; npcId: string } };
+    }): Promise<NpcScheduleRow | null> {
+      const { sessionId, npcId } = args.where.sessionId_npcId;
+      const { rows } = await query(
+        'SELECT * FROM npc_schedules WHERE session_id = $1 AND npc_id = $2 LIMIT 1',
+        [sessionId, npcId]
+      );
+      return rows[0] ? camelizeRow<NpcScheduleRow>(rows[0]) : null;
+    },
+    async upsert(args: {
+      where: { sessionId_npcId: { sessionId: string; npcId: string } };
+      create: {
+        sessionId: string;
+        npcId: string;
+        templateId?: string;
+        scheduleData: unknown;
+        placeholderMappings?: unknown;
+      };
+      update: {
+        templateId?: string;
+        scheduleData?: unknown;
+        placeholderMappings?: unknown;
+      };
+    }): Promise<NpcScheduleRow> {
+      const { sessionId, npcId } = args.where.sessionId_npcId;
+      const { templateId, scheduleData, placeholderMappings } = args.create;
+      const { rows } = await query(
+        `INSERT INTO npc_schedules (session_id, npc_id, template_id, schedule_data, placeholder_mappings)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (session_id, npc_id) DO UPDATE SET
+           template_id = COALESCE($6, npc_schedules.template_id),
+           schedule_data = COALESCE($7, npc_schedules.schedule_data),
+           placeholder_mappings = COALESCE($8, npc_schedules.placeholder_mappings)
+         RETURNING *`,
+        [
+          sessionId,
+          npcId,
+          templateId ?? null,
+          JSON.stringify(scheduleData),
+          placeholderMappings ? JSON.stringify(placeholderMappings) : null,
+          args.update.templateId ?? null,
+          args.update.scheduleData ? JSON.stringify(args.update.scheduleData) : null,
+          args.update.placeholderMappings ? JSON.stringify(args.update.placeholderMappings) : null,
+        ]
+      );
+      return camelizeRow<NpcScheduleRow>(rows[0]!);
+    },
+    async delete(args: {
+      where: { sessionId_npcId: { sessionId: string; npcId: string } };
+    }): Promise<void> {
+      const { sessionId, npcId } = args.where.sessionId_npcId;
+      await query('DELETE FROM npc_schedules WHERE session_id = $1 AND npc_id = $2', [
+        sessionId,
+        npcId,
+      ]);
+    },
+    async deleteMany(args?: { where?: { sessionId?: string } }): Promise<void> {
+      if (args?.where?.sessionId) {
+        await query('DELETE FROM npc_schedules WHERE session_id = $1', [args.where.sessionId]);
+      } else {
+        await query('TRUNCATE TABLE npc_schedules');
       }
     },
   },

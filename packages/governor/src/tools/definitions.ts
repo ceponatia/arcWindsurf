@@ -549,6 +549,125 @@ export const GET_HYGIENE_SENSORY_TOOL: ToolDefinition = {
 };
 
 // =============================================================================
+// PRIORITY 7: Schedule & Location Assignment Tools
+// =============================================================================
+
+/**
+ * Generate NPC schedule tool - creates a schedule from a template.
+ * Uses available locations and NPC profile to resolve placeholders.
+ *
+ * STATUS: IMPLEMENTED - Uses schedule template system
+ * @see dev-docs/planning/opus-refactor.md Phase 6
+ */
+export const GENERATE_NPC_SCHEDULE_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'generate_npc_schedule',
+    description:
+      "Generate or update an NPC's daily schedule from a template. " +
+      'Maps template placeholders (like $homeLocation, $workLocation) to actual ' +
+      "location IDs based on the NPC's profile and available locations.",
+    parameters: {
+      type: 'object',
+      properties: {
+        npc_id: {
+          type: 'string',
+          description: 'The NPC to generate a schedule for',
+        },
+        template_id: {
+          type: 'string',
+          description:
+            "Schedule template ID to use (e.g., 'template-shopkeeper', 'template-guard'). " +
+            'If not provided, a suitable template will be chosen based on NPC occupation.',
+        },
+        placeholder_mappings: {
+          type: 'object',
+          description:
+            'Map of placeholder names to location IDs (e.g., {"homeLocation": "loc-123", "workLocation": "loc-456"}). ' +
+            'If not fully provided, will attempt to infer from NPC profile and available locations.',
+        },
+      },
+      required: ['npc_id'],
+    },
+  },
+};
+
+/**
+ * Assign NPC location tool - assigns an NPC to an appropriate location.
+ * Uses NPC profile (occupation, interests) to find best-fit location.
+ *
+ * STATUS: IMPLEMENTED - Uses location matching
+ * @see dev-docs/planning/opus-refactor.md Phase 6
+ */
+export const ASSIGN_NPC_LOCATION_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'assign_npc_location',
+    description:
+      'Assign an NPC to an appropriate starting location based on their profile. ' +
+      "Analyzes the NPC's occupation and interests to find the best-fit location " +
+      'from available options.',
+    parameters: {
+      type: 'object',
+      properties: {
+        npc_id: {
+          type: 'string',
+          description: 'The NPC to assign a location to',
+        },
+        location_type: {
+          type: 'string',
+          enum: ['home', 'work', 'social', 'any'],
+          description:
+            "Type of location to assign. 'home' for residential, 'work' for occupational, " +
+            "'social' for leisure/public spaces, 'any' for best overall match.",
+        },
+        available_location_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'List of location IDs to consider. If not provided, all session locations will be used.',
+        },
+      },
+      required: ['npc_id'],
+    },
+  },
+};
+
+/**
+ * Get schedule resolution tool - resolves current location/activity from schedule.
+ * Returns where an NPC should be at a given time.
+ *
+ * STATUS: IMPLEMENTED - Uses schedule resolution
+ */
+export const GET_SCHEDULE_RESOLUTION_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'get_schedule_resolution',
+    description:
+      "Resolve an NPC's current or planned location and activity based on their schedule. " +
+      'Returns where they should be and what they should be doing at a specific time.',
+    parameters: {
+      type: 'object',
+      properties: {
+        npc_id: {
+          type: 'string',
+          description: 'The NPC to resolve schedule for',
+        },
+        hour: {
+          type: 'number',
+          description: 'Hour (0-23) to resolve schedule for. If not provided, uses current game time.',
+        },
+        minute: {
+          type: 'number',
+          description: 'Minute (0-59) to resolve schedule for. Defaults to 0 if hour provided.',
+        },
+      },
+      required: ['npc_id'],
+    },
+  },
+};
+
+// =============================================================================
 // Tool Collections
 // =============================================================================
 
@@ -577,6 +696,13 @@ export const RELATIONSHIP_TOOLS: ToolDefinition[] = [GET_NPC_MEMORY_TOOL, UPDATE
 /** Priority 6 tools - hygiene and sensory system */
 export const HYGIENE_TOOLS: ToolDefinition[] = [UPDATE_NPC_HYGIENE_TOOL, GET_HYGIENE_SENSORY_TOOL];
 
+/** Priority 7 tools - schedule and location assignment */
+export const SCHEDULE_TOOLS: ToolDefinition[] = [
+  GENERATE_NPC_SCHEDULE_TOOL,
+  ASSIGN_NPC_LOCATION_TOOL,
+  GET_SCHEDULE_RESOLUTION_TOOL,
+];
+
 /** All game tools - use for full tool-calling mode */
 export const ALL_GAME_TOOLS: ToolDefinition[] = [
   ...CORE_TOOLS,
@@ -586,6 +712,7 @@ export const ALL_GAME_TOOLS: ToolDefinition[] = [
   ...TIME_TOOLS,
   ...RELATIONSHIP_TOOLS,
   ...HYGIENE_TOOLS,
+  ...SCHEDULE_TOOLS,
 ];
 
 /**
