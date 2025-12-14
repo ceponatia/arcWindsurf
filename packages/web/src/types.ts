@@ -5,6 +5,7 @@ export interface CharacterSummary {
   id: string;
   name: string;
   summary: string;
+  archetype?: string;
   tags?: string[];
   source?: 'fs' | 'db';
 }
@@ -19,6 +20,7 @@ export interface PersonaSummary {
   id: string;
   name: string;
   summary: string;
+  bio?: string;
   source: 'db';
 }
 

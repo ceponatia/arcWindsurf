@@ -106,6 +106,12 @@ export function registerPersonaRoutes(app: Hono): void {
           profileJson: JSON.stringify(profile),
         },
       });
+      if (!updated) {
+        return c.json(
+          { ok: false, error: 'persona not found after update' } satisfies ApiError,
+          404
+        );
+      }
       const summary = mapPersonaSummary(profile, updated.createdAt, updated.updatedAt);
       return c.json({ ok: true, persona: summary }, 200);
     }

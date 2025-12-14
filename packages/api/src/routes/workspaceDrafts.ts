@@ -17,14 +17,16 @@ import type { ApiError } from '../types.js';
 /**
  * Validation schema for workspace state
  */
-const WorkspaceStateSchema = z.object({
-  setting: z.record(z.unknown()).optional(),
-  locations: z.record(z.unknown()).optional(),
-  npcs: z.array(z.record(z.unknown())).optional(),
-  player: z.record(z.unknown()).optional(),
-  tags: z.array(z.record(z.unknown())).optional(),
-  relationships: z.array(z.record(z.unknown())).optional(),
-}).passthrough();
+const WorkspaceStateSchema = z
+  .object({
+    setting: z.record(z.string(), z.unknown()).optional(),
+    locations: z.record(z.string(), z.unknown()).optional(),
+    npcs: z.array(z.record(z.string(), z.unknown())).optional(),
+    player: z.record(z.string(), z.unknown()).optional(),
+    tags: z.array(z.record(z.string(), z.unknown())).optional(),
+    relationships: z.array(z.record(z.string(), z.unknown())).optional(),
+  })
+  .passthrough();
 
 const CreateDraftSchema = z.object({
   name: z.string().optional(),
@@ -36,7 +38,7 @@ const UpdateDraftSchema = z.object({
   name: z.string().nullable().optional(),
   workspaceState: WorkspaceStateSchema.optional(),
   currentStep: z.string().optional(),
-  validationState: z.record(z.unknown()).optional(),
+  validationState: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -92,12 +94,14 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const { name, workspaceState, currentStep } = parsed.data;
 
     try {
-      const draft = await createWorkspaceDraft({
-        userId,
-        name,
-        workspaceState,
-        currentStep,
-      });
+      // Build params object conditionally to satisfy exactOptionalPropertyTypes
+      const params: Parameters<typeof createWorkspaceDraft>[0] = { userId };
+      if (name !== undefined) params.name = name;
+      if (workspaceState !== undefined)
+        params.workspaceState = workspaceState as Record<string, unknown>;
+      if (currentStep !== undefined) params.currentStep = currentStep;
+
+      const draft = await createWorkspaceDraft(params);
       return c.json({ ok: true, draft }, 201);
     } catch (err) {
       console.error('[API] Failed to create workspace draft:', err);
@@ -121,8 +125,19 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
+    const { name, workspaceState, currentStep, validationState } = parsed.data;
+
     try {
-      const draft = await updateWorkspaceDraft(id, parsed.data);
+      // Build updates object conditionally to satisfy exactOptionalPropertyTypes
+      const updates: Parameters<typeof updateWorkspaceDraft>[1] = {};
+      if (name !== undefined) updates.name = name;
+      if (workspaceState !== undefined)
+        updates.workspaceState = workspaceState as Record<string, unknown>;
+      if (currentStep !== undefined) updates.currentStep = currentStep;
+      if (validationState !== undefined)
+        updates.validationState = validationState as Record<string, unknown>;
+
+      const draft = await updateWorkspaceDraft(id, updates);
       if (!draft) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
