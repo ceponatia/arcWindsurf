@@ -217,7 +217,7 @@ export async function sendMessage(
   content: string,
   signal?: AbortSignal,
   options?: { npcId?: string | null }
-): Promise<{ message: Message }> {
+): Promise<{ message: Message; events?: unknown[]; stateChanges?: unknown }> {
   if (USE_TURNS_API) {
     const result = await http<TurnEndpointResponse>(
       `/sessions/${encodeURIComponent(sessionId)}/turns`,
@@ -238,7 +238,11 @@ export async function sendMessage(
       ...(result.speaker ? { speaker: result.speaker } : {}),
     };
 
-    return { message: assistant };
+    return {
+      message: assistant,
+      events: result.events,
+      stateChanges: result.stateChanges,
+    };
   }
 
   return http<{ message: Message }>(`/sessions/${encodeURIComponent(sessionId)}/messages`, {

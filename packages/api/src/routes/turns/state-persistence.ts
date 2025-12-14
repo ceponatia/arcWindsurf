@@ -187,7 +187,10 @@ export async function persistNpcTranscript(
   const npcOutputs = turnResult.metadata?.agentOutputs?.filter((o) => o.agentType === 'npc');
   if (!npcOutputs || npcOutputs.length === 0) return;
 
-  const detectedNpcId = turnResult.metadata?.intent?.params?.npcId;
+  // Access intent via bracket notation since it may be dynamically added
+  const metadata = turnResult.metadata as Record<string, unknown> | undefined;
+  const intent = metadata?.['intent'] as { params?: { npcId?: string } } | undefined;
+  const detectedNpcId = intent?.params?.npcId;
   const npcId =
     detectedNpcId && detectedNpcId.trim().length > 0
       ? detectedNpcId
@@ -217,8 +220,11 @@ export async function persistSessionHistory(
 ): Promise<void> {
   const { sessionId, playerInput, turnIdx, sessionTags, persona, baseline, overrides } = data;
 
+  // Access dynamic fields via bracket notation
+  const metadata = turnResult.metadata as Record<string, unknown> | undefined;
+
   const historyContext = {
-    intent: turnResult.metadata?.intent,
+    intent: metadata?.['intent'],
     sessionTags,
     npcId: data.loadedState.instances.activeNpc.id ?? undefined,
     turnNumber: turnIdx,
@@ -231,7 +237,7 @@ export async function persistSessionHistory(
     phaseTiming: turnResult.metadata?.phaseTiming,
     agentsInvoked: turnResult.metadata?.agentsInvoked,
     nodesRetrieved: turnResult.metadata?.nodesRetrieved,
-    intentDebug: turnResult.metadata?.intentDebug,
+    intentDebug: metadata?.['intentDebug'],
     agentOutputs: turnResult.metadata?.agentOutputs?.map((o) => ({
       agentType: o.agentType,
       narrative: o.output.narrative,

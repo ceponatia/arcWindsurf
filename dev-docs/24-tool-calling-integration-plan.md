@@ -7,52 +7,13 @@ This document outlines the plan for replacing portions of the current intent det
 - ✅ Phase 1: Tool-Calling OpenRouter Adapter (COMPLETE)
 - ✅ Phase 2: Tool Definitions (COMPLETE)
 - ✅ Phase 3: Tool Executor Service (COMPLETE)
-- ⏳ Phase 4: Tool-Based Turn Handler (PENDING)
-- ⏳ Phase 5: Governor Integration (PENDING)
-- ⏳ Phase 6: Full Rollout (PENDING)
+- ✅ Phase 4: Tool-Based Turn Handler (COMPLETE)
+- ✅ Phase 5: Governor Integration (COMPLETE)
+- ✅ Phase 6: Full Rollout (COMPLETE - classic mode removed)
 
 ## Current Architecture Overview
 
-### Intent Detection Flow (Current)
-
-```text
-Player Input
-    │
-    ▼
-┌─────────────────────┐
-│  Intent Detector    │  ← RuleBasedIntentDetector OR LlmIntentDetector
-│  (pattern matching) │
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│  Governor           │
-│  routeToAgents()    │  ← Maps intent → agents via AgentRegistry
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│  Agent Execution    │
-│  (parallel)         │  ← NpcAgent, SensoryAgent, etc.
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│  Response Composer  │
-└─────────────────────┘
-```
-
-### Problems with Current Approach
-
-1. **Intent detection is a separate LLM call** - We call the LLM once to classify intent, then again for agent work
-2. **Rule-based detection is brittle** - Keyword patterns miss nuanced inputs
-3. **Compound intents are complex** - Asterisk-based segmentation works but is limited
-4. **Agent routing is static** - The governor maps intents to agents via registry lookup
-5. **Two-phase approach adds latency** - Intent → Agent is sequential
-
-## Proposed Hybrid Architecture
-
-### New Flow with Tool Calling
+### Tool-Based Flow (Current)
 
 ```text
 Player Input
@@ -70,24 +31,12 @@ Player Input
 │  3. How to synthesize results (replaces composer)       │
 └─────────────────────────────────────────────────────────┘
     │
-    ├── tool_call: get_sensory_detail({sense: "smell", target: "Elara", body_part: "hair"})
-    │       │
-    │       ▼
-    │   ┌─────────────────────┐
-    │   │  SensoryAgent       │  ← Returns structured data (no prose)
-    │   │  (data lookup)      │
-    │   └─────────────────────┘
+    ├── tool_call: get_sensory_detail({sense: "smell", target: "Elara"})
     │       │
     │       ▼
     │   Tool Result: {smell: [{source: "hair", description: "lavender"}]}
     │
-    ├── tool_call: npc_dialogue({npc: "Elara", utterance: "hello", context: {...}})
-    │       │
-    │       ▼
-    │   ┌─────────────────────┐
-    │   │  NpcAgent           │  ← Returns dialogue/reaction
-    │   │  (lightweight)      │
-    │   └─────────────────────┘
+    ├── tool_call: npc_dialogue({npc: "Elara", utterance: "hello"})
     │       │
     │       ▼
     │   Tool Result: {reaction: "curious", suggested_tone: "playful"}
@@ -98,13 +47,25 @@ Player Input
         Unified narrative response
 ```
 
-### Key Benefits
+### Key Benefits (Realized)
 
 1. **Single LLM call for most turns** - Intent detection + response in one round-trip
 2. **LLM chooses tools naturally** - Better handling of ambiguous/compound inputs
 3. **Parallel tool calls** - DeepSeek can request multiple tools at once
 4. **Structured tool results** - Agents return data, LLM writes prose
 5. **Graceful fallback** - If no tools needed, LLM responds directly
+
+### Legacy System (Removed December 2025)
+
+The following components were removed as part of Phase 6:
+
+- `RuleBasedIntentDetector` - Replaced by LLM tool selection
+- `LlmIntentDetector` - Replaced by LLM tool selection
+- `handleTurnClassic()` - Replaced by `ToolBasedTurnHandler`
+- `routeToAgents()` - Replaced by tool execution
+- `ResponseComposer` - Replaced by LLM narrative synthesis
+- `TURN_HANDLER` config - Tool calling is now required
+- `INTENT_DEBUG` config - No longer applicable
 
 ## Implementation Phases
 
@@ -1022,63 +983,73 @@ For simple commands, the hybrid approach avoids unnecessary LLM calls.
 
 ### Phase 1: OpenRouter Adapter
 
-- [ ] Add `chatWithOpenRouterTools()` to `packages/api/src/llm/openrouter.ts`
-- [ ] Add tool-related types to `packages/api/src/types.ts`
-- [ ] Add `ToolDefinition`, `ToolCall`, `ChatMessageWithTools` interfaces
-- [ ] Handle `tool_calls` in response parsing
-- [ ] Add tool result message support
+- [x] Add `chatWithOpenRouterTools()` to `packages/api/src/llm/openrouter.ts`
+- [x] Add tool-related types to `packages/api/src/types.ts`
+- [x] Add `ToolDefinition`, `ToolCall`, `ChatMessageWithTools` interfaces
+- [x] Handle `tool_calls` in response parsing
+- [x] Add tool result message support
 
 ### Phase 2: Tool Definitions
 
-- [ ] Create `packages/governor/src/tools/` directory
-- [ ] Create `packages/governor/src/tools/types.ts` with shared types
-- [ ] Create `packages/governor/src/tools/definitions.ts`
-- [ ] Implement `GET_SENSORY_DETAIL_TOOL` definition ✅ Priority 1
-- [ ] Implement `NPC_DIALOGUE_TOOL` definition ✅ Priority 1
-- [ ] Add `NAVIGATE_PLAYER_TOOL` placeholder ⏳ Priority 2
-- [ ] Add `EXAMINE_OBJECT_TOOL` placeholder ⏳ Priority 2
-- [ ] Add `USE_ITEM_TOOL` placeholder ⏳ Priority 3
-- [ ] Add `GET_NPC_MEMORY_TOOL` placeholder ⏳ Priority 4
-- [ ] Add `UPDATE_RELATIONSHIP_TOOL` placeholder ⏳ Priority 4
-- [ ] Export `getActiveTools()` function
+- [x] Create `packages/governor/src/tools/` directory
+- [x] Create `packages/governor/src/tools/types.ts` with shared types
+- [x] Create `packages/governor/src/tools/definitions.ts`
+- [x] Implement `GET_SENSORY_DETAIL_TOOL` definition
+- [x] Implement `NPC_DIALOGUE_TOOL` definition
+- [x] Implement `UPDATE_PROXIMITY_TOOL` definition
+- [x] Add `NAVIGATE_PLAYER_TOOL` placeholder ⏳ Priority 2
+- [x] Add `EXAMINE_OBJECT_TOOL` placeholder ⏳ Priority 2
+- [x] Add `USE_ITEM_TOOL` placeholder ⏳ Priority 3
+- [x] Add `GET_NPC_MEMORY_TOOL` placeholder ⏳ Priority 4
+- [x] Add `UPDATE_RELATIONSHIP_TOOL` placeholder ⏳ Priority 4
+- [x] Export `getActiveTools()` function
 
 ### Phase 3: Tool Executor
 
-- [ ] Create `packages/governor/src/tools/executor.ts`
-- [ ] Implement `ToolExecutor` class
-- [ ] Implement `executeSensory()` handler ✅ Priority 1
-- [ ] Implement `executeNpcDialogue()` handler ✅ Priority 1
-- [ ] Add `executeNavigate()` placeholder ⏳ Priority 2
-- [ ] Add `executeExamine()` placeholder ⏳ Priority 2
-- [ ] Add `executeUseItem()` placeholder ⏳ Priority 3
-- [ ] Add `executeGetNpcMemory()` placeholder ⏳ Priority 4
-- [ ] Add `executeUpdateRelationship()` placeholder ⏳ Priority 4
-- [ ] Add error handling and validation
+- [x] Create `packages/governor/src/tools/executor.ts`
+- [x] Implement `ToolExecutor` class
+- [x] Implement `executeSensory()` handler
+- [x] Implement `executeNpcDialogue()` handler
+- [x] Implement `executeProximity()` handler with StatePatches
+- [x] Add `executeNavigate()` placeholder ⏳ Priority 2
+- [x] Add `executeExamine()` placeholder ⏳ Priority 2
+- [x] Add `executeUseItem()` placeholder ⏳ Priority 3
+- [x] Add `executeGetNpcMemory()` placeholder ⏳ Priority 4
+- [x] Add `executeUpdateRelationship()` placeholder ⏳ Priority 4
+- [x] Add error handling and validation
+- [x] Add fallback handler support for extensibility
 
 ### Phase 4: Tool-Based Turn Handler
 
-- [ ] Create `packages/governor/src/core/tool-turn-handler.ts`
-- [ ] Implement `ToolBasedTurnHandler` class
-- [ ] Build system prompt with game context
-- [ ] Implement tool execution loop with max iterations
-- [ ] Add tool message types to conversation history
-- [ ] Handle tool call failures gracefully
+- [x] Create `packages/governor/src/core/tool-turn-handler.ts`
+- [x] Implement `ToolBasedTurnHandler` class
+- [x] Build system prompt with game context
+- [x] Implement tool execution loop with max iterations
+- [x] Add tool message types to conversation history
+- [x] Handle tool call failures gracefully
+- [x] Integrate StatePatches for state changes from tools
+- [x] Add proximity context to system prompt
 
 ### Phase 5: Hybrid Governor Mode
 
-- [ ] Add `turnHandler` config option to `GovernorConfig`
-- [ ] Implement `assessInputComplexity()` heuristic
-- [ ] Wire up `ToolBasedTurnHandler` in Governor
-- [ ] Add feature flag for gradual rollout (`TOOL_CALLING_ENABLED`)
-- [ ] Add logging for tool calling decisions
+- [x] Add `turnHandler` config option to `GovernorConfig`
+- [x] Implement `assessInputComplexity()` heuristic
+- [x] Wire up `ToolBasedTurnHandler` in Governor
+- [x] Add TURN_HANDLER env var for mode selection
+- [x] Add logging for tool calling decisions
 
-### Phase 6: Migration and Optimization
+### Phase 6: Full Rollout (COMPLETE - December 2025)
 
-- [ ] Add A/B testing for response quality comparison
-- [ ] Add metrics: tool call count, latency, token usage
-- [ ] Tune tool descriptions based on real usage patterns
-- [ ] Consider tool result caching for immutable data
-- [ ] Document tool extension patterns in dev-docs
+- [x] Remove classic mode entirely - tool calling is now required
+- [x] Remove TURN_HANDLER config (always tool-calling)
+- [x] Remove INTENT_DEBUG config (no longer applicable)
+- [x] Delete RuleBasedIntentDetector and LlmIntentDetector
+- [x] Delete handleTurnClassic and routeToAgents from Governor
+- [x] Update Governor README to reflect tool-calling only architecture
+- [ ] Add metrics: tool call count, latency, token usage (future enhancement)
+- [ ] Tune tool descriptions based on real usage patterns (ongoing)
+- [ ] Consider tool result caching for immutable data (future enhancement)
+- [x] Document tool extension patterns in dev-docs
 
 ### Future: Complete Tool Implementations
 

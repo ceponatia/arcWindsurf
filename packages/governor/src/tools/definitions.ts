@@ -193,6 +193,83 @@ export const EXAMINE_OBJECT_TOOL: ToolDefinition = {
   },
 };
 
+/**
+ * Move to location tool - moves player to a new location.
+ * Updates player location state and triggers location-change hooks.
+ *
+ * @see dev-docs/32-npc-encounters-and-occupancy.md
+ */
+export const MOVE_TO_LOCATION_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'move_to_location',
+    description:
+      'Move the player to a new location. Use when the player explicitly wants to go somewhere, ' +
+      'leave a location, or travel to a destination. Returns the new location details and ' +
+      'who is present. Note: This is different from navigate_player which also handles direction-based ' +
+      'movement and exit descriptions.',
+    parameters: {
+      type: 'object',
+      properties: {
+        destination_id: {
+          type: 'string',
+          description:
+            'The ID of the destination location. Must be a valid location from the setting.',
+        },
+        destination_name: {
+          type: 'string',
+          description:
+            'Human-readable name of the destination (for narrative purposes, used if ID unknown).',
+        },
+        travel_mode: {
+          type: 'string',
+          enum: ['walk', 'run', 'sneak', 'teleport', 'vehicle'],
+          description: 'How the player travels to the location. Affects travel time and detection.',
+        },
+        time_to_arrive: {
+          type: 'number',
+          description:
+            'Optional: minutes to reach destination. If not provided, calculated from distance.',
+        },
+      },
+      required: ['destination_id'],
+    },
+  },
+};
+
+/**
+ * Get location info tool - retrieves information about a location.
+ * Returns description, exits, occupancy, and ambient details.
+ */
+export const GET_LOCATION_INFO_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'get_location_info',
+    description:
+      "Get information about the player's current location or a specified location. " +
+      'Returns description, available exits, who is present, and ambient details.',
+    parameters: {
+      type: 'object',
+      properties: {
+        location_id: {
+          type: 'string',
+          description:
+            "Location ID to query. If omitted, returns info about player's current location.",
+        },
+        include_occupancy: {
+          type: 'boolean',
+          description: 'Whether to include who is present at the location (default true).',
+        },
+        include_exits: {
+          type: 'boolean',
+          description: 'Whether to include available exits (default true).',
+        },
+      },
+      required: [],
+    },
+  },
+};
+
 // =============================================================================
 // PRIORITY 3: Inventory & Items (Implement Later)
 // =============================================================================
@@ -235,6 +312,51 @@ export const USE_ITEM_TOOL: ToolDefinition = {
 // =============================================================================
 
 /**
+ * Advance time tool - progresses game time and checks for scheduled events.
+ * Handles player-initiated time skips (waiting, sleeping, etc.)
+ *
+ * @see dev-docs/26-time-system.md
+ */
+export const ADVANCE_TIME_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'advance_time',
+    description:
+      'Advance game time by a specified amount. Use when the player wants to wait, ' +
+      'sleep, pass time, or when narrative indicates time should pass. Returns the ' +
+      'new time state and any events that triggered during the skip.',
+    parameters: {
+      type: 'object',
+      properties: {
+        amount: {
+          type: 'number',
+          description: 'Amount of time to advance',
+        },
+        unit: {
+          type: 'string',
+          enum: ['turns', 'minutes', 'hours'],
+          description: 'Unit of time (turns, minutes, or hours)',
+        },
+        reason: {
+          type: 'string',
+          description:
+            'Narrative justification for time skip (e.g., "waiting for nightfall", "sleeping")',
+        },
+        skip_type: {
+          type: 'string',
+          enum: ['wait', 'sleep', 'activity', 'travel', 'automatic'],
+          description:
+            'Type of time skip: wait (actively waiting), sleep (resting), activity ' +
+            '(doing something that takes time), travel (moving between locations), ' +
+            'automatic (system-triggered turn advancement)',
+        },
+      },
+      required: ['amount', 'unit'],
+    },
+  },
+};
+
+/**
  * Get NPC memory tool - retrieves NPC's memories of the player.
  * Will query relationship/memory storage.
  *
@@ -270,16 +392,17 @@ export const GET_NPC_MEMORY_TOOL: ToolDefinition = {
 
 /**
  * Update relationship tool - modifies NPC relationship state.
- * Will update relationship scores and flags.
+ * Applies affinity effects based on action types or direct changes.
  *
- * STATUS: DESIGN ONLY - Schema defined, not implemented
+ * STATUS: IMPLEMENTED - Uses affinity system
  */
 export const UPDATE_RELATIONSHIP_TOOL: ToolDefinition = {
   type: 'function',
   function: {
     name: 'update_relationship',
     description:
-      "Update the relationship state between player and NPC. Use after significant interactions that would affect the NPC's opinion.",
+      "Update the relationship state between player and NPC. Use after significant interactions that would affect the NPC's opinion. " +
+      "Can use predefined action types (like 'give-gift', 'insult', 'help-requested') or specify direct changes.",
     parameters: {
       type: 'object',
       properties: {
@@ -287,18 +410,29 @@ export const UPDATE_RELATIONSHIP_TOOL: ToolDefinition = {
           type: 'string',
           description: 'The NPC whose relationship to update',
         },
+        action_type: {
+          type: 'string',
+          description:
+            "Predefined action type (e.g., 'give-gift', 'compliment-sincere', 'insult', 'help-requested', 'lie-caught', 'flirt-welcome')",
+        },
         delta: {
           type: 'number',
-          description: 'Change in relationship score (-1.0 to 1.0)',
+          description:
+            'Direct change amount for a specific dimension (-100 to 100). Use with dimension parameter.',
+        },
+        dimension: {
+          type: 'string',
+          enum: ['fondness', 'trust', 'respect', 'comfort', 'attraction', 'fear'],
+          description: 'Which affinity dimension to modify directly. Use with delta parameter.',
         },
         reason: {
           type: 'string',
-          description: 'Brief reason for the change',
+          description: 'Brief reason for the relationship change',
         },
-        flags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Relationship flags to set (e.g., "first_kiss", "betrayed")',
+        milestone_id: {
+          type: 'string',
+          description:
+            "ID of a milestone to record (for significant events like 'saved-life', 'betrayed', 'first-kiss')",
         },
       },
       required: ['npc_id'],
@@ -320,17 +454,25 @@ export const CORE_TOOLS: ToolDefinition[] = [
 /** Priority 2 tools - implement after core */
 export const ENVIRONMENT_TOOLS: ToolDefinition[] = [NAVIGATE_PLAYER_TOOL, EXAMINE_OBJECT_TOOL];
 
+/** Priority 2.5 tools - location movement and info */
+export const LOCATION_TOOLS: ToolDefinition[] = [MOVE_TO_LOCATION_TOOL, GET_LOCATION_INFO_TOOL];
+
 /** Priority 3 tools - implement after environment */
 export const INVENTORY_TOOLS: ToolDefinition[] = [USE_ITEM_TOOL];
 
-/** Priority 4 tools - future implementation */
+/** Priority 4 tools - time system */
+export const TIME_TOOLS: ToolDefinition[] = [ADVANCE_TIME_TOOL];
+
+/** Priority 5 tools - future implementation */
 export const RELATIONSHIP_TOOLS: ToolDefinition[] = [GET_NPC_MEMORY_TOOL, UPDATE_RELATIONSHIP_TOOL];
 
 /** All game tools - use for full tool-calling mode */
 export const ALL_GAME_TOOLS: ToolDefinition[] = [
   ...CORE_TOOLS,
   ...ENVIRONMENT_TOOLS,
+  ...LOCATION_TOOLS,
   ...INVENTORY_TOOLS,
+  ...TIME_TOOLS,
   ...RELATIONSHIP_TOOLS,
 ];
 
@@ -339,8 +481,8 @@ export const ALL_GAME_TOOLS: ToolDefinition[] = [
  * Start with CORE_TOOLS, expand as handlers are implemented.
  */
 export function getActiveTools(): ToolDefinition[] {
-  // Phase 2 implementation: only core tools are active
-  return CORE_TOOLS;
+  // Phase 8 implementation: core + time + relationship + location tools are active
+  return [...CORE_TOOLS, ...TIME_TOOLS, ...RELATIONSHIP_TOOLS, ...LOCATION_TOOLS];
 
   // Future: return ALL_GAME_TOOLS when all handlers ready
 }

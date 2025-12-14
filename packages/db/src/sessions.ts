@@ -664,3 +664,822 @@ function sceneActionFromRow(row: Record<string, unknown>): SceneAction {
     metadata: readJsonRecord(row['metadata']),
   };
 }
+
+// ============================================================================
+// Affinity State (NPC Relationships)
+// ============================================================================
+
+/**
+ * NPC affinity state record.
+ * Stores relationship scores, action history, milestones, etc.
+ */
+export interface AffinityStateRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  stateJson: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get affinity state for a specific NPC in a session.
+ */
+export async function getAffinityState(
+  sessionId: UUID,
+  npcId: string
+): Promise<SessionSliceState | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT state_json FROM session_affinity_state WHERE session_id = $1 AND npc_id = $2 LIMIT 1',
+    [sessionId, npcId]
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return readJsonObject(row, 'state_json');
+}
+
+/**
+ * Get all affinity states for a session (all NPCs).
+ */
+export async function getAllAffinityStates(
+  sessionId: UUID
+): Promise<Map<string, SessionSliceState>> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT npc_id, state_json FROM session_affinity_state WHERE session_id = $1',
+    [sessionId]
+  );
+
+  const result = new Map<string, SessionSliceState>();
+  for (const row of res.rows) {
+    const rec = row as Record<string, unknown>;
+    const npcId = readStr(rec, 'npc_id');
+    const state = readJsonObject(rec, 'state_json');
+    if (npcId && state) {
+      result.set(npcId, state);
+    }
+  }
+  return result;
+}
+
+/**
+ * Upsert affinity state for a specific NPC in a session.
+ */
+export async function upsertAffinityState(
+  sessionId: UUID,
+  npcId: string,
+  state: SessionSliceState
+): Promise<void> {
+  const stateJson = JSON.stringify(state ?? {});
+  await pool.query(
+    `INSERT INTO session_affinity_state (id, session_id, npc_id, state_json)
+     VALUES ($1, $2, $3, $4::jsonb)
+     ON CONFLICT (session_id, npc_id) DO UPDATE SET
+       state_json = EXCLUDED.state_json,
+       updated_at = now()`,
+    [genUUID(), sessionId, npcId, stateJson]
+  );
+}
+
+/**
+ * Delete affinity state for a specific NPC in a session.
+ */
+export async function deleteAffinityState(sessionId: UUID, npcId: string): Promise<void> {
+  await pool.query('DELETE FROM session_affinity_state WHERE session_id = $1 AND npc_id = $2', [
+    sessionId,
+    npcId,
+  ]);
+}
+
+/**
+ * Delete all affinity states for a session.
+ */
+export async function deleteAllAffinityStates(sessionId: UUID): Promise<number> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_affinity_state WHERE session_id = $1',
+    [sessionId]
+  );
+  return res.rowCount ?? 0;
+}
+
+// ============================================================================
+// NPC Location State
+// ============================================================================
+
+/**
+ * NPC location state record.
+ * Stores where an NPC is, what they're doing, and when they arrived.
+ */
+export interface NpcLocationStateRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  locationId: string;
+  subLocationId: string | null;
+  activityJson: Record<string, unknown>;
+  arrivedAtJson: Record<string, unknown>;
+  interruptible: boolean;
+  scheduleSlotId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get NPC location state for a specific NPC in a session.
+ */
+export async function getNpcLocationState(
+  sessionId: UUID,
+  npcId: string
+): Promise<NpcLocationStateRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_npc_location_state 
+     WHERE session_id = $1 AND npc_id = $2 
+     LIMIT 1`,
+    [sessionId, npcId]
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return npcLocationStateFromRow(row);
+}
+
+/**
+ * Get all NPC location states for a session.
+ */
+export async function getAllNpcLocationStates(
+  sessionId: UUID
+): Promise<Map<string, NpcLocationStateRecord>> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT * FROM session_npc_location_state WHERE session_id = $1',
+    [sessionId]
+  );
+
+  const result = new Map<string, NpcLocationStateRecord>();
+  for (const row of res.rows) {
+    const rec = row as Record<string, unknown>;
+    const state = npcLocationStateFromRow(rec);
+    if (state) {
+      result.set(state.npcId, state);
+    }
+  }
+  return result;
+}
+
+/**
+ * Get all NPCs at a specific location.
+ */
+export async function getNpcsAtLocation(
+  sessionId: UUID,
+  locationId: string
+): Promise<NpcLocationStateRecord[]> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_npc_location_state 
+     WHERE session_id = $1 AND location_id = $2`,
+    [sessionId, locationId]
+  );
+
+  return res.rows.map((row) => npcLocationStateFromRow(row as Record<string, unknown>)!);
+}
+
+/**
+ * Upsert NPC location state for a specific NPC in a session.
+ */
+export async function upsertNpcLocationState(
+  sessionId: UUID,
+  npcId: string,
+  state: {
+    locationId: string;
+    subLocationId?: string | null;
+    activityJson: Record<string, unknown>;
+    arrivedAtJson: Record<string, unknown>;
+    interruptible?: boolean;
+    scheduleSlotId?: string | null;
+  }
+): Promise<void> {
+  const activityStr = JSON.stringify(state.activityJson ?? {});
+  const arrivedAtStr = JSON.stringify(state.arrivedAtJson ?? {});
+
+  await pool.query(
+    `INSERT INTO session_npc_location_state 
+       (id, session_id, npc_id, location_id, sub_location_id, activity_json, arrived_at_json, interruptible, schedule_slot_id)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9)
+     ON CONFLICT (session_id, npc_id) DO UPDATE SET
+       location_id = EXCLUDED.location_id,
+       sub_location_id = EXCLUDED.sub_location_id,
+       activity_json = EXCLUDED.activity_json,
+       arrived_at_json = EXCLUDED.arrived_at_json,
+       interruptible = EXCLUDED.interruptible,
+       schedule_slot_id = EXCLUDED.schedule_slot_id,
+       updated_at = now()`,
+    [
+      genUUID(),
+      sessionId,
+      npcId,
+      state.locationId,
+      state.subLocationId ?? null,
+      activityStr,
+      arrivedAtStr,
+      state.interruptible ?? true,
+      state.scheduleSlotId ?? null,
+    ]
+  );
+}
+
+/**
+ * Bulk update NPC locations (e.g., during simulation).
+ */
+export async function bulkUpsertNpcLocationStates(
+  sessionId: UUID,
+  states: Array<{
+    npcId: string;
+    locationId: string;
+    subLocationId?: string | null;
+    activityJson: Record<string, unknown>;
+    arrivedAtJson: Record<string, unknown>;
+    interruptible?: boolean;
+    scheduleSlotId?: string | null;
+  }>
+): Promise<void> {
+  if (states.length === 0) return;
+
+  // Use a transaction for bulk operations
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const state of states) {
+      const activityStr = JSON.stringify(state.activityJson ?? {});
+      const arrivedAtStr = JSON.stringify(state.arrivedAtJson ?? {});
+
+      await client.query(
+        `INSERT INTO session_npc_location_state 
+           (id, session_id, npc_id, location_id, sub_location_id, activity_json, arrived_at_json, interruptible, schedule_slot_id)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9)
+         ON CONFLICT (session_id, npc_id) DO UPDATE SET
+           location_id = EXCLUDED.location_id,
+           sub_location_id = EXCLUDED.sub_location_id,
+           activity_json = EXCLUDED.activity_json,
+           arrived_at_json = EXCLUDED.arrived_at_json,
+           interruptible = EXCLUDED.interruptible,
+           schedule_slot_id = EXCLUDED.schedule_slot_id,
+           updated_at = now()`,
+        [
+          genUUID(),
+          sessionId,
+          state.npcId,
+          state.locationId,
+          state.subLocationId ?? null,
+          activityStr,
+          arrivedAtStr,
+          state.interruptible ?? true,
+          state.scheduleSlotId ?? null,
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Delete NPC location state for a specific NPC in a session.
+ */
+export async function deleteNpcLocationState(sessionId: UUID, npcId: string): Promise<void> {
+  await pool.query('DELETE FROM session_npc_location_state WHERE session_id = $1 AND npc_id = $2', [
+    sessionId,
+    npcId,
+  ]);
+}
+
+/**
+ * Delete all NPC location states for a session.
+ */
+export async function deleteAllNpcLocationStates(sessionId: UUID): Promise<number> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_npc_location_state WHERE session_id = $1',
+    [sessionId]
+  );
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Helper to convert a database row to an NpcLocationStateRecord.
+ */
+function npcLocationStateFromRow(row: Record<string, unknown>): NpcLocationStateRecord | null {
+  const npcId = readStr(row, 'npc_id');
+  if (!npcId) return null;
+
+  return {
+    id: readStr(row, 'id') as UUID,
+    sessionId: readStr(row, 'session_id') as UUID,
+    npcId,
+    locationId: readStr(row, 'location_id', ''),
+    subLocationId: readStr(row, 'sub_location_id', '') || null,
+    activityJson: readJsonRecord(row['activity_json']) ?? {},
+    arrivedAtJson: readJsonRecord(row['arrived_at_json']) ?? {},
+    interruptible: row['interruptible'] === true,
+    scheduleSlotId: readStr(row, 'schedule_slot_id', '') || null,
+    createdAt: toIsoDate(row['created_at']),
+    updatedAt: toIsoDate(row['updated_at']),
+  };
+}
+
+// ============================================================================
+// Location Occupancy Cache
+// ============================================================================
+
+/**
+ * Occupancy cache record.
+ */
+export interface LocationOccupancyCacheRecord {
+  id: UUID;
+  sessionId: UUID;
+  locationId: string;
+  occupancyJson: Record<string, unknown>;
+  computedAtJson: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get occupancy cache for a specific location.
+ */
+export async function getLocationOccupancyCache(
+  sessionId: UUID,
+  locationId: string
+): Promise<LocationOccupancyCacheRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_location_occupancy_cache 
+     WHERE session_id = $1 AND location_id = $2 
+     LIMIT 1`,
+    [sessionId, locationId]
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return occupancyCacheFromRow(row);
+}
+
+/**
+ * Upsert occupancy cache for a location.
+ */
+export async function upsertLocationOccupancyCache(
+  sessionId: UUID,
+  locationId: string,
+  occupancyJson: Record<string, unknown>,
+  computedAtJson: Record<string, unknown>
+): Promise<void> {
+  const occupancyStr = JSON.stringify(occupancyJson ?? {});
+  const computedAtStr = JSON.stringify(computedAtJson ?? {});
+
+  await pool.query(
+    `INSERT INTO session_location_occupancy_cache 
+       (id, session_id, location_id, occupancy_json, computed_at_json)
+     VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
+     ON CONFLICT (session_id, location_id) DO UPDATE SET
+       occupancy_json = EXCLUDED.occupancy_json,
+       computed_at_json = EXCLUDED.computed_at_json,
+       updated_at = now()`,
+    [genUUID(), sessionId, locationId, occupancyStr, computedAtStr]
+  );
+}
+
+/**
+ * Delete occupancy cache for a location.
+ */
+export async function deleteLocationOccupancyCache(
+  sessionId: UUID,
+  locationId: string
+): Promise<void> {
+  await pool.query(
+    'DELETE FROM session_location_occupancy_cache WHERE session_id = $1 AND location_id = $2',
+    [sessionId, locationId]
+  );
+}
+
+/**
+ * Delete all occupancy caches for a session.
+ */
+export async function deleteAllOccupancyCaches(sessionId: UUID): Promise<number> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_location_occupancy_cache WHERE session_id = $1',
+    [sessionId]
+  );
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Helper to convert a database row to an LocationOccupancyCacheRecord.
+ */
+function occupancyCacheFromRow(row: Record<string, unknown>): LocationOccupancyCacheRecord | null {
+  const locationId = readStr(row, 'location_id');
+  if (!locationId) return null;
+
+  return {
+    id: readStr(row, 'id') as UUID,
+    sessionId: readStr(row, 'session_id') as UUID,
+    locationId,
+    occupancyJson: readJsonRecord(row['occupancy_json']) ?? {},
+    computedAtJson: readJsonRecord(row['computed_at_json']) ?? {},
+    createdAt: toIsoDate(row['created_at']),
+    updatedAt: toIsoDate(row['updated_at']),
+  };
+}
+
+// ============================================================================
+// NPC Simulation Cache
+// ============================================================================
+
+/**
+ * Simulation cache record.
+ * Stores cached simulation state and schedule decisions for lazy simulation.
+ */
+export interface NpcSimulationCacheRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  lastComputedAtJson: Record<string, unknown>;
+  currentStateJson: Record<string, unknown>;
+  dayDecisionsJson: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get simulation cache for a specific NPC in a session.
+ */
+export async function getNpcSimulationCache(
+  sessionId: UUID,
+  npcId: string
+): Promise<NpcSimulationCacheRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_npc_simulation_cache 
+     WHERE session_id = $1 AND npc_id = $2 
+     LIMIT 1`,
+    [sessionId, npcId]
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return simulationCacheFromRow(row);
+}
+
+/**
+ * Get all simulation caches for a session.
+ */
+export async function getAllNpcSimulationCaches(
+  sessionId: UUID
+): Promise<Map<string, NpcSimulationCacheRecord>> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT * FROM session_npc_simulation_cache WHERE session_id = $1',
+    [sessionId]
+  );
+
+  const result = new Map<string, NpcSimulationCacheRecord>();
+  for (const row of res.rows) {
+    const rec = row as Record<string, unknown>;
+    const cache = simulationCacheFromRow(rec);
+    if (cache) {
+      result.set(cache.npcId, cache);
+    }
+  }
+  return result;
+}
+
+/**
+ * Upsert simulation cache for a specific NPC.
+ */
+export async function upsertNpcSimulationCache(
+  sessionId: UUID,
+  npcId: string,
+  cache: {
+    lastComputedAtJson: Record<string, unknown>;
+    currentStateJson: Record<string, unknown>;
+    dayDecisionsJson?: Record<string, unknown>;
+  }
+): Promise<void> {
+  const lastComputedAtStr = JSON.stringify(cache.lastComputedAtJson ?? {});
+  const currentStateStr = JSON.stringify(cache.currentStateJson ?? {});
+  const dayDecisionsStr = JSON.stringify(cache.dayDecisionsJson ?? {});
+
+  await pool.query(
+    `INSERT INTO session_npc_simulation_cache 
+       (id, session_id, npc_id, last_computed_at_json, current_state_json, day_decisions_json)
+     VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb)
+     ON CONFLICT (session_id, npc_id) DO UPDATE SET
+       last_computed_at_json = EXCLUDED.last_computed_at_json,
+       current_state_json = EXCLUDED.current_state_json,
+       day_decisions_json = EXCLUDED.day_decisions_json,
+       updated_at = now()`,
+    [genUUID(), sessionId, npcId, lastComputedAtStr, currentStateStr, dayDecisionsStr]
+  );
+}
+
+/**
+ * Bulk update simulation caches (e.g., during batch simulation).
+ */
+export async function bulkUpsertNpcSimulationCaches(
+  sessionId: UUID,
+  caches: Array<{
+    npcId: string;
+    lastComputedAtJson: Record<string, unknown>;
+    currentStateJson: Record<string, unknown>;
+    dayDecisionsJson?: Record<string, unknown>;
+  }>
+): Promise<void> {
+  if (caches.length === 0) return;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const cache of caches) {
+      const lastComputedAtStr = JSON.stringify(cache.lastComputedAtJson ?? {});
+      const currentStateStr = JSON.stringify(cache.currentStateJson ?? {});
+      const dayDecisionsStr = JSON.stringify(cache.dayDecisionsJson ?? {});
+
+      await client.query(
+        `INSERT INTO session_npc_simulation_cache 
+           (id, session_id, npc_id, last_computed_at_json, current_state_json, day_decisions_json)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb)
+         ON CONFLICT (session_id, npc_id) DO UPDATE SET
+           last_computed_at_json = EXCLUDED.last_computed_at_json,
+           current_state_json = EXCLUDED.current_state_json,
+           day_decisions_json = EXCLUDED.day_decisions_json,
+           updated_at = now()`,
+        [genUUID(), sessionId, cache.npcId, lastComputedAtStr, currentStateStr, dayDecisionsStr]
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Delete simulation cache for a specific NPC.
+ */
+export async function deleteNpcSimulationCache(sessionId: UUID, npcId: string): Promise<void> {
+  await pool.query(
+    'DELETE FROM session_npc_simulation_cache WHERE session_id = $1 AND npc_id = $2',
+    [sessionId, npcId]
+  );
+}
+
+/**
+ * Delete all simulation caches for a session.
+ */
+export async function deleteAllNpcSimulationCaches(sessionId: UUID): Promise<number> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_npc_simulation_cache WHERE session_id = $1',
+    [sessionId]
+  );
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Invalidate stale simulation caches older than a given game time.
+ * Useful after time advances or period changes.
+ */
+export async function invalidateStaleSimulationCaches(
+  sessionId: UUID,
+  beforeTime: Record<string, unknown>
+): Promise<number> {
+  // This is a simplified invalidation - in practice you might want more
+  // sophisticated JSONB queries to compare GameTime objects
+  const beforeTimeStr = JSON.stringify(beforeTime);
+
+  const res: QueryResult<DbRow> = await pool.query(
+    `DELETE FROM session_npc_simulation_cache 
+     WHERE session_id = $1 
+       AND last_computed_at_json < $2::jsonb`,
+    [sessionId, beforeTimeStr]
+  );
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Helper to convert a database row to an NpcSimulationCacheRecord.
+ */
+function simulationCacheFromRow(row: Record<string, unknown>): NpcSimulationCacheRecord | null {
+  const npcId = readStr(row, 'npc_id');
+  if (!npcId) return null;
+
+  return {
+    id: readStr(row, 'id') as UUID,
+    sessionId: readStr(row, 'session_id') as UUID,
+    npcId,
+    lastComputedAtJson: readJsonRecord(row['last_computed_at_json']) ?? {},
+    currentStateJson: readJsonRecord(row['current_state_json']) ?? {},
+    dayDecisionsJson: readJsonRecord(row['day_decisions_json']) ?? {},
+    createdAt: toIsoDate(row['created_at']),
+    updatedAt: toIsoDate(row['updated_at']),
+  };
+}
+
+// ============================================================================
+// Player Interest Score
+// ============================================================================
+
+/**
+ * Player interest score record from database.
+ */
+export interface PlayerInterestRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  score: number;
+  totalInteractions: number;
+  turnsSinceInteraction: number;
+  peakScore: number;
+  currentTier: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get player interest score for a specific NPC in a session.
+ */
+export async function getPlayerInterestScore(
+  sessionId: UUID,
+  npcId: string
+): Promise<PlayerInterestRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_player_interest 
+     WHERE session_id = $1 AND npc_id = $2 
+     LIMIT 1`,
+    [sessionId, npcId]
+  );
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return playerInterestFromRow(row);
+}
+
+/**
+ * Get all player interest scores for a session.
+ */
+export async function getAllPlayerInterestScores(
+  sessionId: UUID
+): Promise<Map<string, PlayerInterestRecord>> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT * FROM session_player_interest WHERE session_id = $1',
+    [sessionId]
+  );
+
+  const result = new Map<string, PlayerInterestRecord>();
+  for (const row of res.rows) {
+    const rec = row as Record<string, unknown>;
+    const record = playerInterestFromRow(rec);
+    if (record) {
+      result.set(record.npcId, record);
+    }
+  }
+  return result;
+}
+
+/**
+ * Get NPCs above a score threshold (for promotion checks).
+ */
+export async function getNpcsAboveInterestThreshold(
+  sessionId: UUID,
+  threshold: number
+): Promise<PlayerInterestRecord[]> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_player_interest 
+     WHERE session_id = $1 AND score >= $2 
+     ORDER BY score DESC`,
+    [sessionId, threshold]
+  );
+
+  const result: PlayerInterestRecord[] = [];
+  for (const row of res.rows) {
+    const rec = row as Record<string, unknown>;
+    const record = playerInterestFromRow(rec);
+    if (record) {
+      result.push(record);
+    }
+  }
+  return result;
+}
+
+/**
+ * Upsert player interest score for an NPC.
+ */
+export async function upsertPlayerInterestScore(
+  sessionId: UUID,
+  npcId: string,
+  score: number,
+  totalInteractions: number,
+  turnsSinceInteraction: number,
+  peakScore: number,
+  currentTier: string
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO session_player_interest 
+     (id, session_id, npc_id, score, total_interactions, turns_since_interaction, peak_score, current_tier)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (session_id, npc_id) DO UPDATE SET
+       score = EXCLUDED.score,
+       total_interactions = EXCLUDED.total_interactions,
+       turns_since_interaction = EXCLUDED.turns_since_interaction,
+       peak_score = EXCLUDED.peak_score,
+       current_tier = EXCLUDED.current_tier,
+       updated_at = now()`,
+    [
+      genUUID(),
+      sessionId,
+      npcId,
+      score,
+      totalInteractions,
+      turnsSinceInteraction,
+      peakScore,
+      currentTier,
+    ]
+  );
+}
+
+/**
+ * Update tier for an NPC after promotion.
+ */
+export async function updateNpcTier(
+  sessionId: UUID,
+  npcId: string,
+  newTier: string
+): Promise<void> {
+  await pool.query(
+    `UPDATE session_player_interest 
+     SET current_tier = $3, updated_at = now()
+     WHERE session_id = $1 AND npc_id = $2`,
+    [sessionId, npcId, newTier]
+  );
+}
+
+/**
+ * Delete player interest score for an NPC.
+ */
+export async function deletePlayerInterestScore(sessionId: UUID, npcId: string): Promise<void> {
+  await pool.query('DELETE FROM session_player_interest WHERE session_id = $1 AND npc_id = $2', [
+    sessionId,
+    npcId,
+  ]);
+}
+
+/**
+ * Delete all player interest scores for a session.
+ */
+export async function deleteAllPlayerInterestScores(sessionId: UUID): Promise<number> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_player_interest WHERE session_id = $1',
+    [sessionId]
+  );
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Helper to convert a database row to a PlayerInterestRecord.
+ */
+function playerInterestFromRow(row: Record<string, unknown>): PlayerInterestRecord | null {
+  const id = readStr(row, 'id');
+  const sessionId = readStr(row, 'session_id');
+  const npcId = readStr(row, 'npc_id');
+  const score = row['score'];
+  const totalInteractions = row['total_interactions'];
+  const turnsSinceInteraction = row['turns_since_interaction'];
+  const peakScore = row['peak_score'];
+  const currentTier = readStr(row, 'current_tier');
+  const createdAt = readStr(row, 'created_at');
+  const updatedAt = readStr(row, 'updated_at');
+
+  if (!id || !sessionId || !npcId || !currentTier || !createdAt || !updatedAt) {
+    return null;
+  }
+
+  return {
+    id: id as UUID,
+    sessionId: sessionId as UUID,
+    npcId,
+    score: typeof score === 'number' ? score : parseFloat(String(score ?? '0')),
+    totalInteractions:
+      typeof totalInteractions === 'number'
+        ? totalInteractions
+        : parseInt(String(totalInteractions ?? '0'), 10),
+    turnsSinceInteraction:
+      typeof turnsSinceInteraction === 'number'
+        ? turnsSinceInteraction
+        : parseInt(String(turnsSinceInteraction ?? '0'), 10),
+    peakScore: typeof peakScore === 'number' ? peakScore : parseFloat(String(peakScore ?? '0')),
+    currentTier,
+    createdAt,
+    updatedAt,
+  };
+}

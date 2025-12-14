@@ -1,7 +1,7 @@
 // Core Governor
 export { Governor, createGovernor } from './core/governor.js';
 
-// Intent Types and Aliases
+// Intent Types and Aliases (still used by agents for intent mapping)
 export {
   INTENT_CONFIG,
   INTENT_TYPES,
@@ -13,20 +13,7 @@ export {
   mapToAgentIntent,
 } from './intents/intents.js';
 
-// Intent Detection
-export {
-  RuleBasedIntentDetector,
-  createRuleBasedIntentDetector,
-  createFallbackIntentDetector,
-  type RuleBasedIntentDetectorConfig,
-} from './intents/intent-detector.js';
-export {
-  LlmIntentDetector,
-  type LlmIntentDetectorConfig,
-  type LlmIntentMessage,
-  type LlmIntentGenerateFn,
-  type LlmIntentGenerationResult,
-} from './intents/llm-intent-detector.js';
+// Pre-Parser (converts player input into ParsedAction[] for action sequencing)
 export {
   LlmPreParser,
   type LlmPreParserConfig,
@@ -46,13 +33,6 @@ export {
   type EquipmentSlot,
   type BodyEquipmentResolution,
 } from './utils/equipment-resolver.js';
-
-// Context Building
-export {
-  DefaultContextBuilder,
-  createContextBuilder,
-  type ContextBuilderConfig,
-} from './core/context-builder.js';
 
 // Action Sequencing
 export {
@@ -128,21 +108,12 @@ export type {
   TurnEvent,
   TurnMetadata,
   TurnStateChanges,
-  TurnContext,
   TurnStateContext,
   ConversationTurn,
   KnowledgeContextItem,
   ToolTurnHandler,
-  ResponseComposer,
   StateObject,
   SessionTag,
 } from './core/types.js';
 
 export { DEFAULT_GOVERNOR_OPTIONS, TurnProcessingError } from './core/types.js';
-
-// Intent types
-export type {
-  IntentDetector,
-  IntentDetectionContext,
-  IntentDetectionResult,
-} from './intents/types.js';

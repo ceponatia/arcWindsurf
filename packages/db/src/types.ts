@@ -292,3 +292,61 @@ export type SessionSummaryRecord = Pick<
   | 'settingInstanceId'
   | 'createdAt'
 >;
+
+// =============================================================================
+// NPC Location State Types
+// =============================================================================
+
+/**
+ * Row type for session_npc_location_state table.
+ * Tracks where an NPC is and what they're doing.
+ */
+export interface NpcLocationStateRow extends DbRow {
+  id: string;
+  sessionId: string;
+  npcId: string;
+  locationId: string;
+  subLocationId: string | null;
+  /** JSONB NpcActivity */
+  activityJson: unknown;
+  /** JSONB GameTime */
+  arrivedAtJson: unknown;
+  interruptible: boolean;
+  scheduleSlotId: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Row type for session_npc_simulation_cache table.
+ * Caches simulation state for lazy simulation.
+ */
+export interface NpcSimulationCacheRow extends DbRow {
+  id: string;
+  sessionId: string;
+  npcId: string;
+  /** JSONB GameTime */
+  lastComputedAtJson: unknown;
+  /** JSONB NpcLocationState */
+  currentStateJson: unknown;
+  /** JSONB Record<string, ResolvedScheduleOption> */
+  dayDecisionsJson: unknown;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Row type for session_location_occupancy_cache table.
+ * Caches occupancy state for visited locations.
+ */
+export interface LocationOccupancyCacheRow extends DbRow {
+  id: string;
+  sessionId: string;
+  locationId: string;
+  /** JSONB LocationOccupancy */
+  occupancyJson: unknown;
+  /** JSONB GameTime */
+  computedAtJson: unknown;
+  createdAt?: Date;
+  updatedAt?: Date;
+}

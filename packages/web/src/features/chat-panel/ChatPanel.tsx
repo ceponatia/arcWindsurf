@@ -10,9 +10,32 @@ import {
   getRuntimeConfig,
 } from '../../shared/api/client.js';
 import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
-import { AgentDebugSidebar } from '../chat/components/index.js';
+import { DebugSidebar } from '../chat/components/index.js';
 import { GOVERNOR_DEV_MODE, USE_TURNS_API } from '../../config.js';
 import type { NpcInstanceSummary } from '../../types.js';
+
+// Types for turn events from the API
+interface TurnEvent {
+  type: string;
+  timestamp: string;
+  payload: Record<string, unknown>;
+}
+
+interface StateChanges {
+  patchCount: number;
+  modifiedPaths: string[];
+  patches?: Array<{
+    op: string;
+    path: string;
+    value?: unknown;
+  }>;
+}
+
+interface TurnDebugData {
+  metadata: TurnMetadata | null;
+  events: TurnEvent[];
+  stateChanges: StateChanges | null;
+}
 
 export interface ChatPanelProps {
   sessionId?: string | null;
@@ -31,7 +54,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const [selectedNpcId, setSelectedNpcId] = useState<string | null>(null);
   const [npcError, setNpcError] = useState<string | null>(null);
   const [npcsLoading, setNpcsLoading] = useState(false);
-  const [lastTurnMetadata, setLastTurnMetadata] = useState<TurnMetadata | null>(null);
+  const [lastTurnDebug, setLastTurnDebug] = useState<TurnDebugData>({
+    metadata: null,
+    events: [],
+    stateChanges: null,
+  });
   const ctrlRef = useRef<AbortController | null>(null);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
@@ -157,9 +184,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
 
-      // Capture turn metadata for the debug sidebar
-      if (debugUiEnabled && assistant.turnMetadata) {
-        setLastTurnMetadata(assistant.turnMetadata);
+      // Capture turn debug data for the sidebar
+      if (debugUiEnabled) {
+        setLastTurnDebug({
+          metadata: assistant.turnMetadata ?? null,
+          events: (res.events ?? []) as TurnEvent[],
+          stateChanges: (res.stateChanges as StateChanges | null) ?? null,
+        });
       }
     } catch (e) {
       setDraft(text);
@@ -279,9 +310,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
 
-      // Capture turn metadata for the debug sidebar
-      if (debugUiEnabled && assistant.turnMetadata) {
-        setLastTurnMetadata(assistant.turnMetadata);
+      // Capture turn debug data for the sidebar
+      if (debugUiEnabled) {
+        setLastTurnDebug({
+          metadata: assistant.turnMetadata ?? null,
+          events: (res.events ?? []) as TurnEvent[],
+          stateChanges: (res.stateChanges as StateChanges | null) ?? null,
+        });
       }
     } catch (e) {
       const msg = getErrorMessage(e, 'Failed to regenerate response');
@@ -391,13 +426,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     />
   );
 
-  // When debug mode is enabled, show the agent debug sidebar on the right
+  // When debug mode is enabled, show the debug sidebar on the right (sticky)
   if (debugUiEnabled) {
     return (
       <div className="flex h-full">
-        <div className="flex-1 min-w-0">{chatView}</div>
-        <div className="w-80 flex-shrink-0 hidden lg:block">
-          <AgentDebugSidebar metadata={lastTurnMetadata} />
+        {/* Chat takes remaining space and scrolls independently */}
+        <div className="flex-1 min-w-0 overflow-hidden">{chatView}</div>
+        {/* Debug sidebar is fixed/sticky on the right */}
+        <div className="w-80 flex-shrink-0 hidden lg:block sticky top-0 h-screen overflow-hidden">
+          <DebugSidebar
+            metadata={lastTurnDebug.metadata}
+            events={lastTurnDebug.events}
+            stateChanges={lastTurnDebug.stateChanges}
+          />
         </div>
       </div>
     );

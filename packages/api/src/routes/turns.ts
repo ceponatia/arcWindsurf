@@ -20,6 +20,7 @@ import {
   persistNpcTranscript,
   persistSessionHistory,
 } from './turns/state-persistence.js';
+import { processTurnInterest, executePromotion } from '../sessions/tier-service.js';
 import type { TurnContext, TurnPersistenceData } from './turns/types.js';
 
 export function registerTurnRoutes(app: Hono): void {
@@ -84,10 +85,16 @@ export function registerTurnRoutes(app: Hono): void {
       },
     });
 
+    // Include proximity in baseline so state patches can be applied
+    const baselineWithProximity = {
+      ...loadedState.baseline,
+      proximity: loadedState.sessionState.proximity,
+    };
+
     const turnContext: TurnContext = {
       sessionId,
       playerInput: input,
-      baseline: loadedState.baseline,
+      baseline: baselineWithProximity,
       overrides: loadedState.overrides,
       conversationHistory: snapshot.messages.map(
         (m): ConversationTurn => ({
@@ -131,7 +138,46 @@ export function registerTurnRoutes(app: Hono): void {
     // 10. Persist session history with debug info
     await persistSessionHistory(persistenceData, turnResult);
 
-    // 11. Build and return response DTO
+    // 11. Process player interest and tier promotions
+    // Track interest for the active NPC (dialogue interaction)
+    const allNpcIds = loadedState.instances.characterInstances
+      .filter((ci) => ci.role === 'npc')
+      .map((ci) => ci.id);
+
+    if (allNpcIds.length > 0) {
+      try {
+        const interestResult = await processTurnInterest({
+          sessionId,
+          interactedNpcIds: [loadedState.instances.activeNpc.id],
+          allNpcIds,
+          interactions: new Map([
+            [
+              loadedState.instances.activeNpc.id,
+              {
+                type: 'dialogue' as const,
+                namedNpc: true,
+                askedQuestions: input.includes('?'),
+              },
+            ],
+          ]),
+        });
+
+        // Execute any pending promotions
+        for (const promotion of interestResult.promotions) {
+          if (promotion.targetTier) {
+            await executePromotion(sessionId, promotion.npcId, promotion.targetTier);
+            console.log(
+              `[turns] Promoted NPC ${promotion.npcId} from ${promotion.currentTier} to ${promotion.targetTier}`
+            );
+          }
+        }
+      } catch (err) {
+        // Non-fatal - log but don't fail the turn
+        console.error('[turns] Failed to process interest/promotions:', err);
+      }
+    }
+
+    // 12. Build and return response DTO
     const dto = mapTurnResultToDto(turnResult, snapshot.speaker);
     return c.json(dto, 200);
   });

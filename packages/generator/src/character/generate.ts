@@ -125,6 +125,7 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
     backstory,
     personality: personalityText,
     tags,
+    tier: 'minor', // Default tier for generated characters
     physique,
     body,
     personalityMap,

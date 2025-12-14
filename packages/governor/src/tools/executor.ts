@@ -5,6 +5,7 @@
  * It parses tool arguments, calls the appropriate agent, and returns
  * structured results for the LLM to weave into narrative.
  */
+import type { Operation } from 'fast-json-patch';
 import type { ToolCall, ToolResult, StatePatches } from './types.js';
 import type { SensoryAgent, NpcAgent } from '@minimal-rpg/agents';
 import type { AgentStateSlices } from '@minimal-rpg/agents';
@@ -14,8 +15,38 @@ import type {
   SenseType,
   EngagementIntensity,
   SensoryEngagement,
+  GameTime,
+  TimeConfig,
+  SessionTimeState,
+  TickResult,
+  CharacterInstanceAffinity,
+  AffinityEffect,
+  AffinityDimension,
+  DispositionLevel,
+  NpcLocationState,
+  LocationOccupancy,
+  PresentNpc,
+  CrowdLevel,
 } from '@minimal-rpg/schemas';
-import { createDefaultProximityState, makeEngagementKey } from '@minimal-rpg/schemas';
+import {
+  createDefaultProximityState,
+  makeEngagementKey,
+  DEFAULT_TIME_CONFIG,
+  tick,
+  formatGameTime,
+  getCurrentPeriod,
+  validateTimeSkip,
+  updateTimeStateFromTick,
+  createInitialTimeState,
+  createCharacterInstanceAffinity,
+  applyAffinityEffect,
+  calculateDisposition,
+  buildAffinityContext,
+  AFFINITY_EFFECTS,
+  createDefaultNpcLocationState,
+  createEmptyOccupancy,
+  categorizeCrowdLevel,
+} from '@minimal-rpg/schemas';
 import { ProximityManager } from '../proximity/index.js';
 
 // =============================================================================
@@ -60,9 +91,11 @@ interface GetNpcMemoryToolArgs {
 
 interface UpdateRelationshipToolArgs {
   npc_id: string;
+  action_type?: string;
   delta?: number;
+  dimension?: AffinityDimension;
   reason?: string;
-  flags?: string[];
+  milestone_id?: string;
 }
 
 interface UpdateProximityToolArgs {
@@ -71,6 +104,26 @@ interface UpdateProximityToolArgs {
   sense_type: SenseType;
   action: ProximityAction;
   new_intensity?: EngagementIntensity;
+}
+
+interface AdvanceTimeToolArgs {
+  amount: number;
+  unit: 'turns' | 'minutes' | 'hours';
+  reason?: string;
+  skip_type?: 'wait' | 'sleep' | 'activity' | 'travel' | 'automatic';
+}
+
+interface MoveToLocationToolArgs {
+  destination_id: string;
+  destination_name?: string;
+  travel_mode?: 'walk' | 'run' | 'sneak' | 'teleport' | 'vehicle';
+  time_to_arrive?: number;
+}
+
+interface GetLocationInfoToolArgs {
+  location_id?: string;
+  include_occupancy?: boolean;
+  include_exits?: boolean;
 }
 
 // =============================================================================
@@ -106,11 +159,41 @@ export interface ToolExecutorConfig {
   /** Current turn number (for proximity engagement timestamps) */
   currentTurn?: number;
 
+  /** Current time state for advance_time tool */
+  timeState?: SessionTimeState;
+
+  /** Time configuration (from setting, defaults to DEFAULT_TIME_CONFIG) */
+  timeConfig?: TimeConfig;
+
+  /** Affinity state for NPCs in this session (keyed by NPC ID) */
+  affinityStates?: Map<string, CharacterInstanceAffinity>;
+
+  /** NPC location states for this session (keyed by NPC ID) */
+  npcLocationStates?: Map<string, NpcLocationState>;
+
+  /** Current player location ID */
+  playerLocationId?: string;
+
+  /** Available locations (location ID -> location data) */
+  availableLocations?: Map<string, LocationInfo>;
+
   /**
    * Optional fallback handler for tools not handled by this executor.
    * Called before returning "Unknown tool" error.
    */
   fallbackHandler?: FallbackToolHandler;
+}
+
+/**
+ * Location information for the executor.
+ */
+export interface LocationInfo {
+  id: string;
+  name: string;
+  description?: string;
+  exits?: Array<{ direction: string; destinationId: string; destinationName?: string }>;
+  capacity?: number;
+  travelTimeMinutes?: number;
 }
 
 // =============================================================================
@@ -130,6 +213,12 @@ export class ToolExecutor {
   private readonly stateSlices: AgentStateSlices;
   private readonly proximityState: ProximityState;
   private readonly currentTurn: number;
+  private readonly timeState: SessionTimeState;
+  private readonly timeConfig: TimeConfig;
+  private readonly affinityStates: Map<string, CharacterInstanceAffinity>;
+  private readonly npcLocationStates: Map<string, NpcLocationState>;
+  private readonly playerLocationId: string;
+  private readonly availableLocations: Map<string, LocationInfo>;
   private readonly fallbackHandler?: FallbackToolHandler;
 
   constructor(config: ToolExecutorConfig) {
@@ -139,6 +228,12 @@ export class ToolExecutor {
     this.stateSlices = config.stateSlices;
     this.proximityState = config.proximityState ?? createDefaultProximityState();
     this.currentTurn = config.currentTurn ?? 1;
+    this.timeState = config.timeState ?? createInitialTimeState();
+    this.timeConfig = config.timeConfig ?? DEFAULT_TIME_CONFIG;
+    this.affinityStates = config.affinityStates ?? new Map();
+    this.npcLocationStates = config.npcLocationStates ?? new Map();
+    this.playerLocationId = config.playerLocationId ?? '';
+    this.availableLocations = config.availableLocations ?? new Map();
     if (config.fallbackHandler) {
       this.fallbackHandler = config.fallbackHandler;
     }
@@ -179,7 +274,17 @@ export class ToolExecutor {
       case 'use_item':
         return this.executeUseItem(args as UseItemToolArgs);
 
-      // Priority 4: Relationship tools (placeholder)
+      // Priority 4: Time tools (implemented)
+      case 'advance_time':
+        return this.executeAdvanceTime(args as AdvanceTimeToolArgs);
+
+      // Priority 4.5: Location tools (implemented)
+      case 'move_to_location':
+        return this.executeMoveToLocation(args as MoveToLocationToolArgs);
+      case 'get_location_info':
+        return this.executeGetLocationInfo(args as GetLocationInfoToolArgs);
+
+      // Priority 5: Relationship tools (placeholder)
       case 'get_npc_memory':
         return this.executeGetNpcMemory(args as GetNpcMemoryToolArgs);
       case 'update_relationship':
@@ -528,7 +633,315 @@ export class ToolExecutor {
   }
 
   // ===========================================================================
-  // Priority 4: Relationship Tool Handlers (PLACEHOLDER)
+  // Priority 4: Time Tool Handler (IMPLEMENTED)
+  // ===========================================================================
+
+  /**
+   * Execute time advancement.
+   * Advances game time and returns the new state with any triggered events.
+   * Produces state patches for the time slice.
+   */
+  private executeAdvanceTime(args: AdvanceTimeToolArgs): ToolResult {
+    // Convert requested time to seconds
+    let seconds: number;
+    switch (args.unit) {
+      case 'turns':
+        seconds = args.amount * this.timeConfig.secondsPerTurn;
+        break;
+      case 'minutes':
+        seconds = args.amount * 60;
+        break;
+      case 'hours':
+        seconds = args.amount * 3600;
+        break;
+      default:
+        return {
+          success: false,
+          error: `Unknown time unit: ${args.unit}`,
+        };
+    }
+
+    // Validate the time skip (check against max skip hours)
+    const validation = validateTimeSkip(seconds, this.timeConfig);
+    if (!validation.allowed) {
+      return {
+        success: false,
+        error: validation.rejectionMessage ?? 'Time skip too long',
+        requested_hours: validation.requestedHours,
+        max_allowed_hours: validation.maxAllowedHours,
+        hint: 'Try a smaller time skip',
+      };
+    }
+
+    // Calculate turns from seconds for the tick function
+    const turns = Math.ceil(seconds / this.timeConfig.secondsPerTurn);
+
+    // Perform the time tick
+    const tickResult: TickResult = tick(
+      this.timeState.current,
+      this.timeConfig,
+      turns,
+      this.timeState.pendingTimeEvents
+    );
+
+    // Update the time state
+    const newTimeState = updateTimeStateFromTick(this.timeState, tickResult, turns);
+
+    // Build state patches for the time slice
+    const timePatches: Operation[] = [
+      {
+        op: 'replace',
+        path: '/current',
+        value: newTimeState.current,
+      },
+      {
+        op: 'replace',
+        path: '/totalTurns',
+        value: newTimeState.totalTurns,
+      },
+      {
+        op: 'replace',
+        path: '/lastActiveAt',
+        value: newTimeState.lastActiveAt,
+      },
+      {
+        op: 'replace',
+        path: '/currentPeriod',
+        value: newTimeState.currentPeriod,
+      },
+    ];
+
+    // Add pending events patch if they changed
+    if (tickResult.triggeredEvents && tickResult.triggeredEvents.length > 0) {
+      timePatches.push({
+        op: 'replace',
+        path: '/pendingTimeEvents',
+        value: newTimeState.pendingTimeEvents ?? [],
+      });
+    }
+
+    const statePatches: StatePatches = { time: timePatches };
+
+    return {
+      success: true,
+      previous_time: formatGameTime(tickResult.previousTime, this.timeConfig),
+      new_time: formatGameTime(tickResult.newTime, this.timeConfig),
+      time_advanced: {
+        amount: args.amount,
+        unit: args.unit,
+        seconds,
+        turns,
+      },
+      period_changed: tickResult.periodChanged,
+      new_period: tickResult.newPeriod?.name,
+      new_period_description: tickResult.newPeriod?.description,
+      day_changed: tickResult.dayChanged,
+      triggered_events: tickResult.triggeredEvents?.map((e) => ({
+        id: e.id,
+        event_type: e.eventType,
+        payload: e.payload,
+      })),
+      reason: args.reason,
+      skip_type: args.skip_type ?? 'automatic',
+      statePatches,
+    };
+  }
+
+  // ===========================================================================
+  // Priority 4.5: Location Tool Handlers (IMPLEMENTED)
+  // ===========================================================================
+
+  /**
+   * Execute move to location.
+   * Updates player location and computes occupancy at the new location.
+   * Returns state patches for the location slice.
+   */
+  private executeMoveToLocation(args: MoveToLocationToolArgs): ToolResult {
+    const destinationId = args.destination_id;
+
+    // Validate destination exists
+    const destination = this.availableLocations.get(destinationId);
+    if (!destination) {
+      // Try to find by name if ID not found
+      const byName = Array.from(this.availableLocations.values()).find(
+        (loc) =>
+          args.destination_name &&
+          loc.name.toLowerCase().includes(args.destination_name.toLowerCase())
+      );
+
+      if (!byName) {
+        return {
+          success: false,
+          error: `Unknown destination: ${destinationId}`,
+          hint: 'Use a valid location ID from the setting',
+          available_locations: Array.from(this.availableLocations.values())
+            .slice(0, 10)
+            .map((loc) => ({ id: loc.id, name: loc.name })),
+        };
+      }
+
+      // Use the found location
+      return this.executeMoveToLocation({ ...args, destination_id: byName.id });
+    }
+
+    // Check if already at destination
+    if (this.playerLocationId === destinationId) {
+      return {
+        success: true,
+        already_there: true,
+        location_id: destinationId,
+        location_name: destination.name,
+        message: `You are already at ${destination.name}.`,
+      };
+    }
+
+    // Get previous location for travel time calculation
+    const previousLocation = this.availableLocations.get(this.playerLocationId);
+    const previousLocationName = previousLocation?.name ?? 'your previous location';
+
+    // Calculate travel time (use provided time or estimate from location data)
+    let travelMinutes = args.time_to_arrive ?? destination.travelTimeMinutes ?? 5;
+
+    // Adjust for travel mode
+    switch (args.travel_mode) {
+      case 'run':
+        travelMinutes = Math.ceil(travelMinutes * 0.5);
+        break;
+      case 'sneak':
+        travelMinutes = Math.ceil(travelMinutes * 1.5);
+        break;
+      case 'teleport':
+        travelMinutes = 0;
+        break;
+      case 'vehicle':
+        travelMinutes = Math.ceil(travelMinutes * 0.25);
+        break;
+      // 'walk' is default
+    }
+
+    // Get NPCs at the new location
+    const npcsAtDestination: Array<{ npcId: string; activity: string; interruptible: boolean }> =
+      [];
+    for (const [npcId, npcState] of this.npcLocationStates) {
+      if (npcState.locationId === destinationId) {
+        npcsAtDestination.push({
+          npcId,
+          activity: npcState.activity.description,
+          interruptible: npcState.interruptible,
+        });
+      }
+    }
+
+    // Calculate crowd level
+    const crowdLevel = categorizeCrowdLevel(npcsAtDestination.length, destination.capacity);
+
+    // Build state patches for the location slice
+    const locationPatches: Operation[] = [
+      {
+        op: 'replace',
+        path: '/playerLocationId',
+        value: destinationId,
+      },
+      {
+        op: 'replace',
+        path: '/previousLocationId',
+        value: this.playerLocationId,
+      },
+    ];
+
+    const statePatches: StatePatches = { location: locationPatches };
+
+    return {
+      success: true,
+      moved: true,
+      from_location: {
+        id: this.playerLocationId,
+        name: previousLocationName,
+      },
+      to_location: {
+        id: destinationId,
+        name: destination.name,
+        description: destination.description,
+      },
+      travel_mode: args.travel_mode ?? 'walk',
+      travel_time_minutes: travelMinutes,
+      npcs_present: npcsAtDestination,
+      crowd_level: crowdLevel,
+      exits: destination.exits ?? [],
+      statePatches,
+    };
+  }
+
+  /**
+   * Execute get location info.
+   * Returns information about a location including occupancy.
+   */
+  private executeGetLocationInfo(args: GetLocationInfoToolArgs): ToolResult {
+    const locationId = args.location_id ?? this.playerLocationId;
+
+    if (!locationId) {
+      return {
+        success: false,
+        error: 'No location specified and player location unknown',
+        hint: 'Provide a location_id or ensure player location is set',
+      };
+    }
+
+    const location = this.availableLocations.get(locationId);
+    if (!location) {
+      return {
+        success: false,
+        error: `Unknown location: ${locationId}`,
+        hint: 'Use a valid location ID from the setting',
+      };
+    }
+
+    const includeOccupancy = args.include_occupancy !== false;
+    const includeExits = args.include_exits !== false;
+
+    // Get NPCs at this location if requested
+    let npcsPresent: Array<{ npcId: string; activity: string; interruptible: boolean }> = [];
+    let crowdLevel: CrowdLevel = 'empty';
+
+    if (includeOccupancy) {
+      for (const [npcId, npcState] of this.npcLocationStates) {
+        if (npcState.locationId === locationId) {
+          npcsPresent.push({
+            npcId,
+            activity: npcState.activity.description,
+            interruptible: npcState.interruptible,
+          });
+        }
+      }
+      crowdLevel = categorizeCrowdLevel(npcsPresent.length, location.capacity);
+    }
+
+    const result: ToolResult = {
+      success: true,
+      location_id: locationId,
+      location_name: location.name,
+      description: location.description,
+      is_current_location: locationId === this.playerLocationId,
+    };
+
+    if (includeOccupancy) {
+      result['npcs_present'] = npcsPresent;
+      result['crowd_level'] = crowdLevel;
+    }
+
+    if (includeExits) {
+      result['exits'] = location.exits ?? [];
+    }
+
+    if (location.capacity) {
+      result['capacity'] = location.capacity;
+    }
+
+    return result;
+  }
+
+  // ===========================================================================
+  // Priority 5: Relationship Tool Handlers (IMPLEMENTED)
   // ===========================================================================
 
   /**
@@ -536,27 +949,178 @@ export class ToolExecutor {
    * Will query relationship/memory storage.
    */
   private executeGetNpcMemory(args: GetNpcMemoryToolArgs): ToolResult {
+    // Get affinity state for this NPC
+    const affinityState = this.affinityStates.get(args.npc_id);
+
+    if (!affinityState) {
+      return {
+        success: true,
+        npc_id: args.npc_id,
+        memory_type: args.memory_type ?? 'all',
+        memories: [],
+        relationship_level: 'neutral',
+        hint: 'No established relationship yet',
+      };
+    }
+
+    // Build affinity context which includes relationship insights
+    const context = buildAffinityContext(affinityState.scores);
+
     return {
-      success: false,
-      error: 'NPC memory system not yet implemented',
+      success: true,
       npc_id: args.npc_id,
-      memory_type: args.memory_type,
-      hint: 'Memory retrieval pending relationship system',
+      memory_type: args.memory_type ?? 'all',
+      relationship_level: affinityState.relationshipLevel,
+      insights: context.insights,
+      milestones: affinityState.milestones,
+      recent_actions: affinityState.actionHistory.slice(-5).map((h) => ({
+        action: h.actionType,
+        count: h.count,
+      })),
     };
   }
 
   /**
-   * PLACEHOLDER: Update NPC relationship with player.
-   * Will modify relationship state.
+   * Update NPC relationship with player.
+   * Applies affinity effects based on action types or direct delta changes.
+   * Returns state patches for the affinity slice.
    */
   private executeUpdateRelationship(args: UpdateRelationshipToolArgs): ToolResult {
-    return {
-      success: false,
-      error: 'Relationship system not yet implemented',
-      npc_id: args.npc_id,
-      requested_delta: args.delta,
-      hint: 'Relationship updates pending relationship system',
+    // Get or create affinity state for this NPC
+    let affinityState = this.affinityStates.get(args.npc_id);
+    const isNewRelationship = !affinityState;
+
+    if (!affinityState) {
+      affinityState = createCharacterInstanceAffinity(true); // Include attraction
+    }
+
+    let newScores = { ...affinityState.scores };
+    const appliedEffects: Array<{ dimension: string; change: number }> = [];
+
+    // Apply action-type based effects
+    if (args.action_type) {
+      const effects = AFFINITY_EFFECTS[args.action_type];
+      if (effects) {
+        for (const effect of effects) {
+          const oldValue = newScores[effect.dimension] ?? 0;
+          newScores = applyAffinityEffect(newScores, effect);
+          const newValue = newScores[effect.dimension] ?? 0;
+          appliedEffects.push({
+            dimension: effect.dimension,
+            change: newValue - oldValue,
+          });
+        }
+      } else {
+        return {
+          success: false,
+          error: `Unknown action type: ${args.action_type}`,
+          npc_id: args.npc_id,
+          available_actions: Object.keys(AFFINITY_EFFECTS).slice(0, 10),
+          hint: 'Use a known action type or specify dimension and delta directly',
+        };
+      }
+    }
+
+    // Apply direct delta change if provided
+    if (args.delta !== undefined && args.dimension) {
+      const effect: AffinityEffect = {
+        dimension: args.dimension,
+        baseChange: args.delta,
+      };
+      const oldValue = newScores[args.dimension] ?? 0;
+      newScores = applyAffinityEffect(newScores, effect);
+      const newValue = newScores[args.dimension] ?? 0;
+      appliedEffects.push({
+        dimension: args.dimension,
+        change: newValue - oldValue,
+      });
+    }
+
+    // Calculate new disposition
+    const newDisposition = calculateDisposition(newScores);
+    const previousLevel = affinityState.relationshipLevel;
+    const levelChanged = previousLevel !== newDisposition.level;
+
+    // Update affinity state
+    const newAffinityState: CharacterInstanceAffinity = {
+      scores: newScores,
+      lastUpdated: new Date().toISOString(),
+      actionHistory: args.action_type
+        ? this.updateActionHistory(affinityState.actionHistory, args.action_type)
+        : affinityState.actionHistory,
+      milestones: args.milestone_id
+        ? [...affinityState.milestones, args.milestone_id]
+        : affinityState.milestones,
+      relationshipLevel: newDisposition.level,
     };
+
+    // Build state patches
+    const statePatches: StatePatches = {
+      affinity: [
+        {
+          op: isNewRelationship ? 'add' : 'replace',
+          path: `/${args.npc_id}`,
+          value: newAffinityState,
+        },
+      ],
+    };
+
+    // Build context for LLM
+    const context = buildAffinityContext(newScores);
+
+    return {
+      success: true,
+      npc_id: args.npc_id,
+      action_type: args.action_type,
+      reason: args.reason,
+      effects_applied: appliedEffects,
+      new_scores: {
+        fondness: newScores.fondness,
+        trust: newScores.trust,
+        respect: newScores.respect,
+        comfort: newScores.comfort,
+        attraction: newScores.attraction,
+        fear: newScores.fear,
+      },
+      disposition: {
+        level: newDisposition.level,
+        overall_score: newDisposition.overallScore,
+        modifiers: newDisposition.modifiers,
+      },
+      level_changed: levelChanged,
+      previous_level: levelChanged ? previousLevel : undefined,
+      insights: context.insights,
+      statePatches,
+    };
+  }
+
+  /**
+   * Update action history with a new action occurrence.
+   */
+  private updateActionHistory(
+    history: CharacterInstanceAffinity['actionHistory'],
+    actionType: string
+  ): CharacterInstanceAffinity['actionHistory'] {
+    const existing = history.find((h) => h.actionType === actionType);
+
+    if (existing) {
+      // Update existing entry
+      return history.map((h) =>
+        h.actionType === actionType
+          ? { ...h, count: h.count + 1, lastOccurred: this.timeState.current }
+          : h
+      );
+    }
+
+    // Add new entry
+    return [
+      ...history,
+      {
+        actionType,
+        count: 1,
+        lastOccurred: this.timeState.current,
+      },
+    ];
   }
 }
 

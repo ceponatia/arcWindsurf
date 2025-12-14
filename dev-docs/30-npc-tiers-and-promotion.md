@@ -1,11 +1,32 @@
 # NPC Tiers and Promotion
 
-> **Status**: BRAINSTORM
-> **Last Updated**: December 2025
+> **Status**: FOUNDATION COMPLETE
+> **Last Updated**: January 2025
 
 This document defines the NPC tier system that differentiates major story characters from background flavor. It covers tier definitions, promotion mechanics, and the "player interest" scoring system.
 
 Split from [27-npc-schedules-and-routines.md](27-npc-schedules-and-routines.md).
+
+## Implementation Status
+
+### Completed (January 2025)
+
+- **Tier schemas** - `packages/schemas/src/npc-tier/` module with:
+  - `types.ts` - Core interfaces (NpcTier, NpcTierConfig, PlayerInterestScore, etc.)
+  - `schemas.ts` - Zod validation schemas for all tier types
+  - `defaults.ts` - NPC_TIER_DEFAULTS, DEFAULT_INTEREST_CONFIG
+  - `utils.ts` - Interest scoring, promotion checks, simulation priority
+  - `index.ts` - Barrel exports
+- **Character integration** - `tier` field added to CharacterBasicsSchema (defaults to 'minor')
+- **Setting integration** - `interestConfig` field added to SettingBackgroundSchema
+
+### Pending
+
+- Wire tier system into session runtime
+- Implement automatic promotion on interest threshold
+- Add promotion notification/logging
+- LLM-assisted profile expansion on promotion
+- Simulation priority integration with governor
 
 ## 1. Tier Definitions
 

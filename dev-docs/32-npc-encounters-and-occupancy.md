@@ -1,9 +1,16 @@
 # NPC Encounters and Occupancy
 
-> **Status**: BRAINSTORM
+> **Status**: IMPLEMENTED (schema foundation)
 > **Last Updated**: December 2025
 
 This document covers how NPCs are encountered when the player enters a location, including occupancy calculation and LLM narration guidance.
+
+**Implementation**: `packages/schemas/src/state/`
+
+- `occupancy.ts` - LocationOccupancy, PresentNpc, RecentDeparture, ExpectedArrival, CrowdLevel, OccupancyPromptContext
+- `awareness.ts` - NpcAwareness, AwarenessLevel, ReactionType, InitiativeType
+- `availability.ts` - NpcAvailability, UnavailabilityReason, WakeUpReaction
+- `eavesdrop.ts` - EavesdropContext, AudibilityLevel, NpcRelationship
 
 Split from [27-npc-schedules-and-routines.md](27-npc-schedules-and-routines.md).
 

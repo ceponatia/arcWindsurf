@@ -1,18 +1,14 @@
 # @minimal-rpg/governor
 
-The Governor is the orchestration layer for the Minimal RPG. It implements a 7-step turn processing flow to handle player input, execute agents, and manage state changes.
+The Governor is the orchestration layer for the Minimal RPG. It delegates turn processing to a tool-based turn handler where the LLM decides which tools to call based on player input.
 
 ## Overview
 
 The Governor coordinates:
 
-1. **Intent Detection**: Analyzing player input to determine intent (move, look, talk, etc.)
-2. **State Recall**: Loading effective state via StateManager
-3. **Context Retrieval**: Getting relevant knowledge nodes from the retrieval service
-4. **Agent Routing**: Dispatching to appropriate agents based on intent
-5. **Agent Execution**: Running agents and collecting outputs
-6. **State Update**: Applying patches via StateManager
-7. **Response Aggregation**: Combining agent outputs into TurnResult
+1. **Turn Handling**: Delegating to ToolBasedTurnHandler for LLM tool calling
+2. **State Management**: Applying state patches returned from tool execution
+3. **Response Assembly**: Building TurnResult from tool outputs
 
 ## Installation
 
@@ -25,24 +21,26 @@ pnpm add @minimal-rpg/governor
 ### Basic Usage
 
 ```typescript
-import { createGovernor, createRuleBasedIntentDetector } from '@minimal-rpg/governor';
+import { createGovernor, createToolBasedTurnHandler } from '@minimal-rpg/governor';
 import { StateManager } from '@minimal-rpg/state-manager';
-import { DefaultAgentRegistry, MapAgent, NpcAgent } from '@minimal-rpg/agents';
 
 // Create dependencies
 const stateManager = new StateManager();
-const agentRegistry = new DefaultAgentRegistry();
-agentRegistry.register(new MapAgent());
-agentRegistry.register(new NpcAgent());
+
+// Create tool turn handler (requires LLM integration setup)
+const toolTurnHandler = createToolBasedTurnHandler({
+  stateSlices: gameStateSlices,
+  conversationHistory: history,
+  chatWithTools: openRouterChatWithTools,
+});
 
 // Create governor
 const governor = createGovernor({
   stateManager,
-  agentRegistry,
-  intentDetector: createRuleBasedIntentDetector(),
+  toolTurnHandler, // Required
   logging: {
     logTurns: true,
-    logAgents: true,
+    logStateChanges: true,
   },
 });
 
@@ -80,37 +78,15 @@ const result = await governor.handleTurn({
 const result = await governor.handleTurn('session-123', 'look around');
 ```
 
-## Intent Detection
+## Tool-Based Architecture
 
-The governor includes a rule-based intent detector for offline use:
+The Governor uses LLM tool calling instead of rule-based intent detection:
 
-```typescript
-import { createRuleBasedIntentDetector } from '@minimal-rpg/governor';
+- **Tools define available actions** (`get_sensory_detail`, `npc_dialogue`, `navigate_player`, etc.)
+- **LLM decides which tools to call** based on player input and context
+- **Tools return state patches** that the Governor applies to game state
 
-const detector = createRuleBasedIntentDetector({
-  minConfidence: 0.3,
-  useContext: true,
-});
-
-const intent = await detector.detect('go to the castle', {
-  currentLocation: 'Town Square',
-  availableActions: ['move', 'look', 'talk'],
-});
-// { type: 'move', confidence: 0.8, params: { target: 'castle' } }
-```
-
-### Supported Intent Types
-
-- `move` - Navigation commands (go, walk, enter, leave)
-- `look` - Observation commands (look, observe, see)
-- `examine` - Detailed inspection (examine, inspect, check)
-- `talk` - Conversation (talk, speak, say, ask)
-- `use` - Item usage (use, activate)
-- `take` - Item pickup (take, get, grab)
-- `give` - Item transfer (give, hand)
-- `wait` - Pause (wait, rest)
-- `system` - Meta commands (help, save, quit)
-- `unknown` - Unrecognized input
+This eliminates the need for separate intent detection, reducing latency and improving accuracy.
 
 ## TurnResult Structure
 
@@ -130,21 +106,18 @@ interface TurnResult {
 ```typescript
 interface GovernorConfig {
   stateManager: StateManager; // Required
-  agentRegistry?: AgentRegistry; // Optional - agents to route to
-  retrievalService?: RetrievalService; // Optional - knowledge retrieval
-  intentDetector?: IntentDetector; // Optional - uses fallback if not set
+  toolTurnHandler: ToolTurnHandler; // Required - LLM tool calling handler
+  npcTranscriptLoader?: NpcTranscriptLoader; // Optional - NPC history loading
+  actionSequencer?: ActionSequencer; // Optional - multi-action handling
   logging?: {
     logTurns?: boolean;
-    logAgents?: boolean;
     logStateChanges?: boolean;
-    logIntentDetection?: boolean;
-    logRetrieval?: boolean;
+    logActionSequence?: boolean;
   };
   options?: {
-    maxAgentsPerTurn?: number; // Default: 5
-    continueOnAgentError?: boolean; // Default: true
-    applyPatchesOnPartialFailure?: boolean; // Default: false
-    intentConfidenceThreshold?: number; // Default: 0.3
+    devMode?: boolean; // Default: false
+    npcInterjectionThreshold?: number; // Default: 3
+    useActionSequencer?: boolean; // Default: false
   };
 }
 ```
@@ -158,15 +131,12 @@ const result = await governor.handleTurn(input);
 
 if (!result.success) {
   console.error(`Error in ${result.error?.phase}: ${result.error?.message}`);
-  // Error codes: INTENT_DETECTION_FAILED, STATE_LOAD_FAILED,
-  // RETRIEVAL_FAILED, NO_AGENT_FOUND, AGENT_EXECUTION_FAILED,
-  // STATE_UPDATE_FAILED, VALIDATION_FAILED, UNKNOWN_ERROR
+  // Error codes: TOOL_EXECUTION_FAILED, STATE_UPDATE_FAILED, UNKNOWN_ERROR
 }
 ```
 
 ## Dependencies
 
 - `@minimal-rpg/state-manager` - State computation and patch application
-- `@minimal-rpg/agents` - Agent interfaces and implementations
-- `@minimal-rpg/retrieval` - Knowledge node retrieval (optional)
+- `@minimal-rpg/agents` - Agent interfaces (for tool execution)
 - `fast-json-patch` - JSON Patch operations

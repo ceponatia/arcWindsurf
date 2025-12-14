@@ -27,8 +27,6 @@ export interface RuntimeConfig {
   openrouterApiKey: string;
   openrouterModel: string;
   governorDevMode: boolean;
-  intentDebug: boolean;
-  turnHandler: 'classic' | 'tool-calling' | 'hybrid';
 }
 
 // LLM chat roles

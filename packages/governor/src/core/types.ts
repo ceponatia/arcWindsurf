@@ -6,19 +6,12 @@ import {
   type ParsedAction,
   type ActionSequenceResult,
 } from '@minimal-rpg/schemas';
-import {
-  type DetectedIntent,
-  type IntentDetectionDebug,
-  type IntentDetector,
-} from '../intents/types.js';
 import { type StateManager, type DeepPartial } from '@minimal-rpg/state-manager';
-import { type RetrievalService, type RetrievalResult } from '@minimal-rpg/retrieval';
+import { type RetrievalResult } from '@minimal-rpg/retrieval';
 import {
-  type AgentRegistry,
   type AgentOutput,
   type AgentType,
   type AgentExecutionResult,
-  type AgentStateSlices,
   type KnowledgeContextItem as AgentKnowledgeContextItem,
   type ConversationTurn as AgentConversationTurn,
 } from '@minimal-rpg/agents';
@@ -31,22 +24,15 @@ import { type ActionSequencer } from './action-sequencer.js';
 
 export interface GovernorConfig {
   stateManager: StateManager;
-  retrievalService?: RetrievalService;
-  agentRegistry?: AgentRegistry;
-  intentDetector?: IntentDetector;
   npcTranscriptLoader?: NpcTranscriptLoader;
   actionSequencer?: ActionSequencer;
-  /** Tool-based turn handler for LLM tool calling mode */
-  toolTurnHandler?: ToolTurnHandler;
+  /** Tool-based turn handler for LLM tool calling mode (required) */
+  toolTurnHandler: ToolTurnHandler;
   logging?: {
     logTurns?: boolean;
-    logIntentDetection?: boolean;
-    logRetrieval?: boolean;
     logStateChanges?: boolean;
-    logAgents?: boolean;
     logActionSequence?: boolean;
   };
-  responseComposer?: ResponseComposer;
   options?: GovernorOptions;
 }
 
@@ -59,35 +45,17 @@ export interface ToolTurnHandler {
 }
 
 export interface GovernorOptions {
-  maxAgentsPerTurn?: number;
-  continueOnAgentError?: boolean;
-  applyPatchesOnPartialFailure?: boolean;
-  intentConfidenceThreshold?: number;
   devMode?: boolean;
-  agentTimeoutMs?: number;
   /** Number of turns without NPC dialogue before auto-interjection. Set to 0 to disable. Default: 3 */
   npcInterjectionThreshold?: number;
   /** Enable action sequencing for multi-action turns. Default: false */
   useActionSequencer?: boolean;
-  /**
-   * Turn handler mode:
-   * - 'classic': Rule-based intent detection + agent routing (default)
-   * - 'tool-calling': LLM decides when to call tools based on context
-   * - 'hybrid': Use tool-calling for complex inputs, classic for simple ones
-   */
-  turnHandler?: 'classic' | 'tool-calling' | 'hybrid';
 }
 
 export const DEFAULT_GOVERNOR_OPTIONS: Required<GovernorOptions> = {
-  maxAgentsPerTurn: 5,
-  continueOnAgentError: true,
-  applyPatchesOnPartialFailure: true,
-  intentConfidenceThreshold: 0.4,
   devMode: false,
-  agentTimeoutMs: 30000,
   npcInterjectionThreshold: 3,
   useActionSequencer: false,
-  turnHandler: 'classic',
 };
 
 export interface TurnInput {
@@ -102,6 +70,8 @@ export interface TurnInput {
   persona?: PersonaProfile;
   /** Parsed actions from pre-parser (optional, for multi-action sequencing) */
   parsedActions?: ParsedAction[];
+  /** Running summary of older conversation history (for long conversations) */
+  conversationSummary?: string;
 }
 
 /**
@@ -130,6 +100,44 @@ export type SettingWithInstance = Partial<SettingProfile> &
   Pick<InstanceMetadata, 'instanceId' | 'templateId'> &
   Record<string, unknown>;
 
+/**
+ * NPC context for the active NPC in a turn.
+ * Includes schedule-based availability and awareness information.
+ */
+export interface NpcContext {
+  /** NPC's current schedule resolution */
+  schedule?: {
+    /** Current slot ID the NPC is in */
+    currentSlotId?: string;
+    /** Current activity description */
+    activity?: string;
+    /** Current location from schedule */
+    scheduledLocationId?: string;
+    /** Whether NPC is available for interaction */
+    available: boolean;
+    /** Reason if unavailable (e.g., "sleeping", "working", "busy") */
+    unavailableReason?: string;
+  };
+  /** NPC's awareness of the player */
+  awareness?: {
+    /** Whether NPC has met the player before */
+    hasMet: boolean;
+    /** Turn number of last interaction */
+    lastInteractionTurn?: number;
+    /** Number of previous interactions */
+    interactionCount?: number;
+    /** Player's reputation level with this NPC (-100 to 100) */
+    reputation?: number;
+  };
+  /** NPC's current emotional state */
+  mood?: {
+    /** Primary mood (e.g., "neutral", "happy", "annoyed") */
+    primary: string;
+    /** Intensity 0-1 */
+    intensity?: number;
+  };
+}
+
 export interface TurnStateContext {
   character: CharacterWithInstance;
   setting: SettingWithInstance;
@@ -137,6 +145,14 @@ export interface TurnStateContext {
   inventory: Record<string, unknown>;
   time: Record<string, unknown>;
   npc?: CharacterWithInstance;
+  /** Affinity states for all NPCs (keyed by NPC ID) - available for affinity-aware prompting */
+  affinity?: Record<string, unknown>;
+  /** NPC location states (keyed by NPC ID) - tracks where NPCs are */
+  npcLocations?: Record<string, unknown>;
+  /** Player's current location ID */
+  playerLocationId?: string;
+  /** Context for the active NPC (schedule, availability, awareness) */
+  npcContext?: NpcContext;
   [key: string]: unknown;
 }
 
@@ -161,8 +177,6 @@ export interface TurnMetadata {
   agentsInvoked: string[];
   nodesRetrieved: number;
   phaseTiming: PhaseTiming;
-  intent?: DetectedIntent;
-  intentDebug?: IntentDetectionDebug;
   agentOutputs?: { agentType: string; output: AgentOutput }[];
   actionSequenceResult?: ActionSequenceResult;
 }
@@ -176,13 +190,9 @@ export interface TurnStateChanges {
 }
 
 export interface PhaseTiming {
-  intentDetectionMs?: number;
-  stateRecallMs?: number;
   contextRetrievalMs?: number;
-  agentRoutingMs?: number;
   agentExecutionMs?: number;
   stateUpdateMs?: number;
-  responseAggregationMs?: number;
   actionSequencingMs?: number;
 }
 
@@ -194,28 +204,6 @@ export interface TurnExecutionResult {
   successfulAgents: AgentType[];
   failedAgents: AgentType[];
 }
-
-export interface TurnContext {
-  sessionId: string;
-  playerInput: string;
-  intent: DetectedIntent;
-  effectiveState: TurnStateContext;
-  stateSlices: AgentStateSlices;
-  knowledgeContext: KnowledgeContextItem[];
-  conversationHistory: ConversationTurn[];
-  npcConversationHistory?: ConversationTurn[];
-  turnNumber: number;
-}
-
-export type ResponseComposer = (params: {
-  turnInput: TurnInput;
-  intent: DetectedIntent;
-  executionResult: TurnExecutionResult;
-  stateChanges: TurnStateChanges;
-  nodesRetrieved: number;
-  events: TurnEvent[];
-  sessionTags?: SessionTagInstance[];
-}) => Promise<string | undefined>;
 
 export interface TurnError {
   code: string;
@@ -259,20 +247,6 @@ export type ConversationTurn = AgentConversationTurn;
 export type KnowledgeContextItem = AgentKnowledgeContextItem;
 
 export type GovernorRetrievalResult = RetrievalResult;
-
-export interface ContextBuildInput {
-  sessionId: string;
-  playerInput: string;
-  intent: DetectedIntent;
-  baseline: TurnStateContext;
-  overrides: DeepPartial<TurnStateContext>;
-  conversationHistory: ConversationTurn[];
-  turnNumber: number;
-}
-
-export interface ContextBuilder {
-  build(input: ContextBuildInput): Promise<TurnContext>;
-}
 
 export interface NpcTranscriptRequest {
   sessionId: string;

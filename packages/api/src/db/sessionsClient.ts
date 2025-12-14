@@ -15,6 +15,40 @@ import {
   upsertInventoryState as rawUpsertInventoryState,
   getTimeState as rawGetTimeState,
   upsertTimeState as rawUpsertTimeState,
+  getAffinityState as rawGetAffinityState,
+  getAllAffinityStates as rawGetAllAffinityStates,
+  upsertAffinityState as rawUpsertAffinityState,
+  deleteAffinityState as rawDeleteAffinityState,
+  deleteAllAffinityStates as rawDeleteAllAffinityStates,
+  // NPC location state functions
+  getNpcLocationState as rawGetNpcLocationState,
+  getAllNpcLocationStates as rawGetAllNpcLocationStates,
+  getNpcsAtLocation as rawGetNpcsAtLocation,
+  upsertNpcLocationState as rawUpsertNpcLocationState,
+  bulkUpsertNpcLocationStates as rawBulkUpsertNpcLocationStates,
+  deleteNpcLocationState as rawDeleteNpcLocationState,
+  deleteAllNpcLocationStates as rawDeleteAllNpcLocationStates,
+  // Occupancy cache functions
+  getLocationOccupancyCache as rawGetLocationOccupancyCache,
+  upsertLocationOccupancyCache as rawUpsertLocationOccupancyCache,
+  deleteLocationOccupancyCache as rawDeleteLocationOccupancyCache,
+  deleteAllOccupancyCaches as rawDeleteAllOccupancyCaches,
+  // Simulation cache functions
+  getNpcSimulationCache as rawGetNpcSimulationCache,
+  getAllNpcSimulationCaches as rawGetAllNpcSimulationCaches,
+  upsertNpcSimulationCache as rawUpsertNpcSimulationCache,
+  bulkUpsertNpcSimulationCaches as rawBulkUpsertNpcSimulationCaches,
+  deleteNpcSimulationCache as rawDeleteNpcSimulationCache,
+  deleteAllNpcSimulationCaches as rawDeleteAllNpcSimulationCaches,
+  invalidateStaleSimulationCaches as rawInvalidateStaleSimulationCaches,
+  // Player interest functions
+  getPlayerInterestScore as rawGetPlayerInterestScore,
+  getAllPlayerInterestScores as rawGetAllPlayerInterestScores,
+  getNpcsAboveInterestThreshold as rawGetNpcsAboveInterestThreshold,
+  upsertPlayerInterestScore as rawUpsertPlayerInterestScore,
+  updateNpcTier as rawUpdateNpcTier,
+  deletePlayerInterestScore as rawDeletePlayerInterestScore,
+  deleteAllPlayerInterestScores as rawDeleteAllPlayerInterestScores,
   // Enhanced tag functions
   listPromptTags as rawListPromptTags,
   getPromptTag as rawGetPromptTag,
@@ -57,6 +91,47 @@ export const getInventoryState = rawGetInventoryState;
 export const upsertInventoryState = rawUpsertInventoryState;
 export const getTimeState = rawGetTimeState;
 export const upsertTimeState = rawUpsertTimeState;
+export const getAffinityState = rawGetAffinityState;
+export const getAllAffinityStates = rawGetAllAffinityStates;
+export const upsertAffinityState = rawUpsertAffinityState;
+export const deleteAffinityState = rawDeleteAffinityState;
+export const deleteAllAffinityStates = rawDeleteAllAffinityStates;
+
+// NPC location state functions
+export const getNpcLocationState = rawGetNpcLocationState;
+export const getAllNpcLocationStates = rawGetAllNpcLocationStates;
+export const getNpcsAtLocation = rawGetNpcsAtLocation;
+export const upsertNpcLocationState = rawUpsertNpcLocationState;
+export const bulkUpsertNpcLocationStates = rawBulkUpsertNpcLocationStates;
+export const deleteNpcLocationState = rawDeleteNpcLocationState;
+export const deleteAllNpcLocationStates = rawDeleteAllNpcLocationStates;
+
+// Occupancy cache functions
+export const getLocationOccupancyCache = rawGetLocationOccupancyCache;
+export const upsertLocationOccupancyCache = rawUpsertLocationOccupancyCache;
+export const deleteLocationOccupancyCache = rawDeleteLocationOccupancyCache;
+export const deleteAllOccupancyCaches = rawDeleteAllOccupancyCaches;
+
+// Simulation cache functions
+export const getNpcSimulationCache = rawGetNpcSimulationCache;
+export const getAllNpcSimulationCaches = rawGetAllNpcSimulationCaches;
+export const upsertNpcSimulationCache = rawUpsertNpcSimulationCache;
+export const bulkUpsertNpcSimulationCaches = rawBulkUpsertNpcSimulationCaches;
+export const deleteNpcSimulationCache = rawDeleteNpcSimulationCache;
+export const deleteAllNpcSimulationCaches = rawDeleteAllNpcSimulationCaches;
+export const invalidateStaleSimulationCaches = rawInvalidateStaleSimulationCaches;
+
+// Player interest functions
+export const getPlayerInterestScore = rawGetPlayerInterestScore;
+export const getAllPlayerInterestScores = rawGetAllPlayerInterestScores;
+export const getNpcsAboveInterestThreshold = rawGetNpcsAboveInterestThreshold;
+export const upsertPlayerInterestScore = rawUpsertPlayerInterestScore;
+export const updateNpcTier = rawUpdateNpcTier;
+export const deletePlayerInterestScore = rawDeletePlayerInterestScore;
+export const deleteAllPlayerInterestScores = rawDeleteAllPlayerInterestScores;
+
+// Re-export PlayerInterestRecord type for consumers
+export type { PlayerInterestRecord } from '@minimal-rpg/db/node';
 
 // Enhanced tag CRUD functions
 export const listPromptTags = rawListPromptTags;

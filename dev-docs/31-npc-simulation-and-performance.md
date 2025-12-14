@@ -1,9 +1,17 @@
 # NPC Simulation and Performance
 
-> **Status**: BRAINSTORM
+> **Status**: IMPLEMENTED (schema foundation)
 > **Last Updated**: December 2025
 
 This document covers the background simulation strategy for NPCs, including tiered simulation, performance budgets, and time skip handling.
+
+**Implementation**: `packages/schemas/src/simulation/`
+
+- `types.ts` - TypeScript types for simulation triggers, configs, priorities, results
+- `schemas.ts` - Zod validation schemas
+- `utils.ts` - Priority calculation, cache management, trigger filtering
+- `defaults.ts` - Default configurations and factory functions
+- `index.ts` - Barrel exports
 
 Split from [27-npc-schedules-and-routines.md](27-npc-schedules-and-routines.md).
 

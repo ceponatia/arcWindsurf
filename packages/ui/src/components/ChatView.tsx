@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { MessageContent } from './MessageContent.js';
 
@@ -37,6 +37,8 @@ export interface ChatViewProps {
   onDeleteMessage: (idx: number) => void | Promise<void>;
   onRedo?: (idx: number) => void | Promise<void>;
   renderAfterMessage?: (message: ChatViewMessage, index: number) => ReactNode;
+  /** If true, auto-scroll to bottom when messages change (default: true) */
+  autoScroll?: boolean;
 }
 
 const EditIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -98,9 +100,41 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onRedo,
   renderAfterMessage,
   inputAccessory,
+  autoScroll = true,
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const prevMessageCountRef = useRef<number>(0);
+
+  // Auto-scroll to bottom when messages change or on initial load
+  useEffect(() => {
+    if (!autoScroll) return;
+
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // Scroll on message count change (new message received)
+    if (messages.length !== prevMessageCountRef.current) {
+      prevMessageCountRef.current = messages.length;
+      // Small delay to ensure DOM is updated
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
+    }
+  }, [messages.length, autoScroll]);
+
+  // Scroll to bottom on initial load (when loading completes)
+  useEffect(() => {
+    if (!autoScroll || loading) return;
+
+    // Scroll to bottom when session first loads
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [loading, autoScroll]);
 
   const handleSend = () => {
     void onSend();

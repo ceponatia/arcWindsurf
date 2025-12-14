@@ -1,9 +1,18 @@
 # Affinity and Relationship Dynamics
 
-> **Status**: BRAINSTORM
+> **Status**: IMPLEMENTED (schema foundation)
 > **Last Updated**: December 2025
 
 This document outlines the design for an affinity and relationship system that tracks how NPCs feel about the player (and potentially each other), influencing their behavior, dialogue, and tolerance for various player actions.
+
+**Implementation**: `packages/schemas/src/affinity/`
+
+- `types.ts` - RelationshipScores, Disposition, AffinityEffect, ActionHistory, ToleranceProfile, etc.
+- `schemas.ts` - Zod schemas for all affinity types
+- `defaults.ts` - AFFINITY_EFFECTS map, STANDARD_UNLOCKS, decay/diminishing configs
+- `utils.ts` - calculateDisposition, applyAffinityDecay, getAvailableUnlocks, buildAffinityContext
+
+Note: The type is named `RelationshipScores` to avoid conflict with the simpler `AffinityScores` in `state/awareness.ts`.
 
 ## 1. Design Philosophy
 

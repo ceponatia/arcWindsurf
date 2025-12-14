@@ -12,7 +12,12 @@ import type {
   AccumulatedSensoryContext,
 } from '../core/types.js';
 import type { NpcAgentInput } from './types.js';
-import type { SensoryDetail, NpcResponseConfig } from '@minimal-rpg/schemas';
+import type {
+  SensoryDetail,
+  NpcResponseConfig,
+  CharacterInstanceAffinity,
+} from '@minimal-rpg/schemas';
+import { buildAffinityContext, formatAffinityPrompt } from '@minimal-rpg/schemas';
 
 /**
  * Agent responsible for NPC dialogue and reactions.
@@ -336,6 +341,50 @@ export class NpcAgent extends BaseAgent {
       }
     }
 
+    // Add affinity/relationship context if available
+    const affinityContext = this.extractAffinityContext(input);
+    if (affinityContext) {
+      parts.push('\n--- RELATIONSHIP WITH PLAYER ---');
+      parts.push(formatAffinityPrompt(affinityContext));
+
+      // Add disposition-based behavioral guidance
+      const disposition = affinityContext.relationship;
+      parts.push(`\nCurrent disposition: ${disposition}`);
+      parts.push(this.getDispositionGuidance(disposition));
+    }
+
+    // Add NPC context if available (schedule, availability)
+    const npcContext = this.extractNpcContext(input);
+    if (npcContext) {
+      if (npcContext.schedule && !npcContext.schedule.available) {
+        parts.push('\n--- AVAILABILITY ---');
+        parts.push(`You are currently unavailable: ${npcContext.schedule.unavailableReason}`);
+        parts.push(
+          'You may briefly acknowledge the player but should indicate you cannot talk now.'
+        );
+      }
+
+      if (npcContext.awareness) {
+        const awareness = npcContext.awareness;
+        if (!awareness.hasMet) {
+          parts.push('\n--- FIRST MEETING ---');
+          parts.push(
+            'This is your first time meeting this player. Introduce yourself appropriately.'
+          );
+        } else if (awareness.interactionCount && awareness.interactionCount > 10) {
+          parts.push('\n--- ESTABLISHED RELATIONSHIP ---');
+          parts.push(`You have interacted with this player ${awareness.interactionCount} times.`);
+          parts.push('You know them well and can reference past conversations naturally.');
+        }
+      }
+
+      if (npcContext.mood) {
+        parts.push(
+          `\nCurrent mood: ${npcContext.mood.primary} (intensity: ${npcContext.mood.intensity?.toFixed(1) ?? '0.5'})`
+        );
+      }
+    }
+
     // Handle compound intents with segments
     if (input.intent?.segments && input.intent.segments.length > 0) {
       parts.push('\n--- COMPOUND INPUT ---');
@@ -653,8 +702,84 @@ export class NpcAgent extends BaseAgent {
     return greetings[index] ?? greetings[0] ?? '';
   }
 
+  /**
+   * Extract affinity context from input state slices.
+   */
+  private extractAffinityContext(
+    input: AgentInput
+  ): ReturnType<typeof buildAffinityContext> | null {
+    const npc = input.stateSlices.npc ?? input.stateSlices.character;
+    if (!npc?.instanceId) return null;
+
+    // Get affinity state from the affinity map in state slices
+    // The stateSlices object may have additional properties beyond the typed interface
+    const slices = input.stateSlices as Record<string, unknown>;
+    const affinityMap = slices['affinity'] as Record<string, unknown> | undefined;
+    if (!affinityMap) return null;
+
+    const affinityState = affinityMap[npc.instanceId] as CharacterInstanceAffinity | undefined;
+    if (!affinityState?.scores) return null;
+
+    return buildAffinityContext(affinityState.scores);
+  }
+
+  /**
+   * Extract NPC context from input state slices.
+   */
+  private extractNpcContext(input: AgentInput): NpcContextSlice | null {
+    // The stateSlices object may have additional properties beyond the typed interface
+    const slices = input.stateSlices as Record<string, unknown>;
+    const npcContext = slices['npcContext'] as NpcContextSlice | undefined;
+    return npcContext ?? null;
+  }
+
+  /**
+   * Get behavioral guidance based on disposition level.
+   */
+  private getDispositionGuidance(disposition: string): string {
+    switch (disposition) {
+      case 'hostile':
+        return 'Be cold, dismissive, or actively antagonistic. You do not like this person.';
+      case 'unfriendly':
+        return 'Be distant and guarded. Keep responses short and unenthusiastic.';
+      case 'neutral':
+        return 'Be polite but not warm. Treat them as you would any stranger.';
+      case 'friendly':
+        return 'Be warm and open. You enjoy talking to this person.';
+      case 'close':
+        return 'Be affectionate and familiar. You consider this person a good friend.';
+      case 'devoted':
+        return 'Be deeply warm and caring. This person means a great deal to you.';
+      default:
+        return 'Respond naturally based on the conversation context.';
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected override getFallbackNarrative(_input: AgentInput): string {
     return 'The conversation trails off into silence.';
   }
+}
+
+/**
+ * NPC context slice type (matches NpcContext from governor).
+ */
+interface NpcContextSlice {
+  schedule?: {
+    currentSlotId?: string;
+    activity?: string;
+    scheduledLocationId?: string;
+    available: boolean;
+    unavailableReason?: string;
+  };
+  awareness?: {
+    hasMet: boolean;
+    lastInteractionTurn?: number;
+    interactionCount?: number;
+    reputation?: number;
+  };
+  mood?: {
+    primary: string;
+    intensity?: number;
+  };
 }

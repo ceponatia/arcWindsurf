@@ -132,26 +132,14 @@ pnpm test:trait -- --trait "quiet, introverted, empathetic"
 Apply / update schema:
 
 ```bash
-pnpm -F @minimal-rpg/db db:migrate
-```
 
 ### Docker Compose (dev)
 
-Run API + Web in containers:
-
-```bash
-docker compose up --build
-```
-
-Defaults:
-
-- API: <http://localhost:3001>
-- Web: <http://localhost:5173>
-- Frontend API base: `VITE_API_BASE_URL=http://localhost:3001`
 
 Postgres data lives in the `pgdata` volume. Use `docker compose down -v` if you want a fresh DB.
 
 ---
+- [dev-docs/planning/gpt-refactor.md](dev-docs/planning/gpt-refactor.md) - Consolidated phased implementation plan for Session Workspace + builders + runtime NPC systems
 
 ## 5. API Overview
 
@@ -210,7 +198,7 @@ See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md)
 
 **Brainstorm documents** (status: design/research):
 
-- [26-time-system.md](dev-docs/26-time-system.md) – Game time tracking and configuration
+- [26-time-system.md](dev-docs/26-time-system.md) – Game time tracking and configuration (foundation complete)
 - [27-npc-schedules-and-routines.md](dev-docs/27-npc-schedules-and-routines.md) – Background NPC behavior
 - [28-affinity-and-relationship-dynamics.md](dev-docs/28-affinity-and-relationship-dynamics.md) – Multi-dimensional relationship tracking
 - [29-time-triggered-behaviors.md](dev-docs/29-time-triggered-behaviors.md) – Time-aware NPC responses
@@ -279,7 +267,11 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **Multi-Action Processing**: Enhanced NPC responses for action sequences with temporal ordering
 - **Tool-Based Turn Handler**: LLM intelligently decides when to call tools based on context
   - Replaces brittle rule-based intent detection
-  - Supports `'classic'`, `'tool-calling'`, or `'hybrid'` modes via `GovernorOptions.turnHandler`
+  - Rich system prompts include full NPC profile (backstory, personality, speech style, goals)
+  - Setting/location context with atmosphere and exits
+  - Body map sensory data summary (available regions and senses)
+  - Player persona context for personalized NPC responses
+  - 18-message conversation history window for context continuity
   - The LLM understands: "He looks at Taylor's face" (sensory) vs "He looks up hopefully" (narrative)
 
 ### Session Management
@@ -302,4 +294,66 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **OpenRouter**: Sole LLM provider (DeepSeek V3 recommended)
 - **PostgreSQL + pgvector**: Embeddings and retrieval
 - **Governor Architecture**: Turn orchestration with agent routing and state patches
+- **Tool-Based Turns**: Classic intent detection removed; LLM-driven tool calling only
 - **LLM Efficiency**: SensoryAgent provides data, NpcAgent writes prose (1 LLM call vs 2-3)
+
+### Location & NPC State
+
+- **NPC Location Tracking**: Per-session state for where NPCs are and what they're doing
+- **Location Occupancy**: Tracks who is at each location, recent departures, expected arrivals
+- **Crowd Level Classification**: `empty`, `sparse`, `moderate`, `crowded`, `packed`
+- **NPC Awareness**: How NPCs perceive the player (unaware/peripheral/noticed/focused)
+- **NPC Availability**: Sleep, travel, busy states with override mechanics
+- **Lazy Simulation Cache**: Tiered simulation strategy for performance
+
+### Time System
+
+- **GameTime**: In-game time with configurable calendars (year, month, day, hour, minute, second)
+- **TimeConfig**: Setting-level configuration for time scales, day periods, calendars
+- **Day Periods**: Named periods (dawn, morning, afternoon, etc.) with descriptions
+- **Calendar Support**: Custom month names, day names, seasons, holidays
+- **Time Skip Config**: Configurable max skip hours, justification requirements, cooldowns
+- **Session Time State**: Per-session time tracking with pending events
+- **Time Utilities**: Pure functions for advancing time, formatting, period detection
+
+### NPC Tier System
+
+- **Four Tiers**: Major (full profile), Minor (partial), Background (minimal), Transient (generated)
+- **Player Interest Scoring**: Track engagement with NPCs for automatic promotion
+- **Bleed Rate**: Interest decays over time, slower for high-investment NPCs
+- **Promotion Thresholds**: Configurable per-setting promotion requirements
+- **Simulation Priority**: Tier-based priority with recency decay (eager→active→lazy→on-demand)
+- **Profile Expansion**: Track which fields need LLM generation on promotion
+
+### NPC Schedule System
+
+- **Schedule Slots**: Time-bound activity definitions with location and activity
+- **Choice-Based Destinations**: Weighted options with 2d6 bell curve resolution
+- **Condition System**: Weather, relationship, player presence, custom conditions
+- **Override Support**: Temporary schedule changes (stay-put, go-to, follow-npc, unavailable)
+- **Schedule Templates**: Reusable patterns (shopkeeper, guard, tavern keeper, noble, wanderer)
+- **Placeholder Resolution**: Templates with $workLocation, $homeLocation substitution
+- **Common Activities**: Pre-defined activities (sleeping, working, socializing, etc.)
+
+### NPC Simulation System
+
+- **Tiered Simulation**: Eager/active/lazy/on-demand strategies based on NPC tier and distance
+- **Priority Calculation**: Recency bonus, distance penalty, interest boost for simulation order
+- **Simulation Triggers**: Turn, period-change, location-change, time-skip events
+- **Cache Management**: Validity checking with configurable TTL by fidelity level
+- **Budget Constraints**: Max NPCs per tick, per period, with overage handling
+- **Time Skip Handling**: Batch simulation with configurable fidelity and summarization
+- **Occupancy Utilities**: Prompt context building, departure/arrival filtering, NPC sorting
+
+### Affinity & Relationship System
+
+- **Multi-Dimensional Scores**: Fondness, trust, respect, comfort, attraction, fear (-100 to 100)
+- **Disposition Calculation**: Weighted composite (hostile→unfriendly→neutral→friendly→close→devoted)
+- **Affinity Effects**: 40+ action types with dimension-specific effects
+- **Diminishing Returns**: Repeated actions have reduced effect with configurable decay
+- **Natural Decay**: Affinity drifts toward neutral over time (configurable per-dimension)
+- **Unlock System**: Dialogue topics, favors, secrets, romance options based on thresholds
+- **Tolerance Profiles**: Per-NPC tolerance for insults, prying, flattery based on affinity
+- **Milestone Events**: Permanent relationship shifts from significant events
+- **Prompt Context**: LLM-ready relationship insights and available actions
+```

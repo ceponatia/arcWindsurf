@@ -1,9 +1,30 @@
 # Time System
 
-> **Status**: BRAINSTORM
-> **Last Updated**: December 2025
+> **Status**: FOUNDATION COMPLETE
+> **Last Updated**: January 2025
 
 This document outlines the design for a comprehensive time system in Minimal RPG that tracks in-game time progression and enables time-aware behaviors for NPCs, events, and world state.
+
+## Implementation Status
+
+### Completed (January 2025)
+
+- **Time schemas** - `packages/schemas/src/time/` module with:
+  - `types.ts` - Core TypeScript interfaces (GameTime, TimeConfig, DayPeriod, etc.)
+  - `schemas.ts` - Zod validation schemas for all time types
+  - `defaults.ts` - Default configurations (Earth-like calendar, fantasy example)
+  - `utils.ts` - Pure utility functions (advanceTime, formatGameTime, etc.)
+  - `index.ts` - Barrel exports
+- **Setting integration** - TimeConfig added to SettingBackgroundSchema
+- **Tool definition** - ADVANCE_TIME_TOOL defined in governor/src/tools/definitions.ts
+- **Database migration** - session_time_state table exists (005_session_state_slices.sql)
+
+### Pending
+
+- Wire time utilities into session runtime
+- Implement advance_time tool executor
+- Add time context to turn processing
+- Integrate with NPC scheduling system
 
 ## 1. Design Philosophy
 

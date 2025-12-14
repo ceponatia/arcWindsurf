@@ -1,9 +1,17 @@
 # NPC Schedules and Routines
 
-> **Status**: BRAINSTORM
+> **Status**: IMPLEMENTED (schema foundation)
 > **Last Updated**: December 2025
 
 This document is the canonical reference for the **schedule data model** (slots, choices, conditions, overrides, templates).
+
+**Implementation**: `packages/schemas/src/schedule/`
+
+- `types.ts` - TypeScript types for schedules, slots, conditions, templates
+- `schemas.ts` - Zod validation schemas
+- `utils.ts` - Resolution functions (findActiveSlot, resolveSchedule, etc.)
+- `defaults.ts` - Common activities and schedule templates
+- `index.ts` - Barrel exports
 
 Related docs:
 

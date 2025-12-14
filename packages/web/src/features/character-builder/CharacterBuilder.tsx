@@ -334,6 +334,7 @@ const buildProfile = (form: FormState): CharacterProfile => {
     summary: form.summary.trim(),
     backstory: form.backstory.trim(),
     tags,
+    tier: 'minor', // Default tier for manually created characters
     personality: parsePersonality(form.personality),
     ...(physique ? { physique } : {}),
     ...(details.length ? { details } : {}),

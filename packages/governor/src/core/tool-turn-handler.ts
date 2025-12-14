@@ -12,6 +12,7 @@
  * The LLM must understand context to decide if a tool is needed.
  */
 import type { Operation } from 'fast-json-patch';
+import type { AgentOutput } from '@minimal-rpg/agents';
 import type {
   TurnInput,
   TurnResult,
@@ -280,11 +281,18 @@ export class ToolBasedTurnHandler {
         },
       });
 
+      // Build agentOutputs if npc_dialogue was called
+      // This allows npc_messages to be populated with the NPC's portion of the response
+      const agentTypes = this.extractAgentTypes(toolCallsMade);
+      const agentOutputs: { agentType: string; output: AgentOutput }[] | undefined =
+        agentTypes.includes('npc') ? [{ agentType: 'npc', output: { narrative } }] : undefined;
+
       const metadata: TurnMetadata = {
         processingTimeMs: Date.now() - startTime,
-        agentsInvoked: this.extractAgentTypes(toolCallsMade),
+        agentsInvoked: agentTypes,
         nodesRetrieved: 0, // Tool-based doesn't use RAG directly
         phaseTiming,
+        ...(agentOutputs ? { agentOutputs } : {}),
       };
 
       return {
@@ -331,20 +339,23 @@ export class ToolBasedTurnHandler {
 
   /**
    * Build initial messages including system prompt and context.
+   * Uses 15-20 most recent messages for context window as per summarization docs.
    */
   private buildInitialMessages(input: TurnInput): ChatMessageWithTools[] {
     const messages: ChatMessageWithTools[] = [];
 
-    // System prompt that explains tool usage
-    const systemPrompt = this.buildSystemPrompt();
+    // System prompt that explains tool usage and includes full scene context
+    const systemPrompt = this.buildSystemPrompt(input);
     messages.push({
       role: 'system',
       content: systemPrompt,
     });
 
-    // Add conversation history if available
+    // Add conversation history if available (15-20 turns per docs)
+    // Keep last 18 messages to leave room for current input and responses
+    const historyWindow = 18;
     if (input.conversationHistory && input.conversationHistory.length > 0) {
-      for (const turn of input.conversationHistory.slice(-10)) {
+      for (const turn of input.conversationHistory.slice(-historyWindow)) {
         if (turn.speaker === 'player') {
           messages.push({ role: 'user', content: turn.content });
         } else {
@@ -363,67 +374,237 @@ export class ToolBasedTurnHandler {
   }
 
   /**
-   * Build system prompt that guides tool usage.
+   * Build system prompt that guides tool usage with full scene context.
+   * Includes character profile, setting, location, and NPC personality.
    */
-  private buildSystemPrompt(): string {
-    // Extract names from state slices safely
+  private buildSystemPrompt(input?: TurnInput): string {
+    // Extract detailed context from state slices
+    // Use type assertions for extended properties that may exist at runtime
     const npcSlice = this.stateSlices.npc ?? this.stateSlices.character;
+    const settingSlice = this.stateSlices.setting as
+      | (typeof this.stateSlices.setting & {
+          description?: string;
+          ambiance?: string;
+          atmosphere?: string;
+        })
+      | undefined;
+    const locationSlice = this.stateSlices.location;
+
+    // Build NPC character context
     const npcName = npcSlice?.name ?? 'the NPC';
-    const settingSlice = this.stateSlices.setting;
+    const npcBackstory = npcSlice?.backstory;
+    const npcPersonality = this.extractPersonalityString(npcSlice);
+    const npcSpeechStyle = this.extractSpeechStyle(npcSlice);
+    const npcGoals = npcSlice?.goals?.join('; ');
+
+    // Build setting context - access extended properties safely
     const settingName = settingSlice?.name ?? 'the current location';
+    const settingDescription = settingSlice?.description ?? settingSlice?.summary;
+    const settingAmbiance = settingSlice?.ambiance ?? settingSlice?.atmosphere;
+
+    // Build location context
+    const locationName = locationSlice?.name;
+    const locationDescription = locationSlice?.description;
+    const locationExits = locationSlice?.exits;
 
     // Build active proximity context
     const proximityContext = this.buildProximityContext();
 
-    return `You are a narrative game master. The player writes in third person, describing their character's actions.
+    // Build player persona context if available
+    const personaContext = input?.persona ? this.buildPersonaContext(input.persona) : '';
+
+    // Build sensory data context from NPC body map (if available)
+    const sensoryDataContext = this.buildSensoryDataSummary(npcSlice);
+
+    // Build conversation summary context if available (for long conversations)
+    const summaryContext = input?.conversationSummary
+      ? `
+## Story So Far (Summary of Earlier Events)
+${input.conversationSummary}
+`
+      : '';
+
+    return `You are a narrative game master for a roleplay scenario. The player writes in third person, describing their character's actions.
 
 ## Current Scene
-- NPC Present: ${npcName}
-- Location: ${settingName}
+**NPC Present:** ${npcName}
+**Location:** ${locationName ?? settingName}
+${settingDescription ? `**Setting:** ${settingDescription}` : ''}
+${locationDescription ? `**Environment:** ${locationDescription}` : ''}
+${settingAmbiance ? `**Atmosphere:** ${settingAmbiance}` : ''}
+${locationExits ? `**Exits:** ${JSON.stringify(locationExits)}` : ''}
+${summaryContext}
+## ${npcName} - Character Profile
+${npcBackstory ? `**Background:** ${npcBackstory}` : ''}
+${npcPersonality ? `**Personality:** ${npcPersonality}` : ''}
+${npcSpeechStyle ? `**Speech Style:** ${npcSpeechStyle}` : ''}
+${npcGoals ? `**Current Goals:** ${npcGoals}` : ''}
+${personaContext}
+${sensoryDataContext}
 ${proximityContext}
-## Your Role
-Read the player's input and decide how to respond:
 
-1. **If the player's action requires game data** (sensory details, NPC dialogue), call the appropriate tool first, then weave the result into your narrative.
+## Your Role - IMPORTANT
+You are the game engine. You MUST call tools to drive the game forward. **Do NOT respond with plain text alone.**
 
-2. **If the player's action is pure narrative** (describing thoughts, emotions, simple movements), write the response directly without calling tools.
+Every player turn REQUIRES at least one tool call:
+- **Player speaks/interacts with ${npcName}** → MUST call \`npc_dialogue\` first
+- **Player engages senses** (look at, smell, touch, etc.) → MUST call \`get_sensory_detail\` first
+- **Significant interaction** (compliment, insult, help, etc.) → MUST call \`update_relationship\`
+- **Time passes** → MUST call \`advance_time\`
 
-## Tool Usage Guidelines
+After tool(s) return data, weave the results into your narrative response.
 
-### get_sensory_detail
-Call this when the player explicitly engages a sense with a target:
-- "He inhales deeply near her hair" → get_sensory_detail(smell, ${npcName}, hair)
-- "She runs her fingers along his arm" → get_sensory_detail(touch, ${npcName}, arm)
-- "He studies her face intently" → get_sensory_detail(look, ${npcName}, face)
+## Tool Requirements (MANDATORY)
 
-Do NOT call this for:
-- "He looks up hopefully" (no target, emotional expression)
-- "She glances around nervously" (not examining anything specific)
-- "He turned his gaze away" (movement, not perception)
+### npc_dialogue - REQUIRED for NPC interactions
+**ALWAYS call this tool when:**
+- The player says ANYTHING to ${npcName}
+- The player does something that ${npcName} would notice or react to
+- The player performs an action directed at ${npcName}
+- You need to write ${npcName}'s dialogue or reaction
 
-### npc_dialogue
-Call this when the player speaks to or directly engages the NPC:
-- "He says hello" → npc_dialogue
-- "She asks about the weather" → npc_dialogue
-- Any quoted speech directed at an NPC
+**Examples that REQUIRE npc_dialogue:**
+- "He says hello" → npc_dialogue(${npcName}, "hello", speech)
+- "She waves at her" → npc_dialogue(${npcName}, "waving", action)
+- "He sits down next to her" → npc_dialogue(${npcName}, "sits down next to her", action)
+- "She asks about her day" → npc_dialogue(${npcName}, "asks about her day", speech)
 
-Do NOT call this for:
-- Internal thoughts
-- Narration about the player character only
-- Actions that don't involve NPC interaction
+### get_sensory_detail - REQUIRED for sensory engagement
+**ALWAYS call this tool when:**
+- Player explicitly looks at, smells, touches, tastes, or listens to ${npcName}
+- Player examines any body part or feature
+- Player gets physically close for sensory purposes
 
-### update_proximity
-Call this to track sensory engagements:
-- When starting a new sensory engagement → update_proximity(engage)
-- When increasing intimacy → update_proximity(intensify)
-- When decreasing intimacy → update_proximity(reduce)
-- When ending an engagement → update_proximity(end)
+**Examples that REQUIRE get_sensory_detail:**
+- "He inhales near her hair" → get_sensory_detail(smell, ${npcName}, hair)
+- "She touches his arm" → get_sensory_detail(touch, ${npcName}, arm)
+- "He looks at her face" → get_sensory_detail(look, ${npcName}, face)
+- "She examines her outfit" → get_sensory_detail(look, ${npcName}, outfit)
 
-## Response Format
-Write in third person past tense, matching the player's style. Be vivid but concise.
-If you called tools, incorporate their data naturally into the narrative.
-If the NPC responds, include their dialogue in quotes.
-${proximityContext ? 'Continue to weave in active sensory engagements naturally.' : ''}`;
+### update_proximity - Track sensory engagements
+Call to track ongoing sensory contact:
+- Starting engagement → update_proximity(engage)
+- Increasing intimacy → update_proximity(intensify)
+- Decreasing → update_proximity(reduce)
+- Ending → update_proximity(end)
+
+### update_relationship - Track relationship changes
+**ALWAYS call after significant interactions:**
+- Compliments, insults, gifts, help, lies, betrayals, flirting
+- Use action_type OR dimension + delta
+
+### advance_time - When time passes
+Call when narrative indicates time passage: waiting, sleeping, activities.
+
+## What NOT to do
+- Do NOT write ${npcName}'s dialogue without calling npc_dialogue first
+- Do NOT describe sensory details without calling get_sensory_detail first
+- Do NOT skip tools and respond with just narrative
+- The tools provide the data you need to write an authentic response
+
+## Response Format Guidelines
+1. **Call tools FIRST** - get data before writing your response
+2. Write in third person past tense, matching the player's style
+3. Be vivid but concise (2-4 sentences typically)
+4. Incorporate tool data naturally into the narrative - this is your source material
+5. Write ${npcName}'s dialogue in quotes, in first person from their perspective
+6. Write ${npcName}'s actions in third person ("she smiled", "he nodded")
+7. NEVER prefix responses with "${npcName}:" - just write the narrative directly
+8. Include sensory details when the player is engaging senses${proximityContext ? '\n9. Continue to weave in active sensory engagements naturally' : ''}`;
+  }
+
+  /**
+   * Extract personality traits as a readable string.
+   */
+  private extractPersonalityString(npc: typeof this.stateSlices.npc): string {
+    if (!npc) return '';
+
+    const parts: string[] = [];
+
+    // Handle personality as string or array
+    if (npc.personality) {
+      if (Array.isArray(npc.personality)) {
+        parts.push(npc.personality.join(', '));
+      } else if (typeof npc.personality === 'string') {
+        parts.push(npc.personality);
+      }
+    }
+
+    // Handle personalityMap values and dimension sliders
+    if (npc.personalityMap) {
+      const pm = npc.personalityMap;
+      if (pm.values?.length) {
+        parts.push(`Values: ${pm.values.map((v) => v.value).join(', ')}`);
+      }
+      if (pm.emotionalBaseline) {
+        parts.push(`Emotional baseline: ${pm.emotionalBaseline}`);
+      }
+    }
+
+    return parts.join('. ');
+  }
+
+  /**
+   * Extract speech style information.
+   */
+  private extractSpeechStyle(npc: typeof this.stateSlices.npc): string {
+    if (!npc?.personalityMap?.speech) return '';
+
+    const speech = npc.personalityMap.speech as typeof npc.personalityMap.speech & {
+      quirks?: string[];
+    };
+    const parts: string[] = [];
+
+    if (speech.vocabulary) parts.push(`vocabulary: ${speech.vocabulary}`);
+    if (speech.formality) parts.push(`formality: ${speech.formality}`);
+    if (speech.directness) parts.push(`directness: ${speech.directness}`);
+    if (speech.quirks?.length) parts.push(`quirks: ${speech.quirks.join(', ')}`);
+
+    return parts.join(', ');
+  }
+
+  /**
+   * Build player persona context section.
+   */
+  private buildPersonaContext(persona: NonNullable<TurnInput['persona']>): string {
+    const parts: string[] = ['', '## Player Character'];
+
+    if (persona.name) parts.push(`**Name:** ${persona.name}`);
+    if (persona.age !== undefined) parts.push(`**Age:** ${persona.age}`);
+    if (persona.gender) parts.push(`**Gender:** ${persona.gender}`);
+    if (persona.summary) parts.push(`**Description:** ${persona.summary}`);
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Build a summary of available sensory data for the NPC.
+   * This helps the LLM know what sensory details are available without calling tools.
+   */
+  private buildSensoryDataSummary(npc: typeof this.stateSlices.npc): string {
+    if (!npc?.body) return '';
+
+    const bodyParts: string[] = [];
+    const body = npc.body;
+
+    for (const [region, data] of Object.entries(body)) {
+      if (!data) continue;
+      const senses: string[] = [];
+      if (data.scent?.primary) senses.push('smell');
+      if (data.texture?.primary) senses.push('touch');
+      if (data.flavor?.primary) senses.push('taste');
+      if (data.visual?.description) senses.push('sight');
+      if (senses.length > 0) {
+        bodyParts.push(`${region}: ${senses.join(', ')}`);
+      }
+    }
+
+    if (bodyParts.length === 0) return '';
+
+    return `
+## Available Sensory Data for ${npc.name}
+The following body regions have sensory data defined (call get_sensory_detail to retrieve):
+${bodyParts.map((p) => `- ${p}`).join('\n')}`;
   }
 
   /**
