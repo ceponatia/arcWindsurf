@@ -4,7 +4,6 @@
  */
 import { create } from 'zustand';
 import type {
-  LocationMap,
   LocationNode,
   LocationConnection,
   LocationType,
@@ -16,9 +15,26 @@ import type {
   Selection,
   Viewport,
   LocationMapResponse,
+  LocationPrefabListResponse,
+  LocationPrefabResponse,
 } from './types.js';
 
-const API_BASE = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3000';
+const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3001';
+
+interface FetchResult<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<FetchResult<T>> {
+  const res = await fetch(path, init);
+  const data = (await res.json()) as { ok?: boolean; error?: string } & Record<string, unknown>;
+  if (!data.ok) {
+    return { ok: false, error: typeof data.error === 'string' ? data.error : 'Request failed' };
+  }
+  return { ok: true, data: data as unknown as T };
+}
 
 /** Generate a unique ID */
 function generateId(): string {
@@ -41,19 +57,23 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
   isDirty: false,
   isLoading: false,
   error: null,
+  prefabs: [],
+  prefabsLoading: false,
 
   // Map operations
   loadMap: async (mapId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch(`${API_BASE}/location-maps/${mapId}`);
-      const data: LocationMapResponse = await res.json();
-      if (data.ok && data.map) {
+      const { ok, data, error } = await fetchJson<LocationMapResponse>(
+        `${API_BASE}/location-maps/${mapId}`
+      );
+      if (ok && data?.map) {
         set({ map: data.map, isDirty: false, isLoading: false });
       } else {
-        set({ error: data.error ?? 'Failed to load map', isLoading: false });
+        set({ error: error ?? data?.error ?? 'Failed to load map', isLoading: false });
       }
     } catch (err) {
+      void err;
       set({ error: 'Network error loading map', isLoading: false });
     }
   },
@@ -61,18 +81,21 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
   createMap: async (settingId: string, name: string) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch(`${API_BASE}/location-maps`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settingId, name, nodes: [], connections: [] }),
-      });
-      const data: LocationMapResponse = await res.json();
-      if (data.ok && data.map) {
+      const { ok, data, error } = await fetchJson<LocationMapResponse>(
+        `${API_BASE}/location-maps`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settingId, name, nodes: [], connections: [] }),
+        }
+      );
+      if (ok && data?.map) {
         set({ map: data.map, isDirty: false, isLoading: false });
       } else {
-        set({ error: data.error ?? 'Failed to create map', isLoading: false });
+        set({ error: error ?? data?.error ?? 'Failed to create map', isLoading: false });
       }
     } catch (err) {
+      void err;
       set({ error: 'Network error creating map', isLoading: false });
     }
   },
@@ -83,25 +106,28 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
 
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch(`${API_BASE}/location-maps/${map.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: map.name,
-          description: map.description,
-          nodes: map.nodes,
-          connections: map.connections,
-          defaultStartLocationId: map.defaultStartLocationId,
-          tags: map.tags,
-        }),
-      });
-      const data: LocationMapResponse = await res.json();
-      if (data.ok && data.map) {
+      const { ok, data, error } = await fetchJson<LocationMapResponse>(
+        `${API_BASE}/location-maps/${map.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: map.name,
+            description: map.description,
+            nodes: map.nodes,
+            connections: map.connections,
+            defaultStartLocationId: map.defaultStartLocationId,
+            tags: map.tags,
+          }),
+        }
+      );
+      if (ok && data?.map) {
         set({ map: data.map, isDirty: false, isLoading: false });
       } else {
-        set({ error: data.error ?? 'Failed to save map', isLoading: false });
+        set({ error: error ?? data?.error ?? 'Failed to save map', isLoading: false });
       }
     } catch (err) {
+      void err;
       set({ error: 'Network error saving map', isLoading: false });
     }
   },
@@ -118,6 +144,8 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
       isDirty: false,
       isLoading: false,
       error: null,
+      prefabs: [],
+      prefabsLoading: false,
     });
   },
 
@@ -265,5 +293,187 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
 
   cancelAddEdge: () => {
     set({ mode: 'select', pendingEdge: null });
+  },
+
+  // Prefab operations
+  loadPrefabs: async () => {
+    set({ prefabsLoading: true });
+    try {
+      const { ok, data, error } = await fetchJson<LocationPrefabListResponse>(
+        `${API_BASE}/location-prefabs`
+      );
+      if (ok && data?.prefabs) {
+        set({ prefabs: data.prefabs, prefabsLoading: false });
+      } else {
+        console.error('[LocationBuilder] Failed to load prefabs:', error ?? data?.error);
+        set({ prefabsLoading: false });
+      }
+    } catch (err) {
+      console.error('[LocationBuilder] Network error loading prefabs:', err);
+      set({ prefabsLoading: false });
+    }
+  },
+
+  saveAsPrefab: async (nodeId, name, description, category) => {
+    const { map } = get();
+    if (!map) return null;
+
+    // Find the root node and collect all descendants
+    const rootNode = map.nodes.find((n) => n.id === nodeId);
+    if (!rootNode) return null;
+
+    // Collect all nodes in this subtree
+    const collectDescendants = (parentId: string): LocationNode[] => {
+      const children = map.nodes.filter((n) => n.parentId === parentId);
+      return children.flatMap((child) => [child, ...collectDescendants(child.id)]);
+    };
+    const subtreeNodes = [rootNode, ...collectDescendants(nodeId)];
+    const subtreeNodeIds = new Set(subtreeNodes.map((n) => n.id));
+
+    // Collect connections internal to this subtree
+    const subtreeConnections = map.connections.filter(
+      (c) => subtreeNodeIds.has(c.fromLocationId) && subtreeNodeIds.has(c.toLocationId)
+    );
+
+    // Find entry points - ports that connect to nodes outside this subtree
+    const entryPointSet = new Set<string>();
+    for (const conn of map.connections) {
+      if (subtreeNodeIds.has(conn.fromLocationId) && !subtreeNodeIds.has(conn.toLocationId)) {
+        entryPointSet.add(conn.fromPortId);
+      }
+      if (subtreeNodeIds.has(conn.toLocationId) && !subtreeNodeIds.has(conn.fromLocationId)) {
+        entryPointSet.add(conn.toPortId);
+      }
+    }
+
+    // If no entry points from connections, use the root node's ports
+    const entryPoints =
+      entryPointSet.size > 0 ? Array.from(entryPointSet) : rootNode.ports.map((p) => p.id);
+
+    // Create ID mapping for new prefab
+    const idMap = new Map<string, string>();
+    subtreeNodes.forEach((n) => {
+      idMap.set(n.id, generateId());
+    });
+
+    // Clone nodes with new IDs and relative structure
+    const prefabNodes: LocationNode[] = subtreeNodes.map((n) => ({
+      ...n,
+      id: idMap.get(n.id)!,
+      parentId: n.parentId ? (idMap.get(n.parentId) ?? null) : null,
+      ports: n.ports.map((p) => ({ ...p, id: `${idMap.get(n.id)}-${p.id.split('-').pop()}` })),
+    }));
+
+    // Clone connections with new IDs
+    const prefabConnections: LocationConnection[] = subtreeConnections.map((c) => ({
+      ...c,
+      id: generateId(),
+      fromLocationId: idMap.get(c.fromLocationId)!,
+      toLocationId: idMap.get(c.toLocationId)!,
+    }));
+
+    // Map entry points to new port IDs
+    const mappedEntryPoints = entryPoints.map((ep) => {
+      const nodeId = ep.split('-')[0];
+      if (!nodeId) return ep;
+
+      const newNodeId = idMap.get(nodeId);
+      if (newNodeId) {
+        return `${newNodeId}-${ep.split('-').slice(1).join('-')}`;
+      }
+      return ep;
+    });
+
+    try {
+      const { ok, data, error } = await fetchJson<LocationPrefabResponse>(
+        `${API_BASE}/location-prefabs`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            description,
+            category,
+            nodes: prefabNodes,
+            connections: prefabConnections,
+            entryPoints: mappedEntryPoints.length > 0 ? mappedEntryPoints : ['default'],
+          }),
+        }
+      );
+      if (ok && data?.prefab) {
+        set({ prefabs: [...get().prefabs, data.prefab] });
+        return data.prefab;
+      }
+      console.error('[LocationBuilder] Failed to save prefab:', error ?? data?.error);
+      return null;
+    } catch (err) {
+      console.error('[LocationBuilder] Network error saving prefab:', err);
+      return null;
+    }
+  },
+
+  deletePrefab: async (prefabId) => {
+    try {
+      const res = await fetch(`${API_BASE}/location-prefabs/${prefabId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok || res.status === 204) {
+        set({ prefabs: get().prefabs.filter((p) => p.id !== prefabId) });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[LocationBuilder] Network error deleting prefab:', err);
+      return false;
+    }
+  },
+
+  insertPrefab: (prefab, parentId) => {
+    const { map } = get();
+    if (!map) return;
+
+    // Create ID mapping for new instances
+    const idMap = new Map<string, string>();
+    prefab.nodes.forEach((n) => {
+      idMap.set(n.id, generateId());
+    });
+
+    // Find the root node of the prefab (node with no parentId or parentId not in prefab)
+    const prefabNodeIds = new Set(prefab.nodes.map((n) => n.id));
+    const rootPrefabNode = prefab.nodes.find((n) => !n.parentId || !prefabNodeIds.has(n.parentId));
+
+    // Clone nodes with new IDs, setting root node's parent to the target parent
+    const newNodes: LocationNode[] = prefab.nodes.map((n) => {
+      const isRoot = n.id === rootPrefabNode?.id;
+      const newParentId = isRoot ? parentId : (idMap.get(n.parentId ?? '') ?? null);
+      const newDepth = isRoot
+        ? (map.nodes.find((mn) => mn.id === parentId)?.depth ?? -1) + 1
+        : n.depth;
+
+      return {
+        ...n,
+        id: idMap.get(n.id)!,
+        parentId: newParentId,
+        depth: newDepth,
+        ports: n.ports.map((p) => ({ ...p, id: `${idMap.get(n.id)}-${p.id.split('-').pop()}` })),
+      };
+    });
+
+    // Clone connections with new IDs
+    const newConnections: LocationConnection[] = prefab.connections.map((c) => ({
+      ...c,
+      id: generateId(),
+      fromLocationId: idMap.get(c.fromLocationId)!,
+      toLocationId: idMap.get(c.toLocationId)!,
+    }));
+
+    set({
+      map: {
+        ...map,
+        nodes: [...map.nodes, ...newNodes],
+        connections: [...map.connections, ...newConnections],
+      },
+      isDirty: true,
+    });
   },
 }));

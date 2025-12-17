@@ -8,7 +8,7 @@ import { LocationBuilder } from '../../location-builder/index.js';
 import type { LocationMapListResponse } from '../../location-builder/types.js';
 import { MapPin, Plus, Check, Loader2, AlertCircle, X, ExternalLink } from 'lucide-react';
 
-const API_BASE = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3000';
+const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3001';
 
 interface MapSummary {
   id: string;
@@ -25,7 +25,7 @@ async function fetchMaps(settingId: string): Promise<MapSummary[]> {
     const res = await fetch(
       `${API_BASE}/location-maps?setting_id=${encodeURIComponent(settingId)}`
     );
-    const data: LocationMapListResponse = await res.json();
+    const data = (await res.json()) as unknown as LocationMapListResponse;
     if (data.ok && data.maps) {
       return data.maps.map((m) => ({
         id: m.id,
@@ -60,7 +60,7 @@ export function LocationsStep() {
     setIsLoading(true);
     setError(null);
 
-    fetchMaps(settingId).then((result) => {
+    void fetchMaps(settingId).then((result) => {
       setMaps(result);
       setIsLoading(false);
     });
@@ -99,7 +99,7 @@ export function LocationsStep() {
   const handleBuilderSave = () => {
     // Refresh maps list
     if (settingId) {
-      fetchMaps(settingId).then(setMaps);
+      void fetchMaps(settingId).then(setMaps);
     }
     setShowBuilder(false);
   };

@@ -193,13 +193,14 @@ export function evaluateCondition(condition: ChoiceCondition, context: Condition
       if (!context.custom) return false;
       return context.custom[condition.key] === condition.value;
 
-    case 'trait':
-      // Trait conditions require NPC trait data in context
-      // For now, check npcState for traits
+    case 'trait': // Trait conditions require NPC trait data in context
+    // For now, check npcState for traits
+    {
       if (!context.npcState) return false;
       const traits = context.npcState['traits'] as string[] | undefined;
       if (!traits) return false;
       return traits.includes(String(condition.value));
+    }
 
     default:
       return false;
@@ -273,7 +274,7 @@ export function resolveScheduleChoice(
   const rollValue = roll2d6(rng);
 
   // Calculate effective weights for all options
-  const weightedOptions: Array<{ option: ScheduleOption; weight: number }> = [];
+  const weightedOptions: { option: ScheduleOption; weight: number }[] = [];
 
   for (const option of choice.options) {
     const weight = calculateEffectiveWeight(option, context);
@@ -612,6 +613,6 @@ export function createActivity(
 /**
  * Creates a slot time from hours and minutes.
  */
-export function slotTime(hour: number, minute: number = 0): SlotTime {
+export function slotTime(hour: number, minute = 0): SlotTime {
   return { hour, minute };
 }

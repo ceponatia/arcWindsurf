@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import type { TurnMetadata, AgentType, AgentOutputWithType, PhaseTiming } from '../../../types.js';
+import type { TurnMetadata, AgentOutputWithType, PhaseTiming } from '../../../types.js';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 // Types for turn events from the API
 interface TurnEvent {
@@ -11,11 +15,11 @@ interface TurnEvent {
 interface StateChanges {
   patchCount: number;
   modifiedPaths: string[];
-  patches?: Array<{
+  patches?: {
     op: string;
     path: string;
     value?: unknown;
-  }>;
+  }[];
 }
 
 export interface DebugSidebarProps {
@@ -25,44 +29,43 @@ export interface DebugSidebarProps {
 }
 
 // Agent display configuration
-const AGENT_CONFIG: Record<AgentType | string, { label: string; color: string; bgColor: string }> =
-  {
-    map: {
-      label: 'Map',
-      color: 'text-emerald-300',
-      bgColor: 'bg-emerald-950/40',
-    },
-    npc: {
-      label: 'NPC',
-      color: 'text-violet-300',
-      bgColor: 'bg-violet-950/40',
-    },
-    rules: {
-      label: 'Rules',
-      color: 'text-amber-300',
-      bgColor: 'bg-amber-950/40',
-    },
-    parser: {
-      label: 'Parser',
-      color: 'text-sky-300',
-      bgColor: 'bg-sky-950/40',
-    },
-    sensory: {
-      label: 'Sensory',
-      color: 'text-pink-300',
-      bgColor: 'bg-pink-950/40',
-    },
-    proximity: {
-      label: 'Proximity',
-      color: 'text-cyan-300',
-      bgColor: 'bg-cyan-950/40',
-    },
-    custom: {
-      label: 'Custom',
-      color: 'text-slate-300',
-      bgColor: 'bg-slate-800/40',
-    },
-  };
+const AGENT_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+  map: {
+    label: 'Map',
+    color: 'text-emerald-300',
+    bgColor: 'bg-emerald-950/40',
+  },
+  npc: {
+    label: 'NPC',
+    color: 'text-violet-300',
+    bgColor: 'bg-violet-950/40',
+  },
+  rules: {
+    label: 'Rules',
+    color: 'text-amber-300',
+    bgColor: 'bg-amber-950/40',
+  },
+  parser: {
+    label: 'Parser',
+    color: 'text-sky-300',
+    bgColor: 'bg-sky-950/40',
+  },
+  sensory: {
+    label: 'Sensory',
+    color: 'text-pink-300',
+    bgColor: 'bg-pink-950/40',
+  },
+  proximity: {
+    label: 'Proximity',
+    color: 'text-cyan-300',
+    bgColor: 'bg-cyan-950/40',
+  },
+  custom: {
+    label: 'Custom',
+    color: 'text-slate-300',
+    bgColor: 'bg-slate-800/40',
+  },
+};
 
 // =============================================================================
 // Tool Calls Section
@@ -113,7 +116,7 @@ const ToolCallsSection: React.FC<ToolCallsSectionProps> = ({ events }) => {
       {expanded && (
         <div className="px-3 py-2 border-t border-slate-700/50 space-y-2">
           {toolCalls.map((call, idx) => {
-            const toolName = call.payload['tool'] as string;
+            const toolName = String(call.payload['tool']);
             const args = call.payload['args'] as string | undefined;
             const result = toolResults[idx];
             const success = result?.payload?.['success'] as boolean | undefined;
@@ -121,7 +124,8 @@ const ToolCallsSection: React.FC<ToolCallsSectionProps> = ({ events }) => {
             let parsedArgs: Record<string, unknown> | null = null;
             if (args) {
               try {
-                parsedArgs = JSON.parse(args);
+                const parsed: unknown = JSON.parse(args);
+                parsedArgs = isRecord(parsed) ? parsed : null;
               } catch {
                 // ignore
               }
@@ -148,7 +152,7 @@ const ToolCallsSection: React.FC<ToolCallsSectionProps> = ({ events }) => {
                       <div key={k}>
                         <span className="text-slate-500">{k}:</span>{' '}
                         <span className="text-slate-300">
-                          {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                          {typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}
                         </span>
                       </div>
                     ))}
@@ -449,7 +453,7 @@ const TimingSection: React.FC<TimingSectionProps> = ({ timing, totalMs }) => {
 // =============================================================================
 
 export const DebugSidebar: React.FC<DebugSidebarProps> = ({ metadata, events, stateChanges }) => {
-  const hasData = metadata || (events && events.length > 0) || stateChanges;
+  const hasData = !!metadata || (!!events && events.length > 0) || !!stateChanges;
 
   return (
     <div className="h-full flex flex-col bg-slate-950 border-l border-slate-800">

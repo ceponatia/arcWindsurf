@@ -56,12 +56,12 @@ interface SimulationCacheUpdate {
 /**
  * Converts a Map of cache updates to an array format expected by bulkUpsertNpcSimulationCaches.
  */
-function mapToDbCacheArray(cachesToUpdate: Map<string, SimulationCacheUpdate>): Array<{
+function mapToDbCacheArray(cachesToUpdate: Map<string, SimulationCacheUpdate>): {
   npcId: string;
   lastComputedAtJson: Record<string, unknown>;
   currentStateJson: Record<string, unknown>;
   dayDecisionsJson?: Record<string, unknown>;
-}> {
+}[] {
   return Array.from(cachesToUpdate.entries()).map(([npcId, cache]) => {
     const result: {
       npcId: string;
@@ -243,7 +243,7 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
   // Track who was at player's location before
   const previousNpcsAtLocation = new Set(
     Array.from(previousLocationStates.entries())
-      .filter(([_, state]) => state.locationId === playerLocationId)
+      .filter(([, state]) => state.locationId === playerLocationId)
       .map(([npcId]) => npcId)
   );
 
@@ -279,7 +279,7 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
   // Check for location changes
   const currentNpcsAtLocation = new Set(
     Array.from(locationStates.entries())
-      .filter(([_, state]) => state.locationId === playerLocationId)
+      .filter(([, state]) => state.locationId === playerLocationId)
       .map(([npcId]) => npcId)
   );
 

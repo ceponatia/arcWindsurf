@@ -32,9 +32,7 @@ let sensoryModifiersCache: LoadedSensoryModifiers | null = null;
  * Get sensory modifiers (cached).
  */
 async function getSensoryModifiers(): Promise<LoadedSensoryModifiers> {
-  if (!sensoryModifiersCache) {
-    sensoryModifiersCache = await loadSensoryModifiers();
-  }
+  sensoryModifiersCache ??= await loadSensoryModifiers();
   return sensoryModifiersCache;
 }
 

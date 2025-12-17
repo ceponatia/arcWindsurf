@@ -153,7 +153,7 @@ export const AffinityUnlockSchema = z.object({
   requirements: RelationshipScoresSchema.partial(),
   blockers: RelationshipScoresSchema.partial().optional(),
   description: z.string().min(1),
-});
+}) satisfies z.ZodType<AffinityUnlock>;
 
 // =============================================================================
 // Tolerance
@@ -176,7 +176,7 @@ export const AffinityDecayConfigSchema = z.object({
   decayFloor: z.number().min(-100).max(100),
   decayCeiling: z.number().min(-100).max(100),
   dimensionMultipliers: z.record(AffinityDimensionSchema, z.number()).optional(),
-});
+}) satisfies z.ZodType<AffinityDecayConfig>;
 
 // =============================================================================
 // Milestones
@@ -188,7 +188,7 @@ export const AffinityMilestoneSchema = z.object({
   description: z.string().min(1),
   effects: RelationshipScoresSchema.partial(),
   permanent: z.boolean(),
-});
+}) satisfies z.ZodType<AffinityMilestone>;
 
 // =============================================================================
 // Character Instance Affinity

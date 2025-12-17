@@ -227,14 +227,14 @@ export interface CreateFullSessionRequest {
     minute: number;
   };
   secondsPerTurn?: number;
-  npcs: Array<{
+  npcs: {
     characterId: string;
     role: string;
     tier: string;
     startLocationId?: string;
     label?: string;
-  }>;
-  relationships?: Array<{
+  }[];
+  relationships?: {
     fromActorId: string;
     toActorId: string;
     relationshipType: string;
@@ -243,12 +243,12 @@ export interface CreateFullSessionRequest {
       fondness?: number;
       fear?: number;
     };
-  }>;
-  tags?: Array<{
+  }[];
+  tags?: {
     tagId: string;
     scope: string;
     targetId?: string;
-  }>;
+  }[];
 }
 
 /**
@@ -262,25 +262,25 @@ export interface CreateFullSessionResponse {
   startLocationId: string | null;
   secondsPerTurn: number;
   createdAt: string;
-  npcs: Array<{
+  npcs: {
     instanceId: string;
     templateId: string;
     role: string;
     tier: string;
     label: string | null;
     startLocationId: string | null;
-  }>;
-  tagBindings: Array<{
+  }[];
+  tagBindings: {
     id: string;
     tagId: string;
     targetType: string;
     targetEntityId: string | null;
-  }>;
-  relationships: Array<{
+  }[];
+  relationships: {
     fromActorId: string;
     toActorId: string;
     relationshipType: string;
-  }>;
+  }[];
 }
 
 /**
@@ -321,8 +321,8 @@ export interface WorkspaceDraft {
  * List workspace drafts for a user
  */
 export async function listWorkspaceDrafts(
-  userId: string = 'default',
-  limit: number = 20
+  userId = 'default',
+  limit = 20
 ): Promise<WorkspaceDraft[]> {
   const result = await http<{ ok: true; drafts: WorkspaceDraft[] }>(
     `/workspace-drafts?user_id=${encodeURIComponent(userId)}&limit=${limit}`
@@ -777,7 +777,7 @@ export interface UserPreferences {
 /**
  * Get user preferences
  */
-export async function getUserPreferences(userId: string = 'default'): Promise<UserPreferences> {
+export async function getUserPreferences(userId = 'default'): Promise<UserPreferences> {
   const result = await http<{ ok: true; preferences: UserPreferences }>(
     `/user/preferences?user_id=${encodeURIComponent(userId)}`
   );
@@ -789,7 +789,7 @@ export async function getUserPreferences(userId: string = 'default'): Promise<Us
  */
 export async function updateUserPreferences(
   preferences: Partial<UserPreferences>,
-  userId: string = 'default'
+  userId = 'default'
 ): Promise<UserPreferences> {
   const result = await http<{ ok: true; preferences: UserPreferences }>(
     `/user/preferences?user_id=${encodeURIComponent(userId)}`,
@@ -806,7 +806,7 @@ export async function updateUserPreferences(
  * Get workspace mode preference
  */
 export async function getWorkspaceModePreference(
-  userId: string = 'default'
+  userId = 'default'
 ): Promise<WorkspaceMode> {
   const result = await http<{ ok: true; mode: WorkspaceMode }>(
     `/user/preferences/workspace-mode?user_id=${encodeURIComponent(userId)}`
@@ -819,7 +819,7 @@ export async function getWorkspaceModePreference(
  */
 export async function setWorkspaceModePreference(
   mode: WorkspaceMode,
-  userId: string = 'default'
+  userId = 'default'
 ): Promise<void> {
   await http<{ ok: true; mode: WorkspaceMode }>(
     `/user/preferences/workspace-mode?user_id=${encodeURIComponent(userId)}`,

@@ -233,12 +233,14 @@ export type ViewMode =
   | 'item-library'
   | 'session-library'
   | 'persona-library'
+  | 'location-library'
   | 'session-builder'
   | 'character-builder'
   | 'setting-builder'
   | 'tag-builder'
   | 'item-builder'
   | 'persona-builder'
+  | 'location-builder'
   | 'docs';
 
 export interface AppControllerStateSlice {
@@ -247,6 +249,8 @@ export interface AppControllerStateSlice {
   selectedTagIds: string[];
   currentSessionId: string | null;
   builderId: string | null;
+  locationMapId: string | null;
+  locationSettingId: string | null;
   viewMode: ViewMode;
   creating: boolean;
   createError: string | null;
@@ -289,6 +293,8 @@ export interface AppControllerActions {
   navigateToTagBuilder: (id?: string | null) => void;
   navigateToItemBuilder: (id?: string | null) => void;
   navigateToPersonaBuilder: (id?: string | null) => void;
+  navigateToLocationLibrary: () => void;
+  navigateToLocationBuilder: (params?: { mapId?: string; settingId?: string } | null) => void;
   navigateToCharacterLibrary: () => void;
   navigateToSettingLibrary: () => void;
   navigateToTagLibrary: () => void;

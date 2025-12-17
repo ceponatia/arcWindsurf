@@ -3,14 +3,21 @@
  * Main component for creating and editing location maps.
  */
 import { useState, useEffect, useCallback } from 'react';
-import type { LocationType, LocationNode, SemanticZoomLevel } from '@minimal-rpg/schemas';
+import type {
+  LocationType,
+  LocationNode,
+  LocationPrefab,
+  SemanticZoomLevel,
+} from '@minimal-rpg/schemas';
 import { useLocationBuilderStore } from './store.js';
 import { HierarchyTree } from './HierarchyTree.js';
 import { GraphView } from './GraphView.js';
+import { PrefabLibrary } from './PrefabLibrary.js';
+import { SaveAsPrefabModal } from './SaveAsPrefabModal.js';
 import type { LocationBuilderProps } from './types.js';
-import { Save, X, Loader2, AlertCircle, TreePine, Network, Filter, Undo2 } from 'lucide-react';
+import { Save, X, Loader2, AlertCircle, TreePine, Network, Package } from 'lucide-react';
 
-type ViewTab = 'tree' | 'graph';
+type ViewTab = 'tree' | 'graph' | 'prefabs';
 
 /** Add Location Modal */
 interface AddLocationModalProps {
@@ -21,13 +28,7 @@ interface AddLocationModalProps {
   onCancel: () => void;
 }
 
-function AddLocationModal({
-  parentId,
-  parentName,
-  type,
-  onConfirm,
-  onCancel,
-}: AddLocationModalProps) {
+function AddLocationModal({ parentName, type, onConfirm, onCancel }: AddLocationModalProps) {
   const [name, setName] = useState('');
   const [summary, setSummary] = useState('');
 
@@ -105,6 +106,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
     parentId: string | null;
     type: LocationType;
   } | null>(null);
+  const [saveAsPrefabNode, setSaveAsPrefabNode] = useState<LocationNode | null>(null);
 
   // Store state
   const {
@@ -117,6 +119,8 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
     isDirty,
     isLoading,
     error,
+    prefabs,
+    prefabsLoading,
     loadMap,
     createMap,
     saveMap,
@@ -129,14 +133,18 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
     setZoomLevel,
     setViewport,
     cancelAddEdge,
+    loadPrefabs,
+    saveAsPrefab,
+    deletePrefab,
+    insertPrefab,
   } = useLocationBuilderStore();
 
   // Load or create map on mount
   useEffect(() => {
     if (mapId) {
-      loadMap(mapId);
+      void loadMap(mapId);
     } else {
-      createMap(settingId, 'New Location Map');
+      void createMap(settingId, 'New Location Map');
     }
     return () => clearMap();
   }, [mapId, settingId, loadMap, createMap, clearMap]);
@@ -227,6 +235,34 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
     return map.nodes.find((n) => n.id === addModal.parentId)?.name ?? null;
   };
 
+  // Handle saving selected node as prefab
+  const handleSaveAsPrefab = useCallback(() => {
+    if (selection?.type === 'node' && map) {
+      const node = map.nodes.find((n) => n.id === selection.id);
+      if (node) {
+        setSaveAsPrefabNode(node);
+      }
+    }
+  }, [selection, map]);
+
+  // Confirm saving as prefab
+  const handleConfirmSaveAsPrefab = useCallback(
+    async (name: string, description?: string, category?: string) => {
+      if (!saveAsPrefabNode) return;
+      await saveAsPrefab(saveAsPrefabNode.id, name, description, category);
+      setSaveAsPrefabNode(null);
+    },
+    [saveAsPrefabNode, saveAsPrefab]
+  );
+
+  // Handle prefab insertion
+  const handleInsertPrefab = useCallback(
+    (prefab: LocationPrefab, parentId: string | null, entryPointId: string) => {
+      insertPrefab(prefab, parentId, entryPointId);
+    },
+    [insertPrefab]
+  );
+
   // Render loading state
   if (isLoading && !map) {
     return (
@@ -245,7 +281,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
           <p className="text-gray-700">{error}</p>
           <button
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            onClick={() => createMap(settingId, 'New Location Map')}
+            onClick={() => void createMap(settingId, 'New Location Map')}
           >
             Create New Map
           </button>
@@ -282,7 +318,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
 
           {/* Save button */}
           <button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={!isDirty || isLoading}
             className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -296,7 +332,11 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
 
           {/* Close button */}
           {onClose && (
-            <button onClick={onClose} className="p-1.5 hover:bg-gray-200 rounded" title="Close">
+            <button
+              onClick={() => onClose()}
+              className="p-1.5 hover:bg-gray-200 rounded"
+              title="Close"
+            >
               <X className="h-5 w-5 text-gray-500" />
             </button>
           )}
@@ -331,6 +371,17 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
               <Network className="h-4 w-4" />
               Graph
             </button>
+            <button
+              onClick={() => setActiveTab('prefabs')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium ${
+                activeTab === 'prefabs'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Package className="h-4 w-4" />
+              Prefabs
+            </button>
           </div>
 
           {/* Tab content */}
@@ -357,11 +408,34 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
                 onEdgeClick={handleSelectEdge}
                 onNodePositionChange={handleNodePositionChange}
                 onViewportChange={setViewport}
-                onPortClick={() => cancelAddEdge()}
-                onConnect={handleConnect}
+                onPortClick={() => void cancelAddEdge()}
+                onConnect={(...args) => void handleConnect(...args)}
+              />
+            )}
+            {activeTab === 'prefabs' && map && (
+              <PrefabLibrary
+                prefabs={prefabs}
+                isLoading={prefabsLoading}
+                nodes={map.nodes}
+                onInsertPrefab={handleInsertPrefab}
+                onDeletePrefab={(prefabId) => void deletePrefab(prefabId)}
+                onLoadPrefabs={() => void loadPrefabs()}
               />
             )}
           </div>
+
+          {/* Save as Prefab action (when a node is selected) */}
+          {selection?.type === 'node' && activeTab === 'tree' && (
+            <div className="border-t px-4 py-3 bg-gray-50">
+              <button
+                onClick={handleSaveAsPrefab}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                <Package className="h-4 w-4" />
+                Save Selection as Prefab
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Graph view (always visible as main content) */}
@@ -394,6 +468,15 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
           type={addModal.type}
           onConfirm={handleConfirmAdd}
           onCancel={() => setAddModal(null)}
+        />
+      )}
+
+      {/* Save as prefab modal */}
+      {saveAsPrefabNode && (
+        <SaveAsPrefabModal
+          node={saveAsPrefabNode}
+          onSave={handleConfirmSaveAsPrefab}
+          onCancel={() => setSaveAsPrefabNode(null)}
         />
       )}
     </div>

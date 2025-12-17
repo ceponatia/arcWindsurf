@@ -11,8 +11,6 @@ import {
   NpcActivitySchema,
   InteractionProximitySchema,
   GameTimeSchema,
-  type NpcActivity,
-  type InteractionProximity,
   type GameTime,
 } from './npc-location.js';
 
@@ -355,7 +353,7 @@ export function buildOccupancyPromptContext(
 export function filterRecentDepartures(
   departures: readonly RecentDeparture[],
   currentTime: GameTime,
-  maxMinutesAgo: number = 30
+  maxMinutesAgo = 30
 ): RecentDeparture[] {
   return departures.filter((d) => {
     const minutesAgo = calculateMinutesBetween(d.leftAt, currentTime);
@@ -374,7 +372,7 @@ export function filterRecentDepartures(
 export function filterExpectedArrivals(
   arrivals: readonly ExpectedArrival[],
   currentTime: GameTime,
-  maxMinutesAhead: number = 60
+  maxMinutesAhead = 60
 ): ExpectedArrival[] {
   return arrivals.filter((a) => {
     const minutesUntil = calculateMinutesBetween(currentTime, a.expectedAt);

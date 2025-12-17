@@ -60,7 +60,7 @@ export function useEntityUsage({
           result = await getPersonaUsage(entityId);
           break;
         default:
-          throw new Error(`Unknown entity type: ${entityType}`);
+          throw new Error('Unknown entity type');
       }
 
       setData(result);
@@ -73,6 +73,10 @@ export function useEntityUsage({
     }
   }, [entityId, entityType]);
 
+  const refresh = useCallback(() => {
+    void fetchUsage();
+  }, [fetchUsage]);
+
   useEffect(() => {
     if (autoFetch && entityId) {
       void fetchUsage();
@@ -83,6 +87,6 @@ export function useEntityUsage({
     data,
     loading,
     error,
-    refresh: fetchUsage,
+    refresh,
   };
 }

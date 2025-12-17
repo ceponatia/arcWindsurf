@@ -13,16 +13,16 @@ This document provides an **accurate audit** of what has been implemented versus
 
 **UPDATE**: SessionWorkspace has been wired to AppShell.tsx and is now functional. The core session creation flow works end-to-end.
 
-| Phase | Planned Items | Implemented | Wired/Functional | Status                      |
-| ----- | ------------- | ----------- | ---------------- | --------------------------- |
-| 0     | 10            | 10          | 10               | ✅ Complete                 |
-| 1     | 26            | 22          | **22**           | ✅ **Fully functional**     |
-| 2     | 21            | 14          | **0**            | 🔴 Built but not integrated |
-| 3     | 9             | 6           | **0**            | 🔴 Partial                  |
-| 4     | 11            | 4           | 4                | 🟡 Partial                  |
-| 5     | 9             | 9           | 9                | ✅ Complete                 |
-| 6     | 7             | 5           | 5                | 🟡 Partial                  |
-| 7     | 11            | 8           | 8                | ✅ **E2E tested**           |
+| Phase | Planned Items | Implemented | Wired/Functional | Status                     |
+| ----- | ------------- | ----------- | ---------------- | -------------------------- |
+| 0     | 10            | 10          | 10               | ✅ Complete                |
+| 1     | 26            | 24          | **24**           | ✅ **Fully functional**    |
+| 2     | 21            | 19          | **5**            | 🟡 Prefab system now built |
+| 3     | 9             | 6           | **0**            | 🔴 Partial                 |
+| 4     | 11            | 4           | 4                | 🟡 Partial                 |
+| 5     | 9             | 9           | 9                | ✅ Complete                |
+| 6     | 7             | 5           | 5                | 🟡 Partial                 |
+| 7     | 11            | 8           | 8                | ✅ **E2E tested**          |
 
 ---
 
@@ -100,15 +100,15 @@ Changes made:
 
 ### 1.4-1.8 Step Components
 
-| Component             | Built | Functional    | Evidence                                   |
-| --------------------- | ----- | ------------- | ------------------------------------------ |
-| SettingStep.tsx       | ✅    | ✅ Functional | E2E tested - setting selection works       |
-| NpcsStep.tsx          | ✅    | ✅ Functional | E2E tested - NPC addition works            |
-| PlayerStep.tsx        | ✅    | ✅ Functional | Visible in wizard, persona selection works |
-| TagsStep.tsx          | ✅    | ✅ Functional | Visible in wizard                          |
-| ReviewStep.tsx        | ✅    | ✅ Functional | E2E tested - session creation works        |
-| LocationsStep.tsx     | ✅    | 🟡 Partial    | Built but not in default STEPS array       |
-| RelationshipsStep.tsx | ✅    | 🟡 Partial    | Built but not in default STEPS array       |
+| Component             | Built | Functional    | Evidence                                          |
+| --------------------- | ----- | ------------- | ------------------------------------------------- |
+| SettingStep.tsx       | ✅    | ✅ Functional | E2E tested - setting selection works              |
+| LocationsStep.tsx     | ✅    | ✅ Functional | Wired to wizard, map selection + builder embedded |
+| NpcsStep.tsx          | ✅    | ✅ Functional | E2E tested - NPC addition works                   |
+| PlayerStep.tsx        | ✅    | ✅ Functional | Visible in wizard, persona selection works        |
+| TagsStep.tsx          | ✅    | ✅ Functional | Visible in wizard                                 |
+| RelationshipsStep.tsx | ✅    | ✅ Functional | Wired to wizard, matrix/list view with presets    |
+| ReviewStep.tsx        | ✅    | ✅ Functional | E2E tested - session creation works               |
 
 **Remaining Features for Step Components:**
 
@@ -143,15 +143,15 @@ Changes made:
 
 **NOT WIRED**: LocationBuilder not accessible from main navigation.
 
-### 2.3 Prefab System 🔴 NOT IMPLEMENTED
+### 2.3 Prefab System ✅ IMPLEMENTED
 
-| Item                             | Status |
-| -------------------------------- | ------ |
-| Create `location_prefabs` table  | ❌     |
-| Prefab = saved location subgraph | ❌     |
-| "Save as Prefab" action          | ❌     |
-| Prefab library in builder        | ❌     |
-| Drop prefab → pick entry point   | ❌     |
+| Item                             | Status | Evidence                                                                                   |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| Create `location_prefabs` table  | ✅     | [016_location_maps.sql](packages/db/sql/016_location_maps.sql) - table and indexes defined |
+| Prefab = saved location subgraph | ✅     | `saveAsPrefab` in store extracts subtree with connections                                  |
+| "Save as Prefab" action          | ✅     | [SaveAsPrefabModal.tsx](packages/web/src/features/location-builder/SaveAsPrefabModal.tsx)  |
+| Prefab library in builder        | ✅     | [PrefabLibrary.tsx](packages/web/src/features/location-builder/PrefabLibrary.tsx)          |
+| Drop prefab → pick entry point   | ✅     | InsertPrefabModal with parent and entry point selection                                    |
 
 ### 2.4-2.6 Other Location Features
 

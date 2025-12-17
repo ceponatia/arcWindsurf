@@ -92,11 +92,22 @@ export {
   type UpdateNpcProximityLevelParams,
 } from './proximity/index.js';
 
+// Location Graph Service (navigation, pathfinding, exit resolution)
+export {
+  LocationGraphService,
+  type LocationInfo,
+  type ResolvedExit,
+  type PathResult,
+  type DirectionResolution,
+  type ReachabilityResult,
+} from './location/index.js';
+
 // Tool-Based Turn Handler (Phase 4: LLM Tool Routing)
 export {
   ToolBasedTurnHandler,
   createToolBasedTurnHandler,
   type ToolTurnHandlerConfig,
+  type ToolCallHistoryRecord,
 } from './core/tool-turn-handler.js';
 
 // Types
@@ -114,6 +125,7 @@ export type {
   ToolTurnHandler,
   StateObject,
   SessionTag,
+  ToolHistoryContext,
 } from './core/types.js';
 
 export { DEFAULT_GOVERNOR_OPTIONS, TurnProcessingError } from './core/types.js';

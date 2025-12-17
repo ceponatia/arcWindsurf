@@ -107,7 +107,7 @@ export class ProximityManager {
         return this.handleEngage(key, existing, params);
 
       case 'intensify':
-        return this.handleIntensify(key, existing, newIntensity, currentTurn);
+        return this.handleIntensify(key, existing, newIntensity, currentTurn, params);
 
       case 'reduce':
         return this.handleReduce(key, existing, newIntensity, currentTurn);
@@ -255,12 +255,13 @@ export class ProximityManager {
   ): ProximityUpdateResult {
     const { npcId, bodyPart, senseType, newIntensity, currentTurn } = params;
 
+    // If engagement already exists (e.g., created by parallel intensify), succeed silently
     if (existing) {
       return {
-        success: false,
-        error: `Engagement already exists for ${key}. Use 'intensify' or 'reduce' to modify.`,
+        success: true,
         patches: [],
-        description: `Engagement ${key} already active`,
+        engagement: existing,
+        description: `Engagement ${key} already active at ${existing.intensity}`,
       };
     }
 
@@ -300,17 +301,9 @@ export class ProximityManager {
     key: string,
     existing: SensoryEngagement | undefined,
     newIntensity: EngagementIntensity | undefined,
-    currentTurn: number
+    currentTurn: number,
+    params?: UpdateProximityParams
   ): ProximityUpdateResult {
-    if (!existing) {
-      return {
-        success: false,
-        error: `No engagement found for ${key}. Use 'engage' to start.`,
-        patches: [],
-        description: `Cannot intensify non-existent engagement: ${key}`,
-      };
-    }
-
     if (!newIntensity) {
       return {
         success: false,
@@ -320,16 +313,48 @@ export class ProximityManager {
       };
     }
 
+    // Auto-create engagement if it doesn't exist (handles parallel tool calls)
+    if (!existing) {
+      if (!params) {
+        return {
+          success: false,
+          error: `No engagement found for ${key} and no params to create one.`,
+          patches: [],
+          description: `Cannot intensify non-existent engagement: ${key}`,
+        };
+      }
+
+      const { npcId, bodyPart, senseType } = params;
+      const engagement: SensoryEngagement = {
+        npcId,
+        bodyPart,
+        senseType,
+        intensity: newIntensity,
+        startedAt: currentTurn,
+        lastActiveAt: currentTurn,
+      };
+
+      const patches: Operation[] = [{ op: 'add', path: `/engagements/${key}`, value: engagement }];
+
+      return {
+        success: true,
+        patches,
+        engagement,
+        description: `Created engagement ${key} at ${newIntensity} intensity (auto-fallback from intensify)`,
+      };
+    }
+
     const intensityOrder: EngagementIntensity[] = ['casual', 'focused', 'intimate'];
     const currentIndex = intensityOrder.indexOf(existing.intensity);
     const newIndex = intensityOrder.indexOf(newIntensity);
 
     if (newIndex <= currentIndex) {
+      // Already at or above requested intensity - succeed silently
       return {
-        success: false,
-        error: `Cannot intensify from ${existing.intensity} to ${newIntensity}`,
+        success: true,
         patches: [],
-        description: `Intensity ${newIntensity} is not higher than ${existing.intensity}`,
+        engagement: existing,
+        description: `Engagement ${key} already at ${existing.intensity} (requested ${newIntensity})`,
       };
     }
 

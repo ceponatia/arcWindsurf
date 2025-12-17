@@ -6,6 +6,8 @@ import {
   type ToolTurnHandlerConfig,
   ToolExecutor,
   type FallbackToolHandler,
+  type LocationInfo,
+  type ToolCallHistoryRecord,
 } from '@minimal-rpg/governor';
 import { StateManager, DEFAULT_STATE_MANAGER_CONFIG } from '@minimal-rpg/state-manager';
 import {
@@ -19,10 +21,9 @@ import {
   type LlmResponse as AgentLlmResponse,
   type AgentStateSlices,
 } from '@minimal-rpg/agents';
-import { InMemoryRetrievalService } from '@minimal-rpg/retrieval';
 import { generateWithOpenRouter, chatWithOpenRouterTools } from '../llm/openrouter.js';
 import { getConfig } from '../util/config.js';
-import { getNpcMessages } from '../db/sessionsClient.js';
+import { getNpcMessages, appendToolCallHistoryBatch } from '../db/sessionsClient.js';
 import { createSessionToolHandler, getSessionTools } from '../llm/tools/index.js';
 
 // Simple process-local singletons for now; can be replaced with
@@ -35,8 +36,6 @@ const stateManager = new StateManager({
 });
 
 const agentRegistry = createDefaultRegistry();
-
-const retrievalService = new InMemoryRetrievalService();
 
 let sharedAgentLlmProvider: AgentLlmProvider | undefined;
 
@@ -122,6 +121,23 @@ export interface GovernorFactoryOptions {
   logging?: GovernorConfig['logging'];
   sessionId: string;
   stateSlices: AgentStateSlices;
+  /** Available locations for navigation (from LocationGraphService) */
+  availableLocations?: Map<string, LocationInfo>;
+  /** Current player location ID */
+  playerLocationId?: string;
+  /** Current turn index for tool history tracking */
+  turnIdx?: number;
+}
+
+/**
+ * Options for creating the tool turn handler.
+ */
+interface ToolTurnHandlerOptions {
+  sessionId: string;
+  stateSlices: AgentStateSlices;
+  availableLocations?: Map<string, LocationInfo>;
+  playerLocationId?: string;
+  turnIdx?: number;
 }
 
 /**
@@ -129,9 +145,9 @@ export interface GovernorFactoryOptions {
  * Throws if OPENROUTER_API_KEY is not configured.
  */
 function createToolTurnHandlerOrThrow(
-  sessionId: string,
-  stateSlices: AgentStateSlices
+  options: ToolTurnHandlerOptions
 ): ReturnType<typeof createToolBasedTurnHandler> {
+  const { sessionId, stateSlices, availableLocations, playerLocationId, turnIdx } = options;
   const cfg = getConfig();
 
   if (!cfg.openrouterApiKey) {
@@ -158,7 +174,30 @@ function createToolTurnHandlerOrThrow(
     sessionId,
     stateSlices,
     fallbackHandler,
+    ...(availableLocations !== undefined && { availableLocations }),
+    ...(playerLocationId !== undefined && { playerLocationId }),
   });
+
+  // Create callback to persist tool call history
+  const onToolCallsComplete = async (records: ToolCallHistoryRecord[]): Promise<void> => {
+    if (records.length === 0) return;
+
+    try {
+      await appendToolCallHistoryBatch(
+        records.map((r) => ({
+          sessionId,
+          turnIdx: turnIdx ?? 0,
+          toolName: r.toolName,
+          toolArgs: r.toolArgs,
+          toolResult: r.toolResult,
+          success: r.success,
+        }))
+      );
+    } catch (err) {
+      // Non-fatal - log but don't fail the turn
+      console.error('[Governor] Failed to persist tool call history:', err);
+    }
+  };
 
   const config: ToolTurnHandlerConfig = {
     chatWithTools: async (opts) => {
@@ -171,6 +210,7 @@ function createToolTurnHandlerOrThrow(
     stateSlices,
     additionalTools: getSessionTools(),
     debug: cfg.governorDevMode,
+    onToolCallsComplete,
   };
 
   return createToolBasedTurnHandler(config);
@@ -187,7 +227,15 @@ export function createGovernorForRequest(options: GovernorFactoryOptions): Gover
   ensureAgentsRegistered();
 
   // Create tool turn handler (required)
-  const toolHandler = createToolTurnHandlerOrThrow(options.sessionId, options.stateSlices);
+  const toolHandler = createToolTurnHandlerOrThrow({
+    sessionId: options.sessionId,
+    stateSlices: options.stateSlices,
+    ...(options.availableLocations !== undefined && {
+      availableLocations: options.availableLocations,
+    }),
+    ...(options.playerLocationId !== undefined && { playerLocationId: options.playerLocationId }),
+    ...(options.turnIdx !== undefined && { turnIdx: options.turnIdx }),
+  });
 
   const governorConfig: GovernorConfig = {
     stateManager,

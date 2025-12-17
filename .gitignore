@@ -36,3 +36,8 @@ coverage
 
 ## Local data (sample data is tracked already; ignore new local files by default)
 data/*
+
+## Playwright
+/playwright-report/
+/test-results/
+/playwright/.cache/

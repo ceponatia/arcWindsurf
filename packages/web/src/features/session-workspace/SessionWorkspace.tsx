@@ -22,9 +22,11 @@ import {
 } from './store.js';
 import type { WorkspaceStep, NpcSessionConfig, TagSelection, RelationshipConfig } from './store.js';
 import { SettingStep } from './steps/SettingStep.js';
+import { LocationsStep } from './steps/LocationsStep.js';
 import { NpcsStep } from './steps/NpcsStep.js';
 import { PlayerStep } from './steps/PlayerStep.js';
 import { TagsStep } from './steps/TagsStep.js';
+import { RelationshipsStep } from './steps/RelationshipsStep.js';
 import { ReviewStep } from './steps/ReviewStep.js';
 import { CompactBuilder } from './CompactBuilder.js';
 import type { CharacterSummary, SettingSummary, PersonaSummary, TagSummary } from '../../types.js';
@@ -151,9 +153,11 @@ const StepNavigation: React.FC<StepNavProps> = ({
 
 const STEPS: { id: WorkspaceStep; label: string; required?: boolean }[] = [
   { id: 'setting', label: 'Setting', required: true },
+  { id: 'locations', label: 'Locations' },
   { id: 'npcs', label: 'NPCs', required: true },
   { id: 'player', label: 'Player' },
   { id: 'tags', label: 'Tags' },
+  { id: 'relationships', label: 'Relationships' },
   { id: 'review', label: 'Review' },
 ];
 
@@ -265,7 +269,10 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
       };
 
       // Add optional fields only if defined
-      if (playerState.personaId) config.personaId = playerState.personaId;
+      // Skip 'anonymous' personaId - that's a special client-side value for anonymous play
+      if (playerState.personaId && playerState.personaId !== 'anonymous') {
+        config.personaId = playerState.personaId;
+      }
       if (playerState.startLocationId) config.startLocationId = playerState.startLocationId;
       if (settingState.startTime) {
         config.startTime = {
@@ -308,6 +315,8 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
             onNavigateToBuilder={onNavigateToSettingBuilder}
           />
         );
+      case 'locations':
+        return <LocationsStep />;
       case 'npcs':
         return (
           <NpcsStep
@@ -335,6 +344,8 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
             onRefresh={onRefreshTags}
           />
         );
+      case 'relationships':
+        return <RelationshipsStep characters={characters} />;
       case 'review':
         return (
           <ReviewStep

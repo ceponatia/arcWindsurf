@@ -111,7 +111,7 @@ export const TIER_MINIMUM_PRIORITY: Record<NpcTier, number> = {
 export function createNpcSimulationPriority(
   npcId: string,
   tier: NpcTier,
-  distanceFromPlayer: number = 0
+  distanceFromPlayer = 0
 ): NpcSimulationPriority {
   const basePriority = TIER_BASE_PRIORITY[tier];
   return {

@@ -20,10 +20,12 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
   // Session list
   app.get('/sessions', (c) => handleListSessions(c, deps.getLoaded));
 
-  // Session CRUD
-  app.get('/sessions/:id', (c) => handleGetSession(c));
-  app.post('/sessions', (c) => handleCreateSession(c, deps.getLoaded));
+  // Session creation (specific route before parameterized routes)
   app.post('/sessions/create-full', (c) => handleCreateFullSession(c, deps.getLoaded));
+  app.post('/sessions', (c) => handleCreateSession(c, deps.getLoaded));
+
+  // Session CRUD (parameterized routes after specific routes)
+  app.get('/sessions/:id', (c) => handleGetSession(c));
   app.delete('/sessions/:id', (c) => handleDeleteSession(c));
 
   // Session messages

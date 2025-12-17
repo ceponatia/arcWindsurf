@@ -11,7 +11,12 @@ import {
   useTagsState,
   useValidation,
 } from '../store.js';
-import type { NpcSessionConfig, TagSelection, StepValidationState } from '../store.js';
+import type {
+  NpcSessionConfig,
+  TagSelection,
+  StepValidationState,
+  WorkspaceStep,
+} from '../store.js';
 import type { CharacterSummary } from '../../../types.js';
 
 interface ReviewStepProps {
@@ -61,9 +66,9 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
 
   // Flatten validation errors for display
   const validationErrors = useMemo(() => {
-    const errors: { message: string; step?: string }[] = [];
+    const errors: { message: string; step?: WorkspaceStep }[] = [];
     for (const [step, state] of Object.entries(validation.stepErrors) as [
-      string,
+      WorkspaceStep,
       StepValidationState | undefined,
     ][]) {
       if (state && !state.valid) {
@@ -96,7 +101,9 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                 {err.message}
                 {err.step && (
                   <button
-                    onClick={() => setStep(err.step as any)}
+                    onClick={() => {
+                      if (err.step) setStep(err.step);
+                    }}
                     className="text-xs underline text-red-400 hover:text-red-300"
                   >
                     Fix →

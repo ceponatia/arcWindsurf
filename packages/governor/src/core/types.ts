@@ -72,6 +72,29 @@ export interface TurnInput {
   parsedActions?: ParsedAction[];
   /** Running summary of older conversation history (for long conversations) */
   conversationSummary?: string;
+  /** Recent tool usage history for maintaining tool calling patterns */
+  toolHistory?: ToolHistoryContext;
+}
+
+/**
+ * Tool history context for maintaining tool calling patterns.
+ * Helps the LLM understand that tools should be used.
+ */
+export interface ToolHistoryContext {
+  /** Recent tool calls from the last few turns (summary form) */
+  recentToolCalls?: {
+    turnIdx: number;
+    toolName: string;
+    success: boolean;
+  }[];
+  /** Tool usage statistics */
+  stats?: {
+    totalCalls: number;
+    callsByTool: Record<string, number>;
+    recentTools: string[];
+  };
+  /** Tool usage hints for the system prompt */
+  usageHints?: string[];
 }
 
 /**

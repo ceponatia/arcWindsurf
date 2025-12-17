@@ -135,7 +135,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
         updates.workspaceState = workspaceState as Record<string, unknown>;
       if (currentStep !== undefined) updates.currentStep = currentStep;
       if (validationState !== undefined)
-        updates.validationState = validationState as Record<string, unknown>;
+        updates.validationState = validationState;
 
       const draft = await updateWorkspaceDraft(id, updates);
       if (!draft) {

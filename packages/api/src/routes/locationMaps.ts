@@ -5,10 +5,8 @@
 import type { Hono } from 'hono';
 import { z } from 'zod';
 import {
-  LocationMapSchema,
   LocationNodeSchema,
   LocationConnectionSchema,
-  LocationPrefabSchema,
   type LocationMap,
   type LocationNode,
   type LocationConnection,

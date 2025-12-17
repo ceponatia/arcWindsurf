@@ -257,12 +257,12 @@ export function getNpcsAtLocationBySchedule(
   npcs: NpcScheduleData[],
   locationId: string,
   options: ScheduleResolutionOptions
-): Array<{ npcId: string; activity: NpcActivity; interruptible: boolean }> {
-  const result: Array<{ npcId: string; activity: NpcActivity; interruptible: boolean }> = [];
+): { npcId: string; activity: NpcActivity; interruptible: boolean }[] {
+  const result: { npcId: string; activity: NpcActivity; interruptible: boolean }[] = [];
 
   for (const npc of npcs) {
     const resolved = resolveNpcScheduleAtTime(npc, options);
-    if (resolved && resolved.resolution.locationId === locationId) {
+    if (resolved?.resolution.locationId === locationId) {
       result.push({
         npcId: npc.npcId,
         activity: resolved.resolution.activity,

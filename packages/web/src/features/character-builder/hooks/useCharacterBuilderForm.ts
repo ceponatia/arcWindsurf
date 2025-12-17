@@ -4,8 +4,10 @@ import {
   type Physique,
   type BodyMap,
   type PersonalityMap,
+  type AppearanceRegion,
   BODY_REGIONS,
   PERSONALITY_DIMENSIONS,
+  APPEARANCE_REGION_ATTRIBUTES,
 } from '@minimal-rpg/schemas';
 import { formatScent, formatTexture, formatFlavor } from '@minimal-rpg/utils';
 import { loadCharacter } from '../api.js';
@@ -63,73 +65,149 @@ function bodyMapToEntries(bodyMap: BodyMap | undefined): BodySensoryEntry[] {
 }
 
 /**
- * Convert a Physique object to an array of AppearanceEntry for the form.
+ * Regions that are stored in Physique schema (limited set).
+ * All other regions come from body map's visual property.
  */
-function physiqueToEntries(physique: Physique | undefined): AppearanceEntry[] {
-  if (!physique) return [createAppearanceEntry()];
+const PHYSIQUE_REGIONS = new Set<AppearanceRegion>([
+  'overall',
+  'hair',
+  'eyes',
+  'skin',
+  'arms',
+  'legs',
+  'feet',
+  'face',
+]);
 
+/**
+ * Convert a Physique object and BodyMap to an array of AppearanceEntry for the form.
+ * Physique provides limited regions, body map's visual property provides the rest.
+ */
+function physiqueToEntries(
+  physique: Physique | undefined,
+  bodyMap: BodyMap | undefined
+): AppearanceEntry[] {
   const entries: AppearanceEntry[] = [];
 
-  // Overall build
-  if (physique.build.height) {
-    entries.push({ region: 'overall', attribute: 'height', value: physique.build.height });
-  }
-  if (physique.build.torso) {
-    entries.push({ region: 'overall', attribute: 'build', value: physique.build.torso });
+  // Extract from Physique (limited set of regions)
+  if (physique) {
+    // Overall build
+    if (physique.build.height) {
+      entries.push({ region: 'overall', attribute: 'height', value: physique.build.height });
+    }
+    if (physique.build.torso) {
+      entries.push({ region: 'overall', attribute: 'build', value: physique.build.torso });
+    }
+
+    // Hair
+    if (physique.appearance.hair.color) {
+      entries.push({ region: 'hair', attribute: 'color', value: physique.appearance.hair.color });
+    }
+    if (physique.appearance.hair.style) {
+      entries.push({ region: 'hair', attribute: 'style', value: physique.appearance.hair.style });
+    }
+    if (physique.appearance.hair.length) {
+      entries.push({ region: 'hair', attribute: 'length', value: physique.appearance.hair.length });
+    }
+
+    // Eyes
+    if (physique.appearance.eyes.color) {
+      entries.push({ region: 'eyes', attribute: 'color', value: physique.appearance.eyes.color });
+    }
+
+    // Skin
+    if (physique.build.skinTone) {
+      entries.push({ region: 'skin', attribute: 'tone', value: physique.build.skinTone });
+    }
+
+    // Arms
+    if (physique.build.arms.build) {
+      entries.push({ region: 'arms', attribute: 'build', value: physique.build.arms.build });
+    }
+    if (physique.build.arms.length) {
+      entries.push({ region: 'arms', attribute: 'length', value: physique.build.arms.length });
+    }
+
+    // Legs
+    if (physique.build.legs.build) {
+      entries.push({ region: 'legs', attribute: 'build', value: physique.build.legs.build });
+    }
+    if (physique.build.legs.length) {
+      entries.push({ region: 'legs', attribute: 'length', value: physique.build.legs.length });
+    }
+
+    // Feet
+    if (physique.build.feet.size) {
+      entries.push({ region: 'feet', attribute: 'size', value: physique.build.feet.size });
+    }
+    if (physique.build.feet.shape) {
+      entries.push({ region: 'feet', attribute: 'shape', value: physique.build.feet.shape });
+    }
+
+    // Face features (convert array to comma-separated entries)
+    if (physique.appearance.features && physique.appearance.features.length > 0) {
+      entries.push({
+        region: 'face',
+        attribute: 'features',
+        value: physique.appearance.features.join(', '),
+      });
+    }
   }
 
-  // Hair
-  if (physique.appearance.hair.color) {
-    entries.push({ region: 'hair', attribute: 'color', value: physique.appearance.hair.color });
-  }
-  if (physique.appearance.hair.style) {
-    entries.push({ region: 'hair', attribute: 'style', value: physique.appearance.hair.style });
-  }
-  if (physique.appearance.hair.length) {
-    entries.push({ region: 'hair', attribute: 'length', value: physique.appearance.hair.length });
-  }
+  // Extract visual data from body map (for non-Physique regions)
+  if (bodyMap) {
+    for (const region of BODY_REGIONS) {
+      // Skip regions that are already handled by Physique
+      if (PHYSIQUE_REGIONS.has(region as AppearanceRegion)) continue;
 
-  // Eyes
-  if (physique.appearance.eyes.color) {
-    entries.push({ region: 'eyes', attribute: 'color', value: physique.appearance.eyes.color });
-  }
+      const data = bodyMap[region];
+      if (!data?.visual) continue;
 
-  // Skin
-  if (physique.build.skinTone) {
-    entries.push({ region: 'skin', attribute: 'tone', value: physique.build.skinTone });
-  }
+      const visual = data.visual;
 
-  // Arms
-  if (physique.build.arms.build) {
-    entries.push({ region: 'arms', attribute: 'build', value: physique.build.arms.build });
-  }
-  if (physique.build.arms.length) {
-    entries.push({ region: 'arms', attribute: 'length', value: physique.build.arms.length });
-  }
+      // Get available attributes for this region
+      const regionAttrs = APPEARANCE_REGION_ATTRIBUTES[region as AppearanceRegion];
+      if (!regionAttrs) continue;
 
-  // Legs
-  if (physique.build.legs.build) {
-    entries.push({ region: 'legs', attribute: 'build', value: physique.build.legs.build });
-  }
-  if (physique.build.legs.length) {
-    entries.push({ region: 'legs', attribute: 'length', value: physique.build.legs.length });
-  }
+      // Try to parse the description back into attribute/value pairs
+      // Format was "attr: value, attr2: value2"
+      if (visual.description) {
+        const pairs = visual.description.split(',').map((s) => s.trim());
+        for (const pair of pairs) {
+          const colonIdx = pair.indexOf(':');
+          if (colonIdx > 0) {
+            const attr = pair.slice(0, colonIdx).trim();
+            const value = pair.slice(colonIdx + 1).trim();
+            // Check if this attribute exists for this region
+            if (attr in regionAttrs && value) {
+              entries.push({
+                region: region as AppearanceRegion,
+                attribute: attr,
+                value,
+              });
+            }
+          } else if (pair) {
+            // Single value without attribute - use 'description' if available
+            if ('description' in regionAttrs) {
+              entries.push({
+                region: region as AppearanceRegion,
+                attribute: 'description',
+                value: pair,
+              });
+            }
+          }
+        }
+      }
 
-  // Feet
-  if (physique.build.feet.size) {
-    entries.push({ region: 'feet', attribute: 'size', value: physique.build.feet.size });
-  }
-  if (physique.build.feet.shape) {
-    entries.push({ region: 'feet', attribute: 'shape', value: physique.build.feet.shape });
-  }
-
-  // Face features (convert array to comma-separated entries)
-  if (physique.appearance.features && physique.appearance.features.length > 0) {
-    entries.push({
-      region: 'face',
-      attribute: 'features',
-      value: physique.appearance.features.join(', '),
-    });
+      // Add features if present and region supports it
+      if (visual.features && visual.features.length > 0 && 'features' in regionAttrs) {
+        entries.push({
+          region: region as AppearanceRegion,
+          attribute: 'features',
+          value: visual.features.join(', '),
+        });
+      }
+    }
   }
 
   return entries.length > 0 ? entries : [createAppearanceEntry()];
@@ -259,11 +337,14 @@ function mapProfileToForm(profile: CharacterProfile): FormState {
     // Free-text appearance
     next.appearance = physique;
   } else if (physique && typeof physique === 'object') {
-    // Structured physique → appearance entries
-    next.appearances = physiqueToEntries(physique as Physique);
+    // Structured physique + body map visual → appearance entries
+    next.appearances = physiqueToEntries(physique as Physique, profile.body);
+  } else {
+    // No physique, but may have body map visual data
+    next.appearances = physiqueToEntries(undefined, profile.body);
   }
 
-  // Map body map to sensory entries (scent, texture, visual per region)
+  // Map body map to sensory entries (scent, texture, flavor per region)
   next.bodySensory = bodyMapToEntries(profile.body);
 
   if (Array.isArray(profile.details) && profile.details.length) {
@@ -384,14 +465,14 @@ export interface UseCharacterBuilderFormResult {
     key: K,
     value: BodySensoryEntry[K]
   ) => void;
-  addBodyEntry: () => void;
+  addBodyEntry: (entry?: BodySensoryEntry) => void;
   removeBodyEntry: (idx: number) => void;
   updateAppearanceEntry: <K extends keyof AppearanceEntry>(
     idx: number,
     key: K,
     value: AppearanceEntry[K]
   ) => void;
-  addAppearanceEntry: () => void;
+  addAppearanceEntry: (entry?: AppearanceEntry) => void;
   removeAppearanceEntry: (idx: number) => void;
   loading: boolean;
   loadError: string | null;
@@ -481,8 +562,11 @@ export function useCharacterBuilderForm(id?: string | null): UseCharacterBuilder
     []
   );
 
-  const addBodyEntry = useCallback(() => {
-    setForm((prev) => ({ ...prev, bodySensory: [...prev.bodySensory, createBodySensoryEntry()] }));
+  const addBodyEntry = useCallback((entry?: BodySensoryEntry) => {
+    setForm((prev) => ({
+      ...prev,
+      bodySensory: [...prev.bodySensory, entry ?? createBodySensoryEntry()],
+    }));
   }, []);
 
   const removeBodyEntry = useCallback((idx: number) => {
@@ -504,10 +588,10 @@ export function useCharacterBuilderForm(id?: string | null): UseCharacterBuilder
     []
   );
 
-  const addAppearanceEntry = useCallback(() => {
+  const addAppearanceEntry = useCallback((entry?: AppearanceEntry) => {
     setForm((prev) => ({
       ...prev,
-      appearances: [...prev.appearances, createAppearanceEntry()],
+      appearances: [...prev.appearances, entry ?? createAppearanceEntry()],
     }));
   }, []);
 

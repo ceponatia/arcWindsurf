@@ -363,9 +363,7 @@ export interface StateSlice<T = unknown> {
  * State patches keyed by slice name.
  * Used when tools return patches for multiple slices.
  */
-export interface StatePatches {
-  [sliceKey: string]: Operation[];
-}
+export type StatePatches = Record<string, Operation[]>;
 
 /**
  * Input for multi-slice patch operations.

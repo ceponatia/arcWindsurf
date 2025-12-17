@@ -295,8 +295,13 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
   - Setting/location context with atmosphere and exits
   - Body map sensory data summary (available regions and senses)
   - Player persona context for personalized NPC responses
-  - 18-message conversation history window for context continuity
+  - 10-message conversation history window for context continuity (optimized for tool pattern retention)
   - The LLM understands: "He looks at Taylor's face" (sensory) vs "He looks up hopefully" (narrative)
+- **Tool Call History Persistence**: Maintains tool calling patterns in long conversations
+  - `tool_call_history` table stores tool calls per session/turn
+  - `conversation_summaries` table for future LLM-generated summaries
+  - Tool usage statistics and hints injected into context for sessions with established patterns
+  - Prevents pattern drift where LLM stops using tools after many turns
 
 ### Session Management
 
@@ -345,6 +350,25 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **NPC Awareness**: How NPCs perceive the player (unaware/peripheral/noticed/focused)
 - **NPC Availability**: Sleep, travel, busy states with override mechanics
 - **Lazy Simulation Cache**: Tiered simulation strategy for performance
+- **LocationGraphService**: Stateless service for location graph operations
+  - Transforms rich LocationMap (nodes/connections/ports) to runtime-usable formats
+  - Exit resolution with direction matching (north, up, "through the door")
+  - BFS pathfinding with travel time calculation
+  - Bridges to ToolExecutor's LocationInfo format
+  - Session-specific location maps with DB persistence
+
+### Location Prefabs
+
+- **Prefab Library**: Create reusable location templates (taverns, shops, dungeons) via Locations sidebar
+- **Category Grouping**: Prefabs organized by category for easy browsing
+- **Location Types**: Region, Building, and Room node types with tree structure
+- **Entry Points**: Configure which locations serve as entry points for the prefab
+- **Session Integration**: Insert prefabs into session maps for quick world building
+- **Auto-Linked Exits**: Drawing a connection between two nodes auto-creates bidirectional exits
+  - Each location node gets an exit with direction (north/south/etc.) and target reference
+  - Exits are editable in the Properties panel (direction, locked status, travel time)
+  - Deleting a connection removes the associated exits from both nodes
+  - Visual exit indicators on nodes show configured directions
 
 ### Time System
 

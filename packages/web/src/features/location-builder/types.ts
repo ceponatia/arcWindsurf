@@ -70,6 +70,12 @@ export interface LocationBuilderState {
 
   /** Error state */
   error: string | null;
+
+  /** Loaded prefabs for the library */
+  prefabs: LocationPrefab[];
+
+  /** Whether the prefab library is loading */
+  prefabsLoading: boolean;
 }
 
 /** Actions for the location builder store */
@@ -101,6 +107,17 @@ export interface LocationBuilderActions {
   cancelAddNode: () => void;
   startAddEdge: (fromLocationId: string, fromPortId: string) => void;
   cancelAddEdge: () => void;
+
+  // Prefab operations
+  loadPrefabs: () => Promise<void>;
+  saveAsPrefab: (
+    nodeId: string,
+    name: string,
+    description?: string,
+    category?: string
+  ) => Promise<LocationPrefab | null>;
+  deletePrefab: (prefabId: string) => Promise<boolean>;
+  insertPrefab: (prefab: LocationPrefab, parentId: string | null, entryPointId: string) => void;
 }
 
 /** Combined store type */
@@ -147,7 +164,7 @@ export interface GraphViewProps {
 /** API response types */
 export interface LocationMapListResponse {
   ok: boolean;
-  maps?: Array<{
+  maps?: {
     id: string;
     name: string;
     description?: string;
@@ -158,7 +175,7 @@ export interface LocationMapListResponse {
     tags?: string[];
     createdAt: string;
     updatedAt: string;
-  }>;
+  }[];
   error?: string;
 }
 

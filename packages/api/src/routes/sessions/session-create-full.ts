@@ -100,25 +100,25 @@ export interface CreateFullSessionResponse {
   startLocationId: string | null;
   secondsPerTurn: number;
   createdAt: string;
-  npcs: Array<{
+  npcs: {
     instanceId: string;
     templateId: string;
     role: string;
     tier: string;
     label: string | null;
     startLocationId: string | null;
-  }>;
-  tagBindings: Array<{
+  }[];
+  tagBindings: {
     id: string;
     tagId: string;
     targetType: string;
     targetEntityId: string | null;
-  }>;
-  relationships: Array<{
+  }[];
+  relationships: {
     fromActorId: string;
     toActorId: string;
     relationshipType: string;
-  }>;
+  }[];
 }
 
 /**
@@ -197,7 +197,7 @@ export async function handleCreateFullSession(
   if (request.tags && request.tags.length > 0) {
     const tagIds = request.tags.map((t) => t.tagId);
     const tagResult = await pool.query('SELECT id FROM prompt_tags WHERE id = ANY($1)', [tagIds]);
-    const foundTagIds = new Set((tagResult.rows as Array<{ id: string }>).map((r) => r.id));
+    const foundTagIds = new Set((tagResult.rows as { id: string }[]).map((r) => r.id));
     const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
     if (missingTags.length > 0) {
       return notFound(c, `tags not found: ${missingTags.join(', ')}`);
@@ -211,7 +211,7 @@ export async function handleCreateFullSession(
   const createdAt = new Date().toISOString();
 
   // Prepare NPC instance data
-  const npcInstances: Array<{
+  const npcInstances: {
     id: string;
     characterId: string;
     character: (typeof loaded)['characters'][0];
@@ -219,7 +219,7 @@ export async function handleCreateFullSession(
     tier: string;
     label: string | null;
     startLocationId: string | null;
-  }> = request.npcs.map((npc, idx) => ({
+  }[] = request.npcs.map((npc) => ({
     id: generateInstanceId(npc.characterId),
     characterId: npc.characterId,
     character: npcCharacters.get(npc.characterId)!,
@@ -298,12 +298,12 @@ export async function handleCreateFullSession(
     }
 
     // 5. Create tag bindings
-    const tagBindings: Array<{
+    const tagBindings: {
       id: string;
       tagId: string;
       targetType: string;
       targetEntityId: string | null;
-    }> = [];
+    }[] = [];
 
     if (request.tags) {
       for (const tag of request.tags) {
@@ -332,11 +332,11 @@ export async function handleCreateFullSession(
     }
 
     // 6. Create initial relationship states
-    const relationshipResults: Array<{
+    const relationshipResults: {
       fromActorId: string;
       toActorId: string;
       relationshipType: string;
-    }> = [];
+    }[] = [];
 
     if (request.relationships) {
       for (const rel of request.relationships) {

@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { GameTimeSchema } from '../time/schemas.js';
 import { NpcTierSchema, SimulationStrategySchema } from '../npc-tier/schemas.js';
-import { NpcLocationStateSchema, NpcActivitySchema } from '../state/npc-location.js';
+import { NpcLocationStateSchema } from '../state/npc-location.js';
 
 // Re-export SimulationStrategySchema from npc-tier for convenience
 export { SimulationStrategySchema };

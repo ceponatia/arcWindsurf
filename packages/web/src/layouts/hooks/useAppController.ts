@@ -12,8 +12,14 @@ import { useCharacters } from '../../shared/hooks/useCharacters.js';
 import { usePersonas } from '../../shared/hooks/usePersonas.js';
 import type { AppControllerValue, ViewMode } from '../../types.js';
 
-function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
-  if (typeof window === 'undefined') return { viewMode: 'home', builderId: null };
+function parseHashRoute(): {
+  viewMode: ViewMode;
+  builderId: string | null;
+  locationMapId: string | null;
+  locationSettingId: string | null;
+} {
+  if (typeof window === 'undefined')
+    return { viewMode: 'home', builderId: null, locationMapId: null, locationSettingId: null };
   const hash = window.location.hash;
 
   if (hash.startsWith('#/character-builder')) {
@@ -21,6 +27,8 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
     return {
       viewMode: 'character-builder',
       builderId: new URLSearchParams(query).get('id'),
+      locationMapId: null,
+      locationSettingId: null,
     };
   }
   if (hash.startsWith('#/setting-builder')) {
@@ -28,6 +36,8 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
     return {
       viewMode: 'setting-builder',
       builderId: new URLSearchParams(query).get('id'),
+      locationMapId: null,
+      locationSettingId: null,
     };
   }
   if (hash.startsWith('#/tag-builder')) {
@@ -35,6 +45,8 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
     return {
       viewMode: 'tag-builder',
       builderId: new URLSearchParams(query).get('id'),
+      locationMapId: null,
+      locationSettingId: null,
     };
   }
   if (hash.startsWith('#/item-builder')) {
@@ -42,6 +54,8 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
     return {
       viewMode: 'item-builder',
       builderId: new URLSearchParams(query).get('id'),
+      locationMapId: null,
+      locationSettingId: null,
     };
   }
   if (hash.startsWith('#/persona-builder')) {
@@ -49,19 +63,82 @@ function parseHashRoute(): { viewMode: ViewMode; builderId: string | null } {
     return {
       viewMode: 'persona-builder',
       builderId: new URLSearchParams(query).get('id'),
+      locationMapId: null,
+      locationSettingId: null,
     };
   }
-  if (hash.startsWith('#/characters')) return { viewMode: 'character-library', builderId: null };
-  if (hash.startsWith('#/settings')) return { viewMode: 'setting-library', builderId: null };
-  if (hash.startsWith('#/tags')) return { viewMode: 'tag-library', builderId: null };
-  if (hash.startsWith('#/items')) return { viewMode: 'item-library', builderId: null };
-  if (hash.startsWith('#/personas')) return { viewMode: 'persona-library', builderId: null };
-  if (hash.startsWith('#/session-builder')) return { viewMode: 'session-builder', builderId: null };
-  if (hash.startsWith('#/sessions')) return { viewMode: 'session-library', builderId: null };
-  if (hash.startsWith('#/chat')) return { viewMode: 'chat', builderId: null };
-  if (hash.startsWith('#/docs')) return { viewMode: 'docs', builderId: null };
+  if (hash.startsWith('#/location-builder')) {
+    const query = hash.split('?')[1];
+    const params = new URLSearchParams(query);
+    return {
+      viewMode: 'location-builder',
+      builderId: null,
+      locationMapId: params.get('mapId'),
+      locationSettingId: params.get('settingId'),
+    };
+  }
+  if (hash.startsWith('#/characters'))
+    return {
+      viewMode: 'character-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/settings'))
+    return {
+      viewMode: 'setting-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/tags'))
+    return {
+      viewMode: 'tag-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/items'))
+    return {
+      viewMode: 'item-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/personas'))
+    return {
+      viewMode: 'persona-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/locations'))
+    return {
+      viewMode: 'location-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/session-builder'))
+    return {
+      viewMode: 'session-builder',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/sessions'))
+    return {
+      viewMode: 'session-library',
+      builderId: null,
+      locationMapId: null,
+      locationSettingId: null,
+    };
+  if (hash.startsWith('#/chat'))
+    return { viewMode: 'chat', builderId: null, locationMapId: null, locationSettingId: null };
+  if (hash.startsWith('#/docs'))
+    return { viewMode: 'docs', builderId: null, locationMapId: null, locationSettingId: null };
 
-  return { viewMode: 'home', builderId: null };
+  return { viewMode: 'home', builderId: null, locationMapId: null, locationSettingId: null };
 }
 
 export function useAppController(): AppControllerValue {
@@ -72,6 +149,12 @@ export function useAppController(): AppControllerValue {
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => parseHashRoute().viewMode);
   const [builderId, setBuilderId] = useState<string | null>(() => parseHashRoute().builderId);
+  const [locationMapId, setLocationMapId] = useState<string | null>(
+    () => parseHashRoute().locationMapId
+  );
+  const [locationSettingId, setLocationSettingId] = useState<string | null>(
+    () => parseHashRoute().locationSettingId
+  );
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -114,9 +197,16 @@ export function useAppController(): AppControllerValue {
 
   useEffect(() => {
     const onHashChange = () => {
-      const { viewMode: newViewMode, builderId: newBuilderId } = parseHashRoute();
+      const {
+        viewMode: newViewMode,
+        builderId: newBuilderId,
+        locationMapId: newLocationMapId,
+        locationSettingId: newLocationSettingId,
+      } = parseHashRoute();
       setViewMode(newViewMode);
       setBuilderId(newBuilderId);
+      setLocationMapId(newLocationMapId);
+      setLocationSettingId(newLocationSettingId);
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -192,6 +282,20 @@ export function useAppController(): AppControllerValue {
       window.location.hash = `#/persona-builder?id=${id}`;
     } else {
       window.location.hash = '#/persona-builder';
+    }
+  };
+
+  const navigateToLocationLibrary = () => {
+    window.location.hash = '#/locations';
+  };
+
+  const navigateToLocationBuilder = (params?: { mapId?: string; settingId?: string } | null) => {
+    if (params?.mapId) {
+      window.location.hash = `#/location-builder?mapId=${params.mapId}`;
+    } else if (params?.settingId) {
+      window.location.hash = `#/location-builder?settingId=${params.settingId}`;
+    } else {
+      window.location.hash = '#/location-builder';
     }
   };
 
@@ -285,6 +389,8 @@ export function useAppController(): AppControllerValue {
     setCurrentSessionId,
     viewMode,
     builderId,
+    locationMapId,
+    locationSettingId,
     creating,
     createError,
     sessionsLoading,
@@ -316,6 +422,8 @@ export function useAppController(): AppControllerValue {
     navigateToTagBuilder,
     navigateToItemBuilder,
     navigateToPersonaBuilder,
+    navigateToLocationLibrary,
+    navigateToLocationBuilder,
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,

@@ -32,7 +32,7 @@ import { deepMerge, deepDiff, deepClone, extractPathsFromPatches } from './utils
  */
 export class StateManager {
   private readonly config: Required<StateManagerConfig>;
-  private readonly slices: Map<string, StateSlice<unknown>> = new Map();
+  private readonly slices = new Map<string, StateSlice<unknown>>();
 
   constructor(config: StateManagerConfig = {}) {
     this.config = { ...DEFAULT_STATE_MANAGER_CONFIG, ...config };
@@ -323,7 +323,7 @@ export class StateManager {
       const hasOverrides = Object.keys(overrides as object).length > 0;
       const effective = hasOverrides ? { ...base, ...overrides } : deepClone(base);
       return {
-        effective: effective as T,
+        effective,
         overriddenPaths: hasOverrides ? Object.keys(overrides as object) : [],
       };
     }

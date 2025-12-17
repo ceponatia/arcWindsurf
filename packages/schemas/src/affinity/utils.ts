@@ -54,7 +54,7 @@ export function calculateDisposition(
   let totalWeight = 0;
 
   // Process each dimension
-  const dimensions: Array<{ key: keyof DispositionWeights; score: number | undefined }> = [
+  const dimensions: { key: keyof DispositionWeights; score: number | undefined }[] = [
     { key: 'fondness', score: affinity.fondness },
     { key: 'trust', score: affinity.trust },
     { key: 'respect', score: affinity.respect },
@@ -215,7 +215,7 @@ export function applyAffinityEffect(
     }
   } else {
     // Other dimensions are -100 to 100
-    const key = effect.dimension as keyof Omit<RelationshipScores, 'fear' | 'attraction'>;
+    const key = effect.dimension;
     result[key] = clamp((result[key] ?? 0) + change, -100, 100);
   }
 
@@ -341,7 +341,7 @@ export function applyAffinityDecay(
     const value = result[dimension];
     if (value === undefined) continue;
 
-    const multiplier = config.dimensionMultipliers[dimension] ?? 1;
+    const multiplier = config.dimensionMultipliers?.[dimension] ?? 1;
     const decay = config.dailyDecayRate * multiplier * daysSinceLastInteraction;
 
     if (dimension === 'fear') {
@@ -357,10 +357,10 @@ export function applyAffinityDecay(
     } else {
       // Other dimensions decay toward neutral zone
       if (value > config.decayCeiling) {
-        const key = dimension as keyof Omit<RelationshipScores, 'fear' | 'attraction'>;
+        const key = dimension;
         result[key] = Math.max(config.decayCeiling, value - decay);
       } else if (value < config.decayFloor) {
-        const key = dimension as keyof Omit<RelationshipScores, 'fear' | 'attraction'>;
+        const key = dimension;
         result[key] = Math.min(config.decayFloor, value + decay);
       }
     }

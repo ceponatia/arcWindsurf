@@ -6,7 +6,12 @@ import {
   getDefaultAttribute,
   type AppearanceRegion,
 } from '@minimal-rpg/schemas';
-import type { AppearanceEntry } from '../types.js';
+import {
+  type AppearanceEntry,
+  getUsedAppearanceCombinations,
+  findNextAvailableAppearanceEntry,
+  isAppearanceCombinationUsed,
+} from '../types.js';
 
 interface AppearanceSectionProps {
   appearances: AppearanceEntry[];
@@ -16,7 +21,7 @@ interface AppearanceSectionProps {
     key: K,
     value: AppearanceEntry[K]
   ) => void;
-  addAppearanceEntry: () => void;
+  addAppearanceEntry: (entry?: AppearanceEntry) => void;
   removeAppearanceEntry: (idx: number) => void;
 }
 
@@ -61,18 +66,52 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   };
 
   const availableRegions = getAvailableRegions();
+
+  /**
+   * Get available attributes for a region, excluding already-used combinations.
+   * This prevents users from selecting the same region+attribute twice.
+   */
+  const getAvailableAttributes = (
+    region: AppearanceRegion,
+    currentIdx: number
+  ): { key: string; label: string; disabled: boolean }[] => {
+    const regionAttrs = APPEARANCE_REGION_ATTRIBUTES[region];
+    return Object.entries(regionAttrs).map(([key, def]) => ({
+      key,
+      label: def.label,
+      disabled: isAppearanceCombinationUsed(appearances, region, key, currentIdx),
+    }));
+  };
+
   const handleRegionChange = (idx: number, newRegion: AppearanceRegion) => {
-    // When region changes, reset attribute to the first available for that region
-    const defaultAttr = getDefaultAttribute(newRegion);
+    // When region changes, find the first available attribute for that region
+    const availableAttrs = getAvailableAttributes(newRegion, idx);
+    const firstAvailable = availableAttrs.find((a) => !a.disabled);
+    const defaultAttr = firstAvailable?.key ?? getDefaultAttribute(newRegion);
+
     updateAppearanceEntry(idx, 'region', newRegion);
     updateAppearanceEntry(idx, 'attribute', defaultAttr);
+    updateAppearanceEntry(idx, 'value', '');
+  };
+
+  const handleAttributeChange = (idx: number, newAttribute: string) => {
+    const entry = appearances[idx];
+    if (!entry) return;
+
+    // Check if this combination is already used
+    if (isAppearanceCombinationUsed(appearances, entry.region, newAttribute, idx)) {
+      // Don't allow selecting a used combination
+      return;
+    }
+
+    updateAppearanceEntry(idx, 'attribute', newAttribute);
     updateAppearanceEntry(idx, 'value', '');
   };
 
   /**
    * Handle value changes with auto-add functionality.
    * When the last entry's value is populated (all 3 fields filled),
-   * automatically add a new empty entry for convenience.
+   * automatically add a new empty entry for the next available combination.
    */
   const handleValueChange = (idx: number, newValue: string) => {
     updateAppearanceEntry(idx, 'value', newValue);
@@ -86,7 +125,34 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     const hasValue = newValue.trim() !== '';
 
     if (isLastEntry && hasRegion && hasAttribute && hasValue) {
-      addAppearanceEntry();
+      // Find the next available combination
+      const usedCombos = getUsedAppearanceCombinations(appearances);
+      // Also mark the current entry as used (since we just set a value)
+      usedCombos.add(`${entry.region}:${entry.attribute}`);
+
+      const nextEntry = findNextAvailableAppearanceEntry(usedCombos, availableRegions);
+      if (nextEntry) {
+        addAppearanceEntry(nextEntry);
+      }
+    }
+  };
+
+  /**
+   * Check if all appearance combinations have been used.
+   */
+  const allCombinationsUsed = (): boolean => {
+    const usedCombos = getUsedAppearanceCombinations(appearances);
+    return findNextAvailableAppearanceEntry(usedCombos, availableRegions) === null;
+  };
+
+  /**
+   * Handle adding a new entry manually - finds next available combination.
+   */
+  const handleAddEntry = () => {
+    const usedCombos = getUsedAppearanceCombinations(appearances);
+    const nextEntry = findNextAvailableAppearanceEntry(usedCombos, availableRegions);
+    if (nextEntry) {
+      addAppearanceEntry(nextEntry);
     }
   };
 
@@ -108,6 +174,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           const regionAttrs = APPEARANCE_REGION_ATTRIBUTES[entry.region];
           const attrDef = regionAttrs[entry.attribute];
           const hasPresetValues = attrDef?.values && attrDef.values.length > 0;
+          const availableAttrs = getAvailableAttributes(entry.region, idx);
 
           return (
             <div
@@ -144,14 +211,12 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                   <select
                     className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                     value={entry.attribute}
-                    onChange={(e) => {
-                      updateAppearanceEntry(idx, 'attribute', e.target.value);
-                      updateAppearanceEntry(idx, 'value', '');
-                    }}
+                    onChange={(e) => handleAttributeChange(idx, e.target.value)}
                   >
-                    {Object.entries(regionAttrs).map(([key, def]) => (
-                      <option key={key} value={key}>
-                        {def.label}
+                    {availableAttrs.map(({ key, label, disabled }) => (
+                      <option key={key} value={key} disabled={disabled}>
+                        {label}
+                        {disabled ? ' (used)' : ''}
                       </option>
                     ))}
                   </select>
@@ -185,13 +250,15 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           );
         })}
 
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-slate-200 ring-1 ring-slate-800 hover:bg-slate-800"
-          onClick={addAppearanceEntry}
-        >
-          + Add Appearance Entry
-        </button>
+        {!allCombinationsUsed() && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-slate-200 ring-1 ring-slate-800 hover:bg-slate-800"
+            onClick={handleAddEntry}
+          >
+            + Add Appearance Entry
+          </button>
+        )}
       </div>
     </div>
   );

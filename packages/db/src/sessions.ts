@@ -1658,3 +1658,457 @@ function workspaceDraftFromRow(row: Record<string, unknown>): WorkspaceDraftReco
     updatedAt: toIsoDate(row['updated_at']),
   };
 }
+
+// =============================================================================
+// Session Location Map
+// =============================================================================
+
+/**
+ * Location map record attached to a session.
+ */
+export interface SessionLocationMapRecord {
+  id: UUID;
+  sessionId: UUID;
+  locationMapId: UUID;
+  overridesJson: Record<string, unknown>;
+  createdAt: string;
+  /** The full location map data (from joined location_maps table) */
+  locationMap?: {
+    id: UUID;
+    settingId: UUID;
+    name: string;
+    description: string | null;
+    isTemplate: boolean;
+    nodesJson: unknown[];
+    connectionsJson: unknown[];
+    defaultStartLocationId: string | null;
+    tags: string[];
+  };
+}
+
+/**
+ * Get the location map attached to a session.
+ * Joins with location_maps to get the full map data.
+ */
+export async function getSessionLocationMap(
+  sessionId: UUID
+): Promise<SessionLocationMapRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT 
+       slm.id,
+       slm.session_id,
+       slm.location_map_id,
+       slm.overrides_json,
+       slm.created_at,
+       lm.id as map_id,
+       lm.setting_id,
+       lm.name as map_name,
+       lm.description as map_description,
+       lm.is_template,
+       lm.nodes_json,
+       lm.connections_json,
+       lm.default_start_location_id,
+       lm.tags as map_tags
+     FROM session_location_maps slm
+     JOIN location_maps lm ON slm.location_map_id = lm.id
+     WHERE slm.session_id = $1`,
+    [sessionId]
+  );
+
+  if (res.rows.length === 0) return null;
+
+  const row = res.rows[0] as Record<string, unknown>;
+  return sessionLocationMapFromRow(row);
+}
+
+/**
+ * Create a session location map binding.
+ */
+export async function createSessionLocationMap(
+  sessionId: UUID,
+  locationMapId: UUID,
+  overrides: Record<string, unknown> = {}
+): Promise<SessionLocationMapRecord | null> {
+  const id = genUUID();
+  const res: QueryResult<DbRow> = await pool.query(
+    `INSERT INTO session_location_maps (id, session_id, location_map_id, overrides_json)
+     VALUES ($1, $2, $3, $4::jsonb)
+     ON CONFLICT (session_id) DO UPDATE SET 
+       location_map_id = EXCLUDED.location_map_id,
+       overrides_json = EXCLUDED.overrides_json
+     RETURNING *`,
+    [id, sessionId, locationMapId, JSON.stringify(overrides)]
+  );
+
+  if (res.rows.length === 0) return null;
+
+  // Fetch the full record with joined map data
+  return getSessionLocationMap(sessionId);
+}
+
+/**
+ * Delete the session location map binding.
+ */
+export async function deleteSessionLocationMap(sessionId: UUID): Promise<boolean> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'DELETE FROM session_location_maps WHERE session_id = $1',
+    [sessionId]
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+/**
+ * Helper to convert a database row to a SessionLocationMapRecord.
+ */
+function sessionLocationMapFromRow(row: Record<string, unknown>): SessionLocationMapRecord | null {
+  const id = readStr(row, 'id');
+  if (!id) return null;
+
+  const record: SessionLocationMapRecord = {
+    id: id as UUID,
+    sessionId: readStr(row, 'session_id') as UUID,
+    locationMapId: readStr(row, 'location_map_id') as UUID,
+    overridesJson: readJsonRecord(row['overrides_json']) ?? {},
+    createdAt: toIsoDate(row['created_at']),
+  };
+
+  // Include joined location map data if present
+  if (row['map_id']) {
+    record.locationMap = {
+      id: readStr(row, 'map_id') as UUID,
+      settingId: readStr(row, 'setting_id') as UUID,
+      name: readStr(row, 'map_name'),
+      description: typeof row['map_description'] === 'string' ? row['map_description'] : null,
+      isTemplate: row['is_template'] === true,
+      nodesJson: Array.isArray(row['nodes_json']) ? row['nodes_json'] : [],
+      connectionsJson: Array.isArray(row['connections_json']) ? row['connections_json'] : [],
+      defaultStartLocationId:
+        typeof row['default_start_location_id'] === 'string'
+          ? row['default_start_location_id']
+          : null,
+      tags: Array.isArray(row['map_tags']) ? (row['map_tags'] as string[]) : [],
+    };
+  }
+
+  return record;
+}
+
+// =============================================================================
+// Tool Call History Functions
+// =============================================================================
+
+/**
+ * Record of a tool call made during a turn.
+ */
+export interface ToolCallRecord {
+  id: UUID;
+  sessionId: UUID;
+  turnIdx: number;
+  toolName: string;
+  toolArgs: Record<string, unknown>;
+  toolResult: Record<string, unknown> | null;
+  success: boolean;
+  createdAt: string;
+}
+
+/**
+ * Append a tool call to the history.
+ * Called after each tool execution during a turn.
+ */
+export async function appendToolCallHistory(params: {
+  sessionId: UUID;
+  turnIdx: number;
+  toolName: string;
+  toolArgs: Record<string, unknown>;
+  toolResult?: Record<string, unknown>;
+  success: boolean;
+}): Promise<void> {
+  const id = genUUID();
+  await pool.query(
+    `INSERT INTO tool_call_history (id, session_id, turn_idx, tool_name, tool_args, tool_result, success)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)`,
+    [
+      id,
+      params.sessionId,
+      params.turnIdx,
+      params.toolName,
+      JSON.stringify(params.toolArgs),
+      params.toolResult ? JSON.stringify(params.toolResult) : null,
+      params.success,
+    ]
+  );
+}
+
+/**
+ * Append multiple tool calls at once (batch insert).
+ */
+export async function appendToolCallHistoryBatch(
+  calls: Array<{
+    sessionId: UUID;
+    turnIdx: number;
+    toolName: string;
+    toolArgs: Record<string, unknown>;
+    toolResult: Record<string, unknown> | undefined;
+    success: boolean;
+  }>
+): Promise<void> {
+  if (calls.length === 0) return;
+
+  const values: unknown[] = [];
+  const placeholders: string[] = [];
+  let paramIdx = 1;
+
+  for (const call of calls) {
+    const id = genUUID();
+    placeholders.push(
+      `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}::jsonb, $${paramIdx + 5}::jsonb, $${paramIdx + 6})`
+    );
+    values.push(
+      id,
+      call.sessionId,
+      call.turnIdx,
+      call.toolName,
+      JSON.stringify(call.toolArgs),
+      call.toolResult ? JSON.stringify(call.toolResult) : null,
+      call.success
+    );
+    paramIdx += 7;
+  }
+
+  await pool.query(
+    `INSERT INTO tool_call_history (id, session_id, turn_idx, tool_name, tool_args, tool_result, success)
+     VALUES ${placeholders.join(', ')}`,
+    values
+  );
+}
+
+/**
+ * Get recent tool calls for a session.
+ * Returns tool calls from the most recent N turns.
+ */
+export async function getRecentToolCalls(
+  sessionId: UUID,
+  options: { turnLimit?: number; limit?: number } = {}
+): Promise<ToolCallRecord[]> {
+  const turnLimit = options.turnLimit ?? 10;
+  const limit = options.limit ?? 50;
+
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM tool_call_history 
+     WHERE session_id = $1 
+       AND turn_idx > (
+         SELECT COALESCE(MAX(turn_idx), 0) - $2 FROM tool_call_history WHERE session_id = $1
+       )
+     ORDER BY turn_idx DESC, created_at DESC
+     LIMIT $3`,
+    [sessionId, turnLimit, limit]
+  );
+
+  return res.rows.map((r) => {
+    const rec = r as Record<string, unknown>;
+    return {
+      id: readStr(rec, 'id') as UUID,
+      sessionId: readStr(rec, 'session_id') as UUID,
+      turnIdx: Number(rec['turn_idx'] ?? 0),
+      toolName: readStr(rec, 'tool_name'),
+      toolArgs: readJsonRecord(rec['tool_args']) ?? {},
+      toolResult: readJsonRecord(rec['tool_result']),
+      success: rec['success'] === true,
+      createdAt: toIsoDate(rec['created_at']),
+    };
+  });
+}
+
+/**
+ * Get tool call statistics for a session.
+ * Useful for understanding tool usage patterns.
+ */
+export async function getToolCallStats(sessionId: UUID): Promise<{
+  totalCalls: number;
+  callsByTool: Record<string, number>;
+  recentTools: string[];
+}> {
+  // Get count by tool name
+  const statsRes: QueryResult<DbRow> = await pool.query(
+    `SELECT tool_name, COUNT(*) as call_count 
+     FROM tool_call_history 
+     WHERE session_id = $1 
+     GROUP BY tool_name 
+     ORDER BY call_count DESC`,
+    [sessionId]
+  );
+
+  const callsByTool: Record<string, number> = {};
+  let totalCalls = 0;
+
+  for (const row of statsRes.rows) {
+    const rec = row as Record<string, unknown>;
+    const name = readStr(rec, 'tool_name');
+    const count = Number(rec['call_count'] ?? 0);
+    callsByTool[name] = count;
+    totalCalls += count;
+  }
+
+  // Get most recent distinct tools (last 5 turns)
+  const recentRes: QueryResult<DbRow> = await pool.query(
+    `SELECT DISTINCT tool_name 
+     FROM tool_call_history 
+     WHERE session_id = $1 
+       AND turn_idx > (
+         SELECT COALESCE(MAX(turn_idx), 0) - 5 FROM tool_call_history WHERE session_id = $1
+       )
+     ORDER BY tool_name`,
+    [sessionId]
+  );
+
+  const recentTools = recentRes.rows.map((r) => readStr(r as Record<string, unknown>, 'tool_name'));
+
+  return { totalCalls, callsByTool, recentTools };
+}
+
+/**
+ * Delete tool call history for a session.
+ */
+export async function deleteToolCallHistory(sessionId: UUID): Promise<void> {
+  await pool.query('DELETE FROM tool_call_history WHERE session_id = $1', [sessionId]);
+}
+
+// =============================================================================
+// Conversation Summary Functions
+// =============================================================================
+
+/**
+ * Conversation summary record.
+ */
+export interface ConversationSummaryRecord {
+  id: UUID;
+  sessionId: UUID;
+  summaryType: 'general' | 'tool_usage' | 'npc_specific';
+  npcId: string | null;
+  summaryText: string;
+  coversUpToTurn: number;
+  toolUsageHints: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Upsert a conversation summary.
+ * Updates if exists for this session/type/npc combo, otherwise inserts.
+ */
+export async function upsertConversationSummary(params: {
+  sessionId: UUID;
+  summaryType: 'general' | 'tool_usage' | 'npc_specific';
+  npcId?: string;
+  summaryText: string;
+  coversUpToTurn: number;
+  toolUsageHints?: string[];
+}): Promise<ConversationSummaryRecord> {
+  const id = genUUID();
+  const hints = params.toolUsageHints ?? [];
+
+  const res: QueryResult<DbRow> = await pool.query(
+    `INSERT INTO conversation_summaries 
+       (id, session_id, summary_type, npc_id, summary_text, covers_up_to_turn, tool_usage_hints)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (session_id, summary_type, COALESCE(npc_id, '')) 
+     DO UPDATE SET 
+       summary_text = EXCLUDED.summary_text,
+       covers_up_to_turn = EXCLUDED.covers_up_to_turn,
+       tool_usage_hints = EXCLUDED.tool_usage_hints,
+       updated_at = now()
+     RETURNING *`,
+    [
+      id,
+      params.sessionId,
+      params.summaryType,
+      params.npcId ?? null,
+      params.summaryText,
+      params.coversUpToTurn,
+      hints,
+    ]
+  );
+
+  const row = res.rows[0] as Record<string, unknown>;
+  return {
+    id: readStr(row, 'id') as UUID,
+    sessionId: readStr(row, 'session_id') as UUID,
+    summaryType: readStr(row, 'summary_type') as 'general' | 'tool_usage' | 'npc_specific',
+    npcId: typeof row['npc_id'] === 'string' ? row['npc_id'] : null,
+    summaryText: readStr(row, 'summary_text'),
+    coversUpToTurn: Number(row['covers_up_to_turn'] ?? 0),
+    toolUsageHints: Array.isArray(row['tool_usage_hints'])
+      ? (row['tool_usage_hints'] as string[])
+      : [],
+    createdAt: toIsoDate(row['created_at']),
+    updatedAt: toIsoDate(row['updated_at']),
+  };
+}
+
+/**
+ * Get conversation summary for a session.
+ */
+export async function getConversationSummary(
+  sessionId: UUID,
+  summaryType: 'general' | 'tool_usage' | 'npc_specific' = 'general',
+  npcId?: string
+): Promise<ConversationSummaryRecord | null> {
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM conversation_summaries 
+     WHERE session_id = $1 AND summary_type = $2 AND COALESCE(npc_id, '') = $3`,
+    [sessionId, summaryType, npcId ?? '']
+  );
+
+  if (res.rows.length === 0) return null;
+
+  const row = res.rows[0] as Record<string, unknown>;
+  return {
+    id: readStr(row, 'id') as UUID,
+    sessionId: readStr(row, 'session_id') as UUID,
+    summaryType: readStr(row, 'summary_type') as 'general' | 'tool_usage' | 'npc_specific',
+    npcId: typeof row['npc_id'] === 'string' ? row['npc_id'] : null,
+    summaryText: readStr(row, 'summary_text'),
+    coversUpToTurn: Number(row['covers_up_to_turn'] ?? 0),
+    toolUsageHints: Array.isArray(row['tool_usage_hints'])
+      ? (row['tool_usage_hints'] as string[])
+      : [],
+    createdAt: toIsoDate(row['created_at']),
+    updatedAt: toIsoDate(row['updated_at']),
+  };
+}
+
+/**
+ * Get all summaries for a session.
+ */
+export async function getAllConversationSummaries(
+  sessionId: UUID
+): Promise<ConversationSummaryRecord[]> {
+  const res: QueryResult<DbRow> = await pool.query(
+    'SELECT * FROM conversation_summaries WHERE session_id = $1 ORDER BY summary_type, npc_id',
+    [sessionId]
+  );
+
+  return res.rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      id: readStr(row, 'id') as UUID,
+      sessionId: readStr(row, 'session_id') as UUID,
+      summaryType: readStr(row, 'summary_type') as 'general' | 'tool_usage' | 'npc_specific',
+      npcId: typeof row['npc_id'] === 'string' ? row['npc_id'] : null,
+      summaryText: readStr(row, 'summary_text'),
+      coversUpToTurn: Number(row['covers_up_to_turn'] ?? 0),
+      toolUsageHints: Array.isArray(row['tool_usage_hints'])
+        ? (row['tool_usage_hints'] as string[])
+        : [],
+      createdAt: toIsoDate(row['created_at']),
+      updatedAt: toIsoDate(row['updated_at']),
+    };
+  });
+}
+
+/**
+ * Delete conversation summaries for a session.
+ */
+export async function deleteConversationSummaries(sessionId: UUID): Promise<void> {
+  await pool.query('DELETE FROM conversation_summaries WHERE session_id = $1', [sessionId]);
+}

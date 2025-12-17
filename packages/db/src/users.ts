@@ -16,7 +16,7 @@ import type { DbRow, UUID } from './types.js';
  */
 export interface UserPreferences {
   /** Preferred workspace mode: wizard (step-by-step) or compact (power user) */
-  workspaceMode?: 'wizard' | 'compact';
+  workspaceMode?: 'wizard' | 'compact' | undefined;
   /** Future preferences can be added here */
   [key: string]: unknown;
 }

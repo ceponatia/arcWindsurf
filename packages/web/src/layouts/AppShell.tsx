@@ -15,6 +15,7 @@ import {
   ItemLibrary,
   PersonaLibrary,
 } from '../features/library/index.js';
+import { LocationView } from '../features/locations/index.js';
 import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { AppFooter } from './AppFooter.js';
@@ -114,6 +115,21 @@ const DocumentIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const MapPinIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+  >
+    <path
+      fillRule="evenodd"
+      d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
 export const AppShell: React.FC = () => {
   const controller: AppControllerValue = useAppController();
   const isMobile = useIsMobile();
@@ -174,6 +190,8 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToPersonaBuilder,
+    navigateToLocationLibrary,
+    navigateToLocationBuilder,
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
@@ -245,6 +263,12 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               label="Settings"
               active={viewMode === 'setting-library' || viewMode === 'setting-builder'}
               onClick={navigateToSettingLibrary}
+            />
+            <NavButton
+              icon={<MapPinIcon className="w-5 h-5" />}
+              label="Locations"
+              active={viewMode === 'location-library' || viewMode === 'location-builder'}
+              onClick={navigateToLocationLibrary}
             />
             <NavButton
               icon={<TagIcon className="w-5 h-5" />}
@@ -321,6 +345,8 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                 navigateToSettingBuilder={navigateToSettingBuilder}
                 navigateToTagBuilder={navigateToTagBuilder}
                 navigateToPersonaBuilder={navigateToPersonaBuilder}
+                navigateToLocationLibrary={navigateToLocationLibrary}
+                navigateToLocationBuilder={navigateToLocationBuilder}
                 navigateToCharacterLibrary={navigateToCharacterLibrary}
                 navigateToSettingLibrary={navigateToSettingLibrary}
                 navigateToTagLibrary={navigateToTagLibrary}
@@ -372,6 +398,8 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     navigateToCharacterBuilder,
     navigateToSettingBuilder,
     navigateToTagBuilder,
+    navigateToLocationLibrary,
+    navigateToLocationBuilder,
     navigateToCharacterLibrary,
     navigateToSettingLibrary,
     navigateToTagLibrary,
@@ -473,6 +501,15 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               }}
             />
             <NavButton
+              icon={<MapPinIcon className="w-5 h-5" />}
+              label="Locations"
+              active={viewMode === 'location-library' || viewMode === 'location-builder'}
+              onClick={() => {
+                navigateToLocationLibrary();
+                handleNavClose();
+              }}
+            />
+            <NavButton
               icon={<TagIcon className="w-5 h-5" />}
               label="Tags"
               active={viewMode === 'tag-library' || viewMode === 'tag-builder'}
@@ -548,6 +585,8 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             navigateToSettingBuilder={navigateToSettingBuilder}
             navigateToTagBuilder={navigateToTagBuilder}
             navigateToPersonaBuilder={controller.navigateToPersonaBuilder}
+            navigateToLocationLibrary={navigateToLocationLibrary}
+            navigateToLocationBuilder={navigateToLocationBuilder}
             navigateToCharacterLibrary={navigateToCharacterLibrary}
             navigateToSettingLibrary={navigateToSettingLibrary}
             navigateToTagLibrary={navigateToTagLibrary}
@@ -604,6 +643,8 @@ interface MainContentProps {
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
   navigateToPersonaBuilder: (id?: string | null) => void;
+  navigateToLocationLibrary: () => void;
+  navigateToLocationBuilder: (params?: { mapId?: string; settingId?: string } | null) => void;
   navigateToCharacterLibrary: () => void;
   navigateToSettingLibrary: () => void;
   navigateToTagLibrary: () => void;
@@ -637,7 +678,6 @@ const MainContent: React.FC<MainContentProps> = ({
   settingsError,
   settingsData,
   tagsLoading,
-  tagsError,
   tagsData,
   itemsLoading,
   itemsError,
@@ -663,11 +703,8 @@ const MainContent: React.FC<MainContentProps> = ({
   navigateToPersonaLibrary,
   navigateToItemBuilder,
   navigateToSessionBuilder,
-  navigateToSessionLibrary,
+  navigateToHome,
   selectSession,
-  creating,
-  createError,
-  onStartSession,
   onCreateSessionFull,
   onSessionCreated,
 }) => {
@@ -832,6 +869,14 @@ const MainContent: React.FC<MainContentProps> = ({
 
     case 'docs':
       return <DocsViewer />;
+
+    case 'location-library':
+      return <LocationView onBack={navigateToHome} />;
+
+    case 'location-builder':
+      // LocationBuilder is used within the Session Workspace for building session maps
+      // The LocationView provides the prefab builder with canvas-based editing
+      return <LocationView onBack={navigateToHome} />;
 
     default:
       return null;

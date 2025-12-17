@@ -29,6 +29,7 @@ export interface RuntimeConfig {
   openrouterApiKey: string;
   openrouterModel: string;
   governorDevMode: boolean;
+  debugLlm: boolean;
 }
 
 // LLM chat roles

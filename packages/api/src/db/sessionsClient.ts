@@ -68,6 +68,21 @@ import {
   getRecentSceneActions as rawGetRecentSceneActions,
   pruneOldSceneActions as rawPruneOldSceneActions,
   deleteSceneActions as rawDeleteSceneActions,
+  // Session location map functions
+  getSessionLocationMap as rawGetSessionLocationMap,
+  createSessionLocationMap as rawCreateSessionLocationMap,
+  deleteSessionLocationMap as rawDeleteSessionLocationMap,
+  // Tool call history functions
+  appendToolCallHistory as rawAppendToolCallHistory,
+  appendToolCallHistoryBatch as rawAppendToolCallHistoryBatch,
+  getRecentToolCalls as rawGetRecentToolCalls,
+  getToolCallStats as rawGetToolCallStats,
+  deleteToolCallHistory as rawDeleteToolCallHistory,
+  // Conversation summary functions
+  upsertConversationSummary as rawUpsertConversationSummary,
+  getConversationSummary as rawGetConversationSummary,
+  getAllConversationSummaries as rawGetAllConversationSummaries,
+  deleteConversationSummaries as rawDeleteConversationSummaries,
 } from '@minimal-rpg/db/node';
 import type { SessionsClientLike } from './types.js';
 
@@ -154,3 +169,30 @@ export const getSceneActions = rawGetSceneActions;
 export const getRecentSceneActions = rawGetRecentSceneActions;
 export const pruneOldSceneActions = rawPruneOldSceneActions;
 export const deleteSceneActions = rawDeleteSceneActions;
+
+// Session location map functions
+export const getSessionLocationMap = rawGetSessionLocationMap;
+export const createSessionLocationMap = rawCreateSessionLocationMap;
+export const deleteSessionLocationMap = rawDeleteSessionLocationMap;
+
+// Re-export SessionLocationMapRecord type for consumers
+export type { SessionLocationMapRecord } from '@minimal-rpg/db/node';
+
+// Tool call history functions
+export const appendToolCallHistory = rawAppendToolCallHistory;
+export const appendToolCallHistoryBatch = rawAppendToolCallHistoryBatch;
+export const getRecentToolCalls = rawGetRecentToolCalls;
+export const getToolCallStats = rawGetToolCallStats;
+export const deleteToolCallHistory = rawDeleteToolCallHistory;
+
+// Re-export ToolCallRecord type for consumers
+export type { ToolCallRecord } from '@minimal-rpg/db/node';
+
+// Conversation summary functions
+export const upsertConversationSummary = rawUpsertConversationSummary;
+export const getConversationSummary = rawGetConversationSummary;
+export const getAllConversationSummaries = rawGetAllConversationSummaries;
+export const deleteConversationSummaries = rawDeleteConversationSummaries;
+
+// Re-export ConversationSummaryRecord type for consumers
+export type { ConversationSummaryRecord } from '@minimal-rpg/db/node';

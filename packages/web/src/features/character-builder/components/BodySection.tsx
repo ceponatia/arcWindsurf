@@ -1,6 +1,13 @@
 import React from 'react';
 import { BODY_REGIONS, type BodyRegion } from '@minimal-rpg/schemas';
-import { SENSORY_TYPES, type BodySensoryEntry, type SensoryType } from '../types.js';
+import {
+  SENSORY_TYPES,
+  type BodySensoryEntry,
+  type SensoryType,
+  getUsedSensoryCombinations,
+  findNextAvailableSensoryEntry,
+  isSensoryCombinationUsed,
+} from '../types.js';
 
 interface BodySectionProps {
   bodySensory: BodySensoryEntry[];
@@ -10,7 +17,7 @@ interface BodySectionProps {
     key: K,
     value: BodySensoryEntry[K]
   ) => void;
-  addBodyEntry: () => void;
+  addBodyEntry: (entry?: BodySensoryEntry) => void;
   removeBodyEntry: (idx: number) => void;
 }
 
@@ -99,6 +106,94 @@ export const BodySection: React.FC<BodySectionProps> = ({
 }) => {
   const availableRegions = getAvailableRegions(gender);
 
+  /**
+   * Get available sensory types for a region, excluding already-used combinations.
+   * This prevents users from selecting the same region+type twice.
+   */
+  const getAvailableSensoryTypes = (
+    region: BodyRegion,
+    currentIdx: number
+  ): { type: SensoryType; label: string; disabled: boolean }[] => {
+    return SENSORY_TYPES.map((type) => ({
+      type,
+      label: SENSORY_LABELS[type],
+      disabled: isSensoryCombinationUsed(bodySensory, region, type, currentIdx),
+    }));
+  };
+
+  const handleRegionChange = (idx: number, newRegion: BodyRegion) => {
+    // When region changes, find the first available sensory type for that region
+    const availableTypes = getAvailableSensoryTypes(newRegion, idx);
+    const firstAvailable = availableTypes.find((t) => !t.disabled);
+    const defaultType = firstAvailable?.type ?? 'scent';
+
+    updateBodyEntry(idx, 'region', newRegion);
+    updateBodyEntry(idx, 'type', defaultType);
+    updateBodyEntry(idx, 'raw', '');
+  };
+
+  const handleTypeChange = (idx: number, newType: SensoryType) => {
+    const entry = bodySensory[idx];
+    if (!entry) return;
+
+    // Check if this combination is already used
+    if (isSensoryCombinationUsed(bodySensory, entry.region, newType, idx)) {
+      // Don't allow selecting a used combination
+      return;
+    }
+
+    updateBodyEntry(idx, 'type', newType);
+    updateBodyEntry(idx, 'raw', '');
+  };
+
+  /**
+   * Handle description changes with auto-add functionality.
+   * When the last entry's description is populated,
+   * automatically add a new empty entry for the next available combination.
+   */
+  const handleRawChange = (idx: number, newRaw: string) => {
+    updateBodyEntry(idx, 'raw', newRaw);
+
+    // Auto-add: if this is the last entry and raw is now populated, add a new entry
+    const isLastEntry = idx === bodySensory.length - 1;
+    const entry = bodySensory[idx];
+    if (!entry) return;
+    const hasRegion = entry.region && entry.region.trim() !== '';
+    const hasType = entry.type && entry.type.trim() !== '';
+    const hasRaw = newRaw.trim() !== '';
+
+    if (isLastEntry && hasRegion && hasType && hasRaw) {
+      // Find the next available combination
+      const usedCombos = getUsedSensoryCombinations(bodySensory);
+      // Also mark the current entry as used (since we just set a value)
+      usedCombos.add(`${entry.region}:${entry.type}`);
+
+      const nextEntry = findNextAvailableSensoryEntry(usedCombos, availableRegions);
+      if (nextEntry) {
+        addBodyEntry(nextEntry);
+      }
+    }
+  };
+
+  /**
+   * Check if all sensory combinations have been used.
+   */
+  const allCombinationsUsed = (): boolean => {
+    const usedCombos = getUsedSensoryCombinations(bodySensory);
+    return findNextAvailableSensoryEntry(usedCombos, availableRegions) === null;
+  };
+
+  /**
+   * Handle adding a new entry manually - finds next available combination.
+   */
+  const handleAddEntry = () => {
+    const usedCombos = getUsedSensoryCombinations(bodySensory);
+    const nextEntry = findNextAvailableSensoryEntry(usedCombos, availableRegions);
+    if (nextEntry) {
+      addBodyEntry(nextEntry);
+    }
+  };
+
   return (
     <div className="border border-slate-800 rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">
@@ -119,70 +214,77 @@ export const BodySection: React.FC<BodySectionProps> = ({
           )}
         </p>
 
-        {bodySensory.map((entry, idx) => (
-          <div
-            key={`body-${idx}`}
-            className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-3"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-300">Sensory Entry #{idx + 1}</span>
-              <button
-                type="button"
-                className="text-xs text-slate-400 hover:text-red-300"
-                onClick={() => removeBodyEntry(idx)}
-              >
-                Remove
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Body Region</span>
-                <select
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  value={entry.region}
-                  onChange={(e) => updateBodyEntry(idx, 'region', e.target.value as BodyRegion)}
-                >
-                  {availableRegions.map((region) => (
-                    <option key={region} value={region}>
-                      {REGION_LABELS[region]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Sensory Type</span>
-                <select
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  value={entry.type}
-                  onChange={(e) => updateBodyEntry(idx, 'type', e.target.value as SensoryType)}
-                >
-                  {SENSORY_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {SENSORY_LABELS[type]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 md:col-span-2">
-                <span className="text-xs text-slate-400">Description</span>
-                <textarea
-                  className="min-h-[60px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-                  value={entry.raw}
-                  placeholder={SENSORY_PLACEHOLDERS[entry.type]}
-                  onChange={(e) => updateBodyEntry(idx, 'raw', e.target.value)}
-                />
-              </label>
-            </div>
-          </div>
-        ))}
+        {bodySensory.map((entry, idx) => {
+          const availableTypes = getAvailableSensoryTypes(entry.region, idx);
 
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-slate-200 ring-1 ring-slate-800 hover:bg-slate-800"
-          onClick={addBodyEntry}
-        >
-          + Add Sensory Entry
-        </button>
+          return (
+            <div
+              key={`body-${idx}`}
+              className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-300">Sensory Entry #{idx + 1}</span>
+                <button
+                  type="button"
+                  className="text-xs text-slate-400 hover:text-red-300"
+                  onClick={() => removeBodyEntry(idx)}
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Body Region</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={entry.region}
+                    onChange={(e) => handleRegionChange(idx, e.target.value as BodyRegion)}
+                  >
+                    {availableRegions.map((region) => (
+                      <option key={region} value={region}>
+                        {REGION_LABELS[region]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-400">Sensory Type</span>
+                  <select
+                    className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={entry.type}
+                    onChange={(e) => handleTypeChange(idx, e.target.value as SensoryType)}
+                  >
+                    {availableTypes.map(({ type, label, disabled }) => (
+                      <option key={type} value={type} disabled={disabled}>
+                        {label}
+                        {disabled ? ' (used)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 md:col-span-2">
+                  <span className="text-xs text-slate-400">Description</span>
+                  <textarea
+                    className="min-h-[60px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+                    value={entry.raw}
+                    placeholder={SENSORY_PLACEHOLDERS[entry.type]}
+                    onChange={(e) => handleRawChange(idx, e.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+          );
+        })}
+
+        {!allCombinationsUsed() && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-slate-200 ring-1 ring-slate-800 hover:bg-slate-800"
+            onClick={handleAddEntry}
+          >
+            + Add Sensory Entry
+          </button>
+        )}
       </div>
     </div>
   );

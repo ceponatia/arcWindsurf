@@ -18,8 +18,10 @@ import {
   type GameTime,
   type NpcSchedule,
   type NpcScheduleRef,
+  type LocationMap,
 } from '@minimal-rpg/schemas';
 import type { TurnStateContext, StateObject } from '@minimal-rpg/governor';
+import { LocationGraphService, type LocationInfo } from '@minimal-rpg/governor';
 import { db } from '../db/prismaClient.js';
 import {
   getLocationState,
@@ -27,6 +29,7 @@ import {
   getTimeState,
   getAllAffinityStates,
   getAllNpcLocationStates,
+  getSessionLocationMap,
 } from '../db/sessionsClient.js';
 import { sessionStateCache, type DialogueState } from './state-cache.js';
 import { checkNpcAvailability, type NpcScheduleData } from './schedule-service.js';
@@ -87,6 +90,12 @@ export interface LoadedTurnState {
 
   /** NPC context for the active NPC (schedule, availability, awareness) */
   npcContext: NpcContextLocal | undefined;
+
+  /** Location map for graph-based navigation (optional, from DB) */
+  locationMap: LocationMap | undefined;
+
+  /** Pre-computed location info map for ToolExecutor (derived from locationMap) */
+  locationInfoMap: Map<string, LocationInfo>;
 
   /** Loaded instance references for persistence */
   instances: {
@@ -291,14 +300,48 @@ export async function loadStateForTurn(options: LoadStateOptions): Promise<Loade
   const settingOverrides = parseOverrides(settingInstance.overridesJson);
 
   // Load persisted slices
-  const [storedLocation, storedInventory, storedTime, storedAffinity, storedNpcLocations] =
-    await Promise.all([
-      getLocationState(sessionId),
-      getInventoryState(sessionId),
-      getTimeState(sessionId),
-      getAllAffinityStates(sessionId),
-      getAllNpcLocationStates(sessionId),
-    ]);
+  const [
+    storedLocation,
+    storedInventory,
+    storedTime,
+    storedAffinity,
+    storedNpcLocations,
+    locationMapRecord,
+  ] = await Promise.all([
+    getLocationState(sessionId),
+    getInventoryState(sessionId),
+    getTimeState(sessionId),
+    getAllAffinityStates(sessionId),
+    getAllNpcLocationStates(sessionId),
+    getSessionLocationMap(sessionId),
+  ]);
+
+  // Build location map and info map for navigation
+  let locationMap: LocationMap | undefined;
+  if (locationMapRecord?.locationMap) {
+    const mapData = locationMapRecord.locationMap;
+    locationMap = {
+      id: mapData.id,
+      name: mapData.name,
+      settingId: mapData.settingId,
+      isTemplate: mapData.isTemplate,
+      nodes: mapData.nodesJson as LocationMap['nodes'],
+      connections: mapData.connectionsJson as LocationMap['connections'],
+    };
+    if (mapData.description !== null) {
+      locationMap.description = mapData.description;
+    }
+    if (mapData.defaultStartLocationId !== null) {
+      locationMap.defaultStartLocationId = mapData.defaultStartLocationId;
+    }
+    if (mapData.tags.length > 0) {
+      locationMap.tags = mapData.tags;
+    }
+  }
+
+  const locationInfoMap = locationMap
+    ? LocationGraphService.buildLocationInfoMap(locationMap)
+    : new Map<string, LocationInfo>();
 
   // Helper to extract nested property or default to empty
   const extractNestedOrEmpty = (obj: unknown, key: string): Record<string, unknown> => {
@@ -409,13 +452,13 @@ export async function loadStateForTurn(options: LoadStateOptions): Promise<Loade
   // Add npcContext and npcLocations to baseline for governor access
   // Only set npcContext if we have one (due to exactOptionalPropertyTypes)
   if (npcContext) {
-    baseline['npcContext'] = npcContext;
+    baseline.npcContext = npcContext;
   }
-  baseline['npcLocations'] = Object.fromEntries(npcLocationStates);
+  baseline.npcLocations = Object.fromEntries(npcLocationStates);
   if (playerLocationId !== undefined) {
-    baseline['playerLocationId'] = playerLocationId;
+    baseline.playerLocationId = playerLocationId;
   }
-  baseline['affinity'] = Object.fromEntries(affinityStates);
+  baseline.affinity = Object.fromEntries(affinityStates);
 
   return {
     baseline,
@@ -428,6 +471,8 @@ export async function loadStateForTurn(options: LoadStateOptions): Promise<Loade
     npcLocationStates,
     playerLocationId,
     npcContext,
+    locationMap,
+    locationInfoMap,
     instances: {
       primaryCharacter,
       activeNpc,
@@ -477,7 +522,7 @@ function buildNpcContext(
   // Build schedule data if NPC has a schedule
   // Cast to Record to access optional schedule fields that may not be in the base CharacterProfile type
   const profileRecord = npcProfile as unknown as Record<string, unknown>;
-  const hasSchedule = profileRecord['schedule'] || profileRecord['scheduleRef'];
+  const hasSchedule = profileRecord['schedule'] ?? profileRecord['scheduleRef'];
 
   if (hasSchedule) {
     // Build scheduleData only with properties that have values (not undefined)

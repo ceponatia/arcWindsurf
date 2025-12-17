@@ -15,17 +15,13 @@ import type {
   SenseType,
   EngagementIntensity,
   SensoryEngagement,
-  GameTime,
   TimeConfig,
   SessionTimeState,
   TickResult,
   CharacterInstanceAffinity,
   AffinityEffect,
   AffinityDimension,
-  DispositionLevel,
   NpcLocationState,
-  LocationOccupancy,
-  PresentNpc,
   CrowdLevel,
 } from '@minimal-rpg/schemas';
 import {
@@ -34,7 +30,6 @@ import {
   DEFAULT_TIME_CONFIG,
   tick,
   formatGameTime,
-  getCurrentPeriod,
   validateTimeSkip,
   updateTimeStateFromTick,
   createInitialTimeState,
@@ -43,8 +38,6 @@ import {
   calculateDisposition,
   buildAffinityContext,
   AFFINITY_EFFECTS,
-  createDefaultNpcLocationState,
-  createEmptyOccupancy,
   categorizeCrowdLevel,
 } from '@minimal-rpg/schemas';
 import { ProximityManager } from '../proximity/index.js';
@@ -191,7 +184,7 @@ export interface LocationInfo {
   id: string;
   name: string;
   description?: string;
-  exits?: Array<{ direction: string; destinationId: string; destinationName?: string }>;
+  exits?: { direction: string; destinationId: string; destinationName?: string }[];
   capacity?: number;
   travelTimeMinutes?: number;
 }
@@ -230,10 +223,10 @@ export class ToolExecutor {
     this.currentTurn = config.currentTurn ?? 1;
     this.timeState = config.timeState ?? createInitialTimeState();
     this.timeConfig = config.timeConfig ?? DEFAULT_TIME_CONFIG;
-    this.affinityStates = config.affinityStates ?? new Map();
-    this.npcLocationStates = config.npcLocationStates ?? new Map();
+    this.affinityStates = config.affinityStates ?? new Map<string, CharacterInstanceAffinity>();
+    this.npcLocationStates = config.npcLocationStates ?? new Map<string, NpcLocationState>();
     this.playerLocationId = config.playerLocationId ?? '';
-    this.availableLocations = config.availableLocations ?? new Map();
+    this.availableLocations = config.availableLocations ?? new Map<string, LocationInfo>();
     if (config.fallbackHandler) {
       this.fallbackHandler = config.fallbackHandler;
     }
@@ -657,7 +650,7 @@ export class ToolExecutor {
       default:
         return {
           success: false,
-          error: `Unknown time unit: ${args.unit}`,
+          error: `Unknown time unit: ${String((args as { unit?: unknown }).unit)}`,
         };
     }
 
@@ -820,8 +813,7 @@ export class ToolExecutor {
     }
 
     // Get NPCs at the new location
-    const npcsAtDestination: Array<{ npcId: string; activity: string; interruptible: boolean }> =
-      [];
+    const npcsAtDestination: { npcId: string; activity: string; interruptible: boolean }[] = [];
     for (const [npcId, npcState] of this.npcLocationStates) {
       if (npcState.locationId === destinationId) {
         npcsAtDestination.push({
@@ -900,7 +892,7 @@ export class ToolExecutor {
     const includeExits = args.include_exits !== false;
 
     // Get NPCs at this location if requested
-    let npcsPresent: Array<{ npcId: string; activity: string; interruptible: boolean }> = [];
+    const npcsPresent: { npcId: string; activity: string; interruptible: boolean }[] = [];
     let crowdLevel: CrowdLevel = 'empty';
 
     if (includeOccupancy) {
@@ -990,12 +982,10 @@ export class ToolExecutor {
     let affinityState = this.affinityStates.get(args.npc_id);
     const isNewRelationship = !affinityState;
 
-    if (!affinityState) {
-      affinityState = createCharacterInstanceAffinity(true); // Include attraction
-    }
+    affinityState ??= createCharacterInstanceAffinity(true); // Include attraction
 
     let newScores = { ...affinityState.scores };
-    const appliedEffects: Array<{ dimension: string; change: number }> = [];
+    const appliedEffects: { dimension: string; change: number }[] = [];
 
     // Apply action-type based effects
     if (args.action_type) {

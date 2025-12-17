@@ -41,7 +41,7 @@ import {
  */
 export interface TurnInterestResult {
   /** NPCs whose interest scores were updated */
-  updated: Array<{ npcId: string; oldScore: number; newScore: number }>;
+  updated: { npcId: string; oldScore: number; newScore: number }[];
   /** NPCs that should be promoted */
   promotions: PromotionCheck[];
 }
@@ -110,7 +110,7 @@ export async function processTurnInterest(
     sessionId,
     interactedNpcIds,
     allNpcIds,
-    interactions = new Map(),
+    interactions = new Map<string, Partial<Omit<InteractionEvent, 'meaningful'>>>(),
     config = DEFAULT_INTEREST_CONFIG,
   } = options;
 

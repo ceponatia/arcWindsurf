@@ -138,7 +138,12 @@ export function registerScheduleRoutes(app: Hono): void {
    */
   app.post('/schedule-templates', async (c) => {
     try {
-      const body = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
+      }
       const parsed = CreateScheduleTemplateSchema.safeParse(body);
 
       if (!parsed.success) {
@@ -234,7 +239,12 @@ export function registerScheduleRoutes(app: Hono): void {
         );
       }
 
-      const body = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
+      }
       const parsed = UpdateScheduleTemplateSchema.safeParse(body);
 
       if (!parsed.success) {
@@ -414,7 +424,12 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId } = c.req.param();
 
     try {
-      const body = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
+      }
       const parsed = CreateNpcScheduleSchema.safeParse(body);
 
       if (!parsed.success) {
@@ -510,7 +525,12 @@ export function registerScheduleRoutes(app: Hono): void {
         return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
-      const body = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
+      }
       const parsed = UpdateNpcScheduleSchema.safeParse(body);
 
       if (!parsed.success) {

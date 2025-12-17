@@ -7,8 +7,8 @@
  * @see dev-docs/32-npc-encounters-and-occupancy.md Section 5.3
  */
 import { z } from 'zod';
-import { CrowdLevelSchema, type CrowdLevel } from './occupancy.js';
-import { InteractionProximitySchema, type InteractionProximity } from './npc-location.js';
+import type { CrowdLevel } from './occupancy.js';
+import type { InteractionProximity } from './npc-location.js';
 
 // =============================================================================
 // Audibility Level

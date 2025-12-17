@@ -8,7 +8,7 @@
  */
 import type { GameTime } from '../time/types.js';
 import type { NpcTier, SimulationStrategy } from '../npc-tier/types.js';
-import type { NpcLocationState, NpcActivity } from '../state/npc-location.js';
+import type { NpcLocationState } from '../state/npc-location.js';
 
 // Re-export SimulationStrategy from npc-tier for convenience
 export type { SimulationStrategy };

@@ -41,6 +41,17 @@ export interface RelationshipScores {
 }
 
 /**
+ * Partial relationship scores intended for configuration/threshold objects.
+ *
+ * With `exactOptionalPropertyTypes`, an optional property like `fondness?: number`
+ * does not allow an explicit `undefined` value when present. Zod's `.partial()`
+ * models optional fields as `number | undefined`, so we represent that here.
+ */
+export type PartialRelationshipScores = Partial<{
+  [K in keyof RelationshipScores]: RelationshipScores[K] | undefined;
+}>;
+
+/**
  * Labels for affinity score ranges.
  */
 export type AffinityLabel =
@@ -230,10 +241,10 @@ export interface AffinityUnlock {
   type: UnlockType;
 
   /** Required minimum affinity scores */
-  requirements: Partial<RelationshipScores>;
+  requirements: PartialRelationshipScores;
 
   /** Affinity scores that block this unlock */
-  blockers?: Partial<RelationshipScores> | undefined;
+  blockers?: PartialRelationshipScores | undefined;
 
   /** Description of what is unlocked */
   description: string;
@@ -277,7 +288,7 @@ export interface AffinityDecayConfig {
   decayCeiling: number;
 
   /** Decay multipliers by dimension */
-  dimensionMultipliers: Partial<Record<AffinityDimension, number>>;
+  dimensionMultipliers?: Partial<Record<AffinityDimension, number>> | undefined;
 }
 
 // =============================================================================
@@ -298,7 +309,7 @@ export interface AffinityMilestone {
   description: string;
 
   /** Affinity changes from this milestone */
-  effects: Partial<RelationshipScores>;
+  effects: PartialRelationshipScores;
 
   /** If true, affinity won't decay below this milestone's effects */
   permanent: boolean;

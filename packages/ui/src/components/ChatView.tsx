@@ -104,6 +104,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const prevMessageCountRef = useRef<number>(0);
 
   // Auto-scroll to bottom when messages change or on initial load
@@ -138,6 +139,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const handleSend = () => {
     void onSend();
+    // Refocus input after sending so user can continue typing
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
 
   return (
@@ -259,13 +264,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         )}
       </div>
-      <div className="shrink-0 px-2 sm:px-4 py-3">
+      <div className="shrink-0 px-2 sm:px-4 py-3 relative">
+        {/* Waiting indicator - floats above input */}
+        {sending && (
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-violet-900/90 text-violet-200 text-sm px-4 py-1.5 rounded-full shadow-lg backdrop-blur-sm animate-pulse z-10">
+            Waiting for assistant…
+          </div>
+        )}
         <div className="mx-auto max-w-3xl rounded-xl bg-slate-900/70 border border-slate-800 shadow-sm p-2">
           <div className="flex gap-2">
             {inputAccessory ? <div className="shrink-0 min-w-[160px]">{inputAccessory}</div> : null}
             <input
+              ref={inputRef}
               className="flex-1 min-w-0 bg-slate-900 text-slate-200 placeholder:text-slate-500 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
-              placeholder={sending ? 'Waiting for assistant…' : 'Type a message...'}
+              placeholder="Type a message..."
               value={draft}
               onChange={(e) => onDraftChange(e.target.value)}
               disabled={disabled}

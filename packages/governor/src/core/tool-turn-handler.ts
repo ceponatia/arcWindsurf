@@ -38,6 +38,18 @@ import { getActiveTools } from '../tools/definitions.js';
 // Configuration
 // =============================================================================
 
+/**
+ * Record of a tool call for persistence.
+ */
+export interface ToolCallHistoryRecord {
+  sessionId: string;
+  turnIdx: number;
+  toolName: string;
+  toolArgs: Record<string, unknown>;
+  toolResult: Record<string, unknown> | undefined;
+  success: boolean;
+}
+
 export interface ToolTurnHandlerConfig {
   /** Function to call OpenRouter with tools */
   chatWithTools: (opts: ChatWithToolsRequest) => Promise<OpenRouterToolResponse>;
@@ -74,6 +86,12 @@ export interface ToolTurnHandlerConfig {
 
   /** Enable debug logging */
   debug?: boolean;
+
+  /**
+   * Callback to persist tool calls to history.
+   * Called after each turn with all tool calls made during that turn.
+   */
+  onToolCallsComplete?: (calls: ToolCallHistoryRecord[]) => Promise<void>;
 }
 
 interface ChatWithToolsRequest {
@@ -113,6 +131,9 @@ export class ToolBasedTurnHandler {
   private readonly proximityState: ProximityState;
   private readonly currentTurn: number;
   private readonly maxToolIterations: number;
+  private readonly onToolCallsComplete:
+    | ((calls: ToolCallHistoryRecord[]) => Promise<void>)
+    | undefined;
   private readonly timeoutMs: number;
   private readonly additionalTools: ToolDefinition[];
   private readonly debug: boolean;
@@ -130,6 +151,7 @@ export class ToolBasedTurnHandler {
     this.timeoutMs = config.timeoutMs ?? 60000;
     this.additionalTools = config.additionalTools ?? [];
     this.debug = config.debug ?? false;
+    this.onToolCallsComplete = config.onToolCallsComplete;
   }
 
   /**
@@ -140,6 +162,7 @@ export class ToolBasedTurnHandler {
     const phaseTiming: PhaseTiming = {};
     const events: TurnEvent[] = [];
     const toolCallsMade: ToolCall[] = [];
+    const toolCallResults = new Map<string, ToolResult>();
     const accumulatedPatches: StatePatches = {};
 
     events.push({
@@ -159,12 +182,135 @@ export class ToolBasedTurnHandler {
       const tools = [...getActiveTools(), ...this.additionalTools];
       phaseTiming.contextRetrievalMs = Date.now() - contextStart;
 
+      if (this.debug) {
+        console.log(`[ToolTurnHandler] Built ${messages.length} messages`);
+        console.log(
+          `[ToolTurnHandler] Available tools: ${tools.map((t) => t.function.name).join(', ')}`
+        );
+        // Show system prompt summary
+        const systemMsg = messages.find((m) => m.role === 'system');
+        if (systemMsg?.content) {
+          console.log(`[ToolTurnHandler] System prompt length: ${systemMsg.content.length} chars`);
+          // Show if tool examples are included
+          if (systemMsg.content.includes('npc_dialogue')) {
+            console.log(`[ToolTurnHandler] System prompt includes tool references ✓`);
+          }
+        }
+      }
+
       // 2. Call LLM with tools
+      // First try with 'required' to force tool usage, fall back to 'auto' if needed
       const executionStart = Date.now();
-      let response: OpenRouterToolResponse = await this.callLLMWithTools(messages, tools);
+      let response: OpenRouterToolResponse = await this.callLLMWithTools(
+        messages,
+        tools,
+        'required'
+      );
 
       if (response.error) {
-        throw new Error(`LLM error: ${response.error}`);
+        // Some models don't support 'required' - fall back to 'auto'
+        if (this.debug) {
+          console.log(
+            `[ToolTurnHandler] 'required' tool_choice failed, falling back to 'auto': ${response.error}`
+          );
+        }
+        response = await this.callLLMWithTools(messages, tools, 'auto');
+        if (response.error) {
+          throw new Error(`LLM error: ${response.error}`);
+        }
+      }
+
+      // If no tools were called, try once more with an explicit reminder
+      if (!response.tool_calls || response.tool_calls.length === 0) {
+        if (this.debug) {
+          const content = response.message?.content ?? '';
+          console.log(`[ToolTurnHandler] No tool calls on first attempt.`);
+          console.log(`[ToolTurnHandler] Finish reason: ${response.finish_reason ?? 'unknown'}`);
+          console.log(
+            `[ToolTurnHandler] Response content (first 300 chars): "${content.substring(0, 300)}"`
+          );
+
+          // Check if the response contains tool-like JSON
+          if (content.includes('npc_dialogue') || content.includes('get_sensory_detail')) {
+            console.log(
+              `[ToolTurnHandler] WARNING: Response contains tool names in TEXT instead of proper tool_calls!`
+            );
+            console.log(
+              `[ToolTurnHandler] This suggests the LLM is outputting tool syntax as text instead of using the tool calling mechanism.`
+            );
+          }
+
+          console.log(
+            `[ToolTurnHandler] Retrying with tool reminder and 'required' tool_choice...`
+          );
+        }
+
+        // Add the assistant's text response to context, then add a strong reminder
+        if (response.message?.content) {
+          messages.push({
+            role: 'assistant',
+            content: response.message.content,
+          });
+        }
+
+        // Add a system reminder that forces tool usage - be very explicit about format
+        messages.push({
+          role: 'user',
+          content:
+            `[SYSTEM OVERRIDE: You MUST use the tool calling mechanism, not write about tools in text. ` +
+            `Do NOT write "Here are the tool calls" - instead, actually invoke the tools using the function calling API. ` +
+            `Call npc_dialogue with the NPC's response. This is mandatory.]`,
+        });
+
+        // Retry with 'required' to force tool usage
+        response = await this.callLLMWithTools(messages, tools, 'required');
+
+        // If 'required' fails, try 'auto' as fallback
+        if (response.error) {
+          if (this.debug) {
+            console.log(`[ToolTurnHandler] Retry with 'required' failed: ${response.error}`);
+          }
+          response = await this.callLLMWithTools(messages, tools, 'auto');
+        }
+
+        if (response.error) {
+          throw new Error(`LLM error on retry: ${response.error}`);
+        }
+
+        if (this.debug) {
+          if (response.tool_calls && response.tool_calls.length > 0) {
+            console.log(
+              `[ToolTurnHandler] Retry successful - ${response.tool_calls.length} tool(s) called: ${response.tool_calls.map((tc) => tc.function.name).join(', ')}`
+            );
+          } else {
+            console.log(`[ToolTurnHandler] Retry failed - still no tool calls`);
+            console.log(
+              `[ToolTurnHandler] Retry finish reason: ${response.finish_reason ?? 'unknown'}`
+            );
+            console.log(
+              `[ToolTurnHandler] Retry content (first 300 chars): "${(response.message?.content ?? '').substring(0, 300)}"`
+            );
+
+            // Try to extract tool calls from text as last resort
+            const textContent = response.message?.content ?? '';
+            const syntheticToolCalls = this.tryParseToolCallsFromText(textContent);
+            if (syntheticToolCalls && syntheticToolCalls.length > 0) {
+              console.log(
+                `[ToolTurnHandler] FALLBACK: Extracted ${syntheticToolCalls.length} tool call(s) from text: ${syntheticToolCalls.map((tc) => tc.function.name).join(', ')}`
+              );
+              response.tool_calls = syntheticToolCalls;
+            }
+          }
+        } else {
+          // Even without debug, try the fallback parser
+          if (!response.tool_calls || response.tool_calls.length === 0) {
+            const textContent = response.message?.content ?? '';
+            const syntheticToolCalls = this.tryParseToolCallsFromText(textContent);
+            if (syntheticToolCalls && syntheticToolCalls.length > 0) {
+              response.tool_calls = syntheticToolCalls;
+            }
+          }
+        }
       }
 
       // 3. Tool execution loop
@@ -195,6 +341,9 @@ export class ToolBasedTurnHandler {
 
           // Execute tool
           const result: ToolResult = await this.toolExecutor.execute(toolCall);
+
+          // Track result for persistence
+          toolCallResults.set(toolCall.id, result);
 
           // Collect state patches from tool result
           if (result.statePatches) {
@@ -227,7 +376,7 @@ export class ToolBasedTurnHandler {
 
           // Add tool result to messages (exclude statePatches for LLM)
           const resultForLLM = { ...result };
-          delete resultForLLM['statePatches'];
+          delete resultForLLM.statePatches;
           messages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
@@ -236,7 +385,8 @@ export class ToolBasedTurnHandler {
         }
 
         // Get next response (may have more tool calls or final answer)
-        response = await this.callLLMWithTools(messages, tools);
+        // Use 'auto' for continuation so LLM can generate final narrative
+        response = await this.callLLMWithTools(messages, tools, 'auto');
 
         if (response.error) {
           throw new Error(`LLM error during tool loop: ${response.error}`);
@@ -247,7 +397,47 @@ export class ToolBasedTurnHandler {
 
       phaseTiming.agentExecutionMs = Date.now() - executionStart;
 
-      // 4. Flatten accumulated patches for state changes
+      // 4. Persist tool call history (async, non-blocking)
+      if (this.onToolCallsComplete && toolCallsMade.length > 0) {
+        const toolHistoryRecords: ToolCallHistoryRecord[] = toolCallsMade.map((tc) => {
+          const result = toolCallResults.get(tc.id);
+          let args: Record<string, unknown> = {};
+          try {
+            const parsedUnknown: unknown = JSON.parse(tc.function.arguments);
+            if (typeof parsedUnknown === 'object' && parsedUnknown !== null) {
+              args = parsedUnknown as Record<string, unknown>;
+            } else {
+              args = { value: parsedUnknown };
+            }
+          } catch {
+            args = { raw: tc.function.arguments };
+          }
+          // Build clean result for storage (exclude statePatches to save space)
+          let cleanResult: Record<string, unknown> | undefined;
+          if (result) {
+            cleanResult = {
+              success: result.success,
+              ...(result.error && { error: result.error }),
+              ...(result.hint && { hint: result.hint }),
+            };
+          }
+          return {
+            sessionId: this.sessionId,
+            turnIdx: this.currentTurn,
+            toolName: tc.function.name,
+            toolArgs: args,
+            toolResult: cleanResult,
+            success: result?.success ?? false,
+          };
+        });
+
+        // Fire and forget - don't block turn completion
+        this.onToolCallsComplete(toolHistoryRecords).catch((err) => {
+          console.warn('[ToolTurnHandler] Failed to persist tool call history:', err);
+        });
+      }
+
+      // 5. Flatten accumulated patches for state changes
       const stateUpdateStart = Date.now();
       const flatPatches = this.flattenStatePatches(accumulatedPatches);
       const stateChanges: TurnStateChanges | undefined =
@@ -260,8 +450,9 @@ export class ToolBasedTurnHandler {
           : undefined;
       phaseTiming.stateUpdateMs = Date.now() - stateUpdateStart;
 
-      // 5. Extract final narrative
-      const narrative = response.message?.content ?? 'Nothing happens.';
+      // 5. Extract final narrative and clean it
+      let narrative = response.message?.content ?? 'Nothing happens.';
+      narrative = this.cleanNarrative(narrative);
 
       if (this.debug) {
         console.log(`[ToolTurnHandler] Final narrative: ${narrative.substring(0, 100)}...`);
@@ -339,7 +530,8 @@ export class ToolBasedTurnHandler {
 
   /**
    * Build initial messages including system prompt and context.
-   * Uses 15-20 most recent messages for context window as per summarization docs.
+   * Reduces history window to 10 messages to maintain tool calling patterns.
+   * Injects tool usage reminder for conversations with established tool history.
    */
   private buildInitialMessages(input: TurnInput): ChatMessageWithTools[] {
     const messages: ChatMessageWithTools[] = [];
@@ -351,11 +543,44 @@ export class ToolBasedTurnHandler {
       content: systemPrompt,
     });
 
-    // Add conversation history if available (15-20 turns per docs)
-    // Keep last 18 messages to leave room for current input and responses
-    const historyWindow = 18;
+    // Add conversation summary if available (for older context)
+    if (input.conversationSummary) {
+      messages.push({
+        role: 'system',
+        content: `[Context from earlier in conversation]\n${input.conversationSummary}`,
+      });
+    }
+
+    // Add conversation history if available
+    // Reduced from 18 to 10 messages to prevent tool calling pattern degradation
+    const historyWindow = 10;
     if (input.conversationHistory && input.conversationHistory.length > 0) {
-      for (const turn of input.conversationHistory.slice(-historyWindow)) {
+      const history = input.conversationHistory.slice(-historyWindow);
+
+      // If this is a long conversation with tool history, add a synthetic tool usage reminder
+      // This helps maintain the pattern of tool calling that the LLM doesn't see in raw history
+      if (
+        input.toolHistory?.stats?.totalCalls &&
+        input.toolHistory.stats.totalCalls > 5 &&
+        input.conversationHistory.length > historyWindow
+      ) {
+        const recentTools = input.toolHistory.stats.recentTools ?? [];
+        const toolHints = input.toolHistory.usageHints ?? [];
+        const toolsUsed =
+          recentTools.length > 0 ? recentTools.join(', ') : 'npc_dialogue, get_sensory_detail';
+
+        messages.push({
+          role: 'system',
+          content:
+            `[Tool Usage Pattern - IMPORTANT]\n` +
+            `This conversation has ${input.toolHistory.stats.totalCalls} tool calls across ${input.conversationHistory.length} turns.\n` +
+            `Most recent tools used: ${toolsUsed}\n` +
+            `${toolHints.length > 0 ? `Guidance: ${toolHints.join('; ')}\n` : ''}` +
+            `Continue using tools as established. Every player interaction requires at least one tool call.`,
+        });
+      }
+
+      for (const turn of history) {
         if (turn.speaker === 'player') {
           messages.push({ role: 'user', content: turn.content });
         } else {
@@ -416,18 +641,15 @@ export class ToolBasedTurnHandler {
     // Build sensory data context from NPC body map (if available)
     const sensoryDataContext = this.buildSensoryDataSummary(npcSlice);
 
-    // Build conversation summary context if available (for long conversations)
-    const summaryContext = input?.conversationSummary
-      ? `
-## Story So Far (Summary of Earlier Events)
-${input.conversationSummary}
-`
-      : '';
-
     // Build session tags context (rules/behavior modifiers)
     const tagsContext = this.buildSessionTagsContext(input?.sessionTags);
 
-    return `You are a narrative game master for a roleplay scenario. The player writes in third person, describing their character's actions.
+    return `You are a narrative game master and game engine for a third-person roleplay scenario.
+
+Stay in-world, decisive, and consistent. Use the context below as constraints (do not restate it).
+
+HARD RULE: Every player turn requires at least one tool call. Never respond with narrative alone.
+
 ${tagsContext}
 ## Current Scene
 **NPC Present:** ${npcName}
@@ -436,7 +658,7 @@ ${settingDescription ? `**Setting:** ${settingDescription}` : ''}
 ${locationDescription ? `**Environment:** ${locationDescription}` : ''}
 ${settingAmbiance ? `**Atmosphere:** ${settingAmbiance}` : ''}
 ${locationExits ? `**Exits:** ${JSON.stringify(locationExits)}` : ''}
-${summaryContext}
+
 ## ${npcName} - Character Profile
 ${npcBackstory ? `**Background:** ${npcBackstory}` : ''}
 ${npcPersonality ? `**Personality:** ${npcPersonality}` : ''}
@@ -446,74 +668,20 @@ ${personaContext}
 ${sensoryDataContext}
 ${proximityContext}
 
-## Your Role - IMPORTANT
-You are the game engine. You MUST call tools to drive the game forward. **Do NOT respond with plain text alone.**
+## Tool Use (MANDATORY)
+Call tools BEFORE writing any narrative. After tools return, write concise third-person past-tense narrative that incorporates the tool results.
 
-Every player turn REQUIRES at least one tool call:
-- **Player speaks/interacts with ${npcName}** → MUST call \`npc_dialogue\` first
-- **Player engages senses** (look at, smell, touch, etc.) → MUST call \`get_sensory_detail\` first
-- **Significant interaction** (compliment, insult, help, etc.) → MUST call \`update_relationship\`
-- **Time passes** → MUST call \`advance_time\`
+- If the player speaks to or interacts with ${npcName}, call \`npc_dialogue\` first.
+- If the player explicitly senses (look/smell/touch/taste/listen) a target or inspects a body part, call \`get_sensory_detail\` first.
+- If sensory contact is ongoing or changes (start/intensify/reduce/end), call \`update_proximity\` to keep continuity.
+- If an interaction meaningfully shifts rapport (compliment/insult/help/flirt/betray/etc.), call \`update_relationship\`.
+- If time passes, call \`advance_time\`.
 
-After tool(s) return data, weave the results into your narrative response.
-
-## Tool Requirements (MANDATORY)
-
-### npc_dialogue - REQUIRED for NPC interactions
-**ALWAYS call this tool when:**
-- The player says ANYTHING to ${npcName}
-- The player does something that ${npcName} would notice or react to
-- The player performs an action directed at ${npcName}
-- You need to write ${npcName}'s dialogue or reaction
-
-**Examples that REQUIRE npc_dialogue:**
-- "He says hello" → npc_dialogue(${npcName}, "hello", speech)
-- "She waves at her" → npc_dialogue(${npcName}, "waving", action)
-- "He sits down next to her" → npc_dialogue(${npcName}, "sits down next to her", action)
-- "She asks about her day" → npc_dialogue(${npcName}, "asks about her day", speech)
-
-### get_sensory_detail - REQUIRED for sensory engagement
-**ALWAYS call this tool when:**
-- Player explicitly looks at, smells, touches, tastes, or listens to ${npcName}
-- Player examines any body part or feature
-- Player gets physically close for sensory purposes
-
-**Examples that REQUIRE get_sensory_detail:**
-- "He inhales near her hair" → get_sensory_detail(smell, ${npcName}, hair)
-- "She touches his arm" → get_sensory_detail(touch, ${npcName}, arm)
-- "He looks at her face" → get_sensory_detail(look, ${npcName}, face)
-- "She examines her outfit" → get_sensory_detail(look, ${npcName}, outfit)
-
-### update_proximity - Track sensory engagements
-Call to track ongoing sensory contact:
-- Starting engagement → update_proximity(engage)
-- Increasing intimacy → update_proximity(intensify)
-- Decreasing → update_proximity(reduce)
-- Ending → update_proximity(end)
-
-### update_relationship - Track relationship changes
-**ALWAYS call after significant interactions:**
-- Compliments, insults, gifts, help, lies, betrayals, flirting
-- Use action_type OR dimension + delta
-
-### advance_time - When time passes
-Call when narrative indicates time passage: waiting, sleeping, activities.
-
-## What NOT to do
-- Do NOT write ${npcName}'s dialogue without calling npc_dialogue first
-- Do NOT describe sensory details without calling get_sensory_detail first
-- Do NOT skip tools and respond with just narrative
-- The tools provide the data you need to write an authentic response
-
-## Response Format Guidelines
-1. **Call tools FIRST** - get data before writing your response
-2. Write in third person past tense, matching the player's style
-3. Be vivid but concise (2-4 sentences typically)
-4. Incorporate tool data naturally into the narrative - this is your source material
-5. Write ${npcName}'s dialogue in quotes, in first person from their perspective
-6. Write ${npcName}'s actions in third person ("she smiled", "he nodded")
-7. NEVER prefix responses with "${npcName}:" - just write the narrative directly
-8. Include sensory details when the player is engaging senses${proximityContext ? '\n9. Continue to weave in active sensory engagements naturally' : ''}`;
+## Constraints
+- Do not mention tool names, JSON, or system/meta text in the narrative.
+- Do not invent sensory specifics: use tool results, active sensory context, or provided descriptions.
+- If there are active sensory engagements listed, maintain them until ended with \`update_proximity\`.
+- Write dialogue inline in quotes; do not prefix with "${npcName}:".`;
   }
 
   /**
@@ -540,7 +708,7 @@ Call when narrative indicates time passage: waiting, sleeping, activities.
         parts.push(`Values: ${pm.values.map((v) => v.value).join(', ')}`);
       }
       if (pm.emotionalBaseline) {
-        parts.push(`Emotional baseline: ${pm.emotionalBaseline}`);
+        parts.push(`Emotional baseline: ${JSON.stringify(pm.emotionalBaseline)}`);
       }
     }
 
@@ -596,7 +764,7 @@ Call when narrative indicates time passage: waiting, sleeping, activities.
       if (data.scent?.primary) senses.push('smell');
       if (data.texture?.primary) senses.push('touch');
       if (data.flavor?.primary) senses.push('taste');
-      if (data.visual?.description) senses.push('sight');
+      if (data.visual?.description) senses.push('look');
       if (senses.length > 0) {
         bodyParts.push(`${region}: ${senses.join(', ')}`);
       }
@@ -630,10 +798,10 @@ ${bodyParts.map((p) => `- ${p}`).join('\n')}`;
     }
 
     const engagementLines = recentEngagements
-      .map(
-        (e: SensoryEngagement) =>
-          `- ${e.senseType} engaged with ${e.npcId}'s ${e.bodyPart} (${e.intensity})`
-      )
+      .map((e: SensoryEngagement) => {
+        const label = e.senseType === 'hear' ? 'listen' : e.senseType;
+        return `- ${label} engaged with ${e.npcId}'s ${e.bodyPart} (${e.intensity})`;
+      })
       .join('\n');
 
     return `
@@ -670,17 +838,19 @@ ${tagLines.join('\n\n')}
 
   /**
    * Call OpenRouter with tools.
+   * @param toolChoice - How the model should choose tools: 'auto' | 'none' | 'required'
    */
   private async callLLMWithTools(
     messages: ChatMessageWithTools[],
-    tools: ToolDefinition[]
+    tools: ToolDefinition[],
+    toolChoice: 'auto' | 'none' | 'required' = 'auto'
   ): Promise<OpenRouterToolResponse> {
     return this.chatWithTools({
       apiKey: this.apiKey,
       model: this.model,
       messages,
       tools,
-      tool_choice: 'auto',
+      tool_choice: toolChoice,
       timeoutMs: this.timeoutMs,
       options: {
         temperature: 0.7,
@@ -722,9 +892,7 @@ ${tagLines.join('\n\n')}
    */
   private mergeStatePatches(target: StatePatches, source: StatePatches): void {
     for (const [sliceKey, patches] of Object.entries(source)) {
-      if (!target[sliceKey]) {
-        target[sliceKey] = [];
-      }
+      target[sliceKey] ??= [];
       target[sliceKey].push(...patches);
     }
   }
@@ -759,10 +927,232 @@ ${tagLines.join('\n\n')}
       // Extract the top-level path segment
       const pathParts = patch.path.split('/').filter(Boolean);
       if (pathParts.length > 0) {
-        paths.add(pathParts[0] as string);
+        paths.add(pathParts[0]!);
       }
     }
     return Array.from(paths);
+  }
+
+  /**
+   * Clean narrative output by removing tool annotations and meta-commentary.
+   * The LLM sometimes includes notes about tools in its response.
+   */
+  private cleanNarrative(narrative: string): string {
+    // Remove lines that are pure tool/system annotations
+    const patterns = [
+      // (Note: Tools like `update_proximity`... would be triggered...)
+      /\(Note:.*?tools?.*?\)/gi,
+      // [SYSTEM: ...]
+      /\[SYSTEM:.*?\]/gi,
+      // (Tools: ...)
+      /\(Tools?:.*?\)/gi,
+      // Standalone tool references like "update_proximity(...)" or "`npc_dialogue`"
+      /`[a-z_]+(?:\([^)]*\))?`/gi,
+      // Lines starting with "Reminder:" or "Note:"
+      /^(Reminder|Note):\s*.*$/gim,
+    ];
+
+    let cleaned = narrative;
+    for (const pattern of patterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+
+    // Clean up multiple newlines and trim
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+    return cleaned;
+  }
+
+  /**
+   * Attempt to extract tool call syntax from text content.
+   * This is a fallback for when the LLM outputs tool calls as text instead of using
+   * the proper function calling mechanism.
+   *
+   * DeepSeek often outputs JSON arguments directly without wrapping in a tool call structure,
+   * so we need to infer the tool name from context and argument patterns.
+   *
+   * @param content - The text content that might contain tool call syntax
+   * @returns Array of synthetic tool calls, or undefined if none found
+   */
+  private tryParseToolCallsFromText(content: string): ToolCall[] | undefined {
+    const toolCalls: ToolCall[] = [];
+
+    // Try to find JSON blocks (with or without ```json``` wrapper)
+    const jsonBlockPattern = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
+
+    for (const match of content.matchAll(jsonBlockPattern)) {
+      try {
+        const jsonStr = match[1];
+        if (!jsonStr) continue;
+        const parsedUnknown: unknown = JSON.parse(jsonStr);
+        if (!this.isPlainRecord(parsedUnknown)) continue;
+        const parsed = parsedUnknown;
+
+        // First check if it has explicit tool name
+        const explicitToolName =
+          (typeof parsed['name'] === 'string' ? parsed['name'] : undefined) ??
+          (typeof parsed['tool'] === 'string' ? parsed['tool'] : undefined) ??
+          (typeof parsed['function'] === 'string' ? parsed['function'] : undefined);
+
+        if (explicitToolName) {
+          const args = parsed['arguments'] ?? parsed['args'] ?? parsed['parameters'] ?? parsed;
+
+          toolCalls.push({
+            id: `synthetic-${Date.now()}-${toolCalls.length}`,
+            type: 'function',
+            function: {
+              name: explicitToolName,
+              arguments: typeof args === 'string' ? args : JSON.stringify(args),
+            },
+          });
+          continue;
+        }
+
+        // Infer tool from argument patterns
+        const inferredTool = this.inferToolFromArguments(parsed);
+        if (inferredTool) {
+          toolCalls.push({
+            id: `synthetic-${Date.now()}-${toolCalls.length}`,
+            type: 'function',
+            function: {
+              name: inferredTool,
+              arguments: JSON.stringify(parsed),
+            },
+          });
+        }
+      } catch {
+        // Not valid JSON, skip
+      }
+    }
+
+    // If no code blocks found, look for inline JSON that looks like npc_dialogue args
+    if (toolCalls.length === 0) {
+      // Look for JSON with npc_id and player_utterance (npc_dialogue signature)
+      const inlineNpcDialogue = /\{\s*"npc_id"\s*:\s*"[^"]+"\s*,\s*"player_utterance"\s*:/;
+      if (inlineNpcDialogue.test(content)) {
+        // Try to extract the full JSON object
+        const startIdx = content.search(/\{\s*"npc_id"/);
+        if (startIdx !== -1) {
+          // Find matching closing brace
+          let braceCount = 0;
+          let endIdx = startIdx;
+          for (let i = startIdx; i < content.length; i++) {
+            if (content[i] === '{') braceCount++;
+            if (content[i] === '}') braceCount--;
+            if (braceCount === 0) {
+              endIdx = i + 1;
+              break;
+            }
+          }
+
+          try {
+            const jsonStr = content.slice(startIdx, endIdx);
+            const parsedUnknown: unknown = JSON.parse(jsonStr);
+            if (
+              this.isPlainRecord(parsedUnknown) &&
+              typeof parsedUnknown['npc_id'] === 'string' &&
+              typeof parsedUnknown['player_utterance'] === 'string'
+            ) {
+              toolCalls.push({
+                id: `synthetic-dialogue-${Date.now()}`,
+                type: 'function',
+                function: {
+                  name: 'npc_dialogue',
+                  arguments: JSON.stringify(parsedUnknown),
+                },
+              });
+            }
+          } catch {
+            // Invalid JSON
+          }
+        }
+      }
+    }
+
+    // Check for context clues near "npc_dialogue" mention
+    if (toolCalls.length === 0 && content.toLowerCase().includes('npc_dialogue')) {
+      // Look for any JSON object after npc_dialogue mention
+      const afterDialogue = content.slice(content.toLowerCase().indexOf('npc_dialogue'));
+      const jsonMatch = /\{[\s\S]*?\}/.exec(afterDialogue);
+      if (jsonMatch?.[0]) {
+        try {
+          const parsedUnknown: unknown = JSON.parse(jsonMatch[0]);
+          if (this.isPlainRecord(parsedUnknown)) {
+            // If it has npc_id or player_utterance, treat as npc_dialogue args
+            if (
+              parsedUnknown['npc_id'] !== undefined ||
+              parsedUnknown['player_utterance'] !== undefined
+            ) {
+              toolCalls.push({
+                id: `synthetic-dialogue-context-${Date.now()}`,
+                type: 'function',
+                function: {
+                  name: 'npc_dialogue',
+                  arguments: JSON.stringify(parsedUnknown),
+                },
+              });
+            }
+          }
+        } catch {
+          // Invalid JSON
+        }
+      }
+    }
+
+    if (this.debug && toolCalls.length > 0) {
+      console.log(
+        `[ToolTurnHandler] Fallback parser extracted ${toolCalls.length} tool(s): ${toolCalls.map((tc) => tc.function.name).join(', ')}`
+      );
+    }
+
+    return toolCalls.length > 0 ? toolCalls : undefined;
+  }
+
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  /**
+   * Infer tool name from argument structure.
+   */
+  private inferToolFromArguments(args: Record<string, unknown>): string | undefined {
+    const keys = Object.keys(args);
+
+    // npc_dialogue: has npc_id and player_utterance
+    if (keys.includes('npc_id') && keys.includes('player_utterance')) {
+      return 'npc_dialogue';
+    }
+
+    // get_sensory_detail: has npc_id and body_region
+    if (keys.includes('npc_id') && keys.includes('body_region')) {
+      return 'get_sensory_detail';
+    }
+
+    // update_proximity: has npc_id, body_region, and engagement_level
+    if (
+      keys.includes('npc_id') &&
+      keys.includes('body_region') &&
+      keys.includes('engagement_level')
+    ) {
+      return 'update_proximity';
+    }
+
+    // navigate_player: has destination or direction
+    if (keys.includes('destination') || keys.includes('direction')) {
+      return 'navigate_player';
+    }
+
+    // update_relationship: has npc_id and dimension or delta
+    if (keys.includes('npc_id') && (keys.includes('dimension') || keys.includes('delta'))) {
+      return 'update_relationship';
+    }
+
+    // examine_object: has object_name or target
+    if (keys.includes('object_name') || (keys.includes('target') && !keys.includes('npc_id'))) {
+      return 'examine_object';
+    }
+
+    return undefined;
   }
 }
 

@@ -2,7 +2,12 @@
  * Domain-scoped types for turns route.
  */
 import type { LoadedTurnState } from '../../sessions/state-loader.js';
-import type { TurnStateContext, ConversationTurn, SessionTag } from '@minimal-rpg/governor';
+import type {
+  TurnStateContext,
+  ConversationTurn,
+  SessionTag,
+  ToolHistoryContext,
+} from '@minimal-rpg/governor';
 import type { PersonaProfile } from '@minimal-rpg/schemas';
 import type { Speaker } from '../../types.js';
 
@@ -33,6 +38,7 @@ export interface TurnContext {
   conversationHistory: ConversationTurn[];
   sessionTags: SessionTag[];
   persona?: PersonaProfile;
+  toolHistory?: ToolHistoryContext;
 }
 
 /**

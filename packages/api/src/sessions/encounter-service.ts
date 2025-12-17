@@ -30,7 +30,7 @@ export interface EncounterNarration {
   /** Main scene description */
   sceneDescription: string;
   /** Individual NPC introductions (for major/minor NPCs) */
-  npcIntroductions: Array<{ npcId: string; introduction: string }>;
+  npcIntroductions: { npcId: string; introduction: string }[];
   /** Crowd description (for background NPCs) */
   crowdDescription: string | null;
   /** Full combined narration */

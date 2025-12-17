@@ -9,7 +9,7 @@
  * - Draft persistence
  */
 
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, devtools, subscribeWithSelector } from 'zustand/middleware';
 import type { CharacterProfile, SettingProfile, PersonaProfile } from '@minimal-rpg/schemas';
@@ -25,7 +25,14 @@ import {
 // Types
 // ============================================================================
 
-export type WorkspaceStep = 'setting' | 'locations' | 'npcs' | 'player' | 'tags' | 'review';
+export type WorkspaceStep =
+  | 'setting'
+  | 'locations'
+  | 'npcs'
+  | 'player'
+  | 'tags'
+  | 'relationships'
+  | 'review';
 
 export interface SettingWorkspaceState {
   settingId: string | null;
@@ -217,7 +224,7 @@ function validateSettingStep(state: WorkspaceState): StepValidationState {
   return { valid: errors.length === 0, errors };
 }
 
-function validateLocationsStep(_state: WorkspaceState): StepValidationState {
+function validateLocationsStep(): StepValidationState {
   // Locations are optional in MVP
   return { valid: true, errors: [] };
 }
@@ -230,13 +237,18 @@ function validateNpcsStep(state: WorkspaceState): StepValidationState {
   return { valid: errors.length === 0, errors };
 }
 
-function validatePlayerStep(_state: WorkspaceState): StepValidationState {
+function validatePlayerStep(): StepValidationState {
   // Player/Persona is optional
   return { valid: true, errors: [] };
 }
 
-function validateTagsStep(_state: WorkspaceState): StepValidationState {
+function validateTagsStep(): StepValidationState {
   // Tags are optional
+  return { valid: true, errors: [] };
+}
+
+function validateRelationshipsStep(): StepValidationState {
+  // Relationships are optional - players can configure them or leave as defaults
   return { valid: true, errors: [] };
 }
 
@@ -381,10 +393,12 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
           clearPersona: () =>
             set(
               (state) => {
-                // Destructure to omit personaProfile
-                const { personaProfile: _, ...rest } = state.player;
+                const startLocationId = state.player.startLocationId;
                 return {
-                  player: { ...rest, personaId: null },
+                  player: {
+                    personaId: null,
+                    ...(startLocationId ? { startLocationId } : {}),
+                  },
                   isDirty: true,
                 };
               },
@@ -546,13 +560,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
               case 'setting':
                 return validateSettingStep(state);
               case 'locations':
-                return validateLocationsStep(state);
+                return validateLocationsStep();
               case 'npcs':
                 return validateNpcsStep(state);
               case 'player':
-                return validatePlayerStep(state);
+                return validatePlayerStep();
               case 'tags':
-                return validateTagsStep(state);
+                return validateTagsStep();
+              case 'relationships':
+                return validateRelationshipsStep();
               case 'review':
                 return validateReviewStep(state);
               default:
@@ -560,13 +576,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
             }
           },
           validate: () => {
-            const state = get();
             const steps: WorkspaceStep[] = [
               'setting',
               'locations',
               'npcs',
               'player',
               'tags',
+              'relationships',
               'review',
             ];
             const stepErrors: Partial<Record<WorkspaceStep, StepValidationState>> = {};

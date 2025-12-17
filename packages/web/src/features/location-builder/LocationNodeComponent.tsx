@@ -67,13 +67,13 @@ function getPortPosition(
 }
 
 /** Distribute ports around the node edges */
-function distributePortsAroundNode(ports: LocationPort[]): Array<{
+function distributePortsAroundNode(ports: LocationPort[]): {
   port: LocationPort;
   position: Position;
   style: React.CSSProperties;
-}> {
-  const result: Array<{ port: LocationPort; position: Position; style: React.CSSProperties }> = [];
-  const sides: Array<'top' | 'right' | 'bottom' | 'left'> = ['top', 'right', 'bottom', 'left'];
+}[] {
+  const result: { port: LocationPort; position: Position; style: React.CSSProperties }[] = [];
+  const sides: ('top' | 'right' | 'bottom' | 'left')[] = ['top', 'right', 'bottom', 'left'];
 
   // Simple distribution: place ports evenly around the node
   ports.forEach((port, index) => {

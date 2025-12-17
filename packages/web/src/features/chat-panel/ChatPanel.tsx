@@ -24,11 +24,11 @@ interface TurnEvent {
 interface StateChanges {
   patchCount: number;
   modifiedPaths: string[];
-  patches?: Array<{
+  patches?: {
     op: string;
     path: string;
     value?: unknown;
-  }>;
+  }[];
 }
 
 interface TurnDebugData {

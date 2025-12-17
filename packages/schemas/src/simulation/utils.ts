@@ -19,7 +19,6 @@ import type {
   SimulationBudgetConfig,
 } from './types.js';
 import {
-  TIER_BASE_PRIORITY,
   TIER_MINIMUM_PRIORITY,
   DEFAULT_FIDELITY_BY_DISTANCE,
   DEFAULT_SIMULATION_BUDGET,
@@ -67,9 +66,10 @@ export function calculateSimulationPriority(
   npc: NpcSimulationInfo,
   playerLocationId: string,
   locationDistanceFn: (from: string, to: string) => number,
-  currentTurn: number
+  _currentTurn: number
 ): number {
   let score = npc.tierPriority;
+  score += 0 * _currentTurn;
 
   // Boost for proximity
   const distance = locationDistanceFn(npc.locationId, playerLocationId);
@@ -192,7 +192,7 @@ export function calculateCacheExpiration(
 ): GameTime {
   // Simple calculation - just add minutes
   let totalMinutes = computedAt.hour * 60 + computedAt.minute + cacheDurationMinutes;
-  let daysToAdd = Math.floor(totalMinutes / (24 * 60));
+  const daysToAdd = Math.floor(totalMinutes / (24 * 60));
   totalMinutes = totalMinutes % (24 * 60);
 
   return {

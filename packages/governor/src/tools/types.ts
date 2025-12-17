@@ -63,9 +63,7 @@ export interface ToolCall {
  * State patches organized by slice key.
  * Key is slice name (e.g., 'proximity', 'inventory'), value is JSON Patch operations.
  */
-export interface StatePatches {
-  [sliceKey: string]: Operation[];
-}
+export type StatePatches = Record<string, Operation[]>;
 
 /**
  * Result from executing a tool call.
