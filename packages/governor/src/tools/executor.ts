@@ -41,6 +41,7 @@ import {
   categorizeCrowdLevel,
 } from '@minimal-rpg/schemas';
 import { ProximityManager } from '../proximity/index.js';
+import type { TurnTagContext, TagInstruction } from '../core/types.js';
 
 // =============================================================================
 // Tool Argument Types
@@ -119,6 +120,17 @@ interface GetLocationInfoToolArgs {
   include_exits?: boolean;
 }
 
+interface ToolingFailureReportArgs {
+  summary: string;
+  stage: 'initial' | 'retry' | 'post_tool';
+  suspected_cause?: string;
+  intended_tool?: string;
+  invalid_output_excerpt?: string;
+  available_tools?: string[];
+  finish_reason?: string;
+  notes?: string;
+}
+
 // =============================================================================
 // Fallback Handler Type
 // =============================================================================
@@ -170,6 +182,9 @@ export interface ToolExecutorConfig {
   /** Available locations (location ID -> location data) */
   availableLocations?: Map<string, LocationInfo>;
 
+  /** Routed per-turn prompt tag context (optional) */
+  turnTagContext?: TurnTagContext;
+
   /**
    * Optional fallback handler for tools not handled by this executor.
    * Called before returning "Unknown tool" error.
@@ -212,6 +227,7 @@ export class ToolExecutor {
   private readonly npcLocationStates: Map<string, NpcLocationState>;
   private readonly playerLocationId: string;
   private readonly availableLocations: Map<string, LocationInfo>;
+  private readonly turnTagContext: TurnTagContext | undefined;
   private readonly fallbackHandler?: FallbackToolHandler;
 
   constructor(config: ToolExecutorConfig) {
@@ -227,9 +243,20 @@ export class ToolExecutor {
     this.npcLocationStates = config.npcLocationStates ?? new Map<string, NpcLocationState>();
     this.playerLocationId = config.playerLocationId ?? '';
     this.availableLocations = config.availableLocations ?? new Map<string, LocationInfo>();
+    this.turnTagContext = config.turnTagContext;
     if (config.fallbackHandler) {
       this.fallbackHandler = config.fallbackHandler;
     }
+  }
+
+  private renderTagInstructions(instructions: TagInstruction[]): string {
+    if (instructions.length === 0) return '';
+    return instructions
+      .map((t) => {
+        const desc = t.shortDescription ? ` - ${t.shortDescription}` : '';
+        return `- ${t.tagName}${desc}: ${t.instructionText}`;
+      })
+      .join('\n');
   }
 
   /**
@@ -283,6 +310,10 @@ export class ToolExecutor {
       case 'update_relationship':
         return this.executeUpdateRelationship(args as UpdateRelationshipToolArgs);
 
+      // Debug: Tooling diagnostics
+      case 'tooling_failure_report':
+        return this.executeToolingFailureReport(args as ToolingFailureReportArgs);
+
       default: {
         // Try fallback handler before returning unknown error
         if (this.fallbackHandler) {
@@ -297,6 +328,19 @@ export class ToolExecutor {
         };
       }
     }
+  }
+
+  /**
+   * Debug tool: capture structured diagnostics when tool calling fails.
+   * This intentionally produces no state patches.
+   */
+  private executeToolingFailureReport(args: ToolingFailureReportArgs): ToolResult {
+    return {
+      success: true,
+      report_recorded: true,
+      report: args,
+      hint: 'Tooling failure report recorded. Now call the appropriate game tool(s) for this turn (for example, npc_dialogue, get_sensory_detail, move_to_location).',
+    };
   }
 
   /**
@@ -469,6 +513,13 @@ export class ToolExecutor {
         : [npc.personality];
     }
 
+    const npcTagInstructions =
+      this.turnTagContext?.byNpcInstanceId?.[args.npc_id] ?? ([] as TagInstruction[]);
+    const locationTagInstructions = this.turnTagContext?.playerLocationId
+      ? (this.turnTagContext.byLocationId?.[this.turnTagContext.playerLocationId] ??
+        ([] as TagInstruction[]))
+      : ([] as TagInstruction[]);
+
     return {
       success: true,
       npc_id: args.npc_id,
@@ -480,6 +531,14 @@ export class ToolExecutor {
       suggested_tone: args.tone ?? 'neutral',
       // Current mood could come from session state in future
       current_mood: 'neutral',
+
+      // Prompt tag routing (MVP): apply these instructions only while writing THIS NPC's lines.
+      npc_tag_instructions:
+        npcTagInstructions.length > 0 ? this.renderTagInstructions(npcTagInstructions) : undefined,
+      location_tag_instructions:
+        locationTagInstructions.length > 0
+          ? this.renderTagInstructions(locationTagInstructions)
+          : undefined,
     };
   }
 

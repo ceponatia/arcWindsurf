@@ -1,0 +1,43 @@
+name: API - Deploy to Fly.io (staging)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'GHCR image tag to deploy (default: staging)'
+        required: false
+        default: 'staging'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP_NAME: ${{ secrets.FLY_APP_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Fly configuration
+        id: check
+        run: |
+          if [ -z "$FLY_API_TOKEN" ] || [ -z "$FLY_APP_NAME" ]; then
+            echo "Fly not configured (missing FLY_API_TOKEN or FLY_APP_NAME). Skipping deploy."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Flyctl
+        if: ${{ steps.check.outputs.configured == 'true' }}
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy image
+        if: ${{ steps.check.outputs.configured == 'true' }}
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          flyctl deploy --app "$FLY_APP_NAME" --image "ghcr.io/${{ github.repository }}/api:$IMAGE_TAG"

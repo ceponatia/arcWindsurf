@@ -94,7 +94,10 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
       const selection: TagSelection = {
         tagId: tag.id,
         tagName: tag.name,
-        scope: 'session',
+        targetType: tag.targetType ?? 'session',
+        ...(tag.targetType === 'character' || tag.targetType === 'location'
+          ? { targetEntityIds: [] }
+          : {}),
       };
       addTag(selection);
     }

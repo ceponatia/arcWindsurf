@@ -28,6 +28,7 @@ export const TagLibrary: React.FC<TagLibraryProps> = ({ onEdit, onCreateNew }) =
             name: t.name,
             shortDescription: t.shortDescription ?? null,
             promptText: t.promptText,
+            targetType: t.targetType ?? 'session',
           }))
         );
       })

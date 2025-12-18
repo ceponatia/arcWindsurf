@@ -9,7 +9,10 @@ import rehypeSlug from 'rehype-slug';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(() => ({
+  // For GitHub Pages project sites, assets must be served from /<repo>/.
+  // Set BASE_PATH in CI (or locally) to override.
+  base: process.env['BASE_PATH'] ?? '/',
   plugins: [
     mdx({
       remarkPlugins: [remarkGfm, remarkFrontmatter],
@@ -75,4 +78,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

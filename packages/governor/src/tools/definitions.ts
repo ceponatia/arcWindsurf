@@ -10,6 +10,65 @@ import type { ToolDefinition } from './types.js';
 // PRIORITY 1: Core Tools (Implement First)
 // =============================================================================
 
+// =============================================================================
+// DEBUG: Tooling Diagnostics
+// =============================================================================
+
+/**
+ * Tooling failure report tool - emits structured diagnostics when tool-calling fails.
+ * This is not a game action; it exists to aid debugging when models output narrative
+ * or tool syntax as text instead of producing real tool_calls.
+ */
+export const TOOLING_FAILURE_REPORT_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'tooling_failure_report',
+    description:
+      'Report why tool calling failed and provide debugging context as JSON. ' +
+      'Use this ONLY when you are unable to call the appropriate game tools.',
+    parameters: {
+      type: 'object',
+      properties: {
+        summary: {
+          type: 'string',
+          description: 'One-line summary of what went wrong',
+        },
+        stage: {
+          type: 'string',
+          enum: ['initial', 'retry', 'post_tool'],
+          description: 'Where the failure occurred',
+        },
+        suspected_cause: {
+          type: 'string',
+          description: 'Your best guess about why tool calling did not occur',
+        },
+        intended_tool: {
+          type: 'string',
+          description: 'Which tool you intended to call (if any)',
+        },
+        invalid_output_excerpt: {
+          type: 'string',
+          description: 'A short excerpt of the invalid output you produced (if applicable)',
+        },
+        available_tools: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'The tool names you believe are available',
+        },
+        finish_reason: {
+          type: 'string',
+          description: 'Finish reason reported by the model provider (if known)',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional extra debugging notes',
+        },
+      },
+      required: ['summary', 'stage'],
+    },
+  },
+};
+
 /**
  * Sensory detail tool - retrieves character/object sensory data.
  * Wraps SensoryAgent to return structured data for LLM narrative synthesis.
@@ -678,6 +737,9 @@ export const CORE_TOOLS: ToolDefinition[] = [
   UPDATE_PROXIMITY_TOOL,
 ];
 
+/** Debug-only tools - safe to expose in all phases */
+export const DEBUG_TOOLS: ToolDefinition[] = [TOOLING_FAILURE_REPORT_TOOL];
+
 /** Priority 2 tools - implement after core */
 export const ENVIRONMENT_TOOLS: ToolDefinition[] = [NAVIGATE_PLAYER_TOOL, EXAMINE_OBJECT_TOOL];
 
@@ -713,6 +775,7 @@ export const ALL_GAME_TOOLS: ToolDefinition[] = [
   ...RELATIONSHIP_TOOLS,
   ...HYGIENE_TOOLS,
   ...SCHEDULE_TOOLS,
+  ...DEBUG_TOOLS,
 ];
 
 /**
@@ -721,7 +784,7 @@ export const ALL_GAME_TOOLS: ToolDefinition[] = [
  */
 export function getActiveTools(): ToolDefinition[] {
   // Phase 8 implementation: core + time + relationship + location tools are active
-  return [...CORE_TOOLS, ...TIME_TOOLS, ...RELATIONSHIP_TOOLS, ...LOCATION_TOOLS];
+  return [...CORE_TOOLS, ...TIME_TOOLS, ...RELATIONSHIP_TOOLS, ...LOCATION_TOOLS, ...DEBUG_TOOLS];
 
   // Future: return ALL_GAME_TOOLS when all handlers ready
 }

@@ -10,6 +10,7 @@ import type { SessionTag } from '@minimal-rpg/governor';
 import type { Speaker } from '../../types.js';
 import type { SessionSnapshot } from './types.js';
 import type { LoadedTurnState } from '../../sessions/state-loader.js';
+import { buildTurnTagContext, type TagBindingWithDefinition } from './tag-routing.js';
 
 /**
  * Load complete session snapshot after player input has been persisted.
@@ -28,15 +29,32 @@ export async function loadSessionSnapshot(
     throw new Error('session not found after append');
   }
 
-  // Load active session tags (only enabled, always-mode for Phase 1)
+  // Load enabled session tag bindings (MVP: bound + enabled, do not hardcode activation_mode semantics)
   const tagBindingsWithDefs = await getSessionTagsWithDefinitions(sessionId, {
     enabledOnly: true,
   });
-  const sessionTags: SessionTag[] = tagBindingsWithDefs
-    .filter((b) => b.tag.activation_mode === 'always')
+
+  // Build per-turn routed tag context (session + per-NPC + per-location)
+  const npcLocationById = new Map<string, string | undefined>();
+  for (const [npcId, loc] of loadedState.npcLocationStates.entries()) {
+    npcLocationById.set(npcId, loc.locationId);
+  }
+
+  const turnTagContext = buildTurnTagContext({
+    bindings: tagBindingsWithDefs as unknown as TagBindingWithDefinition[],
+    ...(loadedState.playerLocationId !== undefined && {
+      playerLocationId: loadedState.playerLocationId,
+    }),
+    npcLocationById,
+  });
+
+  // Back-compat: governor system prompt currently consumes sessionTags only.
+  // Keep these as session-targeted bindings.
+  const sessionTags: SessionTag[] = (tagBindingsWithDefs as unknown as TagBindingWithDefinition[])
+    .filter((b) => b.target_type === 'session')
     .map((b) => ({
       id: b.id,
-      sessionId: b.session_id,
+      sessionId: sessionId,
       tagId: b.tag_id,
       name: b.tag.name,
       promptText: b.tag.prompt_text,
@@ -73,6 +91,7 @@ export async function loadSessionSnapshot(
     loadedState,
     messages: session.messages,
     sessionTags,
+    turnTagContext,
     ...(persona ? { persona } : {}),
     ...(speaker ? { speaker } : {}),
   };

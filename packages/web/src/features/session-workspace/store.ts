@@ -12,7 +12,12 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, devtools, subscribeWithSelector } from 'zustand/middleware';
-import type { CharacterProfile, SettingProfile, PersonaProfile } from '@minimal-rpg/schemas';
+import type {
+  CharacterProfile,
+  SettingProfile,
+  PersonaProfile,
+  TagTargetType,
+} from '@minimal-rpg/schemas';
 import {
   createWorkspaceDraft,
   updateWorkspaceDraft,
@@ -74,8 +79,9 @@ export interface PlayerSessionConfig {
 export interface TagSelection {
   tagId: string;
   tagName?: string;
-  scope: 'session' | 'npc';
-  targetId?: string; // Required if scope is 'npc'
+  targetType: TagTargetType;
+  /** Optional: specific entity IDs when targetType requires explicit targets (e.g., character, location) */
+  targetEntityIds?: string[];
 }
 
 export interface RelationshipConfig {
@@ -150,7 +156,7 @@ export interface WorkspaceActions {
   // Tags
   addTag: (tag: TagSelection) => void;
   updateTag: (tagId: string, partial: Partial<TagSelection>) => void;
-  removeTag: (tagId: string, targetId?: string) => void;
+  removeTag: (tagId: string) => void;
   clearTags: () => void;
 
   // Relationships
@@ -242,9 +248,35 @@ function validatePlayerStep(): StepValidationState {
   return { valid: true, errors: [] };
 }
 
-function validateTagsStep(): StepValidationState {
-  // Tags are optional
-  return { valid: true, errors: [] };
+function validateTagsStep(state: WorkspaceState): StepValidationState {
+  // Tags are optional, but any selected targeted tags must be fully configured.
+  const errors: string[] = [];
+
+  for (const tag of state.tags) {
+    const tagName = tag.tagName ?? tag.tagId;
+
+    if (tag.targetType === 'character') {
+      if (state.npcs.length === 0) {
+        errors.push(`Tag "${tagName}" targets characters but no NPCs are in the session`);
+        continue;
+      }
+      if (!tag.targetEntityIds || tag.targetEntityIds.length === 0) {
+        errors.push(`Select one or more characters for tag "${tagName}"`);
+      }
+    }
+
+    if (tag.targetType === 'location') {
+      if (!state.locations.mapId) {
+        errors.push(`Tag "${tagName}" targets locations but no location map is selected`);
+        continue;
+      }
+      if (!tag.targetEntityIds || tag.targetEntityIds.length === 0) {
+        errors.push(`Select one or more locations for tag "${tagName}"`);
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
 }
 
 function validateRelationshipsStep(): StepValidationState {
@@ -425,12 +457,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
               false,
               'updateTag'
             ),
-          removeTag: (tagId, targetId) =>
+          removeTag: (tagId) =>
             set(
               (state) => ({
-                tags: state.tags.filter(
-                  (t) => !(t.tagId === tagId && (targetId === undefined || t.targetId === targetId))
-                ),
+                tags: state.tags.filter((t) => t.tagId !== tagId),
                 isDirty: true,
               }),
               false,
@@ -566,7 +596,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
               case 'player':
                 return validatePlayerStep();
               case 'tags':
-                return validateTagsStep();
+                return validateTagsStep(state);
               case 'relationships':
                 return validateRelationshipsStep();
               case 'review':

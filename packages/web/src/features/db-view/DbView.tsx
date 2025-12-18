@@ -5,7 +5,7 @@ import {
   type DbOverview,
   type DbTableOverview,
 } from '../../shared/api/client.js';
-import { DB_TOOLS } from '../../config.js';
+import { RequireAdmin } from '../../shared/auth/RequireAdmin.js';
 
 function toDisplay(v: unknown): string {
   if (v === null || v === undefined) return '';
@@ -140,11 +140,9 @@ const TablePanel: React.FC<{
                     {k}
                   </th>
                 ))}
-                {DB_TOOLS && (
-                  <th className="text-left px-3 py-2 text-slate-300 font-medium border-b border-slate-700 bg-slate-800 w-20">
-                    Actions
-                  </th>
-                )}
+                <th className="text-left px-3 py-2 text-slate-300 font-medium border-b border-slate-700 bg-slate-800 w-20">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -179,28 +177,26 @@ const TablePanel: React.FC<{
                         </td>
                       );
                     })}
-                    {DB_TOOLS && (
-                      <td className="px-3 py-2">
-                        <button
-                          className={`px-2 py-1 rounded text-xs transition-colors ${
-                            deleting
-                              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                              : 'bg-red-600/80 text-white hover:bg-red-500'
-                          }`}
-                          disabled={!!deleting}
-                          title={deleting ? `Deleting…` : 'Delete row'}
-                          onClick={() => {
-                            if (!idStr) {
-                              alert('No id column found for this row');
-                              return;
-                            }
-                            onDelete(table.name, idStr);
-                          }}
-                        >
-                          {deleting && idStr === deleting ? '…' : '✕'}
-                        </button>
-                      </td>
-                    )}
+                    <td className="px-3 py-2">
+                      <button
+                        className={`px-2 py-1 rounded text-xs transition-colors ${
+                          deleting
+                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                            : 'bg-red-600/80 text-white hover:bg-red-500'
+                        }`}
+                        disabled={!!deleting}
+                        title={deleting ? `Deleting…` : 'Delete row'}
+                        onClick={() => {
+                          if (!idStr) {
+                            alert('No id column found for this row');
+                            return;
+                          }
+                          onDelete(table.name, idStr);
+                        }}
+                      >
+                        {deleting && idStr === deleting ? '…' : '✕'}
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -271,52 +267,56 @@ export const DbView: React.FC = () => {
     void run();
   };
 
-  // Loading state
-  if (loading) {
+  const content = (() => {
+    // Loading state
+    if (loading) {
+      return (
+        <div className="h-screen flex flex-col bg-slate-950 text-slate-200 font-sans">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-slate-400">Loading database…</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Error state
+    if (error) {
+      return (
+        <div className="h-screen flex flex-col bg-slate-950 text-slate-200 font-sans">
+          <Header />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-red-400">{error}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!data) return null;
+
+    const currentTable = data.tables.find((t) => t.name === activeTable);
+
     return (
       <div className="h-screen flex flex-col bg-slate-950 text-slate-200 font-sans">
+        {/* Fixed header */}
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-slate-400">Loading database…</div>
-        </div>
+
+        {/* Tab bar below header */}
+        <TabBar tables={data.tables} activeTable={activeTable} onSelect={setActiveTable} />
+
+        {/* Table content area */}
+        {currentTable ? (
+          <TablePanel table={currentTable} deleting={deleting} onDelete={handleDelete} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-slate-500">
+            Select a table to view its data
+          </div>
+        )}
       </div>
     );
-  }
+  })();
 
-  // Error state
-  if (error) {
-    return (
-      <div className="h-screen flex flex-col bg-slate-950 text-slate-200 font-sans">
-        <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-red-400">{error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const currentTable = data.tables.find((t) => t.name === activeTable);
-
-  return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-200 font-sans">
-      {/* Fixed header */}
-      <Header />
-
-      {/* Tab bar below header */}
-      <TabBar tables={data.tables} activeTable={activeTable} onSelect={setActiveTable} />
-
-      {/* Table content area */}
-      {currentTable ? (
-        <TablePanel table={currentTable} deleting={deleting} onDelete={handleDelete} />
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-slate-500">
-          Select a table to view its data
-        </div>
-      )}
-    </div>
-  );
+  return <RequireAdmin title="DB View">{content}</RequireAdmin>;
 };
 
 export default DbView;

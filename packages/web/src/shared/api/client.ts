@@ -22,6 +22,8 @@ import type {
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS, USE_TURNS_API } from '../../config.js';
 import type { Speaker } from '../../types.js';
+import { getAuthToken } from '../auth/token.js';
+import type { AuthLoginResponse, AuthMeResponse } from '../auth/types.js';
 
 interface TurnEndpointResponse {
   message: string;
@@ -69,6 +71,28 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   const { signal, timeoutMs = 10000, parseAsText, ...rest } = init ?? {};
 
+  const token = getAuthToken();
+  const incomingHeaders = rest.headers;
+  const mergedHeaders: Record<string, string> = {};
+
+  if (incomingHeaders) {
+    if (incomingHeaders instanceof Headers) {
+      incomingHeaders.forEach((v, k) => {
+        mergedHeaders[k] = v;
+      });
+    } else if (Array.isArray(incomingHeaders)) {
+      for (const [k, v] of incomingHeaders) {
+        mergedHeaders[k] = v;
+      }
+    } else {
+      Object.assign(mergedHeaders, incomingHeaders);
+    }
+  }
+
+  if (token && !mergedHeaders['Authorization'] && !mergedHeaders['authorization']) {
+    mergedHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   let timedOut = false;
@@ -91,7 +115,11 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   }
 
   try {
-    const res = await fetch(url, { ...rest, signal: controller.signal });
+    const res = await fetch(url, {
+      ...rest,
+      ...(Object.keys(mergedHeaders).length > 0 ? { headers: mergedHeaders } : {}),
+      signal: controller.signal,
+    });
 
     if (!res.ok) {
       // Try to surface server-provided error details
@@ -142,6 +170,26 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
     if (timeoutId) clearTimeout(timeoutId);
     if (signal) signal.removeEventListener('abort', onAbort);
   }
+}
+
+// =============================================================================
+// Auth API
+// =============================================================================
+
+export async function authLogin(params: {
+  identifier: string;
+  password: string;
+}): Promise<AuthLoginResponse> {
+  return http<AuthLoginResponse>('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    timeoutMs: 15000,
+  });
+}
+
+export async function authMe(signal?: AbortSignal): Promise<AuthMeResponse> {
+  return http<AuthMeResponse>('/auth/me', signal ? { signal } : undefined);
 }
 
 export async function getRuntimeConfig(signal?: AbortSignal): Promise<RuntimeConfigResponse> {
@@ -246,8 +294,8 @@ export interface CreateFullSessionRequest {
   }[];
   tags?: {
     tagId: string;
-    scope: string;
-    targetId?: string;
+    targetType: string;
+    targetEntityId?: string | null;
   }[];
 }
 
@@ -545,6 +593,40 @@ export async function deleteDbRow(model: string, id: string, signal?: AbortSigna
   });
 }
 
+export interface ToolingFailureEventDto {
+  type: 'tooling-failure';
+  timestamp: string | null;
+  payload: Record<string, unknown>;
+  source?: string;
+}
+
+export interface ToolingFailureEntryDto {
+  turnIdx: number;
+  createdAt: string;
+  playerInput: string;
+  events: ToolingFailureEventDto[];
+}
+
+export interface ToolingFailuresResponseDto {
+  ok: true;
+  sessionId: string;
+  limit: number;
+  count: number;
+  failures: ToolingFailureEntryDto[];
+}
+
+export async function getToolingFailures(
+  sessionId: string,
+  limit = 50,
+  signal?: AbortSignal
+): Promise<ToolingFailuresResponseDto> {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  return http<ToolingFailuresResponseDto>(
+    `/admin/sessions/${encodeURIComponent(sessionId)}/tooling-failures?${qs.toString()}`,
+    signal ? { signal } : undefined
+  );
+}
+
 export async function getCharacter(
   characterId: string,
   signal?: AbortSignal
@@ -805,9 +887,7 @@ export async function updateUserPreferences(
 /**
  * Get workspace mode preference
  */
-export async function getWorkspaceModePreference(
-  userId = 'default'
-): Promise<WorkspaceMode> {
+export async function getWorkspaceModePreference(userId = 'default'): Promise<WorkspaceMode> {
   const result = await http<{ ok: true; mode: WorkspaceMode }>(
     `/user/preferences/workspace-mode?user_id=${encodeURIComponent(userId)}`
   );

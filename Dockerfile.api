@@ -1,0 +1,43 @@
+FROM node:20-slim AS build
+
+WORKDIR /app
+
+# Workspace metadata for install caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy only package manifests we need for dependency graph resolution
+COPY packages/api/package.json packages/api/package.json
+COPY packages/agents/package.json packages/agents/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/governor/package.json packages/governor/package.json
+COPY packages/retrieval/package.json packages/retrieval/package.json
+COPY packages/schemas/package.json packages/schemas/package.json
+COPY packages/state-manager/package.json packages/state-manager/package.json
+COPY packages/utils/package.json packages/utils/package.json
+
+RUN corepack enable && pnpm -w install --frozen-lockfile
+
+# Copy the rest of the repo and build the API and its workspace dependencies
+COPY . .
+
+# Build only what the API needs (the ... syntax includes dependencies)
+RUN pnpm -w --filter @minimal-rpg/api... build
+
+
+FROM node:20-slim AS runtime
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy runtime deps and built outputs
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=build /app/packages ./packages
+
+# The API loads JSON data from the repo-root data/ directory by default
+COPY --from=build /app/data ./data
+
+EXPOSE 3001
+
+CMD ["node", "packages/api/dist/server.js"]

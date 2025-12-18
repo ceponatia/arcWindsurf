@@ -24,10 +24,12 @@ import type { ApiError } from './types.js';
 import type { LoadedData } from './data/types.js';
 import { assertPromptConfigValid } from './llm/prompt.js';
 import { getConfig } from './util/config.js';
+import { ensureLocalAdminUser } from '@minimal-rpg/db/node';
 
 // Route registrars
 import { registerConfigRoutes } from './routes/config.js';
 import { registerAdminDbRoutes } from './routes/adminDb.js';
+import { registerAdminSessionRoutes } from './routes/adminSessions.js';
 import { registerSessionRoutes } from './routes/sessions/index.js';
 import { registerTurnRoutes } from './routes/turns.js';
 import { registerProfileRoutes } from './routes/profiles.js';
@@ -40,6 +42,8 @@ import { registerHygieneRoutes } from './routes/hygiene.js';
 import { registerScheduleRoutes } from './routes/schedules.js';
 import { registerEntityUsageRoutes } from './routes/entityUsage.js';
 import { registerUserPreferencesRoutes } from './routes/userPreferences.js';
+import { registerAuthRoutes } from './routes/auth.js';
+import { attachAuthUser } from './auth/middleware.js';
 
 const app = new Hono();
 
@@ -66,6 +70,13 @@ async function start(): Promise<void> {
     console.log(
       `Startup: loaded ${loaded.characters.length} characters and ${loaded.settings.length} settings`
     );
+
+    // Local/dev bootstrap: if LOCAL_ADMIN_PASSWORD is provided, ensure an admin user exists.
+    const localAdminPassword = process.env['LOCAL_ADMIN_PASSWORD'];
+    if (localAdminPassword && localAdminPassword.trim().length > 0) {
+      await ensureLocalAdminUser({ password: localAdminPassword });
+      console.log('[auth] ensured local admin user (identifier=admin)');
+    }
   } catch (err) {
     console.error('Failed to load data', (err as Error).message);
     process.exit(1);
@@ -88,13 +99,18 @@ async function start(): Promise<void> {
     cors({
       origin: '*',
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowHeaders: ['Content-Type'],
+      allowHeaders: ['Content-Type', 'Authorization'],
     })
   );
 
+  // Attach auth user (if any) from Authorization header
+  app.use('*', attachAuthUser);
+
   // Register route groups
   registerConfigRoutes(app);
+  registerAuthRoutes(app);
   registerAdminDbRoutes(app);
+  registerAdminSessionRoutes(app);
   registerProfileRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerSessionRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerTurnRoutes(app);

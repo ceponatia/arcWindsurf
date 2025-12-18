@@ -6,6 +6,7 @@ import type {
   TurnStateContext,
   ConversationTurn,
   SessionTag,
+  TurnTagContext,
   ToolHistoryContext,
 } from '@minimal-rpg/governor';
 import type { PersonaProfile } from '@minimal-rpg/schemas';
@@ -37,6 +38,7 @@ export interface TurnContext {
   overrides: Partial<TurnStateContext>;
   conversationHistory: ConversationTurn[];
   sessionTags: SessionTag[];
+  turnTagContext?: TurnTagContext;
   persona?: PersonaProfile;
   toolHistory?: ToolHistoryContext;
 }
@@ -49,6 +51,7 @@ export interface SessionSnapshot {
   loadedState: LoadedTurnState;
   messages: { role: string; content: string; createdAt: string; idx: number }[];
   sessionTags: SessionTag[];
+  turnTagContext?: TurnTagContext;
   persona?: PersonaProfile;
   speaker?: Speaker;
 }

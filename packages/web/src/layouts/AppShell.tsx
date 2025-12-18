@@ -5,6 +5,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js';
 import { AppFooter } from './AppFooter.js';
 import { useTags } from '../shared/hooks/useTags.js';
 import { useItems } from '../shared/hooks/useItems.js';
+import { useAuth } from '../shared/hooks/useAuth.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
 
 const ChatPanel = React.lazy(async () => {
@@ -224,6 +225,7 @@ const NavButton: React.FC<NavButtonProps> = ({ icon, label, active, onClick }) =
 );
 
 const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
+  const { isAdmin } = useAuth();
   const {
     viewMode,
     builderId,
@@ -357,12 +359,22 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               <DocumentIcon className="w-4 h-4" />
               <span>Documentation</span>
             </button>
-            <a
-              href="/dbview"
-              className="block text-xs text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              DB View
-            </a>
+            {isAdmin && (
+              <>
+                <a
+                  href="/dbview"
+                  className="block text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  DB View
+                </a>
+                <a
+                  href="/toolingfailures"
+                  className="block text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Tooling Failures
+                </a>
+              </>
+            )}
           </div>
         </aside>
 

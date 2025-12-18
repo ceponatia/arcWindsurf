@@ -71,10 +71,12 @@ export {
   GET_NPC_MEMORY_TOOL,
   UPDATE_RELATIONSHIP_TOOL,
   CORE_TOOLS,
+  DEBUG_TOOLS,
   ENVIRONMENT_TOOLS,
   INVENTORY_TOOLS,
   RELATIONSHIP_TOOLS,
   ALL_GAME_TOOLS,
+  TOOLING_FAILURE_REPORT_TOOL,
   getActiveTools,
 
   // Executor
@@ -126,6 +128,8 @@ export type {
   StateObject,
   SessionTag,
   ToolHistoryContext,
+  TagInstruction,
+  TurnTagContext,
 } from './core/types.js';
 
 export { DEFAULT_GOVERNOR_OPTIONS, TurnProcessingError } from './core/types.js';

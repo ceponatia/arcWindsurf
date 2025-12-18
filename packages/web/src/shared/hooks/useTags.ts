@@ -24,6 +24,7 @@ export function useTags(): UseTagsResult {
           name: t.name,
           shortDescription: t.shortDescription ?? null,
           promptText: t.promptText,
+          targetType: t.targetType ?? 'session',
         }));
         setState({ loading: false, error: null, data: tags });
       })

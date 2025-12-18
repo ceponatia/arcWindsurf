@@ -162,6 +162,7 @@ export function registerTurnRoutes(app: Hono): void {
     const governor = createGovernorForRequest({
       sessionId,
       stateSlices,
+      ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
       ...(loadedState.locationInfoMap.size > 0 && {
         availableLocations: loadedState.locationInfoMap,
       }),
@@ -190,6 +191,7 @@ export function registerTurnRoutes(app: Hono): void {
         })
       ),
       sessionTags: snapshot.sessionTags,
+      ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
       ...(snapshot.persona ? { persona: snapshot.persona } : {}),
       ...(toolHistory ? { toolHistory } : {}),
     };

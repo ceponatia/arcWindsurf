@@ -2,11 +2,22 @@
  * Tags Step - Select rules, scenarios, and modifier tags with scope assignment
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useWorkspaceStore, useTagsState, useNpcsState } from '../store.js';
 import type { TagSelection, NpcSessionConfig } from '../store.js';
 import type { TagSummary, CharacterSummary } from '../../../types.js';
 import { AlertCircle } from 'lucide-react';
+
+const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3001';
+
+interface LocationOption {
+  id: string;
+  name: string;
+}
+
+function isLocationOption(value: LocationOption | null): value is LocationOption {
+  return value !== null;
+}
 
 interface TagsStepProps {
   availableTags: TagSummary[];
@@ -23,10 +34,24 @@ export const TagsStep: React.FC<TagsStepProps> = ({
 }) => {
   const tags = useTagsState();
   const npcs = useNpcsState();
-  const { addTag, removeTag, updateTag, clearTags } = useWorkspaceStore();
+  const locationsState = useWorkspaceStore((s) => s.locations);
+  const { addTag, removeTag, updateTag, clearTags, setStep } = useWorkspaceStore();
   const [showConfigFor, setShowConfigFor] = useState<string | null>(null);
+  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+  const [locationOptionsLoading, setLocationOptionsLoading] = useState(false);
+  const [locationOptionsError, setLocationOptionsError] = useState<string | null>(null);
 
   const selectedTagIds = tags.map((t: TagSelection) => t.tagId);
+
+  const visibleTags = useMemo(
+    () =>
+      availableTags.filter(
+        (t) =>
+          // Deprecated targets - hidden from session setup UI for now
+          t.targetType !== 'player' && t.targetType !== 'setting'
+      ),
+    [availableTags]
+  );
 
   // Get character name by ID
   const getCharacterName = (characterId: string): string => {
@@ -44,25 +69,85 @@ export const TagsStep: React.FC<TagsStepProps> = ({
       const selection: TagSelection = {
         tagId: tag.id,
         tagName: tag.name,
-        scope: 'session',
+        targetType: tag.targetType ?? 'session',
+        ...(tag.targetType === 'character' || tag.targetType === 'location'
+          ? { targetEntityIds: [] }
+          : {}),
       };
       addTag(selection);
     }
-  };
-
-  // Handle scope change
-  const handleScopeChange = (tagId: string, scope: 'session' | 'npc', targetId?: string) => {
-    const update: Partial<TagSelection> = { scope };
-    if (targetId !== undefined) {
-      update.targetId = targetId;
-    }
-    updateTag(tagId, update);
   };
 
   // Get tag selection config
   const getTagConfig = (tagId: string): TagSelection | undefined => {
     return tags.find((t: TagSelection) => t.tagId === tagId);
   };
+
+  const toggleTargetEntity = (tagId: string, entityId: string) => {
+    const cfg = getTagConfig(tagId);
+    const current = cfg?.targetEntityIds ?? [];
+    const next = current.includes(entityId)
+      ? current.filter((id) => id !== entityId)
+      : [...current, entityId];
+    updateTag(tagId, { targetEntityIds: next });
+  };
+
+  // Lazy-load locations from selected location map when needed
+  useEffect(() => {
+    const needsLocations = tags.some((t) => t.targetType === 'location');
+    const mapId = locationsState?.mapId;
+
+    if (!needsLocations || !mapId) {
+      return;
+    }
+
+    // Only fetch once per map selection
+    if (locationOptions.length > 0 && locationOptionsError === null) {
+      return;
+    }
+
+    let cancelled = false;
+    setLocationOptionsLoading(true);
+    setLocationOptionsError(null);
+
+    void fetch(`${API_BASE}/location-maps/${encodeURIComponent(mapId)}`)
+      .then((res) => res.json() as Promise<unknown>)
+      .then((raw) => {
+        if (cancelled) return;
+        const data = raw as { ok?: boolean; map?: { nodes?: unknown[] } };
+        const nodes = data?.ok && data.map?.nodes ? data.map.nodes : [];
+        const options = Array.isArray(nodes)
+          ? nodes
+              .map((n): LocationOption | null => {
+                const node = n as { id?: unknown; name?: unknown; label?: unknown };
+                const id = typeof node.id === 'string' ? node.id : undefined;
+                const name =
+                  typeof node.name === 'string'
+                    ? node.name
+                    : typeof node.label === 'string'
+                      ? node.label
+                      : undefined;
+                return id && name ? { id, name } : null;
+              })
+              .filter(isLocationOption)
+          : [];
+
+        setLocationOptions(options);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        console.error('[TagsStep] Failed to load location map nodes:', err);
+        setLocationOptionsError('Failed to load locations for this map');
+        setLocationOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLocationOptionsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tags, locationsState?.mapId, locationOptions.length, locationOptionsError]);
 
   return (
     <div className="space-y-6">
@@ -79,7 +164,7 @@ export const TagsStep: React.FC<TagsStepProps> = ({
       <div className="border border-slate-800 rounded-lg bg-slate-900/30">
         <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
           <span className="text-sm font-medium text-slate-300">
-            Available Tags ({availableTags.length})
+            Available Tags ({visibleTags.length})
           </span>
           <button
             onClick={onRefresh}
@@ -92,11 +177,11 @@ export const TagsStep: React.FC<TagsStepProps> = ({
         <div className="p-4 max-h-80 overflow-y-auto">
           {loading ? (
             <p className="text-sm text-slate-500 text-center py-8">Loading tags...</p>
-          ) : availableTags.length === 0 ? (
+          ) : visibleTags.length === 0 ? (
             <p className="text-sm text-slate-500 text-center py-8">No tags available.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {availableTags.map((tag) => {
+              {visibleTags.map((tag) => {
                 const isSelected = selectedTagIds.includes(tag.id);
 
                 return (
@@ -148,49 +233,116 @@ export const TagsStep: React.FC<TagsStepProps> = ({
                     {/* Inline Config */}
                     {isSelected && showConfigFor === tag.id && (
                       <div className="mt-3 pt-3 border-t border-slate-700 space-y-3">
-                        {/* Scope selection */}
-                        <div>
-                          <label className="text-xs text-slate-400 block mb-1">Scope</label>
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={getTagConfig(tag.id)?.scope ?? 'session'}
-                              onChange={(e) => {
-                                const newScope = e.target.value as 'session' | 'npc';
-                                handleScopeChange(tag.id, newScope);
-                              }}
-                              className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs"
-                            >
-                              <option value="session">Session-wide</option>
-                              <option value="npc">Specific NPC</option>
-                            </select>
+                        {/* Targeting config */}
+                        {tag.targetType === 'character' && (
+                          <div>
+                            <label className="text-xs text-slate-400 block mb-1">
+                              Target Character(s)
+                            </label>
 
-                            {getTagConfig(tag.id)?.scope === 'npc' && (
-                              <select
-                                value={getTagConfig(tag.id)?.targetId ?? ''}
-                                onChange={(e) => {
-                                  handleScopeChange(tag.id, 'npc', e.target.value || undefined);
-                                }}
-                                className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs"
-                              >
-                                <option value="">Select NPC...</option>
-                                {npcs.map((npc: NpcSessionConfig) => (
-                                  <option key={npc.characterId} value={npc.characterId}>
-                                    {getCharacterName(npc.characterId)}
-                                  </option>
-                                ))}
-                              </select>
+                            {npcs.length === 0 ? (
+                              <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Add one or more NPCs to the session first.
+                              </p>
+                            ) : (
+                              <div className="space-y-1">
+                                {npcs.map((npc: NpcSessionConfig) => {
+                                  const checked =
+                                    getTagConfig(tag.id)?.targetEntityIds?.includes(
+                                      npc.characterId
+                                    ) ?? false;
+                                  return (
+                                    <label
+                                      key={npc.characterId}
+                                      className="flex items-center gap-2 text-xs text-slate-300"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleTargetEntity(tag.id, npc.characterId)}
+                                      />
+                                      <span>{getCharacterName(npc.characterId)}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
                             )}
-                          </div>
 
-                          {/* Warning if NPC scope without target */}
-                          {getTagConfig(tag.id)?.scope === 'npc' &&
-                            !getTagConfig(tag.id)?.targetId && (
+                            {npcs.length > 0 &&
+                              (getTagConfig(tag.id)?.targetEntityIds?.length ?? 0) === 0 && (
+                                <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Select one or more characters for this tag.
+                                </p>
+                              )}
+                          </div>
+                        )}
+
+                        {tag.targetType === 'location' && (
+                          <div>
+                            <label className="text-xs text-slate-400 block mb-1">
+                              Target Location(s)
+                            </label>
+
+                            {!locationsState?.mapId ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Select a location map first.
+                                </p>
+                                <button
+                                  onClick={() => setStep('locations')}
+                                  className="text-xs text-slate-400 hover:text-slate-200 underline"
+                                >
+                                  Go to Locations step
+                                </button>
+                              </div>
+                            ) : locationOptionsLoading ? (
+                              <p className="text-xs text-slate-500">Loading locations…</p>
+                            ) : locationOptionsError ? (
+                              <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                {locationOptionsError}
+                              </p>
+                            ) : locationOptions.length === 0 ? (
                               <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
                                 <AlertCircle className="w-3 h-3" />
-                                Select an NPC for this tag
+                                No locations found in this map.
                               </p>
+                            ) : (
+                              <div className="space-y-1 max-h-36 overflow-y-auto border border-slate-700 rounded p-2 bg-slate-900/20">
+                                {locationOptions.map((loc) => {
+                                  const checked =
+                                    getTagConfig(tag.id)?.targetEntityIds?.includes(loc.id) ??
+                                    false;
+                                  return (
+                                    <label
+                                      key={loc.id}
+                                      className="flex items-center gap-2 text-xs text-slate-300"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleTargetEntity(tag.id, loc.id)}
+                                      />
+                                      <span>{loc.name}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
                             )}
-                        </div>
+
+                            {locationsState?.mapId &&
+                              locationOptions.length > 0 &&
+                              (getTagConfig(tag.id)?.targetEntityIds?.length ?? 0) === 0 && (
+                                <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Select one or more locations for this tag.
+                                </p>
+                              )}
+                          </div>
+                        )}
 
                         {tag.promptText && (
                           <div>
@@ -219,8 +371,10 @@ export const TagsStep: React.FC<TagsStepProps> = ({
             </span>
             <div className="flex items-center gap-4">
               <span className="text-xs text-slate-500">
-                {tags.filter((t: TagSelection) => t.scope === 'session').length} session-wide,{' '}
-                {tags.filter((t: TagSelection) => t.scope === 'npc').length} NPC-scoped
+                {tags.filter((t: TagSelection) => t.targetType === 'session').length} session,{' '}
+                {tags.filter((t: TagSelection) => t.targetType === 'npc').length} all-NPC,{' '}
+                {tags.filter((t: TagSelection) => t.targetType === 'character').length} character,{' '}
+                {tags.filter((t: TagSelection) => t.targetType === 'location').length} location
               </span>
               <button onClick={clearTags} className="text-xs text-slate-500 hover:text-red-400">
                 Clear All
@@ -234,12 +388,19 @@ export const TagsStep: React.FC<TagsStepProps> = ({
                 key={tag.tagId}
                 className={`
                   flex items-center gap-2 px-3 py-1.5 rounded-full text-sm
-                  ${tag.scope === 'npc' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-violet-900/50 text-violet-300'}
+                  ${tag.targetType === 'npc' || tag.targetType === 'character' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-violet-900/50 text-violet-300'}
                 `}
               >
                 <span>{tag.tagName ?? tag.tagId}</span>
-                {tag.scope === 'npc' && tag.targetId && (
-                  <span className="text-xs opacity-70">({getCharacterName(tag.targetId)})</span>
+                {tag.targetType === 'character' && (tag.targetEntityIds?.length ?? 0) > 0 && (
+                  <span className="text-xs opacity-70">
+                    ({(tag.targetEntityIds ?? []).map(getCharacterName).join(', ')})
+                  </span>
+                )}
+                {tag.targetType === 'location' && (tag.targetEntityIds?.length ?? 0) > 0 && (
+                  <span className="text-xs opacity-70">
+                    ({tag.targetEntityIds?.length ?? 0} locations)
+                  </span>
                 )}
                 <button onClick={() => removeTag(tag.tagId)} className="hover:text-red-400">
                   ×

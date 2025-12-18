@@ -66,6 +66,8 @@ export interface TurnInput {
   overrides?: DeepPartial<TurnStateContext>;
   conversationHistory?: ConversationTurn[];
   sessionTags?: SessionTagInstance[];
+  /** Routed per-turn tag context (session/NPC/location), computed by API snapshot layer */
+  turnTagContext?: TurnTagContext;
   /** Player character persona (when attached to session) */
   persona?: PersonaProfile;
   /** Parsed actions from pre-parser (optional, for multi-action sequencing) */
@@ -74,6 +76,28 @@ export interface TurnInput {
   conversationSummary?: string;
   /** Recent tool usage history for maintaining tool calling patterns */
   toolHistory?: ToolHistoryContext;
+}
+
+// ============================================================================
+// Prompt Tag Routing (MVP)
+// ============================================================================
+
+export interface TagInstruction {
+  bindingId: string;
+  tagId: string;
+  tagName: string;
+  targetType: string;
+  instructionText: string;
+  shortDescription?: string;
+  activationMode?: string;
+}
+
+export interface TurnTagContext {
+  session: TagInstruction[];
+  byNpcInstanceId: Record<string, TagInstruction[]>;
+  byLocationId: Record<string, TagInstruction[]>;
+  playerLocationId: string | null;
+  ignored: { bindingId: string; tagId: string; reason: string }[];
 }
 
 /**

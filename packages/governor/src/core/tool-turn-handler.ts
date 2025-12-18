@@ -222,16 +222,35 @@ export class ToolBasedTurnHandler {
 
       // If no tools were called, try once more with an explicit reminder
       if (!response.tool_calls || response.tool_calls.length === 0) {
+        const firstAttemptContent = response.message?.content ?? '';
+        const firstAttemptExcerpt = firstAttemptContent.substring(0, 500);
+        const availableToolNames = tools.map((t) => t.function.name);
+
+        events.push({
+          type: 'tooling-failure',
+          timestamp: new Date(),
+          payload: {
+            stage: 'initial',
+            reason: 'no_tool_calls',
+            finish_reason: response.finish_reason ?? null,
+            available_tools: availableToolNames,
+            invalid_output_excerpt: firstAttemptExcerpt,
+          },
+          source: 'ToolTurnHandler',
+        });
+
         if (this.debug) {
-          const content = response.message?.content ?? '';
           console.log(`[ToolTurnHandler] No tool calls on first attempt.`);
           console.log(`[ToolTurnHandler] Finish reason: ${response.finish_reason ?? 'unknown'}`);
           console.log(
-            `[ToolTurnHandler] Response content (first 300 chars): "${content.substring(0, 300)}"`
+            `[ToolTurnHandler] Response content (first 300 chars): "${firstAttemptContent.substring(0, 300)}"`
           );
 
           // Check if the response contains tool-like JSON
-          if (content.includes('npc_dialogue') || content.includes('get_sensory_detail')) {
+          if (
+            firstAttemptContent.includes('npc_dialogue') ||
+            firstAttemptContent.includes('get_sensory_detail')
+          ) {
             console.log(
               `[ToolTurnHandler] WARNING: Response contains tool names in TEXT instead of proper tool_calls!`
             );
@@ -245,21 +264,17 @@ export class ToolBasedTurnHandler {
           );
         }
 
-        // Add the assistant's text response to context, then add a strong reminder
-        if (response.message?.content) {
-          messages.push({
-            role: 'assistant',
-            content: response.message.content,
-          });
-        }
-
-        // Add a system reminder that forces tool usage - be very explicit about format
+        // Add a strong reminder that forces tool usage - be very explicit about format.
+        // Note: this is plain text (not a real system message), but it strongly steers the retry.
         messages.push({
           role: 'user',
           content:
-            `[SYSTEM OVERRIDE: You MUST use the tool calling mechanism, not write about tools in text. ` +
-            `Do NOT write "Here are the tool calls" - instead, actually invoke the tools using the function calling API. ` +
-            `Call npc_dialogue with the NPC's response. This is mandatory.]`,
+            `[TOOLING REMINDER: You MUST use the tool calling mechanism (tool_calls) and NOT describe tools in plain text. ` +
+            `If you cannot produce proper tool_calls for the appropriate game tools, call tooling_failure_report instead with JSON fields ` +
+            `{summary, stage, suspected_cause, intended_tool, invalid_output_excerpt, available_tools, finish_reason, notes}. ` +
+            `Available tools: ${availableToolNames.join(', ')}. ` +
+            `Your previous invalid output excerpt: "${firstAttemptExcerpt}". ` +
+            `After tooling_failure_report, immediately proceed by calling the appropriate game tool(s) for the turn.]`,
         });
 
         // Retry with 'required' to force tool usage
@@ -310,6 +325,54 @@ export class ToolBasedTurnHandler {
               response.tool_calls = syntheticToolCalls;
             }
           }
+        }
+
+        // If the provider still returned no tool_calls, synthesize a debug report tool call.
+        // This guarantees we capture actionable diagnostics and keeps the "at least one tool call" invariant.
+        if (!response.tool_calls || response.tool_calls.length === 0) {
+          events.push({
+            type: 'tooling-failure',
+            timestamp: new Date(),
+            payload: {
+              stage: 'retry',
+              reason: 'no_tool_calls_after_retry',
+              finish_reason: response.finish_reason ?? null,
+              available_tools: availableToolNames,
+              invalid_output_excerpt: (response.message?.content ?? firstAttemptExcerpt).substring(
+                0,
+                500
+              ),
+              action: 'synthesize_tooling_failure_report',
+            },
+            source: 'ToolTurnHandler',
+          });
+
+          const reportArgs = {
+            summary: 'Model returned no tool_calls; synthetic tooling failure report created',
+            stage: 'retry' as const,
+            suspected_cause:
+              'Model did not emit tool_calls (possibly ignored tool_choice=required or responded with plain text)',
+            intended_tool: undefined,
+            invalid_output_excerpt: (response.message?.content ?? firstAttemptExcerpt).substring(
+              0,
+              500
+            ),
+            available_tools: availableToolNames,
+            finish_reason: response.finish_reason,
+            notes:
+              'Created by ToolTurnHandler because no tool_calls were present after retry and fallback parsing.',
+          };
+
+          response.tool_calls = [
+            {
+              id: `synthetic_tooling_failure_report_${Date.now()}`,
+              type: 'function',
+              function: {
+                name: 'tooling_failure_report',
+                arguments: JSON.stringify(reportArgs),
+              },
+            },
+          ];
         }
       }
 
@@ -670,6 +733,11 @@ ${proximityContext}
 
 ## Tool Use (MANDATORY)
 Call tools BEFORE writing any narrative. After tools return, write concise third-person past-tense narrative that incorporates the tool results.
+
+When a tool returns tag instruction fields (for example, \`npc_tag_instructions\` or \`location_tag_instructions\` from \`npc_dialogue\`), treat them as HARD constraints.
+- Apply them to the NPC's full portrayal: spoken dialogue, actions, nonverbal behavior, internal thoughts/motivations, and any narrative framing attributable to that NPC.
+- Apply location tag instructions to scene description, atmosphere, and environmental narration in the current location.
+- Do not mention the tag instructions or these fields in the narrative.
 
 - If the player speaks to or interacts with ${npcName}, call \`npc_dialogue\` first.
 - If the player explicitly senses (look/smell/touch/taste/listen) a target or inspects a body part, call \`get_sensory_detail\` first.

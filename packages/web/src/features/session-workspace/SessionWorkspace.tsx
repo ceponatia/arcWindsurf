@@ -20,7 +20,7 @@ import {
   usePlayerState,
   useTagsState,
 } from './store.js';
-import type { WorkspaceStep, NpcSessionConfig, TagSelection, RelationshipConfig } from './store.js';
+import type { WorkspaceStep, NpcSessionConfig, RelationshipConfig } from './store.js';
 import { SettingStep } from './steps/SettingStep.js';
 import { LocationsStep } from './steps/LocationsStep.js';
 import { NpcsStep } from './steps/NpcsStep.js';
@@ -73,8 +73,8 @@ export interface SessionCreateConfig {
   }[];
   tags: {
     tagId: string;
-    scope: string;
-    targetId?: string;
+    targetType: string;
+    targetEntityId?: string | null;
   }[];
   relationships: {
     fromActorId: string;
@@ -236,6 +236,29 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
     setCreateError(null);
 
     try {
+      const tagBindings: SessionCreateConfig['tags'] = [];
+      for (const t of selectedTags) {
+        const targetType = t.targetType as string;
+
+        if (targetType === 'character' || targetType === 'location') {
+          const ids = t.targetEntityIds ?? [];
+          for (const id of ids) {
+            tagBindings.push({
+              tagId: t.tagId,
+              targetType,
+              targetEntityId: id,
+            });
+          }
+          continue;
+        }
+
+        tagBindings.push({
+          tagId: t.tagId,
+          targetType,
+          targetEntityId: null,
+        });
+      }
+
       // Build config with conditional optional properties
       const config: SessionCreateConfig = {
         settingId: settingState.settingId,
@@ -249,14 +272,7 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
           if (n.label) npcConfig.label = n.label;
           return npcConfig;
         }),
-        tags: selectedTags.map((t: TagSelection) => {
-          const tagConfig: SessionCreateConfig['tags'][number] = {
-            tagId: t.tagId,
-            scope: t.scope as string,
-          };
-          if (t.targetId) tagConfig.targetId = t.targetId;
-          return tagConfig;
-        }),
+        tags: tagBindings,
         relationships: relationships.map((r: RelationshipConfig) => {
           const relConfig: SessionCreateConfig['relationships'][number] = {
             fromActorId: r.fromActorId,

@@ -2,21 +2,11 @@ import type { Hono } from 'hono';
 import { getDbOverview, getDbPathInfo, deleteDbRow } from '@minimal-rpg/db/node';
 import type { ApiError } from '../types.js';
 import type { AdminDbOverview, AdminDbPathInfo } from '../db/types.js';
-
-// Narrowed env view for admin DB tools
-interface AdminEnv extends NodeJS.ProcessEnv {
-  ADMIN_DB_TOOLS?: string;
-}
-
-const env = process.env as AdminEnv;
+import { requireAdmin } from '../auth/middleware.js';
 
 export function registerAdminDbRoutes(app: Hono) {
   // GET /admin/db/overview - schema + sample rows for all models
-  app.get('/admin/db/overview', async (c) => {
-    if (env.ADMIN_DB_TOOLS !== 'true') {
-      return c.json({ ok: false, error: 'Admin DB tools disabled' } satisfies ApiError, 403);
-    }
-
+  app.get('/admin/db/overview', requireAdmin, async (c) => {
     try {
       const result: AdminDbOverview = await getDbOverview();
       return c.json(result, 200);
@@ -27,21 +17,13 @@ export function registerAdminDbRoutes(app: Hono) {
   });
 
   // GET /admin/db/path - show Prisma DB URL + on-disk file path (for SQLite)
-  app.get('/admin/db/path', async (c) => {
-    if (env.ADMIN_DB_TOOLS !== 'true') {
-      return c.json({ ok: false, error: 'Admin DB tools disabled' } satisfies ApiError, 403);
-    }
-
+  app.get('/admin/db/path', requireAdmin, async (c) => {
     const result: AdminDbPathInfo = await getDbPathInfo();
     return c.json(result, 200);
   });
 
   // DELETE /admin/db/:model/:id - delete a row by model + id
-  app.delete('/admin/db/:model/:id', async (c) => {
-    if (env.ADMIN_DB_TOOLS !== 'true') {
-      return c.json({ ok: false, error: 'Admin DB tools disabled' } satisfies ApiError, 403);
-    }
-
+  app.delete('/admin/db/:model/:id', requireAdmin, async (c) => {
     const modelParam = c.req.param('model');
     const idParam = c.req.param('id');
 

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { Build, ItemCategory } from '@minimal-rpg/schemas';
+import type { Build, ItemCategory, TagTargetType } from '@minimal-rpg/schemas';
 import type { CreateFullSessionRequest } from './shared/api/client.js';
 
 export interface CharacterSummary {
@@ -335,6 +335,7 @@ export interface TagSummary {
   name: string;
   shortDescription: string | null;
   promptText: string;
+  targetType: TagTargetType;
 }
 
 export interface TagsState {

@@ -15,6 +15,9 @@ export {
   NPC_DIALOGUE_TOOL,
   UPDATE_PROXIMITY_TOOL,
 
+  // Debug Tools
+  TOOLING_FAILURE_REPORT_TOOL,
+
   // Priority 2: Environment Tools (placeholder)
   NAVIGATE_PLAYER_TOOL,
   EXAMINE_OBJECT_TOOL,
@@ -28,6 +31,7 @@ export {
 
   // Tool Collections
   CORE_TOOLS,
+  DEBUG_TOOLS,
   ENVIRONMENT_TOOLS,
   INVENTORY_TOOLS,
   RELATIONSHIP_TOOLS,

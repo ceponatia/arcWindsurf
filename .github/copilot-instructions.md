@@ -2,6 +2,7 @@
 
 ## Important
 
+- Use the Github MCP for github related operations.
 - Always break code files into small domain-focused modules in their own files and folders. Each folder should have domain-specific types.ts files.
 - Identify if types you are adding can be used across domains; if so, add them to the types.ts file in that package's src/types.ts file as shared types.
 - Read the relevant domain's README.md files for package-specific info.

@@ -77,12 +77,21 @@ const CreateFullSessionRequestSchema = z.object({
   /** Optional: Tags to attach to the session */
   tags: z
     .array(
-      z.object({
-        tagId: z.string().min(1),
-        scope: z.enum(['session', 'npc']),
-        /** Required if scope is 'npc' - the NPC character ID to attach the tag to */
-        targetId: z.string().optional(),
-      })
+      z.union([
+        // Legacy (v1) payload
+        z.object({
+          tagId: z.string().min(1),
+          scope: z.enum(['session', 'npc']),
+          /** Optional: NPC character template ID (resolved to instance ID) */
+          targetId: z.string().optional(),
+        }),
+        // New (v2) payload
+        z.object({
+          tagId: z.string().min(1),
+          targetType: z.enum(['session', 'character', 'npc', 'player', 'location', 'setting']),
+          targetEntityId: z.string().nullable().optional(),
+        }),
+      ])
     )
     .optional(),
 });
@@ -308,24 +317,41 @@ export async function handleCreateFullSession(
     if (request.tags) {
       for (const tag of request.tags) {
         const bindingId = generateId();
-        let targetEntityId: string | null = null;
+        const normalized = (
+          'scope' in tag
+            ? {
+                tagId: tag.tagId,
+                targetType: tag.scope,
+                targetEntityId: tag.targetId ?? null,
+              }
+            : {
+                tagId: tag.tagId,
+                targetType: tag.targetType,
+                targetEntityId: tag.targetEntityId ?? null,
+              }
+        ) as { tagId: string; targetType: string; targetEntityId: string | null };
 
-        if (tag.scope === 'npc' && tag.targetId) {
-          // Find the NPC instance ID for this character
-          const npcInstance = npcInstances.find((n) => n.characterId === tag.targetId);
-          targetEntityId = npcInstance?.id ?? tag.targetId;
+        let targetEntityId: string | null = normalized.targetEntityId;
+
+        // If binding targets a character/NPC by template ID, resolve to the instance ID created in this session.
+        if (
+          (normalized.targetType === 'npc' || normalized.targetType === 'character') &&
+          targetEntityId
+        ) {
+          const npcInstance = npcInstances.find((n) => n.characterId === targetEntityId);
+          targetEntityId = npcInstance?.id ?? targetEntityId;
         }
 
         await client.query(
           `INSERT INTO session_tag_bindings (id, session_id, tag_id, target_type, target_entity_id, enabled)
            VALUES ($1, $2, $3, $4, $5, TRUE)`,
-          [bindingId, sessionId, tag.tagId, tag.scope, targetEntityId]
+          [bindingId, sessionId, normalized.tagId, normalized.targetType, targetEntityId]
         );
 
         tagBindings.push({
           id: bindingId,
-          tagId: tag.tagId,
-          targetType: tag.scope,
+          tagId: normalized.tagId,
+          targetType: normalized.targetType,
           targetEntityId,
         });
       }

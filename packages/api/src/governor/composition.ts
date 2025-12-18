@@ -121,6 +121,7 @@ export interface GovernorFactoryOptions {
   logging?: GovernorConfig['logging'];
   sessionId: string;
   stateSlices: AgentStateSlices;
+  turnTagContext?: import('@minimal-rpg/governor').TurnTagContext;
   /** Available locations for navigation (from LocationGraphService) */
   availableLocations?: Map<string, LocationInfo>;
   /** Current player location ID */
@@ -135,6 +136,7 @@ export interface GovernorFactoryOptions {
 interface ToolTurnHandlerOptions {
   sessionId: string;
   stateSlices: AgentStateSlices;
+  turnTagContext?: import('@minimal-rpg/governor').TurnTagContext;
   availableLocations?: Map<string, LocationInfo>;
   playerLocationId?: string;
   turnIdx?: number;
@@ -147,7 +149,8 @@ interface ToolTurnHandlerOptions {
 function createToolTurnHandlerOrThrow(
   options: ToolTurnHandlerOptions
 ): ReturnType<typeof createToolBasedTurnHandler> {
-  const { sessionId, stateSlices, availableLocations, playerLocationId, turnIdx } = options;
+  const { sessionId, stateSlices, turnTagContext, availableLocations, playerLocationId, turnIdx } =
+    options;
   const cfg = getConfig();
 
   if (!cfg.openrouterApiKey) {
@@ -174,6 +177,7 @@ function createToolTurnHandlerOrThrow(
     sessionId,
     stateSlices,
     fallbackHandler,
+    ...(turnTagContext !== undefined && { turnTagContext }),
     ...(availableLocations !== undefined && { availableLocations }),
     ...(playerLocationId !== undefined && { playerLocationId }),
   });
@@ -230,6 +234,7 @@ export function createGovernorForRequest(options: GovernorFactoryOptions): Gover
   const toolHandler = createToolTurnHandlerOrThrow({
     sessionId: options.sessionId,
     stateSlices: options.stateSlices,
+    ...(options.turnTagContext !== undefined && { turnTagContext: options.turnTagContext }),
     ...(options.availableLocations !== undefined && {
       availableLocations: options.availableLocations,
     }),
