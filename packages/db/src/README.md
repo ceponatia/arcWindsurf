@@ -17,7 +17,7 @@ This package provides direct PostgreSQL access without an ORM, using a structure
 | `node.ts`     | Re-exports for Node.js environments                                         |
 | `types.ts`    | TypeScript type definitions for all database entities                       |
 | `migrate.ts`  | SQL migration runner (reads from `sql/` directory)                          |
-| `seed.ts`     | Database seeding (currently a no-op placeholder)                            |
+| `seed.ts`     | Database seeding (built-in prompt tags, insert-only by default)             |
 | `pgvector.ts` | Typed wrapper for pgvector extension registration                           |
 
 ## Key Exports

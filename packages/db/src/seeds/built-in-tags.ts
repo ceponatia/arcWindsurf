@@ -11,6 +11,16 @@ interface BuiltInTag {
   promptText: string;
 }
 
+export type BuiltInTagSeedMode = 'insert' | 'upsert';
+
+export interface SeedBuiltInTagsOptions {
+  /**
+   * - `insert` (default): insert missing tags; never overwrite existing rows.
+   * - `upsert`: update the built-in tag fields on conflict.
+   */
+  mode?: BuiltInTagSeedMode;
+}
+
 const STYLE_TAGS: BuiltInTag[] = [
   {
     name: 'Minimalist Prose',
@@ -118,31 +128,56 @@ const ALL_BUILT_IN_TAGS: BuiltInTag[] = [
 
 /**
  * Seeds the database with built-in tags.
- * Uses upsert logic to avoid duplicates on re-run.
+ * By default this is non-destructive (insert-only) to avoid overwriting edits made
+ * in dev via the UI. Use `mode: 'upsert'` when you intentionally want the code
+ * definitions to refresh existing built-in tags.
  */
-export async function seedBuiltInTags(pool: PgPoolLike): Promise<void> {
+export async function seedBuiltInTags(
+  pool: PgPoolLike,
+  options: SeedBuiltInTagsOptions = {}
+): Promise<void> {
   console.log('[seed] Seeding built-in tags...');
 
+  const mode: BuiltInTagSeedMode = options.mode ?? 'insert';
+
   for (const tag of ALL_BUILT_IN_TAGS) {
-    await pool.query(
-      `
-      INSERT INTO prompt_tags (
-        id, owner, visibility, name, short_description, category,
-        prompt_text, activation_mode, target_type, triggers,
-        priority, composition_mode, version, is_built_in, created_at, updated_at
-      ) VALUES (
-        gen_random_uuid(), 'system', 'public', $1, $2, $3,
-        $4, 'always', 'session', '[]'::jsonb,
-        'normal', 'append', '1.0.0', true, NOW(), NOW()
-      )
-      ON CONFLICT (owner, name) DO UPDATE SET
-        short_description = EXCLUDED.short_description,
-        category = EXCLUDED.category,
-        prompt_text = EXCLUDED.prompt_text,
-        updated_at = NOW()
-      `,
-      [tag.name, tag.shortDescription, tag.category, tag.promptText]
-    );
+    if (mode === 'upsert') {
+      await pool.query(
+        `
+        INSERT INTO prompt_tags (
+          id, owner, visibility, name, short_description, category,
+          prompt_text, activation_mode, target_type, triggers,
+          priority, composition_mode, version, is_built_in, created_at, updated_at
+        ) VALUES (
+          gen_random_uuid(), 'system', 'public', $1, $2, $3,
+          $4, 'always', 'session', '[]'::jsonb,
+          'normal', 'append', '1.0.0', true, NOW(), NOW()
+        )
+        ON CONFLICT (owner, name) DO UPDATE SET
+          short_description = EXCLUDED.short_description,
+          category = EXCLUDED.category,
+          prompt_text = EXCLUDED.prompt_text,
+          updated_at = NOW()
+        `,
+        [tag.name, tag.shortDescription, tag.category, tag.promptText]
+      );
+    } else {
+      await pool.query(
+        `
+        INSERT INTO prompt_tags (
+          id, owner, visibility, name, short_description, category,
+          prompt_text, activation_mode, target_type, triggers,
+          priority, composition_mode, version, is_built_in, created_at, updated_at
+        ) VALUES (
+          gen_random_uuid(), 'system', 'public', $1, $2, $3,
+          $4, 'always', 'session', '[]'::jsonb,
+          'normal', 'append', '1.0.0', true, NOW(), NOW()
+        )
+        ON CONFLICT (owner, name) DO NOTHING
+        `,
+        [tag.name, tag.shortDescription, tag.category, tag.promptText]
+      );
+    }
   }
 
   console.log(`[seed] Seeded ${ALL_BUILT_IN_TAGS.length} built-in tags.`);

@@ -1,11 +1,51 @@
 import { pool } from './client.js';
 import { seedBuiltInTags } from './seeds/built-in-tags.js';
+import type { BuiltInTagSeedMode } from './seeds/built-in-tags.js';
+
+/**
+ * Parse seed CLI args.
+ * Supported:
+ * - `--mode insert|upsert`
+ * - `--upsert` (alias for `--mode upsert`)
+ */
+function parseSeedArgs(argv: string[]): { builtInTagsMode: BuiltInTagSeedMode } {
+  let builtInTagsMode: BuiltInTagSeedMode = 'insert';
+
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i] ?? '';
+    if (a === '--upsert') {
+      builtInTagsMode = 'upsert';
+      continue;
+    }
+
+    if (a === '--mode') {
+      const v = argv[i + 1];
+      if (v === 'insert' || v === 'upsert') {
+        builtInTagsMode = v;
+        i++;
+      }
+      continue;
+    }
+
+    if (a.startsWith('--mode=')) {
+      const v = a.slice('--mode='.length);
+      if (v === 'insert' || v === 'upsert') {
+        builtInTagsMode = v;
+      }
+    }
+  }
+
+  return { builtInTagsMode };
+}
 
 async function run() {
+  const { builtInTagsMode } = parseSeedArgs(
+    (globalThis as unknown as { process?: { argv?: string[] } }).process?.argv ?? []
+  );
   console.log('[db] Running seeds...');
 
   // Seed built-in tags
-  await seedBuiltInTags(pool);
+  await seedBuiltInTags(pool, { mode: builtInTagsMode });
 
   console.log('[db] Seeds complete.');
   await pool.end();
