@@ -9,19 +9,28 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/api/package.json packages/api/package.json
 COPY packages/agents/package.json packages/agents/package.json
 COPY packages/db/package.json packages/db/package.json
+COPY packages/generator/package.json packages/generator/package.json
 COPY packages/governor/package.json packages/governor/package.json
 COPY packages/retrieval/package.json packages/retrieval/package.json
 COPY packages/schemas/package.json packages/schemas/package.json
 COPY packages/state-manager/package.json packages/state-manager/package.json
+COPY packages/ui/package.json packages/ui/package.json
 COPY packages/utils/package.json packages/utils/package.json
+COPY packages/web/package.json packages/web/package.json
 
-RUN corepack enable && pnpm -w install --frozen-lockfile
+RUN corepack enable && CI=true pnpm -r install --frozen-lockfile
 
 # Copy the rest of the repo and build the API and its workspace dependencies
 COPY . .
 
-# Build only what the API needs (the ... syntax includes dependencies)
-RUN pnpm -w --filter @minimal-rpg/api... build
+# Some environments (e.g. CI) may not include a data/ directory
+RUN mkdir -p /app/data
+
+# Ensure workspace links exist after source copy (COPY can introduce new workspaces)
+RUN CI=true pnpm -r install --frozen-lockfile --prefer-offline
+
+# Build only what the API needs (the ... suffix includes dependencies)
+RUN pnpm turbo run build --filter=@minimal-rpg/api...
 
 
 FROM node:20-slim AS runtime
