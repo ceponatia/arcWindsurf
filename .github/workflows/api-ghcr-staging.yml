@@ -5,6 +5,23 @@ on:
   push:
     branches:
       - staging
+    paths:
+      - 'Dockerfile.api'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'tsconfig.base.json'
+      - 'config/**'
+      - 'packages/api/**'
+      - 'packages/agents/**'
+      - 'packages/db/**'
+      - 'packages/governor/**'
+      - 'packages/retrieval/**'
+      - 'packages/schemas/**'
+      - 'packages/state-manager/**'
+      - 'packages/utils/**'
+      - '.github/workflows/api-ghcr-staging.yml'
 
 permissions:
   contents: read
@@ -16,6 +33,7 @@ concurrency:
 
 jobs:
   build-and-push:
+    if: ${{ !contains(github.event.head_commit.message, '[skip api]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

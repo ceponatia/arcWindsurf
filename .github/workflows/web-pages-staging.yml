@@ -5,6 +5,20 @@ on:
   push:
     branches:
       - staging
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'tsconfig.base.json'
+      - 'config/**'
+      - 'packages/web/**'
+      - 'packages/ui/**'
+      - 'packages/utils/**'
+      - 'packages/schemas/**'
+      - 'packages/generator/**'
+      - 'packages/db/**'
+      - '.github/workflows/web-pages-staging.yml'
 
 permissions:
   contents: read
