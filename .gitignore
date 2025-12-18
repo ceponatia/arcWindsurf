@@ -36,6 +36,9 @@ coverage
 
 ## Local data (sample data is tracked already; ignore new local files by default)
 data/*
+.github/copilot-instructions.md
+.github/prompts/*
+.github/agents/*
 
 ## Playwright
 /playwright-report/
