@@ -1,5 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "BASE_PATH",
+    "VITE_API_BASE_URL",
+    "VITE_API_MESSAGE_TIMEOUT_MS",
+    "VITE_STRICT_MODE",
+    "VITE_USE_TURNS_API",
+    "VITE_GOVERNOR_DEV_MODE"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

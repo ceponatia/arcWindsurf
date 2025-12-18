@@ -40,17 +40,6 @@ export NODE_OPTIONS='--dns-result-order=ipv4first'
 pnpm -F @minimal-rpg/db db:migrate
 ```
 
-Option B (single SQL file): use the generated bootstrap file:
-
-- File: [packages/db/sql/supabase_bootstrap.sql](../../packages/db/sql/supabase_bootstrap.sql)
-- Generate/update it with:
-
-```bash
-pnpm -F @minimal-rpg/db db:bootstrap:supabase
-```
-
-Then paste the file contents into Supabase SQL editor and run it.
-
 ## 4. Seed data (optional)
 
 If you want dev seed data in staging:

@@ -8,6 +8,8 @@
 .git
 .github
 
+dev-docs
+
 docker-compose.yml
 Dockerfile.dev
 

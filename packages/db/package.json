@@ -14,7 +14,6 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json --outDir dist",
-    "db:bootstrap:supabase": "tsx src/tools/generate-supabase-bootstrap.ts",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

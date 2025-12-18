@@ -12,7 +12,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(() => ({
   // For GitHub Pages project sites, assets must be served from /<repo>/.
   // Set BASE_PATH in CI (or locally) to override.
-  base: process.env['BASE_PATH'] ?? '/',
+  base:
+    process.env['BASE_PATH'] ??
+    (process.env['GITHUB_ACTIONS'] && process.env['GITHUB_REPOSITORY']
+      ? `/${process.env['GITHUB_REPOSITORY'].split('/')[1] ?? ''}/`
+      : '/'),
   plugins: [
     mdx({
       remarkPlugins: [remarkGfm, remarkFrontmatter],
