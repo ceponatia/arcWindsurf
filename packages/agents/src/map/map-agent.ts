@@ -9,6 +9,7 @@ import type {
   LocationExit,
   LocationSlice,
 } from '../core/types.js';
+import { MAP_INTENT_TYPES } from './types.js';
 
 /**
  * Agent responsible for navigation and movement.
@@ -19,7 +20,7 @@ export class MapAgent extends BaseAgent {
   public readonly name = 'Map/Navigation Agent';
 
   /** Intent types this agent can handle */
-  private static readonly HANDLED_INTENTS: IntentType[] = ['move', 'look'];
+  private static readonly HANDLED_INTENTS: readonly IntentType[] = MAP_INTENT_TYPES;
 
   constructor(config: AgentConfig = {}) {
     super(config);

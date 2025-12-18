@@ -8,6 +8,7 @@ import type {
   IntentType,
   InventoryItem,
 } from '../core/types.js';
+import { RULES_INTENT_TYPES } from './types.js';
 
 /**
  * Agent responsible for game rules, checks, and item interactions.
@@ -18,7 +19,7 @@ export class RulesAgent extends BaseAgent {
   public readonly name = 'Rules/System Agent';
 
   /** Intent types this agent can handle */
-  private static readonly HANDLED_INTENTS: IntentType[] = ['use', 'take', 'give', 'attack'];
+  private static readonly HANDLED_INTENTS: readonly IntentType[] = RULES_INTENT_TYPES;
 
   constructor(config: AgentConfig = {}) {
     super(config);

@@ -10,3 +10,26 @@ export interface NpcAgentInput extends AgentInput {
   /** Optional configuration for response generation */
   responseConfig?: NpcResponseConfig;
 }
+
+/**
+ * NPC context slice type (matches NpcContext from governor).
+ */
+export interface NpcContextSlice {
+  schedule?: {
+    currentSlotId?: string;
+    activity?: string;
+    scheduledLocationId?: string;
+    available: boolean;
+    unavailableReason?: string;
+  };
+  awareness?: {
+    hasMet: boolean;
+    lastInteractionTurn?: number;
+    interactionCount?: number;
+    reputation?: number;
+  };
+  mood?: {
+    primary: string;
+    intensity?: number;
+  };
+}

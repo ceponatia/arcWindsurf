@@ -1,27 +1,86 @@
-import React, { useState } from 'react';
-import { ChatPanel } from '../features/chat-panel/index.js';
-import { CharacterBuilder } from '../features/character-builder/index.js';
-import { SettingBuilder } from '../features/setting-builder/index.js';
-import { ItemBuilder } from '../features/item-builder/index.js';
-import { TagBuilder } from '../features/tag-builder/TagBuilder.js';
-import { SessionWorkspace } from '../features/session-workspace/index.js';
-import { PersonaBuilder } from '../features/persona-builder/PersonaBuilder.js';
-import { DocsViewer } from '../features/docs/index.js';
-import {
-  CharacterLibrary,
-  SettingLibrary,
-  TagLibrary,
-  SessionLibrary,
-  ItemLibrary,
-  PersonaLibrary,
-} from '../features/library/index.js';
-import { LocationView } from '../features/locations/index.js';
+import React, { Suspense, useState } from 'react';
+import { createSession } from '../shared/api/client.js';
 import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { AppFooter } from './AppFooter.js';
 import { useTags } from '../shared/hooks/useTags.js';
 import { useItems } from '../shared/hooks/useItems.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
+
+const ChatPanel = React.lazy(async () => {
+  const mod = await import('../features/chat-panel/index.js');
+  return { default: mod.ChatPanel };
+});
+
+const CharacterBuilder = React.lazy(async () => {
+  const mod = await import('../features/character-builder/index.js');
+  return { default: mod.CharacterBuilder };
+});
+
+const SettingBuilder = React.lazy(async () => {
+  const mod = await import('../features/setting-builder/index.js');
+  return { default: mod.SettingBuilder };
+});
+
+const ItemBuilder = React.lazy(async () => {
+  const mod = await import('../features/item-builder/index.js');
+  return { default: mod.ItemBuilder };
+});
+
+const TagBuilder = React.lazy(async () => {
+  const mod = await import('../features/tag-builder/TagBuilder.js');
+  return { default: mod.TagBuilder };
+});
+
+const SessionWorkspace = React.lazy(async () => {
+  const mod = await import('../features/session-workspace/index.js');
+  return { default: mod.SessionWorkspace };
+});
+
+const PersonaBuilder = React.lazy(async () => {
+  const mod = await import('../features/persona-builder/PersonaBuilder.js');
+  return { default: mod.PersonaBuilder };
+});
+
+const DocsViewer = React.lazy(async () => {
+  const mod = await import('../features/docs/index.js');
+  return { default: mod.DocsViewer };
+});
+
+const CharacterLibrary = React.lazy(async () => {
+  const mod = await import('../features/library/index.js');
+  return { default: mod.CharacterLibrary };
+});
+
+const SettingLibrary = React.lazy(async () => {
+  const mod = await import('../features/library/index.js');
+  return { default: mod.SettingLibrary };
+});
+
+const TagLibrary = React.lazy(async () => {
+  const mod = await import('../features/library/index.js');
+  return { default: mod.TagLibrary };
+});
+
+const SessionLibrary = React.lazy(async () => {
+  const mod = await import('../features/library/index.js');
+  return { default: mod.SessionLibrary };
+});
+
+const ItemLibrary = React.lazy(async () => {
+  const mod = await import('../features/library/index.js');
+  return { default: mod.ItemLibrary };
+});
+
+const PersonaLibrary = React.lazy(async () => {
+  const mod = await import('../features/library/index.js');
+  return { default: mod.PersonaLibrary };
+});
+
+const LocationView = React.lazy(async () => {
+  const mod = await import('../features/locations/index.js');
+  return { default: mod.LocationView };
+});
 
 // Icons for sidebar navigation
 const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -216,7 +275,6 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
   } = useItems();
 
   const handleStartSession = async (characterId: string, settingId: string, tagIds: string[]) => {
-    const { createSession } = await import('../shared/api/client.js');
     const newSession = await createSession(characterId, settingId, tagIds);
     controller.setCurrentSessionId(newSession.id);
     controller.refreshSessions();
@@ -312,57 +370,59 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
         <main className="flex-1 flex flex-col overflow-hidden">
           <section className="flex-1 overflow-y-auto custom-scrollbar">
             <div className="p-6">
-              <MainContent
-                viewMode={viewMode}
-                builderId={builderId}
-                currentSessionId={currentSessionId}
-                sessions={sessions}
-                sessionsLoading={sessionsLoading}
-                sessionsError={sessionsError}
-                charactersLoading={charactersLoading}
-                charactersError={charactersError}
-                charactersData={charactersData ?? []}
-                settingsLoading={settingsLoading}
-                settingsError={settingsError}
-                settingsData={settingsData ?? []}
-                tagsLoading={tagsLoading}
-                tagsError={tagsError}
-                tagsData={tagsData ?? []}
-                itemsLoading={itemsLoading}
-                itemsError={itemsError}
-                itemsData={itemsData ?? []}
-                personasLoading={personasLoading}
-                personasError={personasError}
-                personasData={personasData ?? []}
-                refreshCharacters={refreshCharacters}
-                refreshSettings={refreshSettings}
-                refreshSessions={refreshSessions}
-                refreshTags={refreshTags}
-                refreshItems={refreshItems}
-                refreshPersonas={refreshPersonas}
-                handleDeleteSession={handleDeleteSession}
-                navigateToCharacterBuilder={navigateToCharacterBuilder}
-                navigateToSettingBuilder={navigateToSettingBuilder}
-                navigateToTagBuilder={navigateToTagBuilder}
-                navigateToPersonaBuilder={navigateToPersonaBuilder}
-                navigateToLocationLibrary={navigateToLocationLibrary}
-                navigateToLocationBuilder={navigateToLocationBuilder}
-                navigateToCharacterLibrary={navigateToCharacterLibrary}
-                navigateToSettingLibrary={navigateToSettingLibrary}
-                navigateToTagLibrary={navigateToTagLibrary}
-                navigateToItemLibrary={navigateToItemLibrary}
-                navigateToPersonaLibrary={navigateToPersonaLibrary}
-                navigateToItemBuilder={controller.navigateToItemBuilder}
-                navigateToSessionBuilder={navigateToSessionBuilder}
-                navigateToSessionLibrary={navigateToSessionLibrary}
-                navigateToHome={navigateToHome}
-                selectSession={selectSession}
-                creating={creating}
-                createError={createError}
-                onStartSession={handleStartSession}
-                onCreateSessionFull={onCreateSessionFull}
-                onSessionCreated={onSessionCreated}
-              />
+              <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
+                <MainContent
+                  viewMode={viewMode}
+                  builderId={builderId}
+                  currentSessionId={currentSessionId}
+                  sessions={sessions}
+                  sessionsLoading={sessionsLoading}
+                  sessionsError={sessionsError}
+                  charactersLoading={charactersLoading}
+                  charactersError={charactersError}
+                  charactersData={charactersData ?? []}
+                  settingsLoading={settingsLoading}
+                  settingsError={settingsError}
+                  settingsData={settingsData ?? []}
+                  tagsLoading={tagsLoading}
+                  tagsError={tagsError}
+                  tagsData={tagsData ?? []}
+                  itemsLoading={itemsLoading}
+                  itemsError={itemsError}
+                  itemsData={itemsData ?? []}
+                  personasLoading={personasLoading}
+                  personasError={personasError}
+                  personasData={personasData ?? []}
+                  refreshCharacters={refreshCharacters}
+                  refreshSettings={refreshSettings}
+                  refreshSessions={refreshSessions}
+                  refreshTags={refreshTags}
+                  refreshItems={refreshItems}
+                  refreshPersonas={refreshPersonas}
+                  handleDeleteSession={handleDeleteSession}
+                  navigateToCharacterBuilder={navigateToCharacterBuilder}
+                  navigateToSettingBuilder={navigateToSettingBuilder}
+                  navigateToTagBuilder={navigateToTagBuilder}
+                  navigateToPersonaBuilder={navigateToPersonaBuilder}
+                  navigateToLocationLibrary={navigateToLocationLibrary}
+                  navigateToLocationBuilder={navigateToLocationBuilder}
+                  navigateToCharacterLibrary={navigateToCharacterLibrary}
+                  navigateToSettingLibrary={navigateToSettingLibrary}
+                  navigateToTagLibrary={navigateToTagLibrary}
+                  navigateToItemLibrary={navigateToItemLibrary}
+                  navigateToPersonaLibrary={navigateToPersonaLibrary}
+                  navigateToItemBuilder={controller.navigateToItemBuilder}
+                  navigateToSessionBuilder={navigateToSessionBuilder}
+                  navigateToSessionLibrary={navigateToSessionLibrary}
+                  navigateToHome={navigateToHome}
+                  selectSession={selectSession}
+                  creating={creating}
+                  createError={createError}
+                  onStartSession={handleStartSession}
+                  onCreateSessionFull={onCreateSessionFull}
+                  onSessionCreated={onSessionCreated}
+                />
+              </Suspense>
             </div>
           </section>
           <AppFooter />
@@ -424,7 +484,6 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
   } = useItems();
 
   const handleStartSession = async (characterId: string, settingId: string, tagIds: string[]) => {
-    const { createSession } = await import('../shared/api/client.js');
     const newSession = await createSession(characterId, settingId, tagIds);
     controller.setCurrentSessionId(newSession.id);
     controller.refreshSessions();
@@ -552,57 +611,59 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-          <MainContent
-            viewMode={viewMode}
-            builderId={builderId}
-            currentSessionId={currentSessionId}
-            sessions={sessions}
-            sessionsLoading={sessionsLoading}
-            sessionsError={sessionsError}
-            charactersLoading={charactersLoading}
-            charactersError={charactersError}
-            charactersData={charactersData ?? []}
-            settingsLoading={settingsLoading}
-            settingsError={settingsError}
-            settingsData={settingsData ?? []}
-            tagsLoading={tagsLoading}
-            tagsError={tagsError}
-            tagsData={tagsData ?? []}
-            itemsLoading={itemsLoading}
-            itemsError={itemsError}
-            itemsData={itemsData ?? []}
-            personasLoading={personasLoading}
-            personasError={personasError}
-            personasData={personasData ?? []}
-            refreshCharacters={refreshCharacters}
-            refreshSettings={refreshSettings}
-            refreshSessions={refreshSessions}
-            refreshTags={refreshTags}
-            refreshItems={refreshItems}
-            refreshPersonas={refreshPersonas}
-            handleDeleteSession={handleDeleteSession}
-            navigateToCharacterBuilder={navigateToCharacterBuilder}
-            navigateToSettingBuilder={navigateToSettingBuilder}
-            navigateToTagBuilder={navigateToTagBuilder}
-            navigateToPersonaBuilder={controller.navigateToPersonaBuilder}
-            navigateToLocationLibrary={navigateToLocationLibrary}
-            navigateToLocationBuilder={navigateToLocationBuilder}
-            navigateToCharacterLibrary={navigateToCharacterLibrary}
-            navigateToSettingLibrary={navigateToSettingLibrary}
-            navigateToTagLibrary={navigateToTagLibrary}
-            navigateToItemLibrary={navigateToItemLibrary}
-            navigateToPersonaLibrary={controller.navigateToPersonaLibrary}
-            navigateToItemBuilder={controller.navigateToItemBuilder}
-            navigateToSessionBuilder={navigateToSessionBuilder}
-            navigateToSessionLibrary={navigateToSessionLibrary}
-            navigateToHome={navigateToHome}
-            selectSession={selectSession}
-            creating={creating}
-            createError={createError}
-            onStartSession={handleStartSession}
-            onCreateSessionFull={onCreateSessionFull}
-            onSessionCreated={onSessionCreated}
-          />
+          <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
+            <MainContent
+              viewMode={viewMode}
+              builderId={builderId}
+              currentSessionId={currentSessionId}
+              sessions={sessions}
+              sessionsLoading={sessionsLoading}
+              sessionsError={sessionsError}
+              charactersLoading={charactersLoading}
+              charactersError={charactersError}
+              charactersData={charactersData ?? []}
+              settingsLoading={settingsLoading}
+              settingsError={settingsError}
+              settingsData={settingsData ?? []}
+              tagsLoading={tagsLoading}
+              tagsError={tagsError}
+              tagsData={tagsData ?? []}
+              itemsLoading={itemsLoading}
+              itemsError={itemsError}
+              itemsData={itemsData ?? []}
+              personasLoading={personasLoading}
+              personasError={personasError}
+              personasData={personasData ?? []}
+              refreshCharacters={refreshCharacters}
+              refreshSettings={refreshSettings}
+              refreshSessions={refreshSessions}
+              refreshTags={refreshTags}
+              refreshItems={refreshItems}
+              refreshPersonas={refreshPersonas}
+              handleDeleteSession={handleDeleteSession}
+              navigateToCharacterBuilder={navigateToCharacterBuilder}
+              navigateToSettingBuilder={navigateToSettingBuilder}
+              navigateToTagBuilder={navigateToTagBuilder}
+              navigateToPersonaBuilder={controller.navigateToPersonaBuilder}
+              navigateToLocationLibrary={navigateToLocationLibrary}
+              navigateToLocationBuilder={navigateToLocationBuilder}
+              navigateToCharacterLibrary={navigateToCharacterLibrary}
+              navigateToSettingLibrary={navigateToSettingLibrary}
+              navigateToTagLibrary={navigateToTagLibrary}
+              navigateToItemLibrary={navigateToItemLibrary}
+              navigateToPersonaLibrary={controller.navigateToPersonaLibrary}
+              navigateToItemBuilder={controller.navigateToItemBuilder}
+              navigateToSessionBuilder={navigateToSessionBuilder}
+              navigateToSessionLibrary={navigateToSessionLibrary}
+              navigateToHome={navigateToHome}
+              selectSession={selectSession}
+              creating={creating}
+              createError={createError}
+              onStartSession={handleStartSession}
+              onCreateSessionFull={onCreateSessionFull}
+              onSessionCreated={onSessionCreated}
+            />
+          </Suspense>
         </div>
         <AppFooter />
       </main>

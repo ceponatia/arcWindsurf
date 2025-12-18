@@ -8,6 +8,10 @@ export { MapAgent } from './map/map-agent.js';
 export { NpcAgent } from './npc/npc-agent.js';
 export { RulesAgent } from './rules/rules-agent.js';
 
+// Domain types/constants
+export { MAP_INTENT_TYPES, type MapIntentType } from './map/types.js';
+export { RULES_INTENT_TYPES, type RulesIntentType } from './rules/types.js';
+
 // Sensory agent
 export {
   SensoryAgent,

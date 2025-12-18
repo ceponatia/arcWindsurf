@@ -46,4 +46,33 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // @xyflow/react ships ESM with a "use client" directive (Next.js hint).
+        // Rollup warns during bundling even though it's harmless for our build.
+        if (
+          warning?.code === 'MODULE_LEVEL_DIRECTIVE' &&
+          typeof warning.message === 'string' &&
+          warning.message.includes('"use client"')
+        ) {
+          return;
+        }
+
+        warn(warning);
+      },
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor-react';
+          if (id.includes('/@xyflow/')) return 'vendor-xyflow';
+          if (id.includes('/@tanstack/')) return 'vendor-tanstack';
+          if (id.includes('/zustand/')) return 'vendor-zustand';
+
+          return 'vendor';
+        },
+      },
+    },
+  },
 });

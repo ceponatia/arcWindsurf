@@ -199,7 +199,7 @@ Player character profiles with identity and appearance (no personality fields si
 - `@minimal-rpg/schemas` – Zod schemas for domain types + proximity state
 - `@minimal-rpg/governor` – Turn orchestration (intent → agents → response) with tool-based state patches
 - `@minimal-rpg/state-manager` – Extensible state slices + tool-aware JSON Patch
-- `@minimal-rpg/agents` – Map, NPC, Sensory, Rules agents with proximity slice support
+- `@minimal-rpg/agents` – Map, NPC, Sensory, Rules agents with proximity slice support (exports `MAP_INTENT_TYPES` / `RULES_INTENT_TYPES`)
 - `@minimal-rpg/retrieval` – Knowledge node retrieval/scoring
 - `@minimal-rpg/generator` – Random character generation
 - `@minimal-rpg/utils` – Shared utilities
