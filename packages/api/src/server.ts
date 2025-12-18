@@ -4,7 +4,17 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '../.env') });
+
+/**
+ * Loads env vars for local/dev usage.
+ * Source of truth: repo root `.env` (shared across the monorepo).
+ */
+function loadEnvFiles(): void {
+  const repoRootEnvPath = path.resolve(__dirname, '../../../.env');
+  dotenv.config({ path: repoRootEnvPath });
+}
+
+loadEnvFiles();
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';

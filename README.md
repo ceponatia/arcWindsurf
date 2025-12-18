@@ -39,6 +39,9 @@ Configure OpenRouter in `packages/api/.env` before starting (see `packages/api/.
 
 From the repo root:
 
+Create a repo-root `.env` (see `.env.example`) and set at least `OPENROUTER_API_KEY`.
+If port 5432 is already in use on your machine, set `PG_PORT=5433` in `.env`.
+
 ```bash
 docker compose up --build
 ```
