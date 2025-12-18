@@ -35,7 +35,9 @@ jobs:
           cache: pnpm
 
       - name: Install deps
-        run: pnpm -w install --frozen-lockfile
+        env:
+          CI: true
+        run: pnpm -r install --frozen-lockfile
 
       - name: Build web
         env:
