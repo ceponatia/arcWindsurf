@@ -16,24 +16,39 @@
     "docker:up:detached": "docker compose up --build -d",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
+    "lint:staged": "lint-staged",
     "prepare": "husky",
     "test": "turbo test",
     "test:trait": "node scripts/test-trait.mjs",
     "typecheck": "turbo typecheck"
+  },
+  "lint-staged": {
+    "*.{js,cjs,mjs,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css,scss,html}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "fast-json-patch": "3.1.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
     "@eslint/js": "^9.39.1",
+    "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "markdownlint-cli": "^0.45.0",
     "prettier": "^3.6.2",
     "prettier-plugin-packagejson": "^2.5.19",
+    "secretlint": "^11.2.5",
     "tsup": "^8.5.1",
     "turbo": "^2.6.1",
     "typescript": "^5.9.3",
