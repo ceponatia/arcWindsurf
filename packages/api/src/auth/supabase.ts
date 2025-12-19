@@ -68,7 +68,7 @@ export async function verifySupabaseJwt(
       ...(cfg.audience ? { audience: cfg.audience } : {}),
     });
 
-    const sub = typeof payload['sub'] === 'string' ? payload['sub'] : null;
+    const sub = typeof payload.sub === 'string' ? payload.sub : null;
     if (!sub) return { ok: false, error: 'invalid' };
 
     return {

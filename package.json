@@ -16,6 +16,7 @@
     "docker:up:detached": "docker compose up --build -d",
     "lint": "turbo lint",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
+    "prepare": "husky",
     "test": "turbo test",
     "test:trait": "node scripts/test-trait.mjs",
     "typecheck": "turbo typecheck"
@@ -29,6 +30,7 @@
     "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "markdownlint-cli": "^0.45.0",
     "prettier": "^3.6.2",
     "prettier-plugin-packagejson": "^2.5.19",
