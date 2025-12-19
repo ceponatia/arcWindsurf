@@ -1,0 +1,4 @@
+export interface SupabaseEnv {
+  url: string;
+  anonKey: string;
+}

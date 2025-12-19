@@ -64,17 +64,19 @@ From now on, all commands in this guide assume you are **inside** the project fo
 
 ## Configure Your API Key
 
-The API server reads configuration from an `.env` file.
+The API server reads configuration from a repo-root `.env` file.
 
 1. In the project folder, find the file:
-   - `packages/api/.env.example`
+
+- `.env.example`
+
 2. Make a copy of it named `.env` in the same folder. Example command:
 
 ```bash
-cp packages/api/.env.example packages/api/.env
+cp .env.example .env
 ```
 
-3. Open `packages/api/.env` in any text editor (Notepad, VS Code, etc.)
+3. Open `.env` in any text editor (Notepad, VS Code, etc.)
 4. Find the line that starts with:
 
 ```bash
@@ -147,7 +149,7 @@ If the page does not load:
 
 - Check that Docker Desktop is running
 - Check that the `docker compose up` terminal is still running and does not show errors
-- If you see API errors about OpenRouter, double-check your `OPENROUTER_API_KEY` in `packages/api/.env`
+- If you see API errors about OpenRouter, double-check your `OPENROUTER_API_KEY` in `.env`
 
 ---
 
@@ -182,7 +184,7 @@ pnpm -w install
 pnpm -w build
 ```
 
-3. Configure `packages/api/.env` with your OpenRouter key (same as above)
+3. Configure the repo-root `.env` with your OpenRouter key (same as above)
 4. In separate terminals, run:
 
 ```bash
@@ -221,7 +223,7 @@ For normal use, you can manage everything (characters, settings, sessions) throu
 
 **I see errors about the API or OpenRouter**
 
-- Open `packages/api/.env`
+- Open `.env`
 - Confirm that `OPENROUTER_API_KEY` is set
 - Restart Docker Compose:
 

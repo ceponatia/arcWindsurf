@@ -21,9 +21,9 @@ import {
 } from 'lucide-react';
 import type { LocationType, LocationNode } from '@minimal-rpg/schemas';
 import { PrefabBuilder } from '../prefab-builder/index.js';
+import { API_BASE_URL } from '../../config.js';
 
-const API_BASE =
-  (import.meta.env['VITE_API_BASE'] as string | undefined) ?? 'http://localhost:3001';
+const API_BASE = API_BASE_URL;
 
 interface LocationPrefab {
   id: string;

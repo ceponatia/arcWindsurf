@@ -71,6 +71,20 @@ export function registerAuthRoutes(app: Hono): void {
     if (!user) {
       return c.json({ ok: true, user: null }, 200);
     }
+
+    if (process.env['INVITE_ONLY'] === 'true') {
+      const invited = new Set(
+        (process.env['INVITE_EMAILS'] ?? '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const email = user.email ?? null;
+      if (!email || !invited.has(email.toLowerCase())) {
+        return c.json({ ok: false, error: 'Forbidden' } satisfies ApiError, 403);
+      }
+    }
+
     return c.json({ ok: true, user }, 200);
   });
 }

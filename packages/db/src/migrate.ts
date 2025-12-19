@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveDatabaseUrl } from './connection/resolveDatabaseUrl.js';
 import type { FsPromisesLike, PathLike, SqlFile, SqlText } from './types.js';
 
 // Load env vars for local/dev usage.
@@ -15,7 +16,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 const env: Record<string, string | undefined> =
   (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
     ?.env ?? {};
-const resolvedDbUrl = env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5432/minirpg';
+const resolvedDb = resolveDatabaseUrl(env);
+const resolvedDbUrl = resolvedDb.url;
 
 function redactDbUrl(url: string): string {
   try {
@@ -63,7 +65,9 @@ async function run() {
     .filter((f: string) => /^\d+_.+\.sql$/i.test(f))
     .sort();
 
-  console.log(`[db] Running migrations against ${redactDbUrl(resolvedDbUrl)}`);
+  console.log(
+    `[db] Running migrations against ${redactDbUrl(resolvedDbUrl)} (source=${resolvedDb.source})`
+  );
 
   // Ensure required extensions FIRST (before any migrations rely on them)
   // - vector: embeddings

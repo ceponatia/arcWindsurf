@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth.js';
+import { getSupabaseClient } from '../supabase/client.js';
 
 export const RequireAdmin: React.FC<{
   title?: string;
   children: React.ReactNode;
 }> = ({ title = 'Admin Access', children }) => {
-  const { user, isAdmin, loading, error, login, logout, hasToken } = useAuth();
+  const { user, isAdmin, loading, error, login, logout, hasToken, pendingMagicLink } = useAuth();
+  const supabaseConfigured = Boolean(getSupabaseClient());
+  const [email, setEmail] = useState<string>('');
   const [identifier, setIdentifier] = useState<string>('admin');
   const [password, setPassword] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -17,6 +20,11 @@ export const RequireAdmin: React.FC<{
     setLocalError(null);
     setSubmitting(true);
     try {
+      if (supabaseConfigured) {
+        await login({ email: email.trim() });
+        return;
+      }
+
       await login({ identifier: identifier.trim(), password });
       setPassword('');
     } catch (err) {
@@ -57,34 +65,60 @@ export const RequireAdmin: React.FC<{
         )}
 
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
-          <label className="block">
-            <div className="text-xs text-slate-400 mb-1">Identifier</div>
-            <input
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-slate-950 border border-slate-700 text-slate-100 text-sm"
-              autoComplete="username"
-            />
-          </label>
+          {supabaseConfigured ? (
+            <label className="block">
+              <div className="text-xs text-slate-400 mb-1">Email</div>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-slate-950 border border-slate-700 text-slate-100 text-sm"
+                autoComplete="email"
+                placeholder="you@example.com"
+              />
+            </label>
+          ) : (
+            <>
+              <label className="block">
+                <div className="text-xs text-slate-400 mb-1">Identifier</div>
+                <input
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-950 border border-slate-700 text-slate-100 text-sm"
+                  autoComplete="username"
+                />
+              </label>
 
-          <label className="block">
-            <div className="text-xs text-slate-400 mb-1">Password</div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-slate-950 border border-slate-700 text-slate-100 text-sm"
-              autoComplete="current-password"
-            />
-          </label>
+              <label className="block">
+                <div className="text-xs text-slate-400 mb-1">Password</div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-950 border border-slate-700 text-slate-100 text-sm"
+                  autoComplete="current-password"
+                />
+              </label>
+            </>
+          )}
 
           <div className="flex items-center gap-2">
             <button
               type="submit"
-              disabled={submitting || identifier.trim().length === 0 || password.length === 0}
+              disabled={
+                submitting ||
+                (supabaseConfigured
+                  ? email.trim().length === 0
+                  : identifier.trim().length === 0 || password.length === 0)
+              }
               className="px-4 py-2 rounded-md bg-sky-700 hover:bg-sky-600 disabled:bg-slate-700 disabled:text-slate-300 text-sm font-medium transition-colors"
             >
-              {submitting ? 'Signing in…' : 'Sign in'}
+              {supabaseConfigured
+                ? pendingMagicLink || submitting
+                  ? 'Sending link…'
+                  : 'Send magic link'
+                : submitting
+                  ? 'Signing in…'
+                  : 'Sign in'}
             </button>
             {hasToken && (
               <button
@@ -100,10 +134,12 @@ export const RequireAdmin: React.FC<{
             </a>
           </div>
         </form>
-
-        <div className="mt-4 text-xs text-slate-500">
-          This is local auth only. Supabase integration will replace this later.
-        </div>
+        {supabaseConfigured && (
+          <div className="mt-4 text-xs text-slate-500">
+            You will receive a sign-in link via email. After clicking it, reload this page if it
+            does not update automatically.
+          </div>
+        )}
       </div>
     </div>
   );

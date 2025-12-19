@@ -43,7 +43,7 @@ import { registerScheduleRoutes } from './routes/schedules.js';
 import { registerEntityUsageRoutes } from './routes/entityUsage.js';
 import { registerUserPreferencesRoutes } from './routes/userPreferences.js';
 import { registerAuthRoutes } from './routes/auth.js';
-import { attachAuthUser } from './auth/middleware.js';
+import { attachAuthUser, requireAuthIfEnabled } from './auth/middleware.js';
 
 const app = new Hono();
 
@@ -94,10 +94,15 @@ async function start(): Promise<void> {
   });
 
   // Enable CORS for browser-based clients (Vite dev, etc.)
+  const corsOrigins = (process.env['CORS_ORIGINS'] ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   app.use(
     '*',
     cors({
-      origin: '*',
+      origin: corsOrigins.length > 0 ? corsOrigins : '*',
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
     })
@@ -105,6 +110,9 @@ async function start(): Promise<void> {
 
   // Attach auth user (if any) from Authorization header
   app.use('*', attachAuthUser);
+
+  // Require auth for non-public routes when enabled
+  app.use('*', requireAuthIfEnabled);
 
   // Register route groups
   registerConfigRoutes(app);

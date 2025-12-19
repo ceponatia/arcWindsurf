@@ -7,8 +7,9 @@ import { useWorkspaceStore } from '../store.js';
 import { LocationBuilder } from '../../location-builder/index.js';
 import type { LocationMapListResponse } from '../../location-builder/types.js';
 import { MapPin, Plus, Check, Loader2, AlertCircle, X, ExternalLink } from 'lucide-react';
+import { API_BASE_URL } from '../../../config.js';
 
-const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3001';
+const API_BASE = API_BASE_URL;
 
 interface MapSummary {
   id: string;

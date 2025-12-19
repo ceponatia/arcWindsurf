@@ -22,7 +22,7 @@ import type {
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS, USE_TURNS_API } from '../../config.js';
 import type { Speaker } from '../../types.js';
-import { getAuthToken } from '../auth/token.js';
+import { getAccessToken } from '../auth/accessToken.js';
 import type { AuthLoginResponse, AuthMeResponse } from '../auth/types.js';
 
 interface TurnEndpointResponse {
@@ -71,7 +71,7 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   const { signal, timeoutMs = 10000, parseAsText, ...rest } = init ?? {};
 
-  const token = getAuthToken();
+  const token = await getAccessToken();
   const incomingHeaders = rest.headers;
   const mergedHeaders: Record<string, string> = {};
 

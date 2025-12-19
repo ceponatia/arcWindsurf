@@ -2,6 +2,7 @@ import type { Context, Next } from 'hono';
 import type { ApiError } from '../types.js';
 import type { AuthUser } from './types.js';
 import { getAuthSecret, verifyAuthToken } from './token.js';
+import { getSupabaseAuthConfig, verifySupabaseJwt } from './supabase.js';
 
 const AUTH_CONTEXT_KEY = 'authUser';
 
@@ -23,15 +24,107 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
   const token = parseBearerToken(authHeader);
 
   if (token) {
-    const secret = getAuthSecret();
-    if (secret) {
-      const verified = verifyAuthToken(token, secret);
+    // Prefer Supabase JWT verification if configured.
+    const supabaseCfg = getSupabaseAuthConfig();
+    if (supabaseCfg) {
+      const verified = await verifySupabaseJwt(token, supabaseCfg);
       if (verified.ok) {
+        const email = verified.claims.email;
+
+        const adminEmails = new Set(
+          (process.env['ADMIN_EMAILS'] ?? '')
+            .split(',')
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean)
+        );
+
+        const role = email && adminEmails.has(email.toLowerCase()) ? 'admin' : 'user';
+
         c.set(AUTH_CONTEXT_KEY as never, {
-          identifier: verified.payload.sub,
-          role: verified.payload.role,
+          identifier: email ?? verified.claims.sub,
+          role,
+          email,
         } satisfies AuthUser);
       }
+    } else {
+      // Legacy local auth token verification.
+      const secret = getAuthSecret();
+      if (secret) {
+        const verified = verifyAuthToken(token, secret);
+        if (verified.ok) {
+          c.set(AUTH_CONTEXT_KEY as never, {
+            identifier: verified.payload.sub,
+            role: verified.payload.role,
+            email: null,
+          } satisfies AuthUser);
+        }
+      }
+    }
+  }
+
+  await next();
+}
+
+function isAuthRequired(): boolean {
+  return process.env['AUTH_REQUIRED'] === 'true';
+}
+
+function isInviteOnly(): boolean {
+  return process.env['INVITE_ONLY'] === 'true';
+}
+
+function getInviteEmails(): Set<string> {
+  return new Set(
+    (process.env['INVITE_EMAILS'] ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function isPublicPath(path: string): boolean {
+  if (path === '/' || path === '') return true;
+  if (path === '/health' || path === '/hello' || path === '/config') return true;
+  if (path.startsWith('/auth/')) return true;
+  return false;
+}
+
+/**
+ * Enforces auth for all non-public routes when AUTH_REQUIRED=true.
+ *
+ * Also optionally enforces invite-only access when INVITE_ONLY=true.
+ */
+export async function requireAuthIfEnabled(c: Context, next: Next): Promise<void> {
+  if (!isAuthRequired()) {
+    await next();
+    return;
+  }
+
+  if (c.req.method === 'OPTIONS') {
+    await next();
+    return;
+  }
+
+  const path = c.req.path;
+  if (isPublicPath(path)) {
+    await next();
+    return;
+  }
+
+  const user = getAuthUser(c);
+  if (!user) {
+    c.status(401);
+    c.json({ ok: false, error: 'Unauthorized' } satisfies ApiError);
+    return;
+  }
+
+  if (isInviteOnly()) {
+    const invited = getInviteEmails();
+    const email = user.email ?? null;
+    if (!email || !invited.has(email.toLowerCase())) {
+      c.status(403);
+      c.json({ ok: false, error: 'Forbidden' } satisfies ApiError);
+      return;
     }
   }
 

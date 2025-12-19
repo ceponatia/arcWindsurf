@@ -7,9 +7,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { LocationMapListResponse } from '../location-builder/types.js';
 import { Plus, RefreshCw, MapPin, Trash2, Edit, Globe } from 'lucide-react';
+import { API_BASE_URL } from '../../config.js';
 
-const API_BASE =
-  (import.meta.env['VITE_API_BASE'] as string | undefined) ?? 'http://localhost:3001';
+const API_BASE = API_BASE_URL;
 
 interface LocationMapSummary {
   id: string;

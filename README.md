@@ -31,7 +31,7 @@ pnpm -F @minimal-rpg/web dev
 - Web: <http://localhost:5173>
 - Web chat: when a session has NPC instances, use the selector beside the input to target an NPC; leave it on Auto to use the primary/default.
 
-Configure OpenRouter in `packages/api/.env` before starting (see `packages/api/.env.example`).
+Create a repo-root `.env` (see `.env.example`) and set at least `OPENROUTER_API_KEY`.
 
 ## 2. Quickstart (Docker)
 
@@ -141,7 +141,7 @@ pnpm test:trait -- --trait "quiet, introverted, empathetic"
 ### Database setup
 
 - Requires PostgreSQL with pgvector
-- Set `DATABASE_URL` in `packages/api/.env`
+- Set `DATABASE_URL` in the repo-root `.env`
 
 Apply / update schema:
 
@@ -224,7 +224,11 @@ See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md)
 ### Core env vars
 
 - `PORT` (default `3001`)
-- `DATABASE_URL` – Postgres connection string
+- `DB_TARGET` – `local` (dev) or `supabase` (staging)
+- `DATABASE_URL_LOCAL` – local Postgres connection string (used when `DB_TARGET=local`)
+- `DATABASE_URL` – Postgres connection string (set this via Fly secrets for staging/prod)
+
+Staging uses Supabase via deployment-time secrets (GitHub Actions secrets for the web build, and Fly secrets for the API). Local dev uses `.env` or Docker Compose.
 
 ### LLM (OpenRouter)
 
@@ -252,7 +256,7 @@ Additional details live in `dev-docs/` (LLM recommendations, migration guide, we
 
 - Messages endpoint 5xx
   - Check `GET /health` – `llm.configured` must be `true`
-  - Ensure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` are set in `packages/api/.env`
+  - Ensure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` are set in the repo-root `.env`
 - DB migration errors
   - Verify `DATABASE_URL` and Postgres reachability
   - Re-run: `pnpm -F @minimal-rpg/db db:migrate`

@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { registerType } from './pgvector.js';
+import { resolveDatabaseUrl } from './connection/resolveDatabaseUrl.js';
 import type {
   CharacterInstanceRow,
   CharacterTemplateRow,
@@ -29,8 +30,7 @@ const env: Record<string, string | undefined> =
   (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
     ?.env ?? {};
 
-export const resolvedDbUrl =
-  env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5432/minirpg';
+export const resolvedDbUrl = resolveDatabaseUrl(env).url;
 export const resolvedDbPath = resolvedDbUrl;
 
 function createPool(url: string): unknown {

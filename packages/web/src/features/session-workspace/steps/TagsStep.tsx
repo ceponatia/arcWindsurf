@@ -7,8 +7,9 @@ import { useWorkspaceStore, useTagsState, useNpcsState } from '../store.js';
 import type { TagSelection, NpcSessionConfig } from '../store.js';
 import type { TagSummary, CharacterSummary } from '../../../types.js';
 import { AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '../../../config.js';
 
-const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3001';
+const API_BASE = API_BASE_URL;
 
 interface LocationOption {
   id: string;

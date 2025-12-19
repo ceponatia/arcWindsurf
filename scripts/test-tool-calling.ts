@@ -13,16 +13,16 @@
  *   npx tsx scripts/test-tool-calling.ts --verbose
  *
  * Requires:
- *   OPENROUTER_API_KEY in packages/api/.env or environment
+ *   OPENROUTER_API_KEY in repo-root .env or environment
  */
 
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// Load .env from packages/api
+// Load repo-root .env so CLI tests reuse the same config as the API.
 const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname, '../packages/api/.env') });
+config({ path: resolve(__dirname, '../.env') });
 
 // ============================================================================
 // Types
@@ -419,7 +419,7 @@ async function callOpenRouterWithTools(
   const model = process.env.OPENROUTER_MODEL ?? 'deepseek/deepseek-chat';
 
   if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY not set. Check packages/api/.env');
+    throw new Error('OPENROUTER_API_KEY not set. Check repo-root .env');
   }
 
   const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
@@ -624,7 +624,7 @@ async function main(): Promise<void> {
   console.log();
 
   if (!process.env.OPENROUTER_API_KEY) {
-    console.error('❌ OPENROUTER_API_KEY not found. Set it in packages/api/.env');
+    console.error('❌ OPENROUTER_API_KEY not found. Set it in repo-root .env');
     process.exit(1);
   }
 

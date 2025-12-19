@@ -6,7 +6,9 @@ Status: OpenRouter-based runtime (DeepSeek by default).
 
 ## Environment Variables
 
-Create a `.env` in this package (copy the example):
+This monorepo uses a single repo-root `.env`.
+
+Create a repo-root `.env` (copy the example). From the repo root:
 
 ```bash
 cp .env.example .env

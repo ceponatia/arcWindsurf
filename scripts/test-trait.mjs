@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { buildDimensionTraitPhrases } from '../packages/agents/dist/personality-mapping.js';
 
-// Load the API package .env so CLI tests can reuse the same OpenRouter config
+// Load repo-root .env so CLI tests reuse the same OpenRouter config as the API.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '../packages/api/.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 async function main() {
   const { trait, scenario, model, dimensions } = parseArgs();

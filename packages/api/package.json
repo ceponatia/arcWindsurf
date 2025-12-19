@@ -28,7 +28,8 @@
     "@minimal-rpg/state-manager": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",
     "dotenv": "^17.2.3",
-    "hono": "^4.10.6"
+    "hono": "^4.10.6",
+    "jose": "^6.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

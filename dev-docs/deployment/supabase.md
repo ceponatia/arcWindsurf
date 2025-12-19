@@ -57,7 +57,29 @@ Once you have `DATABASE_URL`:
 flyctl secrets set \
   -a arcagentic \
   DATABASE_URL="postgres://...sslmode=require" \
-  AUTH_SECRET="..." \
+  SUPABASE_PROJECT_URL="https://<ref>.supabase.co" \
+  SUPABASE_JWT_ISSUER="https://<ref>.supabase.co/auth/v1" \
+  # Optional (only set if you configured/need audience validation)
+  # SUPABASE_JWT_AUDIENCE="authenticated" \
+  AUTH_REQUIRED="true" \
+  INVITE_ONLY="true" \
+  INVITE_EMAILS="tester1@example.com,tester2@example.com" \
+  ADMIN_EMAILS="you@example.com" \
+  CORS_ORIGINS="https://ceponatia.github.io,http://localhost:5173" \
   OPENROUTER_API_KEY="..." \
   OPENROUTER_MODEL="deepseek/deepseek-chat"
 ```
+
+## 6. Configure Supabase Auth redirects
+
+In Supabase Dashboard -> Authentication -> URL Configuration:
+
+- Site URL: `https://ceponatia.github.io/rpg-light/`
+- Redirect URLs (add both):
+  - `https://ceponatia.github.io/rpg-light/`
+  - `http://localhost:5173/`
+
+For invite-only playtesting, you can either:
+
+- Keep Supabase signups open and enforce invite-only via the API env (`INVITE_ONLY=true` + `INVITE_EMAILS=...`), or
+- Disable signups in Supabase and invite users via Supabase.

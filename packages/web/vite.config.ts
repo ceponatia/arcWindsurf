@@ -10,6 +10,9 @@ import rehypeSlug from 'rehype-slug';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => ({
+  // In this monorepo, env vars live in the repo root `.env`.
+  // This makes Vite load `.env`, `.env.local`, etc. from the repo root.
+  envDir: path.resolve(__dirname, '../..'),
   // For GitHub Pages project sites, assets must be served from /<repo>/.
   // Set BASE_PATH in CI (or locally) to override.
   base:
