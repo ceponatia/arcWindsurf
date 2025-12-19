@@ -25,10 +25,12 @@
   "scripts": {
     "build": "tsup",
     "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {},
   "devDependencies": {
-    "tsup": "^8.0.0"
+    "tsup": "^8.0.0",
+    "vitest": "^1.6.0"
   }
 }

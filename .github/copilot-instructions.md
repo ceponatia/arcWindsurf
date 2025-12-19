@@ -8,6 +8,17 @@
 - Read the relevant domain's README.md files for package-specific info.
 - Markdown file code fences require a language tag. If you are not using a language tab (trees or other notes in structured format), use `text`.
 
+## Terminal Commands
+
+All terminal commands must:
+
+- be non-interactive
+- If possible, use run_in_terminal with isBackground: true
+- include CI=true when supported
+- include a timeout
+- never start REPLs, watchers, or daemons
+- If interactivity is required, explain and stop.
+
 ## Developer Workflows
 
 - Install/build all: `pnpm -w install` then `pnpm -w build` (Turbo runs `tsc` into `dist/`).

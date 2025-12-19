@@ -1,0 +1,2 @@
+pnpm -w typecheck
+pnpm -w test
