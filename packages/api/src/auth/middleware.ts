@@ -23,10 +23,29 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
   const authHeader = c.req.header('Authorization') ?? null;
   const token = parseBearerToken(authHeader);
 
+  const debugAuth = process.env['DEBUG_AUTH'] === 'true';
+
+  if (debugAuth) {
+    console.info('[auth] attachAuthUser', {
+      method: c.req.method,
+      path: c.req.path,
+      hasAuthorizationHeader: Boolean(authHeader),
+      hasBearerToken: Boolean(token),
+    });
+  }
+
   if (token) {
     // Prefer Supabase JWT verification if configured.
     const supabaseCfg = getSupabaseAuthConfig();
     if (supabaseCfg) {
+      if (debugAuth) {
+        console.info('[auth] Supabase auth configured', {
+          jwksUrl: supabaseCfg.jwksUrl,
+          issuers: supabaseCfg.issuers,
+          audience: supabaseCfg.audience ?? null,
+        });
+      }
+
       const verified = await verifySupabaseJwt(token, supabaseCfg);
       if (verified.ok) {
         const email = verified.claims.email;
@@ -45,14 +64,24 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
           role,
           email,
         } satisfies AuthUser);
+        if (debugAuth) {
+          console.info('[auth] Supabase JWT verified', {
+            identifier: email ?? verified.claims.sub,
+            hasEmail: Boolean(email),
+            role,
+          });
+        }
       } else if (process.env['DEBUG_AUTH'] === 'true') {
         console.warn('[auth] Supabase JWT verification failed', {
           error: verified.error,
           debugMessage: verified.debugMessage,
           jwksUrl: supabaseCfg.jwksUrl,
           issuers: supabaseCfg.issuers,
+          audience: supabaseCfg.audience ?? null,
         });
       }
+    } else if (debugAuth) {
+      console.warn('[auth] Supabase auth NOT configured (SUPABASE_JWT_ISSUER or JWKS missing)');
     } else {
       // Legacy local auth token verification.
       const secret = getAuthSecret();
@@ -64,7 +93,15 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
             role: verified.payload.role,
             email: null,
           } satisfies AuthUser);
+          if (debugAuth) {
+            console.info('[auth] Local auth token verified', {
+              identifier: verified.payload.sub,
+              role: verified.payload.role,
+            });
+          }
         }
+      } else if (debugAuth) {
+        console.warn('[auth] Local auth secret missing (AUTH_SECRET)');
       }
     }
   }

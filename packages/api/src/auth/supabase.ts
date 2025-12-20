@@ -75,6 +75,7 @@ export async function verifySupabaseJwt(
 
     let lastError: unknown = undefined;
     let lastErrorMessage: string | undefined = undefined;
+    let lastIssuer: string | undefined = undefined;
     for (const issuer of cfg.issuers) {
       try {
         const { payload } = await jwtVerify(token, jwks, {
@@ -94,6 +95,7 @@ export async function verifySupabaseJwt(
         };
       } catch (err) {
         lastError = err;
+        lastIssuer = issuer;
         if (err instanceof Error) {
           lastErrorMessage = err.message;
         } else if (typeof err === 'string') {
@@ -103,10 +105,14 @@ export async function verifySupabaseJwt(
       }
     }
 
+    const issuerInfo = lastIssuer ? `issuer=${lastIssuer}` : 'issuer=<none>';
+    const audienceInfo = cfg.audience ? `audience=${cfg.audience}` : 'audience=<none>';
+    const contextInfo = `${issuerInfo} ${audienceInfo} jwksUrl=${cfg.jwksUrl}`;
+
     if (lastError instanceof Error) {
-      throw lastError;
+      throw new Error(`${contextInfo} err=${lastError.message}`);
     }
-    throw new Error(lastErrorMessage ?? 'JWT verification failed');
+    throw new Error(`${contextInfo} err=${lastErrorMessage ?? 'JWT verification failed'}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.toLowerCase().includes('exp') || msg.toLowerCase().includes('expired')) {
