@@ -45,6 +45,13 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
           role,
           email,
         } satisfies AuthUser);
+      } else if (process.env['DEBUG_AUTH'] === 'true') {
+        console.warn('[auth] Supabase JWT verification failed', {
+          error: verified.error,
+          debugMessage: verified.debugMessage,
+          jwksUrl: supabaseCfg.jwksUrl,
+          issuers: supabaseCfg.issuers,
+        });
       }
     } else {
       // Legacy local auth token verification.

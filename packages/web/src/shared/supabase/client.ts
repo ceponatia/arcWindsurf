@@ -31,6 +31,11 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   cached = createClient(env.url, env.anonKey, {
     auth: {
+      // IMPORTANT: This app uses hash-based routing (window.location.hash).
+      // Supabase's implicit flow returns tokens in the URL hash which can get
+      // overwritten by the router before Supabase can read them.
+      // PKCE returns a `?code=...` in the query string instead.
+      flowType: 'pkce',
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,

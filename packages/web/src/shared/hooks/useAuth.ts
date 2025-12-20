@@ -7,11 +7,18 @@ import { getSupabaseClient } from '../supabase/client.js';
 function getRedirectUrlForMagicLink(): string {
   try {
     const u = new URL(globalThis.location?.href ?? '');
-    u.hash = '';
     u.search = '';
+
+    // Keep hash-based routing. If we redirect to a non-hash URL, the app still works,
+    // but the router is clearer/consistent when landing on '#/'.
+    if (!u.hash || u.hash === '#') {
+      u.hash = '#/';
+    }
+
     return u.toString();
   } catch {
-    return globalThis.location?.origin ?? '';
+    const origin = globalThis.location?.origin ?? '';
+    return origin ? `${origin}/#/` : '';
   }
 }
 
@@ -42,21 +49,27 @@ export function useAuth(): UseAuthState {
     setError(null);
     try {
       const supabase = getSupabaseClient();
+      let supabaseToken: string | null = null;
       if (supabase) {
         const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token ?? null;
-        if (!token) {
+        supabaseToken = data.session?.access_token ?? null;
+        if (!supabaseToken) {
           setUser(null);
           setTokenSnapshot(null);
           return;
         }
         // Mirror into local storage so any non-supabase paths still work.
-        setAuthToken(token);
-        setTokenSnapshot(token);
+        setAuthToken(supabaseToken);
+        setTokenSnapshot(supabaseToken);
       }
 
       const res = await authMe();
       setUser(res.user);
+      if (supabaseToken && !res.user) {
+        setError(
+          'Signed into Supabase, but the API did not recognize this session. Check VITE_API_BASE_URL and ensure the API is configured with SUPABASE_JWT_ISSUER / SUPABASE_PROJECT_URL for the same Supabase project.'
+        );
+      }
     } catch (e) {
       setUser(null);
       setError(e instanceof Error ? e.message : 'Failed to load auth status');
@@ -68,7 +81,32 @@ export function useAuth(): UseAuthState {
   useEffect(() => {
     // Initial refresh
     void refresh();
-  }, [refresh, tokenSnapshot]);
+  }, [refresh]);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const token = session?.access_token ?? null;
+
+      if (token) {
+        // Mirror into local storage so any non-supabase paths still work.
+        setAuthToken(token);
+        setTokenSnapshot(token);
+      } else {
+        clearAuthToken();
+        setTokenSnapshot(null);
+        setUser(null);
+      }
+
+      void refresh();
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, [refresh]);
 
   const login = useCallback(
     async (params: { email: string } | { identifier: string; password: string }) => {

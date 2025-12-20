@@ -7,7 +7,7 @@ export interface SupabaseJwtClaims {
 
 export interface SupabaseAuthConfig {
   jwksUrl: string;
-  issuer: string;
+  issuers: string[];
   audience?: string | undefined;
 }
 
@@ -28,8 +28,15 @@ function readStringEnv(name: string): string | null {
  * - SUPABASE_JWT_AUDIENCE (optional)
  */
 export function getSupabaseAuthConfig(): SupabaseAuthConfig | null {
-  const issuer = readStringEnv('SUPABASE_JWT_ISSUER');
-  if (!issuer) return null;
+  const issuerEnv = readStringEnv('SUPABASE_JWT_ISSUER');
+  if (!issuerEnv) return null;
+
+  const issuers = issuerEnv
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (issuers.length === 0) return null;
 
   const jwksUrl =
     readStringEnv('SUPABASE_JWKS_URL') ??
@@ -45,7 +52,7 @@ export function getSupabaseAuthConfig(): SupabaseAuthConfig | null {
 
   const audience = readStringEnv('SUPABASE_JWT_AUDIENCE') ?? undefined;
 
-  return { jwksUrl, issuer, audience };
+  return { jwksUrl, issuers, audience };
 }
 
 function readEmailFromPayload(payload: JWTPayload): string | null {
@@ -59,30 +66,52 @@ function readEmailFromPayload(payload: JWTPayload): string | null {
 export async function verifySupabaseJwt(
   token: string,
   cfg: SupabaseAuthConfig
-): Promise<{ ok: true; claims: SupabaseJwtClaims } | { ok: false; error: 'invalid' | 'expired' }> {
+): Promise<
+  | { ok: true; claims: SupabaseJwtClaims }
+  | { ok: false; error: 'invalid' | 'expired'; debugMessage?: string }
+> {
   try {
     const jwks = createRemoteJWKSet(new URL(cfg.jwksUrl));
 
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer: cfg.issuer,
-      ...(cfg.audience ? { audience: cfg.audience } : {}),
-    });
+    let lastError: unknown = undefined;
+    let lastErrorMessage: string | undefined = undefined;
+    for (const issuer of cfg.issuers) {
+      try {
+        const { payload } = await jwtVerify(token, jwks, {
+          issuer,
+          ...(cfg.audience ? { audience: cfg.audience } : {}),
+        });
 
-    const sub = typeof payload.sub === 'string' ? payload.sub : null;
-    if (!sub) return { ok: false, error: 'invalid' };
+        const sub = typeof payload.sub === 'string' ? payload.sub : null;
+        if (!sub) return { ok: false, error: 'invalid', debugMessage: 'missing sub' };
 
-    return {
-      ok: true,
-      claims: {
-        sub,
-        email: readEmailFromPayload(payload),
-      },
-    };
+        return {
+          ok: true,
+          claims: {
+            sub,
+            email: readEmailFromPayload(payload),
+          },
+        };
+      } catch (err) {
+        lastError = err;
+        if (err instanceof Error) {
+          lastErrorMessage = err.message;
+        } else if (typeof err === 'string') {
+          lastErrorMessage = err;
+        }
+        continue;
+      }
+    }
+
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+    throw new Error(lastErrorMessage ?? 'JWT verification failed');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.toLowerCase().includes('exp') || msg.toLowerCase().includes('expired')) {
-      return { ok: false, error: 'expired' };
+      return { ok: false, error: 'expired', debugMessage: msg };
     }
-    return { ok: false, error: 'invalid' };
+    return { ok: false, error: 'invalid', debugMessage: msg };
   }
 }
