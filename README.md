@@ -230,6 +230,12 @@ See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md)
 
 Staging uses Supabase via deployment-time secrets (GitHub Actions secrets for the web build, and Fly secrets for the API). Local dev uses `.env` or Docker Compose.
 
+For GitHub Pages builds (see `.github/workflows/web-pages-staging.yml`), set **either** GitHub Actions **Secrets** or **Variables**:
+
+- `VITE_SUPABASE_URL` (your Supabase project URL, `https://<ref>.supabase.co`)
+- `VITE_SUPABASE_ANON_KEY` (your Supabase anon key)
+- `VITE_API_BASE_URL` (your deployed API base URL; otherwise the web app will default to `http://localhost:3001`)
+
 ### LLM (OpenRouter)
 
 - `OPENROUTER_API_KEY` – from <https://openrouter.ai/keys>

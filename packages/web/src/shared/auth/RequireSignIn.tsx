@@ -3,7 +3,8 @@ import { useAuth } from '../hooks/useAuth.js';
 import { getSupabaseClient } from '../supabase/client.js';
 
 export const RequireSignIn: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, error, login, pendingMagicLink, logout, hasToken } = useAuth();
+  const { user, loading, error, login, pendingMagicLink, logout, hasToken, magicLinkSentTo } =
+    useAuth();
   const supabaseConfigured = Boolean(getSupabaseClient());
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +52,13 @@ export const RequireSignIn: React.FC<{ children: React.ReactNode }> = ({ childre
         {combinedError && (
           <div className="mb-4 p-3 rounded-md border border-red-800 bg-red-950/30 text-red-200 text-sm">
             {combinedError}
+          </div>
+        )}
+
+        {!combinedError && magicLinkSentTo && (
+          <div className="mb-4 p-3 rounded-md border border-emerald-800 bg-emerald-950/30 text-emerald-200 text-sm">
+            Magic link requested for <span className="font-medium">{magicLinkSentTo}</span>. Check
+            spam/promotions.
           </div>
         )}
 

@@ -9,16 +9,17 @@ function getRedirectUrlForMagicLink(): string {
     const u = new URL(globalThis.location?.href ?? '');
     u.search = '';
 
-    // Keep hash-based routing. If we redirect to a non-hash URL, the app still works,
-    // but the router is clearer/consistent when landing on '#/'.
-    if (!u.hash || u.hash === '#') {
-      u.hash = '#/';
-    }
+    // IMPORTANT:
+    // Supabase validates `emailRedirectTo` against the allowlisted Redirect URLs.
+    // Hash fragments are frequently not included in that allowlist matching.
+    // Use a clean origin+path URL (no hash) so `https://ceponatia.github.io/rpg-light/`
+    // matches. The app will normalize hash routing on load.
+    u.hash = '';
 
     return u.toString();
   } catch {
     const origin = globalThis.location?.origin ?? '';
-    return origin ? `${origin}/#/` : '';
+    return origin ? `${origin}/` : '';
   }
 }
 
@@ -29,6 +30,7 @@ export interface UseAuthState {
   loading: boolean;
   error: string | null;
   pendingMagicLink: boolean;
+  magicLinkSentTo: string | null;
   refresh: () => Promise<void>;
   login: (params: { email: string } | { identifier: string; password: string }) => Promise<void>;
   logout: () => void;
@@ -40,6 +42,7 @@ export function useAuth(): UseAuthState {
   const [error, setError] = useState<string | null>(null);
   const [tokenSnapshot, setTokenSnapshot] = useState<string | null>(() => getAuthToken());
   const [pendingMagicLink, setPendingMagicLink] = useState<boolean>(false);
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
 
   const hasToken = Boolean(tokenSnapshot);
   const isAdmin = user?.role === 'admin';
@@ -112,6 +115,7 @@ export function useAuth(): UseAuthState {
     async (params: { email: string } | { identifier: string; password: string }) => {
       setLoading(true);
       setError(null);
+      setMagicLinkSentTo(null);
       try {
         const supabase = getSupabaseClient();
 
@@ -128,6 +132,8 @@ export function useAuth(): UseAuthState {
           });
 
           if (signInErr) throw signInErr;
+
+          setMagicLinkSentTo(email);
 
           // User still needs to click the email link. We'll update state when the
           // session appears (refresh runs on mount + tokenSnapshot changes).
@@ -180,10 +186,22 @@ export function useAuth(): UseAuthState {
       loading,
       error,
       pendingMagicLink,
+      magicLinkSentTo,
       refresh,
       login,
       logout,
     }),
-    [user, isAdmin, hasToken, loading, error, pendingMagicLink, refresh, login, logout]
+    [
+      user,
+      isAdmin,
+      hasToken,
+      loading,
+      error,
+      pendingMagicLink,
+      magicLinkSentTo,
+      refresh,
+      login,
+      logout,
+    ]
   );
 }
