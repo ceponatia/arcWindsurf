@@ -48,7 +48,7 @@ export default tseslint.config(
     ],
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: ['packages/*/tsconfig.vitest.json'],
         tsconfigRootDir: import.meta.dirname,
       },
       globals: {

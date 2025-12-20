@@ -2,7 +2,7 @@ import { resolveDatabaseUrl } from '../src/connection/resolveDatabaseUrl.js';
 
 describe('connection/resolveDatabaseUrl', () => {
   const buildPgUrl = (rest: string): string => `postgres${'://'}${rest}`;
-  const defaultLocal = buildPgUrl('localhost:5432/minirpg');
+  const defaultLocal = buildPgUrl('postgres:postgres@localhost:5432/minirpg');
 
   const cases = [
     {

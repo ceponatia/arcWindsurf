@@ -25,6 +25,13 @@ export {
   // Priority 3: Inventory Tools (placeholder)
   USE_ITEM_TOOL,
 
+  // Priority 4: Time Tools
+  ADVANCE_TIME_TOOL,
+
+  // Priority 4.5: Location Tools
+  MOVE_TO_LOCATION_TOOL,
+  GET_LOCATION_INFO_TOOL,
+
   // Priority 4: Relationship Tools (design only)
   GET_NPC_MEMORY_TOOL,
   UPDATE_RELATIONSHIP_TOOL,
@@ -34,7 +41,11 @@ export {
   DEBUG_TOOLS,
   ENVIRONMENT_TOOLS,
   INVENTORY_TOOLS,
+  TIME_TOOLS,
+  LOCATION_TOOLS,
   RELATIONSHIP_TOOLS,
+  HYGIENE_TOOLS,
+  SCHEDULE_TOOLS,
   ALL_GAME_TOOLS,
 
   // Utilities
