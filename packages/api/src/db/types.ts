@@ -1,4 +1,4 @@
-import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
+import type { getDbOverview, getDbPathInfo, OwnerEmail } from '@minimal-rpg/db/node';
 import type { ChatRole } from '../types.js';
 
 export interface DbMessage {
@@ -420,31 +420,36 @@ export interface PrismaClientLike {
 
 export interface SessionsClientLike {
   createSession(
+    ownerEmail: OwnerEmail,
     id: string,
     characterTemplateId: string,
     settingTemplateId: string
   ): Promise<DbSession>;
-  getSession(id: string): Promise<DbSession | undefined>;
-  listSessions(): Promise<DbSessionSummary[]>;
-  deleteSession(id: string): Promise<void>;
+  getSession(ownerEmail: OwnerEmail, id: string): Promise<DbSession | undefined>;
+  listSessions(ownerEmail: OwnerEmail): Promise<DbSessionSummary[]>;
+  deleteSession(ownerEmail: OwnerEmail, id: string): Promise<void>;
   appendMessage(
+    ownerEmail: OwnerEmail,
     sessionId: string,
     role: ChatRole,
     content: string,
     speaker?: { id: string; name: string; profilePic?: string }
   ): Promise<void>;
   appendNpcMessage(
+    ownerEmail: OwnerEmail,
     sessionId: string,
     npcId: string,
     speaker: 'player' | 'npc' | 'narrator',
     content: string
   ): Promise<void>;
   getNpcMessages(
+    ownerEmail: OwnerEmail,
     sessionId: string,
     npcId: string,
     options?: { limit?: number }
   ): Promise<DbNpcMessage[]>;
   appendStateChangeLog(params: {
+    ownerEmail: OwnerEmail;
     sessionId: string;
     turnIdx?: number | null;
     patchCount: number;
@@ -453,6 +458,7 @@ export interface SessionsClientLike {
     metadata?: Record<string, unknown>;
   }): Promise<StateChangeLogEntry>;
   appendSessionHistoryEntry(params: {
+    ownerEmail: OwnerEmail;
     sessionId: string;
     turnIdx: number;
     playerInput: string;
@@ -461,6 +467,7 @@ export interface SessionsClientLike {
     debug?: Record<string, unknown> | null;
   }): Promise<SessionHistoryEntry>;
   getSessionHistory(
+    ownerEmail: OwnerEmail,
     sessionId: string,
     options?: { limit?: number }
   ): Promise<SessionHistoryEntry[]>;

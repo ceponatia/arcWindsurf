@@ -3,6 +3,7 @@ import { createSession } from '../shared/api/client.js';
 import { useAppController } from './hooks/useAppController.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { AppFooter } from './AppFooter.js';
+import { DevNews } from '../features/dev-news/index.js';
 import { useTags } from '../shared/hooks/useTags.js';
 import { useItems } from '../shared/hooks/useItems.js';
 import { useAuth } from '../shared/hooks/useAuth.js';
@@ -362,13 +363,13 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             {isAdmin && (
               <>
                 <a
-                  href="/dbview"
+                  href="#/dbview"
                   className="block text-xs text-slate-500 hover:text-slate-300 transition-colors"
                 >
                   DB View
                 </a>
                 <a
-                  href="/toolingfailures"
+                  href="#/toolingfailures"
                   className="block text-xs text-slate-500 hover:text-slate-300 transition-colors"
                 >
                   Tooling Failures
@@ -784,30 +785,42 @@ const MainContent: React.FC<MainContentProps> = ({
   switch (viewMode) {
     case 'home':
       return (
-        <div className="max-w-2xl mx-auto text-center py-16">
-          <h1 className="text-3xl font-semibold text-slate-100 mb-4">Welcome to ArcAgentic</h1>
-          <p className="text-slate-400 mb-8">
-            Create characters, build settings, and start immersive roleplay sessions.
-          </p>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => navigateToCharacterBuilder(null)}
-              className="px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-500 transition-colors"
-            >
-              Create Character
-            </button>
-            <button
-              onClick={() => navigateToSettingBuilder(null)}
-              className="px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
-            >
-              Create Setting
-            </button>
-            <button
-              onClick={() => navigateToItemBuilder(null)}
-              className="px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
-            >
-              Create Item
-            </button>
+        <div className="max-w-5xl mx-auto py-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
+            <div className="text-center lg:text-left pt-6 lg:pt-10">
+              <h1 className="text-3xl font-semibold text-slate-100 mb-4">Welcome to ArcAgentic</h1>
+              <p className="text-slate-400 mb-8">
+                Create characters, build settings, and start immersive roleplay sessions.
+              </p>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+                <button
+                  onClick={() => navigateToCharacterBuilder(null)}
+                  className="px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+                >
+                  Create Character
+                </button>
+                <button
+                  onClick={() => navigateToSettingBuilder(null)}
+                  className="px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+                >
+                  Create Setting
+                </button>
+                <button
+                  onClick={() => navigateToItemBuilder(null)}
+                  className="px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+                >
+                  Create Item
+                </button>
+              </div>
+
+              <div className="mt-6 text-xs text-slate-500">
+                Alpha note: expect frequent updates and occasional breaking changes.
+              </div>
+            </div>
+
+            <div className="lg:pt-6">
+              <DevNews />
+            </div>
           </div>
         </div>
       );

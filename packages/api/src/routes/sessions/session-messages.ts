@@ -20,6 +20,7 @@ import { generateWithOpenRouter } from '../../llm/openrouter.js';
 import { getEffectiveProfiles } from '../../sessions/index.js';
 import { notFound, badRequest, serverError } from '../../util/responses.js';
 import { findCharacter, findSetting, isMessageRequest } from './shared.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 export async function handlePostMessage(
   c: Context,
@@ -28,8 +29,9 @@ export async function handlePostMessage(
   const loaded = getLoaded();
   if (!loaded) return serverError(c, 'data not loaded');
 
+  const ownerEmail = getOwnerEmail(c);
   const id = c.req.param('id');
-  const session = await getSession(id);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   const rawBody: unknown = await c.req.json().catch(() => null);
@@ -42,7 +44,7 @@ export async function handlePostMessage(
     return badRequest(c, 'content must be 1..4000 characters');
   }
 
-  await appendMessage(session.id, 'user', content);
+  await appendMessage(ownerEmail, session.id, 'user', content);
   console.info(`Session ${session.id}: user message (${content.length} chars) queued`);
 
   const loaded2 = getLoaded();
@@ -60,11 +62,11 @@ export async function handlePostMessage(
     return serverError(c, 'Missing OPENROUTER_API_KEY or OPENROUTER_MODEL env vars');
   }
 
-  const sessAfterUser = await getSession(session.id);
+  const sessAfterUser = await getSession(ownerEmail, session.id);
   const history = sessAfterUser?.messages ?? session.messages;
 
   // Get active tags for this session (only enabled, always-mode for now)
-  const tagBindingsWithDefs = await getSessionTagsWithDefinitions(session.id, {
+  const tagBindingsWithDefs = await getSessionTagsWithDefinitions(ownerEmail, session.id, {
     enabledOnly: true,
   });
   const tagInstances = tagBindingsWithDefs
@@ -114,8 +116,8 @@ export async function handlePostMessage(
     return c.json({ ok: false, error: 'Empty assistant response from OpenRouter' }, 502);
   }
 
-  await appendMessage(session.id, 'assistant', contentReply);
-  const sessAfterAssistant = await getSession(session.id);
+  await appendMessage(ownerEmail, session.id, 'assistant', contentReply);
+  const sessAfterAssistant = await getSession(ownerEmail, session.id);
   const last = sessAfterAssistant?.messages.at(-1);
 
   console.info(`Session ${session.id}: assistant reply (${contentReply.length} chars) stored`);
@@ -133,11 +135,12 @@ export async function handlePostMessage(
 }
 
 export async function handlePatchMessage(c: Context): Promise<Response> {
+  const ownerEmail = getOwnerEmail(c);
   const id = c.req.param('id');
   const idx = parseInt(c.req.param('idx'), 10);
   if (isNaN(idx)) return badRequest(c, 'invalid index');
 
-  const session = await getSession(id);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   const rawBody: unknown = await c.req.json().catch(() => null);
@@ -162,13 +165,14 @@ export async function handlePatchMessage(c: Context): Promise<Response> {
 }
 
 export async function handleDeleteMessage(c: Context): Promise<Response> {
+  const ownerEmail = getOwnerEmail(c);
   const id = c.req.param('id');
   const idx = parseInt(c.req.param('idx'), 10);
   if (isNaN(idx)) return badRequest(c, 'invalid index');
 
   console.info(`[API] Request to delete message: session=${id}, idx=${idx}`);
 
-  const session = await getSession(id);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   const existing = await db.message.findFirst({ where: { sessionId: id, idx } });

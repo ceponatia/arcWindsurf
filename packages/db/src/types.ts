@@ -22,9 +22,7 @@ export type SqlFile = string;
 export type SqlText = string;
 
 // DB row/params helpers used across client.ts
-export interface DbRow {
-  [key: string]: unknown;
-}
+export type DbRow = Record<string, unknown>;
 export type DbRows<T = DbRow> = T[];
 export type SqlParams = unknown[];
 export interface QueryResult<T> {
@@ -46,6 +44,15 @@ export interface PgPoolStrict {
 // UUID helpers for generators like node:crypto.randomUUID
 export type UUID = string;
 export type RandomUUID = () => UUID;
+
+/**
+ * Canonical ownership key for multi-tenant scoping.
+ *
+ * Today this is typically the authenticated user's verified email, normalized
+ * to lowercase server-side. (For local/dev auth flows it may be a stable
+ * identifier string.)
+ */
+export type OwnerEmail = string;
 
 // pgvector integration helper signature
 export type PgvectorRegisterType = (pg: unknown) => void;

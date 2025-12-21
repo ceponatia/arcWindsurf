@@ -4,6 +4,7 @@ import { PersonaProfileSchema, type PersonaProfile } from '@minimal-rpg/schemas'
 import { db } from '../db/prismaClient.js';
 import { getSession } from '../db/sessionsClient.js';
 import type { ApiError } from '../types.js';
+import { getOwnerEmail } from '../auth/ownerEmail.js';
 
 interface PersonaSummary {
   id: string;
@@ -193,6 +194,7 @@ export function registerPersonaRoutes(app: Hono): void {
   // POST /sessions/:sessionId/persona - attach persona to session
   app.post('/sessions/:sessionId/persona', async (c) => {
     const sessionId = c.req.param('sessionId');
+    const ownerEmail = getOwnerEmail(c);
 
     let body: { personaId: string } | undefined;
     try {
@@ -206,7 +208,7 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     // Check if session exists
-    const session = await getSession(sessionId);
+    const session = await getSession(ownerEmail, sessionId);
     if (!session) {
       return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
     }

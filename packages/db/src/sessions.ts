@@ -4,6 +4,7 @@ import type {
   DbRow,
   MessageRole,
   MessageSpeaker,
+  OwnerEmail,
   QueryResult,
   RandomUUID,
   SessionMessage,
@@ -72,17 +73,25 @@ function readJsonRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export async function createSession(
+  ownerEmail: OwnerEmail,
   id: UUID,
   characterTemplateId: string,
   settingTemplateId: string
 ): Promise<Session> {
   const res: QueryResult<DbRow> = await pool.query(
-    `INSERT INTO user_sessions (id, character_template_id, setting_template_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (id) DO UPDATE SET character_template_id = EXCLUDED.character_template_id, setting_template_id = EXCLUDED.setting_template_id, updated_at = now()
+    `INSERT INTO user_sessions (id, owner_email, character_template_id, setting_template_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (id) DO UPDATE SET
+       character_template_id = EXCLUDED.character_template_id,
+       setting_template_id = EXCLUDED.setting_template_id,
+       updated_at = now()
+     WHERE user_sessions.owner_email = EXCLUDED.owner_email
      RETURNING *`,
-    [id, characterTemplateId, settingTemplateId]
+    [id, ownerEmail, characterTemplateId, settingTemplateId]
   );
+  if (res.rows.length === 0) {
+    throw new Error('Failed to create session');
+  }
   const row = res.rows[0] as Record<string, unknown>;
   const createdAtIso = toIsoDate(row['created_at']);
   return {
@@ -96,7 +105,7 @@ export async function createSession(
   };
 }
 
-export async function getSession(id: UUID): Promise<Session | undefined> {
+export async function getSession(ownerEmail: OwnerEmail, id: UUID): Promise<Session | undefined> {
   const sRes: QueryResult<DbRow> = await pool.query(
     `SELECT us.*,
             ci.id AS character_instance_id,
@@ -105,21 +114,21 @@ export async function getSession(id: UUID): Promise<Session | undefined> {
      LEFT JOIN LATERAL (
        SELECT id
        FROM character_instances
-       WHERE session_id = us.id
+       WHERE session_id = us.id AND owner_email = us.owner_email
        ORDER BY CASE WHEN role = 'primary' THEN 0 ELSE 1 END, created_at ASC
        LIMIT 1
      ) ci ON TRUE
-     LEFT JOIN setting_instances si ON si.session_id = us.id
-     WHERE us.id = $1
+     LEFT JOIN setting_instances si ON si.session_id = us.id AND si.owner_email = us.owner_email
+     WHERE us.id = $1 AND us.owner_email = $2
      LIMIT 1`,
-    [id]
+    [id, ownerEmail]
   );
   if (sRes.rows.length === 0) return undefined;
   const base = sRes.rows[0] as Record<string, unknown>;
   const createdAt = toIsoDate(base['created_at']);
   const mRes: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM messages WHERE session_id = $1 ORDER BY idx ASC',
-    [id]
+    'SELECT * FROM messages WHERE session_id = $1 AND owner_email = $2 ORDER BY idx ASC',
+    [id, ownerEmail]
   );
   const messages: Message[] = mRes.rows.map((r) => {
     const rec = r as Record<string, unknown>;
@@ -157,7 +166,7 @@ export async function getSession(id: UUID): Promise<Session | undefined> {
   };
 }
 
-export async function listSessions(): Promise<SessionSummary[]> {
+export async function listSessions(ownerEmail: OwnerEmail): Promise<SessionSummary[]> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT us.*,
             ci.id AS character_instance_id,
@@ -166,12 +175,14 @@ export async function listSessions(): Promise<SessionSummary[]> {
      LEFT JOIN LATERAL (
        SELECT id
        FROM character_instances
-       WHERE session_id = us.id
+       WHERE session_id = us.id AND owner_email = us.owner_email
        ORDER BY CASE WHEN role = 'primary' THEN 0 ELSE 1 END, created_at ASC
        LIMIT 1
      ) ci ON TRUE
-     LEFT JOIN setting_instances si ON si.session_id = us.id
-     ORDER BY us.created_at DESC`
+     LEFT JOIN setting_instances si ON si.session_id = us.id AND si.owner_email = us.owner_email
+     WHERE us.owner_email = $1
+     ORDER BY us.created_at DESC`,
+    [ownerEmail]
   );
   return res.rows.map((r) => {
     const rec = r as Record<string, unknown>;
@@ -186,9 +197,11 @@ export async function listSessions(): Promise<SessionSummary[]> {
   });
 }
 
-export async function deleteSession(id: UUID): Promise<void> {
-  await pool.query('DELETE FROM messages WHERE session_id = $1', [id]);
-  await pool.query('DELETE FROM user_sessions WHERE id = $1', [id]);
+export async function deleteSession(ownerEmail: OwnerEmail, id: UUID): Promise<void> {
+  await pool.query('DELETE FROM user_sessions WHERE id = $1 AND owner_email = $2', [
+    id,
+    ownerEmail,
+  ]);
 }
 
 export async function clearSessions() {
@@ -200,6 +213,7 @@ export async function clearSessions() {
 }
 
 export async function appendMessage(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   role: MessageRole,
   content: string,
@@ -207,18 +221,19 @@ export async function appendMessage(
 ) {
   // Determine next idx for the session
   const lastRes: QueryResult<DbRow> = await pool.query(
-    'SELECT idx FROM messages WHERE session_id = $1 ORDER BY idx DESC LIMIT 1',
-    [sessionId]
+    'SELECT idx FROM messages WHERE session_id = $1 AND owner_email = $2 ORDER BY idx DESC LIMIT 1',
+    [sessionId, ownerEmail]
   );
   const last = lastRes.rows[0] as Record<string, unknown> | undefined;
   const nextIdx = (Number(last?.['idx'] ?? 0) || 0) + 1;
 
-  if (speaker && speaker.id && speaker.name) {
+  if (speaker?.id && speaker.name) {
     // Insert with speaker metadata for assistant messages
     await pool.query(
-      'INSERT INTO messages (id, session_id, idx, role, content, speaker_id, speaker_name, speaker_profile_pic) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      'INSERT INTO messages (id, owner_email, session_id, idx, role, content, speaker_id, speaker_name, speaker_profile_pic) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
       [
         genUUID(),
+        ownerEmail,
         sessionId,
         nextIdx,
         role,
@@ -231,28 +246,29 @@ export async function appendMessage(
   } else {
     // Insert without speaker metadata (user messages)
     await pool.query(
-      'INSERT INTO messages (id, session_id, idx, role, content) VALUES ($1, $2, $3, $4, $5)',
-      [genUUID(), sessionId, nextIdx, role, content]
+      'INSERT INTO messages (id, owner_email, session_id, idx, role, content) VALUES ($1, $2, $3, $4, $5, $6)',
+      [genUUID(), ownerEmail, sessionId, nextIdx, role, content]
     );
   }
 }
 
 export async function appendNpcMessage(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   speaker: 'player' | 'npc' | 'narrator',
   content: string
 ): Promise<void> {
   const lastRes: QueryResult<DbRow> = await pool.query(
-    'SELECT idx FROM npc_messages WHERE session_id = $1 AND npc_id = $2 ORDER BY idx DESC LIMIT 1',
-    [sessionId, npcId]
+    'SELECT idx FROM npc_messages WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 ORDER BY idx DESC LIMIT 1',
+    [sessionId, ownerEmail, npcId]
   );
   const last = lastRes.rows[0] as Record<string, unknown> | undefined;
   const nextIdx = (Number(last?.['idx'] ?? 0) || 0) + 1;
 
   await pool.query(
-    'INSERT INTO npc_messages (id, session_id, npc_id, idx, speaker, content) VALUES ($1, $2, $3, $4, $5, $6)',
-    [genUUID(), sessionId, npcId, nextIdx, speaker, content]
+    'INSERT INTO npc_messages (id, owner_email, session_id, npc_id, idx, speaker, content) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+    [genUUID(), ownerEmail, sessionId, npcId, nextIdx, speaker, content]
   );
 }
 
@@ -264,14 +280,15 @@ export interface NpcMessage {
 }
 
 export async function getNpcMessages(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   options: { limit?: number } = {}
 ): Promise<NpcMessage[]> {
   const limit = options.limit ?? 50;
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM npc_messages WHERE session_id = $1 AND npc_id = $2 ORDER BY idx ASC LIMIT $3',
-    [sessionId, npcId, limit]
+    'SELECT * FROM npc_messages WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 ORDER BY idx ASC LIMIT $4',
+    [sessionId, ownerEmail, npcId, limit]
   );
 
   return res.rows.map((r) => {
@@ -297,6 +314,7 @@ export interface StateChangeLogEntry {
 }
 
 export async function appendStateChangeLog(params: {
+  ownerEmail: OwnerEmail;
   sessionId: UUID;
   turnIdx?: number | null;
   patchCount: number;
@@ -306,13 +324,13 @@ export async function appendStateChangeLog(params: {
 }): Promise<StateChangeLogEntry> {
   const id = genUUID();
   const turnIdx = params.turnIdx ?? null;
-  const { sessionId, patchCount, modifiedPaths, agentTypes, metadata } = params;
+  const { ownerEmail, sessionId, patchCount, modifiedPaths, agentTypes, metadata } = params;
 
   const res: QueryResult<DbRow> = await pool.query(
-    `INSERT INTO state_change_log (id, session_id, turn_idx, patch_count, modified_paths, agent_types, metadata)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO state_change_log (id, owner_email, session_id, turn_idx, patch_count, modified_paths, agent_types, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [id, sessionId, turnIdx, patchCount, modifiedPaths, agentTypes, metadata ?? null]
+    [id, ownerEmail, sessionId, turnIdx, patchCount, modifiedPaths, agentTypes, metadata ?? null]
   );
 
   const row = res.rows[0] as Record<string, unknown>;
@@ -338,6 +356,7 @@ export async function appendStateChangeLog(params: {
 // ---------------------------------------------------------------------------
 
 export async function appendSessionHistoryEntry(params: {
+  ownerEmail: OwnerEmail;
   sessionId: UUID;
   turnIdx: number;
   playerInput: string;
@@ -351,15 +370,26 @@ export async function appendSessionHistoryEntry(params: {
   const debugJson = params.debug ? JSON.stringify(params.debug) : null;
 
   const res: QueryResult<DbRow> = await pool.query(
-    `INSERT INTO session_history (id, session_id, turn_idx, owner_user_id, player_input, context_json, debug_json)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+    `INSERT INTO session_history (id, owner_email, session_id, turn_idx, owner_user_id, player_input, context_json, debug_json)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
      ON CONFLICT (session_id, turn_idx) DO UPDATE SET
+       owner_email = EXCLUDED.owner_email,
        owner_user_id = EXCLUDED.owner_user_id,
        player_input = EXCLUDED.player_input,
        context_json = COALESCE(EXCLUDED.context_json, session_history.context_json),
        debug_json = COALESCE(EXCLUDED.debug_json, session_history.debug_json)
+     WHERE session_history.owner_email = EXCLUDED.owner_email
      RETURNING *`,
-    [id, params.sessionId, params.turnIdx, ownerUserId, params.playerInput, contextJson, debugJson]
+    [
+      id,
+      params.ownerEmail,
+      params.sessionId,
+      params.turnIdx,
+      ownerUserId,
+      params.playerInput,
+      contextJson,
+      debugJson,
+    ]
   );
 
   const row = res.rows[0] as Record<string, unknown>;
@@ -377,6 +407,39 @@ export async function appendSessionHistoryEntry(params: {
 }
 
 export async function getSessionHistory(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  options: { limit?: number } = {}
+): Promise<SessionHistoryEntry[]> {
+  const limit = options.limit ?? 50;
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM session_history
+     WHERE session_id = $1 AND owner_email = $2
+     ORDER BY turn_idx DESC, created_at DESC
+     LIMIT $3`,
+    [sessionId, ownerEmail, limit]
+  );
+
+  return res.rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      id: readStr(row, 'id'),
+      sessionId: readStr(row, 'session_id'),
+      turnIdx: Number(row['turn_idx'] ?? 0),
+      ownerUserId: readStr(row, 'owner_user_id', '') || null,
+      playerInput: readStr(row, 'player_input'),
+      context: readJsonRecord(row['context_json']),
+      debug: readJsonRecord(row['debug_json']),
+      createdAt: toIsoDate(row['created_at']),
+    };
+  });
+}
+
+/**
+ * Admin-only: returns session history without owner scoping.
+ * Callers must enforce admin access before using this.
+ */
+export async function getSessionHistoryAdmin(
   sessionId: UUID,
   options: { limit?: number } = {}
 ): Promise<SessionHistoryEntry[]> {
@@ -424,10 +487,13 @@ function readJsonObject(obj: Record<string, unknown>, key: string): SessionSlice
   return null;
 }
 
-export async function getLocationState(sessionId: UUID): Promise<SessionSliceState | null> {
+export async function getLocationState(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<SessionSliceState | null> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT state_json FROM session_location_state WHERE session_id = $1 LIMIT 1',
-    [sessionId]
+    'SELECT state_json FROM session_location_state WHERE session_id = $1 AND owner_email = $2 LIMIT 1',
+    [sessionId, ownerEmail]
   );
 
   if (res.rows.length === 0) return null;
@@ -436,24 +502,29 @@ export async function getLocationState(sessionId: UUID): Promise<SessionSliceSta
 }
 
 export async function upsertLocationState(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   state: SessionSliceState
 ): Promise<void> {
   const stateJson = JSON.stringify(state ?? {});
   await pool.query(
-    `INSERT INTO session_location_state (id, session_id, state_json)
-     VALUES ($1, $2, $3::jsonb)
+    `INSERT INTO session_location_state (id, owner_email, session_id, state_json)
+     VALUES ($1, $2, $3, $4::jsonb)
      ON CONFLICT (session_id) DO UPDATE SET
        state_json = EXCLUDED.state_json,
-       updated_at = now()`,
-    [genUUID(), sessionId, stateJson]
+       updated_at = now()
+     WHERE session_location_state.owner_email = EXCLUDED.owner_email`,
+    [genUUID(), ownerEmail, sessionId, stateJson]
   );
 }
 
-export async function getInventoryState(sessionId: UUID): Promise<SessionSliceState | null> {
+export async function getInventoryState(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<SessionSliceState | null> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT state_json FROM session_inventory_state WHERE session_id = $1 LIMIT 1',
-    [sessionId]
+    'SELECT state_json FROM session_inventory_state WHERE session_id = $1 AND owner_email = $2 LIMIT 1',
+    [sessionId, ownerEmail]
   );
 
   if (res.rows.length === 0) return null;
@@ -462,24 +533,29 @@ export async function getInventoryState(sessionId: UUID): Promise<SessionSliceSt
 }
 
 export async function upsertInventoryState(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   state: SessionSliceState
 ): Promise<void> {
   const stateJson = JSON.stringify(state ?? {});
   await pool.query(
-    `INSERT INTO session_inventory_state (id, session_id, state_json)
-     VALUES ($1, $2, $3::jsonb)
+    `INSERT INTO session_inventory_state (id, owner_email, session_id, state_json)
+     VALUES ($1, $2, $3, $4::jsonb)
      ON CONFLICT (session_id) DO UPDATE SET
        state_json = EXCLUDED.state_json,
-       updated_at = now()`,
-    [genUUID(), sessionId, stateJson]
+       updated_at = now()
+     WHERE session_inventory_state.owner_email = EXCLUDED.owner_email`,
+    [genUUID(), ownerEmail, sessionId, stateJson]
   );
 }
 
-export async function getTimeState(sessionId: UUID): Promise<SessionSliceState | null> {
+export async function getTimeState(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<SessionSliceState | null> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT state_json FROM session_time_state WHERE session_id = $1 LIMIT 1',
-    [sessionId]
+    'SELECT state_json FROM session_time_state WHERE session_id = $1 AND owner_email = $2 LIMIT 1',
+    [sessionId, ownerEmail]
   );
 
   if (res.rows.length === 0) return null;
@@ -487,15 +563,20 @@ export async function getTimeState(sessionId: UUID): Promise<SessionSliceState |
   return readJsonObject(row, 'state_json');
 }
 
-export async function upsertTimeState(sessionId: UUID, state: SessionSliceState): Promise<void> {
+export async function upsertTimeState(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  state: SessionSliceState
+): Promise<void> {
   const stateJson = JSON.stringify(state ?? {});
   await pool.query(
-    `INSERT INTO session_time_state (id, session_id, state_json)
-     VALUES ($1, $2, $3::jsonb)
+    `INSERT INTO session_time_state (id, owner_email, session_id, state_json)
+     VALUES ($1, $2, $3, $4::jsonb)
      ON CONFLICT (session_id) DO UPDATE SET
        state_json = EXCLUDED.state_json,
-       updated_at = now()`,
-    [genUUID(), sessionId, stateJson]
+       updated_at = now()
+     WHERE session_time_state.owner_email = EXCLUDED.owner_email`,
+    [genUUID(), ownerEmail, sessionId, stateJson]
   );
 }
 
@@ -518,6 +599,7 @@ export interface SceneAction {
 }
 
 export interface CreateSceneActionInput {
+  ownerEmail: OwnerEmail;
   sessionId: UUID;
   actorId: string;
   actorType: 'player' | 'npc';
@@ -538,12 +620,13 @@ export async function createSceneAction(input: CreateSceneActionInput): Promise<
 
   const res: QueryResult<DbRow> = await pool.query(
     `INSERT INTO scene_actions (
-      id, session_id, actor_id, actor_type, action_type,
+      id, owner_email, session_id, actor_id, actor_type, action_type,
       content, observable_by, location_id, turn_number, metadata
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
     RETURNING *`,
     [
       id,
+      input.ownerEmail,
       input.sessionId,
       input.actorId,
       input.actorType,
@@ -564,6 +647,7 @@ export async function createSceneAction(input: CreateSceneActionInput): Promise<
  * Get scene actions for a session, optionally filtered by location or turn.
  */
 export async function getSceneActions(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   options?: {
     locationId?: string;
@@ -572,9 +656,9 @@ export async function getSceneActions(
     orderBy?: 'asc' | 'desc';
   }
 ): Promise<SceneAction[]> {
-  const params: unknown[] = [sessionId];
-  const conditions: string[] = ['session_id = $1'];
-  let paramCount = 1;
+  const params: unknown[] = [sessionId, ownerEmail];
+  const conditions: string[] = ['session_id = $1', 'owner_email = $2'];
+  let paramCount = 2;
 
   if (options?.locationId) {
     paramCount++;
@@ -606,24 +690,32 @@ export async function getSceneActions(
 /**
  * Get recent scene actions (most recent N actions).
  */
-export async function getRecentSceneActions(sessionId: UUID, limit = 20): Promise<SceneAction[]> {
-  return getSceneActions(sessionId, { limit, orderBy: 'desc' });
+export async function getRecentSceneActions(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  limit = 20
+): Promise<SceneAction[]> {
+  return getSceneActions(ownerEmail, sessionId, { limit, orderBy: 'desc' });
 }
 
 /**
  * Delete scene actions older than a certain number of turns to keep the table manageable.
  */
-export async function pruneOldSceneActions(sessionId: UUID, keepRecentTurns = 10): Promise<number> {
+export async function pruneOldSceneActions(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  keepRecentTurns = 10
+): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
     `DELETE FROM scene_actions
-     WHERE session_id = $1
+     WHERE session_id = $1 AND owner_email = $2
        AND turn_number IS NOT NULL
        AND turn_number < (
-         SELECT MAX(turn_number) - $2
+         SELECT MAX(turn_number) - $3
          FROM scene_actions
-         WHERE session_id = $1
+         WHERE session_id = $1 AND owner_email = $2
        )`,
-    [sessionId, keepRecentTurns]
+    [sessionId, ownerEmail, keepRecentTurns]
   );
 
   return res.rowCount ?? 0;
@@ -632,10 +724,10 @@ export async function pruneOldSceneActions(sessionId: UUID, keepRecentTurns = 10
 /**
  * Delete all scene actions for a session.
  */
-export async function deleteSceneActions(sessionId: UUID): Promise<number> {
+export async function deleteSceneActions(ownerEmail: OwnerEmail, sessionId: UUID): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
-    'DELETE FROM scene_actions WHERE session_id = $1',
-    [sessionId]
+    'DELETE FROM scene_actions WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
 
   return res.rowCount ?? 0;
@@ -646,8 +738,8 @@ export async function deleteSceneActions(sessionId: UUID): Promise<number> {
  */
 function sceneActionFromRow(row: Record<string, unknown>): SceneAction {
   return {
-    id: readStr(row, 'id', '') as UUID,
-    sessionId: readStr(row, 'session_id', '') as UUID,
+    id: readStr(row, 'id', ''),
+    sessionId: readStr(row, 'session_id', ''),
     actorId: readStr(row, 'actor_id', ''),
     actorType: readStr(row, 'actor_type', 'other') as 'player' | 'npc',
     actionType: readStr(row, 'action_type', 'other') as
@@ -686,12 +778,13 @@ export interface AffinityStateRecord {
  * Get affinity state for a specific NPC in a session.
  */
 export async function getAffinityState(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string
 ): Promise<SessionSliceState | null> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT state_json FROM session_affinity_state WHERE session_id = $1 AND npc_id = $2 LIMIT 1',
-    [sessionId, npcId]
+    'SELECT state_json FROM session_affinity_state WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 LIMIT 1',
+    [sessionId, ownerEmail, npcId]
   );
 
   if (res.rows.length === 0) return null;
@@ -703,11 +796,12 @@ export async function getAffinityState(
  * Get all affinity states for a session (all NPCs).
  */
 export async function getAllAffinityStates(
+  ownerEmail: OwnerEmail,
   sessionId: UUID
 ): Promise<Map<string, SessionSliceState>> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT npc_id, state_json FROM session_affinity_state WHERE session_id = $1',
-    [sessionId]
+    'SELECT npc_id, state_json FROM session_affinity_state WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
 
   const result = new Map<string, SessionSliceState>();
@@ -726,38 +820,47 @@ export async function getAllAffinityStates(
  * Upsert affinity state for a specific NPC in a session.
  */
 export async function upsertAffinityState(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   state: SessionSliceState
 ): Promise<void> {
   const stateJson = JSON.stringify(state ?? {});
   await pool.query(
-    `INSERT INTO session_affinity_state (id, session_id, npc_id, state_json)
-     VALUES ($1, $2, $3, $4::jsonb)
+    `INSERT INTO session_affinity_state (id, owner_email, session_id, npc_id, state_json)
+     VALUES ($1, $2, $3, $4, $5::jsonb)
      ON CONFLICT (session_id, npc_id) DO UPDATE SET
        state_json = EXCLUDED.state_json,
-       updated_at = now()`,
-    [genUUID(), sessionId, npcId, stateJson]
+       updated_at = now()
+     WHERE session_affinity_state.owner_email = EXCLUDED.owner_email`,
+    [genUUID(), ownerEmail, sessionId, npcId, stateJson]
   );
 }
 
 /**
  * Delete affinity state for a specific NPC in a session.
  */
-export async function deleteAffinityState(sessionId: UUID, npcId: string): Promise<void> {
-  await pool.query('DELETE FROM session_affinity_state WHERE session_id = $1 AND npc_id = $2', [
-    sessionId,
-    npcId,
-  ]);
+export async function deleteAffinityState(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  npcId: string
+): Promise<void> {
+  await pool.query(
+    'DELETE FROM session_affinity_state WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3',
+    [sessionId, ownerEmail, npcId]
+  );
 }
 
 /**
  * Delete all affinity states for a session.
  */
-export async function deleteAllAffinityStates(sessionId: UUID): Promise<number> {
+export async function deleteAllAffinityStates(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
-    'DELETE FROM session_affinity_state WHERE session_id = $1',
-    [sessionId]
+    'DELETE FROM session_affinity_state WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
   return res.rowCount ?? 0;
 }
@@ -788,14 +891,15 @@ export interface NpcLocationStateRecord {
  * Get NPC location state for a specific NPC in a session.
  */
 export async function getNpcLocationState(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string
 ): Promise<NpcLocationStateRecord | null> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM session_npc_location_state 
-     WHERE session_id = $1 AND npc_id = $2 
+     WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 
      LIMIT 1`,
-    [sessionId, npcId]
+    [sessionId, ownerEmail, npcId]
   );
 
   if (res.rows.length === 0) return null;
@@ -807,11 +911,12 @@ export async function getNpcLocationState(
  * Get all NPC location states for a session.
  */
 export async function getAllNpcLocationStates(
+  ownerEmail: OwnerEmail,
   sessionId: UUID
 ): Promise<Map<string, NpcLocationStateRecord>> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM session_npc_location_state WHERE session_id = $1',
-    [sessionId]
+    'SELECT * FROM session_npc_location_state WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
 
   const result = new Map<string, NpcLocationStateRecord>();
@@ -829,13 +934,14 @@ export async function getAllNpcLocationStates(
  * Get all NPCs at a specific location.
  */
 export async function getNpcsAtLocation(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   locationId: string
 ): Promise<NpcLocationStateRecord[]> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM session_npc_location_state 
-     WHERE session_id = $1 AND location_id = $2`,
-    [sessionId, locationId]
+     WHERE session_id = $1 AND owner_email = $2 AND location_id = $3`,
+    [sessionId, ownerEmail, locationId]
   );
 
   return res.rows.map((row) => npcLocationStateFromRow(row as Record<string, unknown>)!);
@@ -845,6 +951,7 @@ export async function getNpcsAtLocation(
  * Upsert NPC location state for a specific NPC in a session.
  */
 export async function upsertNpcLocationState(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   state: {
@@ -861,8 +968,8 @@ export async function upsertNpcLocationState(
 
   await pool.query(
     `INSERT INTO session_npc_location_state 
-       (id, session_id, npc_id, location_id, sub_location_id, activity_json, arrived_at_json, interruptible, schedule_slot_id)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9)
+       (id, owner_email, session_id, npc_id, location_id, sub_location_id, activity_json, arrived_at_json, interruptible, schedule_slot_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10)
      ON CONFLICT (session_id, npc_id) DO UPDATE SET
        location_id = EXCLUDED.location_id,
        sub_location_id = EXCLUDED.sub_location_id,
@@ -870,9 +977,11 @@ export async function upsertNpcLocationState(
        arrived_at_json = EXCLUDED.arrived_at_json,
        interruptible = EXCLUDED.interruptible,
        schedule_slot_id = EXCLUDED.schedule_slot_id,
-       updated_at = now()`,
+       updated_at = now()
+     WHERE session_npc_location_state.owner_email = EXCLUDED.owner_email`,
     [
       genUUID(),
+      ownerEmail,
       sessionId,
       npcId,
       state.locationId,
@@ -889,8 +998,9 @@ export async function upsertNpcLocationState(
  * Bulk update NPC locations (e.g., during simulation).
  */
 export async function bulkUpsertNpcLocationStates(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
-  states: Array<{
+  states: {
     npcId: string;
     locationId: string;
     subLocationId?: string | null;
@@ -898,7 +1008,7 @@ export async function bulkUpsertNpcLocationStates(
     arrivedAtJson: Record<string, unknown>;
     interruptible?: boolean;
     scheduleSlotId?: string | null;
-  }>
+  }[]
 ): Promise<void> {
   if (states.length === 0) return;
 
@@ -913,8 +1023,8 @@ export async function bulkUpsertNpcLocationStates(
 
       await client.query(
         `INSERT INTO session_npc_location_state 
-           (id, session_id, npc_id, location_id, sub_location_id, activity_json, arrived_at_json, interruptible, schedule_slot_id)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9)
+           (id, owner_email, session_id, npc_id, location_id, sub_location_id, activity_json, arrived_at_json, interruptible, schedule_slot_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10)
          ON CONFLICT (session_id, npc_id) DO UPDATE SET
            location_id = EXCLUDED.location_id,
            sub_location_id = EXCLUDED.sub_location_id,
@@ -922,9 +1032,11 @@ export async function bulkUpsertNpcLocationStates(
            arrived_at_json = EXCLUDED.arrived_at_json,
            interruptible = EXCLUDED.interruptible,
            schedule_slot_id = EXCLUDED.schedule_slot_id,
-           updated_at = now()`,
+           updated_at = now()
+         WHERE session_npc_location_state.owner_email = EXCLUDED.owner_email`,
         [
           genUUID(),
+          ownerEmail,
           sessionId,
           state.npcId,
           state.locationId,
@@ -949,20 +1061,27 @@ export async function bulkUpsertNpcLocationStates(
 /**
  * Delete NPC location state for a specific NPC in a session.
  */
-export async function deleteNpcLocationState(sessionId: UUID, npcId: string): Promise<void> {
-  await pool.query('DELETE FROM session_npc_location_state WHERE session_id = $1 AND npc_id = $2', [
-    sessionId,
-    npcId,
-  ]);
+export async function deleteNpcLocationState(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  npcId: string
+): Promise<void> {
+  await pool.query(
+    'DELETE FROM session_npc_location_state WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3',
+    [sessionId, ownerEmail, npcId]
+  );
 }
 
 /**
  * Delete all NPC location states for a session.
  */
-export async function deleteAllNpcLocationStates(sessionId: UUID): Promise<number> {
+export async function deleteAllNpcLocationStates(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
-    'DELETE FROM session_npc_location_state WHERE session_id = $1',
-    [sessionId]
+    'DELETE FROM session_npc_location_state WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
   return res.rowCount ?? 0;
 }
@@ -975,8 +1094,8 @@ function npcLocationStateFromRow(row: Record<string, unknown>): NpcLocationState
   if (!npcId) return null;
 
   return {
-    id: readStr(row, 'id') as UUID,
-    sessionId: readStr(row, 'session_id') as UUID,
+    id: readStr(row, 'id'),
+    sessionId: readStr(row, 'session_id'),
     npcId,
     locationId: readStr(row, 'location_id', ''),
     subLocationId: readStr(row, 'sub_location_id', '') || null,
@@ -1010,14 +1129,15 @@ export interface LocationOccupancyCacheRecord {
  * Get occupancy cache for a specific location.
  */
 export async function getLocationOccupancyCache(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   locationId: string
 ): Promise<LocationOccupancyCacheRecord | null> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM session_location_occupancy_cache 
-     WHERE session_id = $1 AND location_id = $2 
+     WHERE session_id = $1 AND owner_email = $2 AND location_id = $3 
      LIMIT 1`,
-    [sessionId, locationId]
+    [sessionId, ownerEmail, locationId]
   );
 
   if (res.rows.length === 0) return null;
@@ -1029,6 +1149,7 @@ export async function getLocationOccupancyCache(
  * Upsert occupancy cache for a location.
  */
 export async function upsertLocationOccupancyCache(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   locationId: string,
   occupancyJson: Record<string, unknown>,
@@ -1039,13 +1160,14 @@ export async function upsertLocationOccupancyCache(
 
   await pool.query(
     `INSERT INTO session_location_occupancy_cache 
-       (id, session_id, location_id, occupancy_json, computed_at_json)
-     VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
+       (id, owner_email, session_id, location_id, occupancy_json, computed_at_json)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
      ON CONFLICT (session_id, location_id) DO UPDATE SET
        occupancy_json = EXCLUDED.occupancy_json,
        computed_at_json = EXCLUDED.computed_at_json,
-       updated_at = now()`,
-    [genUUID(), sessionId, locationId, occupancyStr, computedAtStr]
+       updated_at = now()
+     WHERE session_location_occupancy_cache.owner_email = EXCLUDED.owner_email`,
+    [genUUID(), ownerEmail, sessionId, locationId, occupancyStr, computedAtStr]
   );
 }
 
@@ -1053,22 +1175,26 @@ export async function upsertLocationOccupancyCache(
  * Delete occupancy cache for a location.
  */
 export async function deleteLocationOccupancyCache(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   locationId: string
 ): Promise<void> {
   await pool.query(
-    'DELETE FROM session_location_occupancy_cache WHERE session_id = $1 AND location_id = $2',
-    [sessionId, locationId]
+    'DELETE FROM session_location_occupancy_cache WHERE session_id = $1 AND owner_email = $2 AND location_id = $3',
+    [sessionId, ownerEmail, locationId]
   );
 }
 
 /**
  * Delete all occupancy caches for a session.
  */
-export async function deleteAllOccupancyCaches(sessionId: UUID): Promise<number> {
+export async function deleteAllOccupancyCaches(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
-    'DELETE FROM session_location_occupancy_cache WHERE session_id = $1',
-    [sessionId]
+    'DELETE FROM session_location_occupancy_cache WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
   return res.rowCount ?? 0;
 }
@@ -1081,8 +1207,8 @@ function occupancyCacheFromRow(row: Record<string, unknown>): LocationOccupancyC
   if (!locationId) return null;
 
   return {
-    id: readStr(row, 'id') as UUID,
-    sessionId: readStr(row, 'session_id') as UUID,
+    id: readStr(row, 'id'),
+    sessionId: readStr(row, 'session_id'),
     locationId,
     occupancyJson: readJsonRecord(row['occupancy_json']) ?? {},
     computedAtJson: readJsonRecord(row['computed_at_json']) ?? {},
@@ -1114,14 +1240,15 @@ export interface NpcSimulationCacheRecord {
  * Get simulation cache for a specific NPC in a session.
  */
 export async function getNpcSimulationCache(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string
 ): Promise<NpcSimulationCacheRecord | null> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM session_npc_simulation_cache 
-     WHERE session_id = $1 AND npc_id = $2 
+     WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 
      LIMIT 1`,
-    [sessionId, npcId]
+    [sessionId, ownerEmail, npcId]
   );
 
   if (res.rows.length === 0) return null;
@@ -1133,11 +1260,12 @@ export async function getNpcSimulationCache(
  * Get all simulation caches for a session.
  */
 export async function getAllNpcSimulationCaches(
+  ownerEmail: OwnerEmail,
   sessionId: UUID
 ): Promise<Map<string, NpcSimulationCacheRecord>> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM session_npc_simulation_cache WHERE session_id = $1',
-    [sessionId]
+    'SELECT * FROM session_npc_simulation_cache WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
 
   const result = new Map<string, NpcSimulationCacheRecord>();
@@ -1155,6 +1283,7 @@ export async function getAllNpcSimulationCaches(
  * Upsert simulation cache for a specific NPC.
  */
 export async function upsertNpcSimulationCache(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   cache: {
@@ -1169,14 +1298,15 @@ export async function upsertNpcSimulationCache(
 
   await pool.query(
     `INSERT INTO session_npc_simulation_cache 
-       (id, session_id, npc_id, last_computed_at_json, current_state_json, day_decisions_json)
-     VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb)
+       (id, owner_email, session_id, npc_id, last_computed_at_json, current_state_json, day_decisions_json)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)
      ON CONFLICT (session_id, npc_id) DO UPDATE SET
        last_computed_at_json = EXCLUDED.last_computed_at_json,
        current_state_json = EXCLUDED.current_state_json,
        day_decisions_json = EXCLUDED.day_decisions_json,
-       updated_at = now()`,
-    [genUUID(), sessionId, npcId, lastComputedAtStr, currentStateStr, dayDecisionsStr]
+       updated_at = now()
+     WHERE session_npc_simulation_cache.owner_email = EXCLUDED.owner_email`,
+    [genUUID(), ownerEmail, sessionId, npcId, lastComputedAtStr, currentStateStr, dayDecisionsStr]
   );
 }
 
@@ -1184,13 +1314,14 @@ export async function upsertNpcSimulationCache(
  * Bulk update simulation caches (e.g., during batch simulation).
  */
 export async function bulkUpsertNpcSimulationCaches(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
-  caches: Array<{
+  caches: {
     npcId: string;
     lastComputedAtJson: Record<string, unknown>;
     currentStateJson: Record<string, unknown>;
     dayDecisionsJson?: Record<string, unknown>;
-  }>
+  }[]
 ): Promise<void> {
   if (caches.length === 0) return;
 
@@ -1205,14 +1336,23 @@ export async function bulkUpsertNpcSimulationCaches(
 
       await client.query(
         `INSERT INTO session_npc_simulation_cache 
-           (id, session_id, npc_id, last_computed_at_json, current_state_json, day_decisions_json)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb)
+           (id, owner_email, session_id, npc_id, last_computed_at_json, current_state_json, day_decisions_json)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)
          ON CONFLICT (session_id, npc_id) DO UPDATE SET
            last_computed_at_json = EXCLUDED.last_computed_at_json,
            current_state_json = EXCLUDED.current_state_json,
            day_decisions_json = EXCLUDED.day_decisions_json,
-           updated_at = now()`,
-        [genUUID(), sessionId, cache.npcId, lastComputedAtStr, currentStateStr, dayDecisionsStr]
+           updated_at = now()
+         WHERE session_npc_simulation_cache.owner_email = EXCLUDED.owner_email`,
+        [
+          genUUID(),
+          ownerEmail,
+          sessionId,
+          cache.npcId,
+          lastComputedAtStr,
+          currentStateStr,
+          dayDecisionsStr,
+        ]
       );
     }
 
@@ -1228,20 +1368,27 @@ export async function bulkUpsertNpcSimulationCaches(
 /**
  * Delete simulation cache for a specific NPC.
  */
-export async function deleteNpcSimulationCache(sessionId: UUID, npcId: string): Promise<void> {
+export async function deleteNpcSimulationCache(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  npcId: string
+): Promise<void> {
   await pool.query(
-    'DELETE FROM session_npc_simulation_cache WHERE session_id = $1 AND npc_id = $2',
-    [sessionId, npcId]
+    'DELETE FROM session_npc_simulation_cache WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3',
+    [sessionId, ownerEmail, npcId]
   );
 }
 
 /**
  * Delete all simulation caches for a session.
  */
-export async function deleteAllNpcSimulationCaches(sessionId: UUID): Promise<number> {
+export async function deleteAllNpcSimulationCaches(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
-    'DELETE FROM session_npc_simulation_cache WHERE session_id = $1',
-    [sessionId]
+    'DELETE FROM session_npc_simulation_cache WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
   return res.rowCount ?? 0;
 }
@@ -1251,6 +1398,7 @@ export async function deleteAllNpcSimulationCaches(sessionId: UUID): Promise<num
  * Useful after time advances or period changes.
  */
 export async function invalidateStaleSimulationCaches(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   beforeTime: Record<string, unknown>
 ): Promise<number> {
@@ -1261,8 +1409,9 @@ export async function invalidateStaleSimulationCaches(
   const res: QueryResult<DbRow> = await pool.query(
     `DELETE FROM session_npc_simulation_cache 
      WHERE session_id = $1 
-       AND last_computed_at_json < $2::jsonb`,
-    [sessionId, beforeTimeStr]
+       AND owner_email = $2
+       AND last_computed_at_json < $3::jsonb`,
+    [sessionId, ownerEmail, beforeTimeStr]
   );
   return res.rowCount ?? 0;
 }
@@ -1275,8 +1424,8 @@ function simulationCacheFromRow(row: Record<string, unknown>): NpcSimulationCach
   if (!npcId) return null;
 
   return {
-    id: readStr(row, 'id') as UUID,
-    sessionId: readStr(row, 'session_id') as UUID,
+    id: readStr(row, 'id'),
+    sessionId: readStr(row, 'session_id'),
     npcId,
     lastComputedAtJson: readJsonRecord(row['last_computed_at_json']) ?? {},
     currentStateJson: readJsonRecord(row['current_state_json']) ?? {},
@@ -1310,14 +1459,15 @@ export interface PlayerInterestRecord {
  * Get player interest score for a specific NPC in a session.
  */
 export async function getPlayerInterestScore(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string
 ): Promise<PlayerInterestRecord | null> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM session_player_interest 
-     WHERE session_id = $1 AND npc_id = $2 
+     WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 
      LIMIT 1`,
-    [sessionId, npcId]
+    [sessionId, ownerEmail, npcId]
   );
 
   if (res.rows.length === 0) return null;
@@ -1329,11 +1479,12 @@ export async function getPlayerInterestScore(
  * Get all player interest scores for a session.
  */
 export async function getAllPlayerInterestScores(
+  ownerEmail: OwnerEmail,
   sessionId: UUID
 ): Promise<Map<string, PlayerInterestRecord>> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM session_player_interest WHERE session_id = $1',
-    [sessionId]
+    'SELECT * FROM session_player_interest WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
 
   const result = new Map<string, PlayerInterestRecord>();
@@ -1351,14 +1502,15 @@ export async function getAllPlayerInterestScores(
  * Get NPCs above a score threshold (for promotion checks).
  */
 export async function getNpcsAboveInterestThreshold(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   threshold: number
 ): Promise<PlayerInterestRecord[]> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM session_player_interest 
-     WHERE session_id = $1 AND score >= $2 
+     WHERE session_id = $1 AND owner_email = $2 AND score >= $3 
      ORDER BY score DESC`,
-    [sessionId, threshold]
+    [sessionId, ownerEmail, threshold]
   );
 
   const result: PlayerInterestRecord[] = [];
@@ -1376,6 +1528,7 @@ export async function getNpcsAboveInterestThreshold(
  * Upsert player interest score for an NPC.
  */
 export async function upsertPlayerInterestScore(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   score: number,
@@ -1386,17 +1539,19 @@ export async function upsertPlayerInterestScore(
 ): Promise<void> {
   await pool.query(
     `INSERT INTO session_player_interest 
-     (id, session_id, npc_id, score, total_interactions, turns_since_interaction, peak_score, current_tier)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     (id, owner_email, session_id, npc_id, score, total_interactions, turns_since_interaction, peak_score, current_tier)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (session_id, npc_id) DO UPDATE SET
        score = EXCLUDED.score,
        total_interactions = EXCLUDED.total_interactions,
        turns_since_interaction = EXCLUDED.turns_since_interaction,
        peak_score = EXCLUDED.peak_score,
        current_tier = EXCLUDED.current_tier,
-       updated_at = now()`,
+       updated_at = now()
+     WHERE session_player_interest.owner_email = EXCLUDED.owner_email`,
     [
       genUUID(),
+      ownerEmail,
       sessionId,
       npcId,
       score,
@@ -1412,35 +1567,43 @@ export async function upsertPlayerInterestScore(
  * Update tier for an NPC after promotion.
  */
 export async function updateNpcTier(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   npcId: string,
   newTier: string
 ): Promise<void> {
   await pool.query(
     `UPDATE session_player_interest 
-     SET current_tier = $3, updated_at = now()
-     WHERE session_id = $1 AND npc_id = $2`,
-    [sessionId, npcId, newTier]
+     SET current_tier = $4, updated_at = now()
+     WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3`,
+    [sessionId, ownerEmail, npcId, newTier]
   );
 }
 
 /**
  * Delete player interest score for an NPC.
  */
-export async function deletePlayerInterestScore(sessionId: UUID, npcId: string): Promise<void> {
-  await pool.query('DELETE FROM session_player_interest WHERE session_id = $1 AND npc_id = $2', [
-    sessionId,
-    npcId,
-  ]);
+export async function deletePlayerInterestScore(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  npcId: string
+): Promise<void> {
+  await pool.query(
+    'DELETE FROM session_player_interest WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3',
+    [sessionId, ownerEmail, npcId]
+  );
 }
 
 /**
  * Delete all player interest scores for a session.
  */
-export async function deleteAllPlayerInterestScores(sessionId: UUID): Promise<number> {
+export async function deleteAllPlayerInterestScores(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<number> {
   const res: QueryResult<DbRow> = await pool.query(
-    'DELETE FROM session_player_interest WHERE session_id = $1',
-    [sessionId]
+    'DELETE FROM session_player_interest WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
   );
   return res.rowCount ?? 0;
 }
@@ -1465,19 +1628,28 @@ function playerInterestFromRow(row: Record<string, unknown>): PlayerInterestReco
   }
 
   return {
-    id: id as UUID,
-    sessionId: sessionId as UUID,
+    id: id,
+    sessionId: sessionId,
     npcId,
-    score: typeof score === 'number' ? score : parseFloat(String(score ?? '0')),
+    score: typeof score === 'number' ? score : typeof score === 'string' ? parseFloat(score) : 0,
     totalInteractions:
       typeof totalInteractions === 'number'
         ? totalInteractions
-        : parseInt(String(totalInteractions ?? '0'), 10),
+        : typeof totalInteractions === 'string'
+          ? parseInt(totalInteractions, 10)
+          : 0,
     turnsSinceInteraction:
       typeof turnsSinceInteraction === 'number'
         ? turnsSinceInteraction
-        : parseInt(String(turnsSinceInteraction ?? '0'), 10),
-    peakScore: typeof peakScore === 'number' ? peakScore : parseFloat(String(peakScore ?? '0')),
+        : typeof turnsSinceInteraction === 'string'
+          ? parseInt(turnsSinceInteraction, 10)
+          : 0,
+    peakScore:
+      typeof peakScore === 'number'
+        ? peakScore
+        : typeof peakScore === 'string'
+          ? parseFloat(peakScore)
+          : 0,
     currentTier,
     createdAt,
     updatedAt,
@@ -1648,7 +1820,7 @@ function workspaceDraftFromRow(row: Record<string, unknown>): WorkspaceDraftReco
   if (!id) return null;
 
   return {
-    id: id as UUID,
+    id: id,
     userId: readStr(row, 'user_id', 'default'),
     name: readStr(row, 'name', '') || null,
     workspaceState: readJsonRecord(row['workspace_state']) ?? {},
@@ -1765,9 +1937,9 @@ function sessionLocationMapFromRow(row: Record<string, unknown>): SessionLocatio
   if (!id) return null;
 
   const record: SessionLocationMapRecord = {
-    id: id as UUID,
-    sessionId: readStr(row, 'session_id') as UUID,
-    locationMapId: readStr(row, 'location_map_id') as UUID,
+    id: id,
+    sessionId: readStr(row, 'session_id'),
+    locationMapId: readStr(row, 'location_map_id'),
     overridesJson: readJsonRecord(row['overrides_json']) ?? {},
     createdAt: toIsoDate(row['created_at']),
   };
@@ -1775,8 +1947,8 @@ function sessionLocationMapFromRow(row: Record<string, unknown>): SessionLocatio
   // Include joined location map data if present
   if (row['map_id']) {
     record.locationMap = {
-      id: readStr(row, 'map_id') as UUID,
-      settingId: readStr(row, 'setting_id') as UUID,
+      id: readStr(row, 'map_id'),
+      settingId: readStr(row, 'setting_id'),
       name: readStr(row, 'map_name'),
       description: typeof row['map_description'] === 'string' ? row['map_description'] : null,
       isTemplate: row['is_template'] === true,
@@ -1816,6 +1988,7 @@ export interface ToolCallRecord {
  * Called after each tool execution during a turn.
  */
 export async function appendToolCallHistory(params: {
+  ownerEmail: OwnerEmail;
   sessionId: UUID;
   turnIdx: number;
   toolName: string;
@@ -1825,10 +1998,11 @@ export async function appendToolCallHistory(params: {
 }): Promise<void> {
   const id = genUUID();
   await pool.query(
-    `INSERT INTO tool_call_history (id, session_id, turn_idx, tool_name, tool_args, tool_result, success)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)`,
+    `INSERT INTO tool_call_history (id, owner_email, session_id, turn_idx, tool_name, tool_args, tool_result, success)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8)`,
     [
       id,
+      params.ownerEmail,
       params.sessionId,
       params.turnIdx,
       params.toolName,
@@ -1843,14 +2017,15 @@ export async function appendToolCallHistory(params: {
  * Append multiple tool calls at once (batch insert).
  */
 export async function appendToolCallHistoryBatch(
-  calls: Array<{
+  calls: {
+    ownerEmail: OwnerEmail;
     sessionId: UUID;
     turnIdx: number;
     toolName: string;
     toolArgs: Record<string, unknown>;
     toolResult: Record<string, unknown> | undefined;
     success: boolean;
-  }>
+  }[]
 ): Promise<void> {
   if (calls.length === 0) return;
 
@@ -1861,10 +2036,11 @@ export async function appendToolCallHistoryBatch(
   for (const call of calls) {
     const id = genUUID();
     placeholders.push(
-      `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}::jsonb, $${paramIdx + 5}::jsonb, $${paramIdx + 6})`
+      `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}::jsonb, $${paramIdx + 6}::jsonb, $${paramIdx + 7})`
     );
     values.push(
       id,
+      call.ownerEmail,
       call.sessionId,
       call.turnIdx,
       call.toolName,
@@ -1872,11 +2048,11 @@ export async function appendToolCallHistoryBatch(
       call.toolResult ? JSON.stringify(call.toolResult) : null,
       call.success
     );
-    paramIdx += 7;
+    paramIdx += 8;
   }
 
   await pool.query(
-    `INSERT INTO tool_call_history (id, session_id, turn_idx, tool_name, tool_args, tool_result, success)
+    `INSERT INTO tool_call_history (id, owner_email, session_id, turn_idx, tool_name, tool_args, tool_result, success)
      VALUES ${placeholders.join(', ')}`,
     values
   );
@@ -1887,6 +2063,7 @@ export async function appendToolCallHistoryBatch(
  * Returns tool calls from the most recent N turns.
  */
 export async function getRecentToolCalls(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   options: { turnLimit?: number; limit?: number } = {}
 ): Promise<ToolCallRecord[]> {
@@ -1896,19 +2073,22 @@ export async function getRecentToolCalls(
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM tool_call_history 
      WHERE session_id = $1 
+       AND owner_email = $2
        AND turn_idx > (
-         SELECT COALESCE(MAX(turn_idx), 0) - $2 FROM tool_call_history WHERE session_id = $1
+         SELECT COALESCE(MAX(turn_idx), 0) - $3
+         FROM tool_call_history
+         WHERE session_id = $1 AND owner_email = $2
        )
      ORDER BY turn_idx DESC, created_at DESC
-     LIMIT $3`,
-    [sessionId, turnLimit, limit]
+     LIMIT $4`,
+    [sessionId, ownerEmail, turnLimit, limit]
   );
 
   return res.rows.map((r) => {
     const rec = r as Record<string, unknown>;
     return {
-      id: readStr(rec, 'id') as UUID,
-      sessionId: readStr(rec, 'session_id') as UUID,
+      id: readStr(rec, 'id'),
+      sessionId: readStr(rec, 'session_id'),
       turnIdx: Number(rec['turn_idx'] ?? 0),
       toolName: readStr(rec, 'tool_name'),
       toolArgs: readJsonRecord(rec['tool_args']) ?? {},
@@ -1923,7 +2103,10 @@ export async function getRecentToolCalls(
  * Get tool call statistics for a session.
  * Useful for understanding tool usage patterns.
  */
-export async function getToolCallStats(sessionId: UUID): Promise<{
+export async function getToolCallStats(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<{
   totalCalls: number;
   callsByTool: Record<string, number>;
   recentTools: string[];
@@ -1932,10 +2115,10 @@ export async function getToolCallStats(sessionId: UUID): Promise<{
   const statsRes: QueryResult<DbRow> = await pool.query(
     `SELECT tool_name, COUNT(*) as call_count 
      FROM tool_call_history 
-     WHERE session_id = $1 
+     WHERE session_id = $1 AND owner_email = $2
      GROUP BY tool_name 
      ORDER BY call_count DESC`,
-    [sessionId]
+    [sessionId, ownerEmail]
   );
 
   const callsByTool: Record<string, number> = {};
@@ -1953,12 +2136,14 @@ export async function getToolCallStats(sessionId: UUID): Promise<{
   const recentRes: QueryResult<DbRow> = await pool.query(
     `SELECT DISTINCT tool_name 
      FROM tool_call_history 
-     WHERE session_id = $1 
+     WHERE session_id = $1 AND owner_email = $2
        AND turn_idx > (
-         SELECT COALESCE(MAX(turn_idx), 0) - 5 FROM tool_call_history WHERE session_id = $1
+         SELECT COALESCE(MAX(turn_idx), 0) - 5
+         FROM tool_call_history
+         WHERE session_id = $1 AND owner_email = $2
        )
      ORDER BY tool_name`,
-    [sessionId]
+    [sessionId, ownerEmail]
   );
 
   const recentTools = recentRes.rows.map((r) => readStr(r as Record<string, unknown>, 'tool_name'));
@@ -1969,8 +2154,14 @@ export async function getToolCallStats(sessionId: UUID): Promise<{
 /**
  * Delete tool call history for a session.
  */
-export async function deleteToolCallHistory(sessionId: UUID): Promise<void> {
-  await pool.query('DELETE FROM tool_call_history WHERE session_id = $1', [sessionId]);
+export async function deleteToolCallHistory(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<void> {
+  await pool.query('DELETE FROM tool_call_history WHERE session_id = $1 AND owner_email = $2', [
+    sessionId,
+    ownerEmail,
+  ]);
 }
 
 // =============================================================================
@@ -1997,6 +2188,7 @@ export interface ConversationSummaryRecord {
  * Updates if exists for this session/type/npc combo, otherwise inserts.
  */
 export async function upsertConversationSummary(params: {
+  ownerEmail: OwnerEmail;
   sessionId: UUID;
   summaryType: 'general' | 'tool_usage' | 'npc_specific';
   npcId?: string;
@@ -2009,17 +2201,19 @@ export async function upsertConversationSummary(params: {
 
   const res: QueryResult<DbRow> = await pool.query(
     `INSERT INTO conversation_summaries 
-       (id, session_id, summary_type, npc_id, summary_text, covers_up_to_turn, tool_usage_hints)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (id, owner_email, session_id, summary_type, npc_id, summary_text, covers_up_to_turn, tool_usage_hints)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (session_id, summary_type, COALESCE(npc_id, '')) 
      DO UPDATE SET 
        summary_text = EXCLUDED.summary_text,
        covers_up_to_turn = EXCLUDED.covers_up_to_turn,
        tool_usage_hints = EXCLUDED.tool_usage_hints,
        updated_at = now()
+     WHERE conversation_summaries.owner_email = EXCLUDED.owner_email
      RETURNING *`,
     [
       id,
+      params.ownerEmail,
       params.sessionId,
       params.summaryType,
       params.npcId ?? null,
@@ -2031,8 +2225,8 @@ export async function upsertConversationSummary(params: {
 
   const row = res.rows[0] as Record<string, unknown>;
   return {
-    id: readStr(row, 'id') as UUID,
-    sessionId: readStr(row, 'session_id') as UUID,
+    id: readStr(row, 'id'),
+    sessionId: readStr(row, 'session_id'),
     summaryType: readStr(row, 'summary_type') as 'general' | 'tool_usage' | 'npc_specific',
     npcId: typeof row['npc_id'] === 'string' ? row['npc_id'] : null,
     summaryText: readStr(row, 'summary_text'),
@@ -2049,22 +2243,23 @@ export async function upsertConversationSummary(params: {
  * Get conversation summary for a session.
  */
 export async function getConversationSummary(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   summaryType: 'general' | 'tool_usage' | 'npc_specific' = 'general',
   npcId?: string
 ): Promise<ConversationSummaryRecord | null> {
   const res: QueryResult<DbRow> = await pool.query(
     `SELECT * FROM conversation_summaries 
-     WHERE session_id = $1 AND summary_type = $2 AND COALESCE(npc_id, '') = $3`,
-    [sessionId, summaryType, npcId ?? '']
+     WHERE session_id = $1 AND owner_email = $2 AND summary_type = $3 AND COALESCE(npc_id, '') = $4`,
+    [sessionId, ownerEmail, summaryType, npcId ?? '']
   );
 
   if (res.rows.length === 0) return null;
 
   const row = res.rows[0] as Record<string, unknown>;
   return {
-    id: readStr(row, 'id') as UUID,
-    sessionId: readStr(row, 'session_id') as UUID,
+    id: readStr(row, 'id'),
+    sessionId: readStr(row, 'session_id'),
     summaryType: readStr(row, 'summary_type') as 'general' | 'tool_usage' | 'npc_specific',
     npcId: typeof row['npc_id'] === 'string' ? row['npc_id'] : null,
     summaryText: readStr(row, 'summary_text'),
@@ -2081,18 +2276,19 @@ export async function getConversationSummary(
  * Get all summaries for a session.
  */
 export async function getAllConversationSummaries(
+  ownerEmail: OwnerEmail,
   sessionId: UUID
 ): Promise<ConversationSummaryRecord[]> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM conversation_summaries WHERE session_id = $1 ORDER BY summary_type, npc_id',
-    [sessionId]
+    'SELECT * FROM conversation_summaries WHERE session_id = $1 AND owner_email = $2 ORDER BY summary_type, npc_id',
+    [sessionId, ownerEmail]
   );
 
   return res.rows.map((r) => {
     const row = r as Record<string, unknown>;
     return {
-      id: readStr(row, 'id') as UUID,
-      sessionId: readStr(row, 'session_id') as UUID,
+      id: readStr(row, 'id'),
+      sessionId: readStr(row, 'session_id'),
       summaryType: readStr(row, 'summary_type') as 'general' | 'tool_usage' | 'npc_specific',
       npcId: typeof row['npc_id'] === 'string' ? row['npc_id'] : null,
       summaryText: readStr(row, 'summary_text'),
@@ -2109,6 +2305,12 @@ export async function getAllConversationSummaries(
 /**
  * Delete conversation summaries for a session.
  */
-export async function deleteConversationSummaries(sessionId: UUID): Promise<void> {
-  await pool.query('DELETE FROM conversation_summaries WHERE session_id = $1', [sessionId]);
+export async function deleteConversationSummaries(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<void> {
+  await pool.query(
+    'DELETE FROM conversation_summaries WHERE session_id = $1 AND owner_email = $2',
+    [sessionId, ownerEmail]
+  );
 }

@@ -19,6 +19,7 @@ import {
 } from '../../sessions/index.js';
 import { notFound, badRequest, serverError } from '../../util/responses.js';
 import { findCharacter, findSetting } from './shared.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 export async function handlePutCharacterOverrides(
   c: Context,
@@ -29,7 +30,8 @@ export async function handlePutCharacterOverrides(
   if (!loaded) return serverError(c, 'data not loaded');
 
   const id = c.req.param('id');
-  const session = await getSession(id);
+  const ownerEmail = getOwnerEmail(c);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   const character = await findCharacter(loaded, session.characterTemplateId);
@@ -71,7 +73,8 @@ export async function handlePutSettingOverrides(
   if (!loaded) return serverError(c, 'data not loaded');
 
   const id = c.req.param('id');
-  const session = await getSession(id);
+  const ownerEmail = getOwnerEmail(c);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   const setting = await findSetting(loaded, session.settingTemplateId);

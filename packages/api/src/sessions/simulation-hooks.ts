@@ -96,6 +96,8 @@ export interface HookNpcInfo {
  * Turn hook input.
  */
 export interface TurnHookInput {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
   sessionId: string;
   currentTime: GameTime;
   playerLocationId: string;
@@ -124,6 +126,8 @@ export interface TurnHookResult {
  * Period change hook input.
  */
 export interface PeriodChangeHookInput {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
   sessionId: string;
   currentTime: GameTime;
   previousPeriod: DayPeriod;
@@ -149,6 +153,8 @@ export interface PeriodChangeHookResult {
  * Location change hook input.
  */
 export interface LocationChangeHookInput {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
   sessionId: string;
   currentTime: GameTime;
   previousLocationId: string;
@@ -173,6 +179,8 @@ export interface LocationChangeHookResult {
  * Time skip hook input.
  */
 export interface TimeSkipHookInput {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
   sessionId: string;
   fromTime: GameTime;
   toTime: GameTime;
@@ -208,6 +216,7 @@ export interface TimeSkipHookResult {
  */
 export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResult> {
   const {
+    ownerEmail,
     sessionId,
     currentTime,
     playerLocationId,
@@ -226,7 +235,7 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
   }));
 
   // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(sessionId);
+  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
   const previousLocationStates = new Map<string, NpcLocationState>();
 
   for (const [npcId, cache] of caches.entries()) {
@@ -273,7 +282,7 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
 
   // Bulk update caches
   if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(sessionId, mapToDbCacheArray(cachesToUpdate));
+    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
   }
 
   // Check for location changes
@@ -310,6 +319,7 @@ export async function onPeriodChange(
   input: PeriodChangeHookInput
 ): Promise<PeriodChangeHookResult> {
   const {
+    ownerEmail,
     sessionId,
     currentTime,
     playerLocationId,
@@ -325,7 +335,7 @@ export async function onPeriodChange(
   }));
 
   // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(sessionId);
+  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
   const previousOccupancy = new Set<string>();
 
   for (const [npcId, cache] of caches.entries()) {
@@ -369,7 +379,7 @@ export async function onPeriodChange(
 
   // Bulk update caches
   if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(sessionId, mapToDbCacheArray(cachesToUpdate));
+    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
   }
 
   // Check if occupancy changed
@@ -395,6 +405,7 @@ export async function onLocationChange(
   input: LocationChangeHookInput
 ): Promise<LocationChangeHookResult> {
   const {
+    ownerEmail,
     sessionId,
     currentTime,
     newLocationId,
@@ -410,7 +421,7 @@ export async function onLocationChange(
   }));
 
   // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(sessionId);
+  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
 
   for (const [npcId, cache] of caches.entries()) {
     const npc = simulationNpcs.find((n) => n.npcId === npcId);
@@ -447,7 +458,7 @@ export async function onLocationChange(
 
   // Bulk update caches
   if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(sessionId, mapToDbCacheArray(cachesToUpdate));
+    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
   }
 
   // Build occupancy using the factory function
@@ -497,6 +508,7 @@ export async function onLocationChange(
  */
 export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHookResult> {
   const {
+    ownerEmail,
     sessionId,
     fromTime,
     toTime,
@@ -513,7 +525,7 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
   }));
 
   // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(sessionId);
+  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
 
   for (const [npcId, cache] of caches.entries()) {
     const npc = simulationNpcs.find((n) => n.npcId === npcId);
@@ -548,11 +560,15 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
   }
 
   // Invalidate stale caches (those not updated by time skip)
-  await invalidateStaleSimulationCaches(sessionId, fromTime as unknown as Record<string, unknown>);
+  await invalidateStaleSimulationCaches(
+    ownerEmail,
+    sessionId,
+    fromTime as unknown as Record<string, unknown>
+  );
 
   // Bulk update caches
   if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(sessionId, mapToDbCacheArray(cachesToUpdate));
+    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
   }
 
   // Build occupancy using the factory function

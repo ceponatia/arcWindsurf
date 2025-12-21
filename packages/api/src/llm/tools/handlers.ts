@@ -23,6 +23,8 @@ import { safeParseJson } from '../../util/json.js';
 // =============================================================================
 
 export interface SessionToolHandlerConfig {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
   /** Current session ID */
   sessionId: string;
 }
@@ -36,9 +38,11 @@ export interface SessionToolHandlerConfig {
  * These tools query session state from the database.
  */
 export class SessionToolHandler {
+  private readonly ownerEmail: string;
   private readonly sessionId: string;
 
   constructor(config: SessionToolHandlerConfig) {
+    this.ownerEmail = config.ownerEmail;
     this.sessionId = config.sessionId;
   }
 
@@ -96,7 +100,7 @@ export class SessionToolHandler {
     args: GetSessionTagsArgs
   ): Promise<GetSessionTagsResult | ToolResult> {
     try {
-      const bindings = await getSessionTagsWithDefinitions(this.sessionId, {
+      const bindings = await getSessionTagsWithDefinitions(this.ownerEmail, this.sessionId, {
         enabledOnly: true,
       });
 
@@ -237,7 +241,7 @@ export class SessionToolHandler {
     try {
       const limit = args.limit ?? 20;
 
-      const rows = await getNpcMessages(this.sessionId, args.npc_id, { limit });
+      const rows = await getNpcMessages(this.ownerEmail, this.sessionId, args.npc_id, { limit });
 
       // Map speaker field to role (player -> user, npc/narrator -> assistant)
       const messages = rows.map((row) => ({

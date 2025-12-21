@@ -32,7 +32,7 @@ const Header: React.FC = () => (
   <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700">
     <h1 className="text-lg font-semibold text-slate-100 m-0">Database Explorer</h1>
     <a
-      href="/"
+      href="#/"
       className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors text-sm font-medium"
     >
       ← Back to App

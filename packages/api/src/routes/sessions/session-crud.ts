@@ -18,10 +18,12 @@ import type { CreateSessionResponse } from '../../sessions/types.js';
 import { notFound, badRequest, serverError } from '../../util/responses.js';
 import { generateId, generateInstanceId } from '../../util/id.js';
 import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 export async function handleGetSession(c: Context): Promise<Response> {
   const id = c.req.param('id');
-  const session = await getSession(id);
+  const ownerEmail = getOwnerEmail(c);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   // ensure chronological order by createdAt (ISO strings compare lexicographically)
@@ -37,6 +39,7 @@ export async function handleCreateSession(
   c: Context,
   getLoaded: LoadedDataGetter
 ): Promise<Response> {
+  const ownerEmail = getOwnerEmail(c);
   console.log('[API] POST /sessions request received');
   const loaded = getLoaded();
   if (!loaded) {
@@ -64,7 +67,7 @@ export async function handleCreateSession(
   const settingInstanceId = generateInstanceId(setting.id);
 
   console.log('[API] Creating session:', sessionId);
-  const sessionRecord = await createSession(sessionId, character.id, setting.id);
+  const sessionRecord = await createSession(ownerEmail, sessionId, character.id, setting.id);
 
   try {
     console.log('[API] Creating character instance:', characterInstanceId);
@@ -98,7 +101,7 @@ export async function handleCreateSession(
           // Verify tag exists before creating binding
           const t = await getPromptTag(tid, 'admin');
           if (t) {
-            await createSessionTagBinding({
+            await createSessionTagBinding(ownerEmail, {
               sessionId: sessionRecord.id,
               tagId: tid,
               targetType: 'session',
@@ -110,7 +113,7 @@ export async function handleCreateSession(
     }
   } catch (err) {
     console.error('[API] Failed to create session instances, rolling back session', err);
-    await deleteSession(sessionRecord.id).catch(() => undefined);
+    await deleteSession(ownerEmail, sessionRecord.id).catch(() => undefined);
     return serverError(c, 'failed to create session instances');
   }
 
@@ -128,9 +131,10 @@ export async function handleCreateSession(
 
 export async function handleDeleteSession(c: Context): Promise<Response> {
   const id = c.req.param('id');
-  const session = await getSession(id);
+  const ownerEmail = getOwnerEmail(c);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
-  await deleteSession(id);
+  await deleteSession(ownerEmail, id);
   return c.body(null, 204);
 }

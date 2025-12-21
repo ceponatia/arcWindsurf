@@ -119,6 +119,8 @@ function ensureAgentsRegistered(): void {
 
 export interface GovernorFactoryOptions {
   logging?: GovernorConfig['logging'];
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
   sessionId: string;
   stateSlices: AgentStateSlices;
   turnTagContext?: import('@minimal-rpg/governor').TurnTagContext;
@@ -134,6 +136,7 @@ export interface GovernorFactoryOptions {
  * Options for creating the tool turn handler.
  */
 interface ToolTurnHandlerOptions {
+  ownerEmail: string;
   sessionId: string;
   stateSlices: AgentStateSlices;
   turnTagContext?: import('@minimal-rpg/governor').TurnTagContext;
@@ -151,6 +154,7 @@ function createToolTurnHandlerOrThrow(
 ): ReturnType<typeof createToolBasedTurnHandler> {
   const { sessionId, stateSlices, turnTagContext, availableLocations, playerLocationId, turnIdx } =
     options;
+  const { ownerEmail } = options;
   const cfg = getConfig();
 
   if (!cfg.openrouterApiKey) {
@@ -168,7 +172,7 @@ function createToolTurnHandlerOrThrow(
   }
 
   // Create session tool handler as fallback for session-focused tools
-  const sessionToolHandler = createSessionToolHandler({ sessionId });
+  const sessionToolHandler = createSessionToolHandler({ ownerEmail, sessionId });
   const fallbackHandler: FallbackToolHandler = (toolCall) => sessionToolHandler.execute(toolCall);
 
   const toolExecutor = new ToolExecutor({
@@ -189,6 +193,7 @@ function createToolTurnHandlerOrThrow(
     try {
       await appendToolCallHistoryBatch(
         records.map((r) => ({
+          ownerEmail,
           sessionId,
           turnIdx: turnIdx ?? 0,
           toolName: r.toolName,
@@ -232,6 +237,7 @@ export function createGovernorForRequest(options: GovernorFactoryOptions): Gover
 
   // Create tool turn handler (required)
   const toolHandler = createToolTurnHandlerOrThrow({
+    ownerEmail: options.ownerEmail,
     sessionId: options.sessionId,
     stateSlices: options.stateSlices,
     ...(options.turnTagContext !== undefined && { turnTagContext: options.turnTagContext }),
@@ -246,7 +252,9 @@ export function createGovernorForRequest(options: GovernorFactoryOptions): Gover
     stateManager,
     toolTurnHandler: toolHandler,
     npcTranscriptLoader: async ({ sessionId, npcId, limit }) => {
-      const rows = await getNpcMessages(sessionId, npcId, { limit: limit ?? 50 });
+      const rows = await getNpcMessages(options.ownerEmail, sessionId, npcId, {
+        limit: limit ?? 50,
+      });
       return rows.map((row) => ({
         speaker:
           row.speaker === 'npc' ? 'character' : row.speaker === 'player' ? 'player' : 'narrator',

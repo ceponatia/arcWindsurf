@@ -9,6 +9,7 @@ import type { EffectiveProfilesResponse } from '../../sessions/types.js';
 import { getEffectiveProfiles } from '../../sessions/index.js';
 import { notFound, serverError } from '../../util/responses.js';
 import { findCharacter, findSetting } from './shared.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 export async function handleGetEffective(
   c: Context,
@@ -18,7 +19,8 @@ export async function handleGetEffective(
   if (!loaded) return serverError(c, 'data not loaded');
 
   const id = c.req.param('id');
-  const session = await getSession(id);
+  const ownerEmail = getOwnerEmail(c);
+  const session = await getSession(ownerEmail, id);
   if (!session) return notFound(c, 'session not found');
 
   const character = await findCharacter(loaded, session.characterTemplateId);

@@ -9,7 +9,8 @@ Development-only view for inspecting `tooling-failure` events persisted in sessi
 
 ## Route
 
-- Open `/toolingfailures` in the web app.
+- Open `#/toolingfailures` in the web app.
+  - On GitHub Pages (project site): `/rpg-light/#/toolingfailures`
 
 ## API
 

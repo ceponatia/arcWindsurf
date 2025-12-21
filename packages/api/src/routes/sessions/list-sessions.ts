@@ -9,12 +9,14 @@ import { db } from '../../db/prismaClient.js';
 import type { LoadedDataGetter } from '../../data/types.js';
 import type { SessionListItem } from '../../sessions/types.js';
 import { mapSessionListItem } from '../../mappers/sessionMappers.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 export async function handleListSessions(
   c: Context,
   getLoaded: LoadedDataGetter
 ): Promise<Response> {
-  const sessions = await listSessions();
+  const ownerEmail = getOwnerEmail(c);
+  const sessions = await listSessions(ownerEmail);
   const loaded = getLoaded();
   if (!loaded) return c.json(sessions, 200);
 

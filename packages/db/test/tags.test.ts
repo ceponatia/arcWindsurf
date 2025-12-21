@@ -9,7 +9,7 @@ vi.mock('../src/client.js', () => {
 import { pool } from '../src/client.js';
 import {
   createSessionTagBinding,
-  deletePromptTag,
+  deleteSessionTagBinding,
   getPromptTag,
   listPromptTags,
   toggleSessionTagBinding,
@@ -119,16 +119,18 @@ describe('tags data access', () => {
   });
 
   test('createSessionTagBinding and toggle/delete use pool.query with expected args', async () => {
+    const ownerEmail = 'owner@example.com';
+
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 'binding-1' }] });
-    const binding = await createSessionTagBinding({ sessionId: 's1', tagId: 't1' });
+    const binding = await createSessionTagBinding(ownerEmail, { sessionId: 's1', tagId: 't1' });
     expect(binding.id).toBe('binding-1');
 
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 'binding-1', enabled: false }] });
-    const toggled = await toggleSessionTagBinding('binding-1', false);
+    const toggled = await toggleSessionTagBinding(ownerEmail, 'binding-1', false);
     expect(toggled?.enabled).toBe(false);
 
     mockQuery.mockResolvedValueOnce({ rowCount: 1 });
-    const deleted = await deletePromptTag('tag-1', 'owner-1');
+    const deleted = await deleteSessionTagBinding(ownerEmail, 'binding-1');
     expect(deleted).toBe(true);
   });
 });

@@ -20,17 +20,18 @@ import { buildTurnTagContext, type TagBindingWithDefinition } from './tag-routin
  * @returns Session snapshot with messages, tags, persona, and speaker
  */
 export async function loadSessionSnapshot(
+  ownerEmail: string,
   sessionId: string,
   loadedState: LoadedTurnState
 ): Promise<SessionSnapshot> {
   // Re-load session to pick up the newly appended message
-  const session = await getSession(sessionId);
+  const session = await getSession(ownerEmail, sessionId);
   if (!session) {
     throw new Error('session not found after append');
   }
 
   // Load enabled session tag bindings (MVP: bound + enabled, do not hardcode activation_mode semantics)
-  const tagBindingsWithDefs = await getSessionTagsWithDefinitions(sessionId, {
+  const tagBindingsWithDefs = await getSessionTagsWithDefinitions(ownerEmail, sessionId, {
     enabledOnly: true,
   });
 

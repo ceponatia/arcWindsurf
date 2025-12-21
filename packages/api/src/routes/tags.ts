@@ -10,6 +10,7 @@ import {
   toggleSessionTagBinding,
   deleteSessionTagBinding,
 } from '../db/sessionsClient.js';
+import { getOwnerEmail } from '../auth/ownerEmail.js';
 import {
   CreateTagRequestSchema,
   UpdateTagRequestSchema,
@@ -249,7 +250,10 @@ export function registerTagRoutes(app: Hono): void {
   app.get('/sessions/:sessionId/tags', async (c) => {
     const sessionId = c.req.param('sessionId');
     try {
-      const bindings = await getSessionTagsWithDefinitions(sessionId, { enabledOnly: false });
+      const ownerEmail = getOwnerEmail(c);
+      const bindings = await getSessionTagsWithDefinitions(ownerEmail, sessionId, {
+        enabledOnly: false,
+      });
       return c.json(
         {
           bindings: bindings.map((b) => ({
@@ -276,7 +280,8 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     try {
-      const binding = await createSessionTagBinding({
+      const ownerEmail = getOwnerEmail(c);
+      const binding = await createSessionTagBinding(ownerEmail, {
         sessionId,
         tagId: result.data.tagId,
         ...(result.data.targetType ? { targetType: result.data.targetType } : {}),
@@ -302,7 +307,8 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     try {
-      const updated = await toggleSessionTagBinding(bindingId, result.data.enabled);
+      const ownerEmail = getOwnerEmail(c);
+      const updated = await toggleSessionTagBinding(ownerEmail, bindingId, result.data.enabled);
       if (!updated) {
         return c.json({ ok: false, error: 'Binding not found' } satisfies ApiError, 404);
       }
@@ -317,7 +323,8 @@ export function registerTagRoutes(app: Hono): void {
   app.delete('/sessions/:sessionId/tags/:bindingId', async (c) => {
     const bindingId = c.req.param('bindingId');
     try {
-      const deleted = await deleteSessionTagBinding(bindingId);
+      const ownerEmail = getOwnerEmail(c);
+      const deleted = await deleteSessionTagBinding(ownerEmail, bindingId);
       if (!deleted) {
         return c.json({ ok: false, error: 'Binding not found' } satisfies ApiError, 404);
       }

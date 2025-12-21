@@ -113,6 +113,9 @@ export interface LoadedTurnState {
  * Options for loading turn state.
  */
 export interface LoadStateOptions {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
+
   /** Session ID to load state for */
   sessionId: string;
 
@@ -233,7 +236,7 @@ function buildSettingState(profile: SettingProfile, instance: SettingInstanceRow
  * 5. Builds the complete TurnStateContext
  */
 export async function loadStateForTurn(options: LoadStateOptions): Promise<LoadedTurnState> {
-  const { sessionId, targetNpcId } = options;
+  const { ownerEmail, sessionId, targetNpcId } = options;
 
   // Load all character instances for this session
   const characterInstances = await db.characterInstance.findMany({
@@ -308,11 +311,11 @@ export async function loadStateForTurn(options: LoadStateOptions): Promise<Loade
     storedNpcLocations,
     locationMapRecord,
   ] = await Promise.all([
-    getLocationState(sessionId),
-    getInventoryState(sessionId),
-    getTimeState(sessionId),
-    getAllAffinityStates(sessionId),
-    getAllNpcLocationStates(sessionId),
+    getLocationState(ownerEmail, sessionId),
+    getInventoryState(ownerEmail, sessionId),
+    getTimeState(ownerEmail, sessionId),
+    getAllAffinityStates(ownerEmail, sessionId),
+    getAllNpcLocationStates(ownerEmail, sessionId),
     getSessionLocationMap(sessionId),
   ]);
 

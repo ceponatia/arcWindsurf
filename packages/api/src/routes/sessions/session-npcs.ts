@@ -10,10 +10,12 @@ import type { LoadedDataGetter } from '../../data/types.js';
 import { notFound, badRequest, serverError, conflict } from '../../util/responses.js';
 import { generateId } from '../../util/id.js';
 import { findCharacter, isCreateNpcInstanceRequest, tryParseName } from './shared.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 export async function handleListNpcs(c: Context): Promise<Response> {
+  const ownerEmail = getOwnerEmail(c);
   const sessionId = c.req.param('id');
-  const session = await getSession(sessionId);
+  const session = await getSession(ownerEmail, sessionId);
   if (!session) return notFound(c, 'session not found');
 
   const instances = await db.characterInstance.findMany({
@@ -34,8 +36,9 @@ export async function handleListNpcs(c: Context): Promise<Response> {
 }
 
 export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): Promise<Response> {
+  const ownerEmail = getOwnerEmail(c);
   const sessionId = c.req.param('id');
-  const session = await getSession(sessionId);
+  const session = await getSession(ownerEmail, sessionId);
   if (!session) return notFound(c, 'session not found');
 
   const loaded = getLoaded();

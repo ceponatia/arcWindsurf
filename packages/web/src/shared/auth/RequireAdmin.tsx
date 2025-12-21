@@ -129,7 +129,7 @@ export const RequireAdmin: React.FC<{
                 Sign out
               </button>
             )}
-            <a href="/" className="ml-auto text-sm text-slate-400 hover:text-slate-200">
+            <a href="#/" className="ml-auto text-sm text-slate-400 hover:text-slate-200">
               Back
             </a>
           </div>

@@ -22,11 +22,16 @@ import type { TurnPersistenceData } from './types.js';
 /**
  * Persist player input as a message.
  *
+ * @param ownerEmail - Owner key for tenancy scoping
  * @param sessionId - Session ID
  * @param input - Player input text
  */
-export async function persistPlayerInput(sessionId: string, input: string): Promise<void> {
-  await appendMessage(sessionId, 'user', input);
+export async function persistPlayerInput(
+  ownerEmail: string,
+  sessionId: string,
+  input: string
+): Promise<void> {
+  await appendMessage(ownerEmail, sessionId, 'user', input);
 }
 
 /**
@@ -37,6 +42,7 @@ export async function persistPlayerInput(sessionId: string, input: string): Prom
  * @param speaker - Speaker metadata (optional)
  */
 export async function persistAssistantMessage(
+  ownerEmail: string,
   sessionId: string,
   message: string,
   speaker?: Speaker
@@ -51,7 +57,7 @@ export async function persistAssistantMessage(
       }
     : undefined;
 
-  await appendMessage(sessionId, 'assistant', message, speakerForDb);
+  await appendMessage(ownerEmail, sessionId, 'assistant', message, speakerForDb);
 }
 
 /**
@@ -61,6 +67,7 @@ export async function persistAssistantMessage(
  * @param turnResult - Turn result from governor
  */
 export async function persistStateChanges(
+  ownerEmail: string,
   data: TurnPersistenceData,
   turnResult: TurnResult
 ): Promise<void> {
@@ -107,13 +114,13 @@ export async function persistStateChanges(
 
     // Persist per-session slices for location, inventory, and time
     if (location) {
-      await upsertLocationState(sessionId, location);
+      await upsertLocationState(ownerEmail, sessionId, location);
     }
     if (inventory) {
-      await upsertInventoryState(sessionId, inventory);
+      await upsertInventoryState(ownerEmail, sessionId, inventory);
     }
     if (time) {
-      await upsertTimeState(sessionId, time);
+      await upsertTimeState(ownerEmail, sessionId, time);
     }
 
     // Persist proximity state to session cache
@@ -157,6 +164,7 @@ export async function persistStateChanges(
 
   // Audit state changes for debugging/tuning
   await appendStateChangeLog({
+    ownerEmail,
     sessionId,
     turnIdx,
     patchCount: stateChanges.patchCount,
@@ -178,6 +186,7 @@ export async function persistStateChanges(
  * @param primaryCharacterId - ID of primary character instance
  */
 export async function persistNpcTranscript(
+  ownerEmail: string,
   sessionId: string,
   playerInput: string,
   turnResult: TurnResult,
@@ -197,13 +206,13 @@ export async function persistNpcTranscript(
       : (activeNpcId ?? primaryCharacterId);
 
   // Record the player's utterance for this NPC transcript
-  await appendNpcMessage(sessionId, npcId, 'player', playerInput);
+  await appendNpcMessage(ownerEmail, sessionId, npcId, 'player', playerInput);
 
   // Record NPC replies (typically one per turn)
   for (const npc of npcOutputs) {
     const narrative = npc.output.narrative?.trim() ?? '';
     if (narrative) {
-      await appendNpcMessage(sessionId, npcId, 'npc', narrative);
+      await appendNpcMessage(ownerEmail, sessionId, npcId, 'npc', narrative);
     }
   }
 }
@@ -215,6 +224,7 @@ export async function persistNpcTranscript(
  * @param turnResult - Turn result from governor
  */
 export async function persistSessionHistory(
+  ownerEmail: string,
   data: TurnPersistenceData,
   turnResult: TurnResult
 ): Promise<void> {
@@ -252,6 +262,7 @@ export async function persistSessionHistory(
 
   try {
     await appendSessionHistoryEntry({
+      ownerEmail,
       sessionId,
       turnIdx,
       playerInput,

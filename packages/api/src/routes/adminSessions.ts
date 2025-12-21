@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { getSessionHistory } from '@minimal-rpg/db/node';
+import { getSessionHistoryAdmin } from '@minimal-rpg/db/node';
 import type { ApiError } from '../types.js';
 import { requireAdmin } from '../auth/middleware.js';
 
@@ -31,7 +31,7 @@ export function registerAdminSessionRoutes(app: Hono) {
     }
 
     try {
-      const history = await getSessionHistory(sessionId, { limit });
+      const history = await getSessionHistoryAdmin(sessionId, { limit });
 
       const failures: ToolingFailureEntryDto[] = history
         .map((h) => {

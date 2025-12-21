@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { pool } from './client.js';
-import type { DbRow, PromptTagRow, QueryResult, SessionTagBindingRow, UUID } from './types.js';
+import type {
+  DbRow,
+  OwnerEmail,
+  PromptTagRow,
+  QueryResult,
+  SessionTagBindingRow,
+  UUID,
+} from './types.js';
 
 // Ensure typed UUID generator
 type RandomUUID = () => UUID;
@@ -299,16 +306,19 @@ export interface CreateBindingInput {
  * Bind a tag to a session, optionally targeting a specific entity.
  */
 export async function createSessionTagBinding(
+  ownerEmail: OwnerEmail,
   input: CreateBindingInput
 ): Promise<SessionTagBindingRow> {
   const id = genUUID();
   const res: QueryResult<DbRow> = await pool.query(
-    `INSERT INTO session_tag_bindings (id, session_id, tag_id, target_type, target_entity_id, enabled)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (session_id, tag_id, target_entity_id) DO UPDATE SET enabled = $6
+    `INSERT INTO session_tag_bindings (id, owner_email, session_id, tag_id, target_type, target_entity_id, enabled)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (session_id, tag_id, target_entity_id) DO UPDATE SET enabled = EXCLUDED.enabled
+       WHERE session_tag_bindings.owner_email = EXCLUDED.owner_email
      RETURNING *`,
     [
       id,
+      ownerEmail,
       input.sessionId,
       input.tagId,
       input.targetType ?? 'session',
@@ -322,10 +332,13 @@ export async function createSessionTagBinding(
 /**
  * Get all tag bindings for a session.
  */
-export async function getSessionTagBindings(sessionId: UUID): Promise<SessionTagBindingRow[]> {
+export async function getSessionTagBindings(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<SessionTagBindingRow[]> {
   const res: QueryResult<DbRow> = await pool.query(
-    'SELECT * FROM session_tag_bindings WHERE session_id = $1 ORDER BY created_at ASC',
-    [sessionId]
+    'SELECT * FROM session_tag_bindings WHERE owner_email = $1 AND session_id = $2 ORDER BY created_at ASC',
+    [ownerEmail, sessionId]
   );
   return res.rows as SessionTagBindingRow[];
 }
@@ -335,12 +348,13 @@ export async function getSessionTagBindings(sessionId: UUID): Promise<SessionTag
  * Joins bindings with prompt_tags for complete tag information.
  */
 export async function getSessionTagsWithDefinitions(
+  ownerEmail: OwnerEmail,
   sessionId: UUID,
   options: { enabledOnly?: boolean; targetType?: string; targetEntityId?: string } = {}
-): Promise<Array<SessionTagBindingRow & { tag: PromptTagRow }>> {
-  const conditions = ['b.session_id = $1'];
-  const values: unknown[] = [sessionId];
-  let idx = 2;
+): Promise<(SessionTagBindingRow & { tag: PromptTagRow })[]> {
+  const conditions = ['b.owner_email = $1', 'b.session_id = $2'];
+  const values: unknown[] = [ownerEmail, sessionId];
+  let idx = 3;
 
   if (options.enabledOnly !== false) {
     conditions.push('b.enabled = TRUE');
@@ -365,19 +379,20 @@ export async function getSessionTagsWithDefinitions(
     values
   );
 
-  return res.rows as Array<SessionTagBindingRow & { tag: PromptTagRow }>;
+  return res.rows as (SessionTagBindingRow & { tag: PromptTagRow })[];
 }
 
 /**
  * Toggle a tag binding's enabled state.
  */
 export async function toggleSessionTagBinding(
+  ownerEmail: OwnerEmail,
   bindingId: UUID,
   enabled: boolean
 ): Promise<SessionTagBindingRow | undefined> {
   const res: QueryResult<DbRow> = await pool.query(
-    'UPDATE session_tag_bindings SET enabled = $2 WHERE id = $1 RETURNING *',
-    [bindingId, enabled]
+    'UPDATE session_tag_bindings SET enabled = $3 WHERE owner_email = $1 AND id = $2 RETURNING *',
+    [ownerEmail, bindingId, enabled]
   );
   return res.rows[0] as SessionTagBindingRow | undefined;
 }
@@ -385,17 +400,27 @@ export async function toggleSessionTagBinding(
 /**
  * Remove a tag binding from a session.
  */
-export async function deleteSessionTagBinding(bindingId: UUID): Promise<boolean> {
-  const res = await pool.query('DELETE FROM session_tag_bindings WHERE id = $1', [bindingId]);
+export async function deleteSessionTagBinding(
+  ownerEmail: OwnerEmail,
+  bindingId: UUID
+): Promise<boolean> {
+  const res = await pool.query(
+    'DELETE FROM session_tag_bindings WHERE owner_email = $1 AND id = $2',
+    [ownerEmail, bindingId]
+  );
   return (res.rowCount ?? 0) > 0;
 }
 
 /**
  * Remove all tag bindings for a session.
  */
-export async function clearSessionTagBindings(sessionId: UUID): Promise<number> {
-  const res = await pool.query('DELETE FROM session_tag_bindings WHERE session_id = $1', [
-    sessionId,
-  ]);
+export async function clearSessionTagBindings(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID
+): Promise<number> {
+  const res = await pool.query(
+    'DELETE FROM session_tag_bindings WHERE owner_email = $1 AND session_id = $2',
+    [ownerEmail, sessionId]
+  );
   return res.rowCount ?? 0;
 }

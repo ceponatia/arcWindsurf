@@ -50,6 +50,9 @@ export interface TurnInterestResult {
  * Options for processing turn interest.
  */
 export interface ProcessInterestOptions {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
+
   /** Session ID */
   sessionId: string;
   /** NPC IDs that were interacted with this turn */
@@ -71,10 +74,11 @@ export interface ProcessInterestOptions {
  * Returns null if no interest record exists.
  */
 export async function getInterestScore(
+  ownerEmail: string,
   sessionId: string,
   npcId: string
 ): Promise<PlayerInterestScore | null> {
-  const record = await getPlayerInterestScore(sessionId, npcId);
+  const record = await getPlayerInterestScore(ownerEmail, sessionId, npcId);
   if (!record) return null;
 
   return recordToInterestScore(record);
@@ -84,9 +88,10 @@ export async function getInterestScore(
  * Get all player interest scores for a session.
  */
 export async function getAllInterestScores(
+  ownerEmail: string,
   sessionId: string
 ): Promise<Map<string, PlayerInterestScore>> {
-  const records = await getAllPlayerInterestScores(sessionId);
+  const records = await getAllPlayerInterestScores(ownerEmail, sessionId);
   const result = new Map<string, PlayerInterestScore>();
 
   for (const [npcId, record] of records) {
@@ -107,6 +112,7 @@ export async function processTurnInterest(
   options: ProcessInterestOptions
 ): Promise<TurnInterestResult> {
   const {
+    ownerEmail,
     sessionId,
     interactedNpcIds,
     allNpcIds,
@@ -118,7 +124,7 @@ export async function processTurnInterest(
   const promotions: PromotionCheck[] = [];
 
   // Get existing interest scores
-  const existingScores = await getAllPlayerInterestScores(sessionId);
+  const existingScores = await getAllPlayerInterestScores(ownerEmail, sessionId);
 
   // Process each NPC
   for (const npcId of allNpcIds) {
@@ -158,6 +164,7 @@ export async function processTurnInterest(
     // Persist updated score
     const tier = (existing?.currentTier ?? 'background') as NpcTierType;
     await upsertPlayerInterestScore(
+      ownerEmail,
       sessionId,
       npcId,
       newScore.score,
@@ -192,11 +199,12 @@ export async function processTurnInterest(
  * @param newTier - Target tier
  */
 export async function executePromotion(
+  ownerEmail: string,
   sessionId: string,
   npcId: string,
   newTier: NpcTierType
 ): Promise<void> {
-  await updateNpcTier(sessionId, npcId, newTier);
+  await updateNpcTier(ownerEmail, sessionId, npcId, newTier);
 }
 
 /**
@@ -204,6 +212,7 @@ export async function executePromotion(
  * Useful for batch promotion checks.
  */
 export async function getNpcsReadyForPromotion(
+  ownerEmail: string,
   sessionId: string,
   config: InterestConfig = DEFAULT_INTEREST_CONFIG
 ): Promise<PromotionCheck[]> {
@@ -220,7 +229,7 @@ export async function getNpcsReadyForPromotion(
   ];
 
   for (const { tier, threshold } of thresholds) {
-    const records = await getNpcsAboveInterestThreshold(sessionId, threshold);
+    const records = await getNpcsAboveInterestThreshold(ownerEmail, sessionId, threshold);
 
     for (const record of records) {
       if (record.currentTier === tier) {

@@ -23,6 +23,7 @@ import {
 } from './turns/state-persistence.js';
 import { processTurnInterest, executePromotion } from '../sessions/tier-service.js';
 import type { TurnContext, TurnPersistenceData } from './turns/types.js';
+import { getOwnerEmail } from '../auth/ownerEmail.js';
 
 /**
  * Builds usage hints based on tool call statistics.
@@ -70,9 +71,10 @@ export function registerTurnRoutes(app: Hono): void {
    */
   app.post('/sessions/:id/turns', async (c) => {
     const sessionId = c.req.param('id');
+    const ownerEmail = getOwnerEmail(c);
 
     // 1. Validate session exists
-    const session = await getSession(sessionId);
+    const session = await getSession(ownerEmail, sessionId);
     if (!session) {
       return notFound(c, 'session not found');
     }
@@ -88,6 +90,7 @@ export function registerTurnRoutes(app: Hono): void {
     let loadedState;
     try {
       loadedState = await loadStateForTurn({
+        ownerEmail,
         sessionId,
         ...(targetNpcId ? { targetNpcId } : {}),
       });
@@ -97,12 +100,12 @@ export function registerTurnRoutes(app: Hono): void {
     }
 
     // 4. Persist player input
-    await persistPlayerInput(sessionId, input);
+    await persistPlayerInput(ownerEmail, sessionId, input);
 
     // 5. Load complete session snapshot (messages, tags, persona, speaker)
     let snapshot;
     try {
-      snapshot = await loadSessionSnapshot(sessionId, loadedState);
+      snapshot = await loadSessionSnapshot(ownerEmail, sessionId, loadedState);
     } catch (err) {
       console.error('[turns] Failed to load snapshot:', err);
       return serverError(c, 'failed to load session snapshot');
@@ -114,8 +117,8 @@ export function registerTurnRoutes(app: Hono): void {
     let toolHistory: ToolHistoryContext | undefined;
     try {
       const [recentCalls, stats] = await Promise.all([
-        getRecentToolCalls(sessionId, { turnLimit: 5, limit: 20 }),
-        getToolCallStats(sessionId),
+        getRecentToolCalls(ownerEmail, sessionId, { turnLimit: 5, limit: 20 }),
+        getToolCallStats(ownerEmail, sessionId),
       ]);
 
       if (stats.totalCalls > 0) {
@@ -160,6 +163,7 @@ export function registerTurnRoutes(app: Hono): void {
     };
 
     const governor = createGovernorForRequest({
+      ownerEmail,
       sessionId,
       stateSlices,
       ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
@@ -199,7 +203,7 @@ export function registerTurnRoutes(app: Hono): void {
     const turnResult = await governor.handleTurn(turnContext);
 
     // 7. Persist assistant response
-    await persistAssistantMessage(sessionId, turnResult.message, snapshot.speaker);
+    await persistAssistantMessage(ownerEmail, sessionId, turnResult.message, snapshot.speaker);
 
     // 8. Persist state changes to database and cache
     const persistenceData: TurnPersistenceData = {
@@ -213,10 +217,11 @@ export function registerTurnRoutes(app: Hono): void {
       ...(snapshot.persona ? { persona: snapshot.persona } : {}),
     };
 
-    await persistStateChanges(persistenceData, turnResult);
+    await persistStateChanges(ownerEmail, persistenceData, turnResult);
 
     // 9. Persist NPC transcript
     await persistNpcTranscript(
+      ownerEmail,
       sessionId,
       input,
       turnResult,
@@ -225,7 +230,7 @@ export function registerTurnRoutes(app: Hono): void {
     );
 
     // 10. Persist session history with debug info
-    await persistSessionHistory(persistenceData, turnResult);
+    await persistSessionHistory(ownerEmail, persistenceData, turnResult);
 
     // 11. Process player interest and tier promotions
     // Track interest for the active NPC (dialogue interaction)
@@ -236,6 +241,7 @@ export function registerTurnRoutes(app: Hono): void {
     if (allNpcIds.length > 0) {
       try {
         const interestResult = await processTurnInterest({
+          ownerEmail,
           sessionId,
           interactedNpcIds: [loadedState.instances.activeNpc.id],
           allNpcIds,
@@ -254,7 +260,7 @@ export function registerTurnRoutes(app: Hono): void {
         // Execute any pending promotions
         for (const promotion of interestResult.promotions) {
           if (promotion.targetTier) {
-            await executePromotion(sessionId, promotion.npcId, promotion.targetTier);
+            await executePromotion(ownerEmail, sessionId, promotion.npcId, promotion.targetTier);
             console.log(
               `[turns] Promoted NPC ${promotion.npcId} from ${promotion.currentTier} to ${promotion.targetTier}`
             );

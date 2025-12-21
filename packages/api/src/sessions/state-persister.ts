@@ -27,6 +27,9 @@ import type { CharacterInstanceRow, SettingInstanceRow } from '../db/types.js';
  * Options for persisting turn state.
  */
 export interface PersistStateOptions {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
+
   /** Session ID to persist state for */
   sessionId: string;
 
@@ -92,7 +95,7 @@ export interface PersistStateResult {
  * 4. Persists proximity/dialogue to session cache
  */
 export async function persistTurnState(options: PersistStateOptions): Promise<PersistStateResult> {
-  const { sessionId, stateChanges, instances, npcIsPrimary, turnNumber } = options;
+  const { ownerEmail, sessionId, stateChanges, instances, npcIsPrimary, turnNumber } = options;
 
   const persistedSlices: string[] = [];
   const errors: { slice: string; error: string }[] = [];
@@ -150,7 +153,7 @@ export async function persistTurnState(options: PersistStateOptions): Promise<Pe
   // Persist per-session slices
   if (effective?.location) {
     try {
-      await upsertLocationState(sessionId, effective.location);
+      await upsertLocationState(ownerEmail, sessionId, effective.location);
       persistedSlices.push('location');
     } catch (err) {
       errors.push({ slice: 'location', error: (err as Error).message });
@@ -159,7 +162,7 @@ export async function persistTurnState(options: PersistStateOptions): Promise<Pe
 
   if (effective?.inventory) {
     try {
-      await upsertInventoryState(sessionId, effective.inventory);
+      await upsertInventoryState(ownerEmail, sessionId, effective.inventory);
       persistedSlices.push('inventory');
     } catch (err) {
       errors.push({ slice: 'inventory', error: (err as Error).message });
@@ -168,7 +171,7 @@ export async function persistTurnState(options: PersistStateOptions): Promise<Pe
 
   if (effective?.time) {
     try {
-      await upsertTimeState(sessionId, effective.time);
+      await upsertTimeState(ownerEmail, sessionId, effective.time);
       persistedSlices.push('time');
     } catch (err) {
       errors.push({ slice: 'time', error: (err as Error).message });
