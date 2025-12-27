@@ -32,5 +32,6 @@
   "MD042": true,
   "MD046": { "style": "fenced" },
   "MD047": true,
-  "MD048": { "style": "backtick" }
+  "MD048": { "style": "backtick" },
+  "MD060": false
 }
