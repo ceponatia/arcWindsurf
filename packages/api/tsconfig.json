@@ -5,7 +5,6 @@
     "moduleResolution": "NodeNext",
     "types": ["node"],
     "outDir": "dist",
-    "baseUrl": "./src",
     "paths": {
       "@minimal-rpg/governor": ["../governor/src/index.ts"],
       "@minimal-rpg/state-manager": ["../state-manager/src/index.ts"],
