@@ -2,28 +2,41 @@
  * Appearance value pools for character generation.
  */
 
+import type {
+  AppearanceArmsBuild,
+  AppearanceFeetSize,
+  AppearanceHeight,
+  AppearanceLegsBuild,
+  AppearanceTorso,
+} from '@minimal-rpg/schemas';
 import type { WeightedValue } from '../../types.js';
 
 // ============================================================================
 // Height
 // ============================================================================
 
-export const HEIGHTS = ['petite', 'short', 'average', 'tall', 'very tall'] as const;
+export const HEIGHTS = [
+  'dwarfish',
+  'short',
+  'average',
+  'tall',
+  'giant',
+] as const satisfies readonly AppearanceHeight[];
 
-export const HEIGHTS_FEMALE_WEIGHTED: WeightedValue<string>[] = [
-  { value: 'petite', weight: 15 },
-  { value: 'short', weight: 25 },
-  { value: 'average', weight: 35 },
-  { value: 'tall', weight: 20 },
-  { value: 'very tall', weight: 5 },
+export const HEIGHTS_FEMALE_WEIGHTED: WeightedValue<AppearanceHeight>[] = [
+  { value: 'dwarfish', weight: 8 },
+  { value: 'short', weight: 22 },
+  { value: 'average', weight: 42 },
+  { value: 'tall', weight: 22 },
+  { value: 'giant', weight: 6 },
 ];
 
-export const HEIGHTS_MALE_WEIGHTED: WeightedValue<string>[] = [
-  { value: 'petite', weight: 5 },
-  { value: 'short', weight: 15 },
-  { value: 'average', weight: 35 },
-  { value: 'tall', weight: 30 },
-  { value: 'very tall', weight: 15 },
+export const HEIGHTS_MALE_WEIGHTED: WeightedValue<AppearanceHeight>[] = [
+  { value: 'dwarfish', weight: 6 },
+  { value: 'short', weight: 16 },
+  { value: 'average', weight: 40 },
+  { value: 'tall', weight: 28 },
+  { value: 'giant', weight: 10 },
 ];
 
 // ============================================================================
@@ -31,42 +44,29 @@ export const HEIGHTS_MALE_WEIGHTED: WeightedValue<string>[] = [
 // ============================================================================
 
 export const BUILDS = [
-  'slender',
-  'slim',
-  'lean',
+  'lithe',
+  'nubile',
   'average',
-  'toned',
   'athletic',
-  'muscular',
-  'curvy',
-  'voluptuous',
-  'stocky',
-  'heavyset',
-] as const;
+  'heavy',
+  'obese',
+] as const satisfies readonly AppearanceTorso[];
 
-export const BUILDS_FEMALE_WEIGHTED: WeightedValue<string>[] = [
-  { value: 'slender', weight: 15 },
-  { value: 'slim', weight: 20 },
-  { value: 'lean', weight: 10 },
-  { value: 'average', weight: 20 },
-  { value: 'toned', weight: 10 },
-  { value: 'athletic', weight: 8 },
-  { value: 'curvy', weight: 10 },
-  { value: 'voluptuous', weight: 5 },
-  { value: 'stocky', weight: 1 },
-  { value: 'heavyset', weight: 1 },
+export const BUILDS_FEMALE_WEIGHTED: WeightedValue<AppearanceTorso>[] = [
+  { value: 'lithe', weight: 18 },
+  { value: 'nubile', weight: 14 },
+  { value: 'average', weight: 30 },
+  { value: 'athletic', weight: 18 },
+  { value: 'heavy', weight: 14 },
+  { value: 'obese', weight: 6 },
 ];
 
-export const BUILDS_MALE_WEIGHTED: WeightedValue<string>[] = [
-  { value: 'slender', weight: 10 },
-  { value: 'slim', weight: 12 },
-  { value: 'lean', weight: 15 },
-  { value: 'average', weight: 20 },
-  { value: 'toned', weight: 12 },
-  { value: 'athletic', weight: 15 },
-  { value: 'muscular', weight: 10 },
-  { value: 'stocky', weight: 4 },
-  { value: 'heavyset', weight: 2 },
+export const BUILDS_MALE_WEIGHTED: WeightedValue<AppearanceTorso>[] = [
+  { value: 'lithe', weight: 10 },
+  { value: 'average', weight: 34 },
+  { value: 'athletic', weight: 24 },
+  { value: 'heavy', weight: 22 },
+  { value: 'obese', weight: 10 },
 ];
 
 // ============================================================================
@@ -314,20 +314,40 @@ export const FACE_FEATURES = [
 // Body Parts
 // ============================================================================
 
-export const ARM_BUILDS = ['slender', 'toned', 'average', 'muscular', 'soft'] as const;
+export const ARM_BUILDS = [
+  'very skinny',
+  'slender',
+  'average',
+  'toned',
+  'muscular',
+] as const satisfies readonly AppearanceArmsBuild[];
 
-export const LEG_BUILDS = ['slender', 'toned', 'average', 'muscular', 'shapely', 'long'] as const;
+export const LEG_BUILDS = [
+  'very skinny',
+  'slender',
+  'average',
+  'toned',
+  'muscular',
+] as const satisfies readonly AppearanceLegsBuild[];
 
-export const FOOT_SIZES = ['petite', 'small', 'average', 'large'] as const;
+export const FOOT_SIZES = [
+  'tiny',
+  'petite',
+  'small',
+  'average',
+  'large',
+] as const satisfies readonly AppearanceFeetSize[];
 
-export const FOOT_SIZES_FEMALE_WEIGHTED: WeightedValue<string>[] = [
+export const FOOT_SIZES_FEMALE_WEIGHTED: WeightedValue<AppearanceFeetSize>[] = [
+  { value: 'tiny', weight: 5 },
   { value: 'petite', weight: 20 },
   { value: 'small', weight: 35 },
   { value: 'average', weight: 35 },
   { value: 'large', weight: 10 },
 ];
 
-export const FOOT_SIZES_MALE_WEIGHTED: WeightedValue<string>[] = [
+export const FOOT_SIZES_MALE_WEIGHTED: WeightedValue<AppearanceFeetSize>[] = [
+  { value: 'tiny', weight: 1 },
   { value: 'petite', weight: 5 },
   { value: 'small', weight: 15 },
   { value: 'average', weight: 45 },

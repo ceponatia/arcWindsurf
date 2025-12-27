@@ -26,6 +26,9 @@ importers:
       '@secretlint/secretlint-rule-preset-recommend':
         specifier: ^11.2.5
         version: 11.2.5
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -50,6 +53,9 @@ importers:
       prettier-plugin-packagejson:
         specifier: ^2.5.19
         version: 2.5.19(prettier@3.6.2)
+      rimraf:
+        specifier: ^6.1.2
+        version: 6.1.2
       secretlint:
         specifier: ^11.2.5
         version: 11.2.5
@@ -134,6 +140,31 @@ importers:
         specifier: ^4.0.15
         version: 4.0.15(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.2)
 
+  packages/characters:
+    dependencies:
+      '@minimal-rpg/agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@minimal-rpg/retrieval':
+        specifier: workspace:*
+        version: link:../retrieval
+      '@minimal-rpg/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@minimal-rpg/state-manager':
+        specifier: workspace:*
+        version: link:../state-manager
+      '@minimal-rpg/utils':
+        specifier: workspace:*
+        version: link:../utils
+      fast-json-patch:
+        specifier: ^3.1.1
+        version: 3.1.1
+    devDependencies:
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.2)
+
   packages/db:
     dependencies:
       pg:
@@ -142,22 +173,6 @@ importers:
       pgvector:
         specifier: ^0.2.1
         version: 0.2.1
-    devDependencies:
-      '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.1
-      '@types/pg':
-        specifier: ^8.15.6
-        version: 8.15.6
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^1.6.0
-        version: 1.6.1(@types/node@24.10.1)(jsdom@27.3.0(postcss@8.5.6))
 
   packages/generator:
     dependencies:
@@ -2182,12 +2197,6 @@ packages:
         integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==,
       }
 
-  '@types/pg@8.15.6':
-    resolution:
-      {
-        integrity: sha512-NoaMtzhxOrubeL/7UZuNTrejB4MPAJ0RpxZqXQf2qXuVlTPuG6Y8p4u9dKRaue4yjmC7ZhzVO2/Yyyn25znrPQ==,
-      }
-
   '@types/phoenix@1.6.7':
     resolution:
       {
@@ -3826,6 +3835,13 @@ packages:
     engines: { node: 20 || >=22 }
     hasBin: true
 
+  glob@13.0.0:
+    resolution:
+      {
+        integrity: sha512-tvZgpqk6fz4BaNZ66ZsRaZnbHvP/jG3uKJvAZOwEVUL4RTA5nJeeLYfyN9/VA8NX/V3IBG+hkeuGpKjvELkVhA==,
+      }
+    engines: { node: 20 || >=22 }
+
   global-directory@4.0.1:
     resolution:
       {
@@ -4975,6 +4991,13 @@ packages:
       }
     engines: { node: 20 || >=22 }
 
+  minimatch@10.1.1:
+    resolution:
+      {
+        integrity: sha512-enIvLvRAFZYXJzkCYG5RKmPfrFArdLv+R+lbQ53BmIMLIry74bjKzX6iHAm8WYamJkhSSEabrWN5D97XnKObjQ==,
+      }
+    engines: { node: 20 || >=22 }
+
   minimatch@3.1.2:
     resolution:
       {
@@ -5801,6 +5824,14 @@ packages:
       {
         integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==,
       }
+
+  rimraf@6.1.2:
+    resolution:
+      {
+        integrity: sha512-cFCkPslJv7BAXJsYlK1dZsbP8/ZNLkCAQ0bi1hf5EKX2QHegmDFEFA6QhuYJlk7UDdc+02JjO80YSOrWPpw06g==,
+      }
+    engines: { node: 20 || >=22 }
+    hasBin: true
 
   rollup@4.53.2:
     resolution:
@@ -8055,12 +8086,6 @@ snapshots:
 
   '@types/normalize-package-data@2.4.4': {}
 
-  '@types/pg@8.15.6':
-    dependencies:
-      '@types/node': 24.10.1
-      pg-protocol: 1.10.3
-      pg-types: 2.2.0
-
   '@types/phoenix@1.6.7': {}
 
   '@types/react-dom@19.2.3(@types/react@19.2.5)':
@@ -9133,6 +9158,12 @@ snapshots:
       package-json-from-dist: 1.0.1
       path-scurry: 2.0.1
 
+  glob@13.0.0:
+    dependencies:
+      minimatch: 10.1.1
+      minipass: 7.1.2
+      path-scurry: 2.0.1
+
   global-directory@4.0.1:
     dependencies:
       ini: 4.1.1
@@ -10061,6 +10092,10 @@ snapshots:
     dependencies:
       '@isaacs/brace-expansion': 5.0.0
 
+  minimatch@10.1.1:
+    dependencies:
+      '@isaacs/brace-expansion': 5.0.0
+
   minimatch@3.1.2:
     dependencies:
       brace-expansion: 1.1.12
@@ -10570,6 +10605,11 @@ snapshots:
   reusify@1.1.0: {}
 
   rfdc@1.4.1: {}
+
+  rimraf@6.1.2:
+    dependencies:
+      glob: 13.0.0
+      package-json-from-dist: 1.0.1
 
   rollup@4.53.2:
     dependencies:

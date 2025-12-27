@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/governor" },
+    { "path": "packages/state-manager" },
+    { "path": "packages/agents" },
+    { "path": "packages/retrieval" },
+    { "path": "packages/db" },
+    { "path": "packages/schemas" },
+    { "path": "packages/utils" },
+    { "path": "packages/api" },
+    { "path": "packages/characters" },
+    { "path": "packages/generator" },
+    { "path": "packages/ui" },
+    { "path": "packages/web" }
+  ]
+}

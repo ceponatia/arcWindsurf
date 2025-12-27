@@ -6,5 +6,6 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
   },
+  tsconfig: 'tsconfig.json',
   outDir: 'dist',
 });

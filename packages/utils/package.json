@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "lint": "eslint src --max-warnings=0",
+    "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

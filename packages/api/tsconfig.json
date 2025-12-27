@@ -1,17 +1,39 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "types": ["node"],
-    "outDir": "dist",
-    "paths": {
-      "@minimal-rpg/governor": ["../governor/src/index.ts"],
-      "@minimal-rpg/state-manager": ["../state-manager/src/index.ts"],
-      "@minimal-rpg/agents": ["../agents/src/index.ts"],
-      "@minimal-rpg/retrieval": ["../retrieval/src/index.ts"]
-    }
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
-  "include": ["src"],
-  "exclude": ["dist"]
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "exclude": ["dist"],
+  "references": [
+    {
+      "path": "../agents"
+    },
+    {
+      "path": "../db"
+    },
+    {
+      "path": "../governor"
+    },
+    {
+      "path": "../retrieval"
+    },
+    {
+      "path": "../schemas"
+    },
+    {
+      "path": "../state-manager"
+    },
+    {
+      "path": "../utils"
+    }
+  ]
 }

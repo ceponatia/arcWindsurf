@@ -46,9 +46,7 @@ export function getBodyRegionsForGender(gender: Gender | undefined): BodyRegion[
 
   // Base regions (excluding all gender-specific ones)
   const baseRegions = BODY_REGIONS.filter(
-    (r) =>
-      !GENDER_BODY_REGIONS.femaleOnly.includes(r as BodyRegion) &&
-      !GENDER_BODY_REGIONS.maleOnly.includes(r as BodyRegion)
+    (r) => !GENDER_BODY_REGIONS.femaleOnly.includes(r) && !GENDER_BODY_REGIONS.maleOnly.includes(r)
   );
 
   if (!normalized) {
@@ -82,8 +80,8 @@ export function getAppearanceRegionsForGender(gender: Gender | undefined): Appea
   // Base regions (excluding all gender-specific ones)
   const baseRegions = APPEARANCE_REGIONS.filter(
     (r) =>
-      !GENDER_APPEARANCE_REGIONS.femaleOnly.includes(r as AppearanceRegion) &&
-      !GENDER_APPEARANCE_REGIONS.maleOnly.includes(r as AppearanceRegion)
+      !GENDER_APPEARANCE_REGIONS.femaleOnly.includes(r) &&
+      !GENDER_APPEARANCE_REGIONS.maleOnly.includes(r)
   );
 
   if (!normalized) {

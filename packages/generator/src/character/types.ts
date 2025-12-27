@@ -15,6 +15,11 @@ import type {
   FearCategory,
   CopingMechanism,
   CharacterDetailArea,
+  AppearanceHeight,
+  AppearanceTorso,
+  AppearanceArmsBuild,
+  AppearanceLegsBuild,
+  AppearanceFeetSize,
 } from '@minimal-rpg/schemas';
 import type { BaseGeneratorOptions, ValuePool, GenerationMeta } from '../types.js';
 
@@ -107,9 +112,9 @@ export interface CharacterBasicsPools {
  */
 export interface CharacterAppearancePools {
   /** Height values */
-  heights: ValuePool<string>;
+  heights: ValuePool<AppearanceHeight>;
   /** Body build/torso types */
-  builds: ValuePool<string>;
+  builds: ValuePool<AppearanceTorso>;
   /** Skin tones */
   skinTones: ValuePool<string>;
   /** Hair colors */
@@ -127,11 +132,11 @@ export interface CharacterAppearancePools {
   /** Face features */
   faceFeatures?: ValuePool<string>;
   /** Arm builds */
-  armBuilds?: ValuePool<string>;
+  armBuilds?: ValuePool<AppearanceArmsBuild>;
   /** Leg builds */
-  legBuilds?: ValuePool<string>;
+  legBuilds?: ValuePool<AppearanceLegsBuild>;
   /** Foot sizes */
-  footSizes?: ValuePool<string>;
+  footSizes?: ValuePool<AppearanceFeetSize>;
 }
 
 /**

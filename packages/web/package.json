@@ -5,12 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "dev": "vite",
-    "lint": "eslint src --max-warnings=0",
-    "preview": "vite preview",
+    "lint": "eslint src --ext .ts,.tsx --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",

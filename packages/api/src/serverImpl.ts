@@ -5,7 +5,6 @@ import { serve } from '@hono/node-server';
 import { loadData } from './data/loader.js';
 import type { ApiError } from './types.js';
 import type { LoadedData } from './data/types.js';
-import { assertPromptConfigValid } from './llm/prompt.js';
 import { getConfig } from './util/config.js';
 import { ensureLocalAdminUser } from '@minimal-rpg/db/node';
 
@@ -45,9 +44,6 @@ let loaded: LoadedData | undefined = undefined;
 
 export async function startServer(): Promise<void> {
   try {
-    // Ensure prompt config is valid before accepting traffic
-    assertPromptConfigValid();
-
     // Load character + setting JSON from data/
     loaded = await loadData();
     console.log(

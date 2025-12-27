@@ -56,6 +56,44 @@ export function pickFromPool<T>(pool: ValuePool<T>): T {
 }
 
 /**
+ * Pick N unique items from a value pool.
+ *
+ * For weighted pools, uniqueness is enforced by removing the selected entry
+ * from the available set for subsequent picks.
+ */
+export function pickMultipleFromPool<T>(pool: ValuePool<T>, count: number): T[] {
+  if (!isWeightedPool(pool)) {
+    return pickMultiple(pool, count);
+  }
+
+  if (count >= pool.length) {
+    return pool.map((item) => item.value);
+  }
+
+  const available: WeightedValue<T>[] = [...pool];
+  const result: T[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const totalWeight = available.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * totalWeight;
+
+    let pickedIndex = available.length - 1;
+    for (let idx = 0; idx < available.length; idx++) {
+      random -= available[idx]!.weight;
+      if (random <= 0) {
+        pickedIndex = idx;
+        break;
+      }
+    }
+
+    result.push(available[pickedIndex]!.value);
+    available.splice(pickedIndex, 1);
+  }
+
+  return result;
+}
+
+/**
  * Pick N unique items from an array.
  */
 export function pickMultiple<T>(items: readonly T[], count: number): T[] {
@@ -81,6 +119,14 @@ export function pickMultiple<T>(items: readonly T[], count: number): T[] {
 export function pickRandomCount<T>(items: readonly T[], min: number, max: number): T[] {
   const count = randomInt(min, max);
   return pickMultiple(items, count);
+}
+
+/**
+ * Pick a random number of unique items from a value pool.
+ */
+export function pickRandomCountFromPool<T>(pool: ValuePool<T>, min: number, max: number): T[] {
+  const count = randomInt(min, max);
+  return pickMultipleFromPool(pool, count);
 }
 
 /**

@@ -7,7 +7,7 @@ import type { LoadedDataGetter } from '../../data/types.js';
 import { handleListSessions } from './list-sessions.js';
 import { handleGetSession, handleCreateSession, handleDeleteSession } from './session-crud.js';
 import { handleCreateFullSession } from './session-create-full.js';
-import { handlePostMessage, handlePatchMessage, handleDeleteMessage } from './session-messages.js';
+import { handlePatchMessage, handleDeleteMessage } from './session-messages.js';
 import { handleListNpcs, handleCreateNpc } from './session-npcs.js';
 import { handleGetEffective } from './session-effective.js';
 import { handlePutCharacterOverrides, handlePutSettingOverrides } from './session-overrides.js';
@@ -29,7 +29,6 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
   app.delete('/sessions/:id', (c) => handleDeleteSession(c));
 
   // Session messages
-  app.post('/sessions/:id/messages', (c) => handlePostMessage(c, deps.getLoaded));
   app.patch('/sessions/:id/messages/:idx', (c) => handlePatchMessage(c));
   app.delete('/sessions/:id/messages/:idx', (c) => handleDeleteMessage(c));
 

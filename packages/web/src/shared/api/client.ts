@@ -20,7 +20,7 @@ import type {
   CreateTagRequest,
   UpdateTagRequest,
 } from '@minimal-rpg/schemas';
-import { API_BASE_URL, MESSAGE_TIMEOUT_MS, USE_TURNS_API } from '../../config.js';
+import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
 import type { Speaker } from '../../types.js';
 import { getAccessToken } from '../auth/accessToken.js';
 import type { AuthLoginResponse, AuthMeResponse } from '../auth/types.js';
@@ -476,40 +476,30 @@ export async function sendMessage(
   signal?: AbortSignal,
   options?: { npcId?: string | null }
 ): Promise<{ message: Message; events?: unknown[]; stateChanges?: unknown }> {
-  if (USE_TURNS_API) {
-    const result = await http<TurnEndpointResponse>(
-      `/sessions/${encodeURIComponent(sessionId)}/turns`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: content, npcId: options?.npcId ?? undefined }),
-        timeoutMs: MESSAGE_TIMEOUT_MS,
-        ...(signal && { signal }),
-      }
-    );
+  const result = await http<TurnEndpointResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/turns`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: content, npcId: options?.npcId ?? undefined }),
+      timeoutMs: MESSAGE_TIMEOUT_MS,
+      ...(signal && { signal }),
+    }
+  );
 
-    const assistant: Message = {
-      role: 'assistant',
-      content: result.message,
-      createdAt: new Date().toISOString(),
-      ...(result.metadata ? { turnMetadata: result.metadata } : {}),
-      ...(result.speaker ? { speaker: result.speaker } : {}),
-    };
+  const assistant: Message = {
+    role: 'assistant',
+    content: result.message,
+    createdAt: new Date().toISOString(),
+    ...(result.metadata ? { turnMetadata: result.metadata } : {}),
+    ...(result.speaker ? { speaker: result.speaker } : {}),
+  };
 
-    return {
-      message: assistant,
-      events: result.events,
-      stateChanges: result.stateChanges,
-    };
-  }
-
-  return http<{ message: Message }>(`/sessions/${encodeURIComponent(sessionId)}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-    timeoutMs: MESSAGE_TIMEOUT_MS,
-    ...(signal && { signal }),
-  });
+  return {
+    message: assistant,
+    events: result.events,
+    stateChanges: result.stateChanges,
+  };
 }
 
 export async function updateMessage(

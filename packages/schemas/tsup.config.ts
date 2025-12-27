@@ -8,5 +8,6 @@ export default defineConfig({
     character: 'src/character/index.ts',
     setting: 'src/setting/index.ts',
   },
+  tsconfig: 'tsconfig.json',
   outDir: 'dist',
 });

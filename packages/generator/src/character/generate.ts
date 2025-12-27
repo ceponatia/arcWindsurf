@@ -3,34 +3,32 @@
  */
 
 import type {
-  CharacterProfile,
-  Gender,
-  Physique,
+  AttachmentStyle,
   BodyMap,
   BodyRegionData,
-  PersonalityMap,
   CharacterDetail,
   CharacterDetailArea,
-  CoreValue,
-  FearCategory,
+  CharacterProfile,
   CopingMechanism,
-  AttachmentStyle,
   CoreEmotion,
+  CoreValue,
   EmotionIntensity,
-  BodyRegion,
+  FearCategory,
+  Gender,
+  PersonalityMap,
+  Physique,
 } from '@minimal-rpg/schemas';
 import type { GenerationMeta } from '../types.js';
 import type {
   CharacterGeneratorOptions,
   CharacterGeneratorResult,
   CharacterTheme,
-  BodySensoryPools,
 } from './types.js';
 import {
   pickFromPool,
   pickRandom,
-  pickMultiple,
-  pickRandomCount,
+  pickMultipleFromPool,
+  pickRandomCountFromPool,
   pickWeighted,
   randomInt,
   randomFloatRounded,
@@ -83,7 +81,7 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
 
   // Generate basics
   const id = getValue('id', existing.id, () => randomId('char'));
-  const name = getValue('name', existing.name, () => generateName(theme, gender));
+  const name = getValue('name', existing.name, () => generateName(theme));
   const age = getValue('age', existing.age, () =>
     randomInt(theme.basics.ageRange[0], theme.basics.ageRange[1])
   );
@@ -96,7 +94,7 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
 
   // Generate physique
   const physique = getValue<Physique | string | undefined>('physique', existing.physique, () =>
-    generatePhysique(theme, gender)
+    generatePhysique(theme)
   );
 
   // Generate body map
@@ -149,7 +147,7 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
 /**
  * Generate a character name.
  */
-function generateName(theme: CharacterTheme, gender: Gender | undefined): string {
+function generateName(theme: CharacterTheme): string {
   const firstName = pickFromPool(theme.basics.firstNames);
   if (theme.basics.lastNames) {
     const lastName = pickFromPool(theme.basics.lastNames);
@@ -163,7 +161,7 @@ function generateName(theme: CharacterTheme, gender: Gender | undefined): string
  */
 function generateSummary(theme: CharacterTheme, name: string, age: number): string {
   const template = pickFromPool(theme.basics.summaryTemplates);
-  const traits = pickMultiple([...theme.basics.personalityTraits] as string[], 3);
+  const traits = pickMultipleFromPool(theme.basics.personalityTraits, 3);
 
   return template
     .replace('{name}', name)
@@ -195,35 +193,35 @@ function generateBackstory(theme: CharacterTheme, name: string): string {
  * Generate personality text (simple string or array).
  */
 function generatePersonalityText(theme: CharacterTheme): string | string[] {
-  const traits = pickMultiple([...theme.basics.personalityTraits] as string[], randomInt(3, 5));
+  const traits = pickMultipleFromPool(theme.basics.personalityTraits, randomInt(3, 5));
   // 50% chance to return as array, 50% as comma-separated string
   if (randomBool()) {
     return traits;
   }
-  return traits.join(', ');
+  return traits.map(String).join(', ');
 }
 
 /**
  * Generate physique object.
  */
-function generatePhysique(theme: CharacterTheme, gender: Gender | undefined): Physique {
+function generatePhysique(theme: CharacterTheme): Physique {
   const app = theme.appearance;
 
   return {
     build: {
-      height: pickFromPool(app.heights) as Physique['build']['height'],
-      torso: pickFromPool(app.builds) as Physique['build']['torso'],
+      height: pickFromPool(app.heights),
+      torso: pickFromPool(app.builds),
       skinTone: pickFromPool(app.skinTones),
       arms: {
-        build: pickFromPool(app.armBuilds ?? ['average']) as Physique['build']['arms']['build'],
-        length: 'average' as Physique['build']['arms']['length'],
+        build: pickFromPool(app.armBuilds ?? (['average'] as const)),
+        length: 'average',
       },
       legs: {
-        build: pickFromPool(app.legBuilds ?? ['average']) as Physique['build']['legs']['build'],
-        length: 'average' as Physique['build']['legs']['length'],
+        build: pickFromPool(app.legBuilds ?? (['average'] as const)),
+        length: 'average',
       },
       feet: {
-        size: pickFromPool(app.footSizes ?? ['average']) as Physique['build']['feet']['size'],
+        size: pickFromPool(app.footSizes ?? (['average'] as const)),
         shape: 'average',
       },
     },
@@ -236,9 +234,7 @@ function generatePhysique(theme: CharacterTheme, gender: Gender | undefined): Ph
       eyes: {
         color: pickFromPool(app.eyeColors),
       },
-      features: app.faceFeatures
-        ? pickRandomCount([...app.faceFeatures] as string[], 1, 3)
-        : undefined,
+      features: app.faceFeatures ? pickRandomCountFromPool(app.faceFeatures, 1, 3) : undefined,
     },
   };
 }
@@ -344,16 +340,13 @@ function generatePersonalityMap(theme: CharacterTheme): PersonalityMap {
   }
 
   // Generate traits
-  const traits = pickMultiple([...pers.traits] as string[], randomInt(4, 8));
+  const traits = pickMultipleFromPool(pers.traits, randomInt(4, 8));
 
   // Generate values (1-3)
   const valueCount = randomInt(1, 3);
-  const selectedValues = pickMultiple(
-    [...pers.values] as { value: CoreValue; weight: number }[],
-    valueCount
-  );
-  const values = selectedValues.map((v, i) => ({
-    value: (typeof v === 'object' && 'value' in v ? v.value : v) as CoreValue,
+  const selectedValues = pickMultipleFromPool(pers.values, valueCount);
+  const values: { value: CoreValue; priority: number }[] = selectedValues.map((value, i) => ({
+    value,
     priority: i + 1,
   }));
 
@@ -361,25 +354,31 @@ function generatePersonalityMap(theme: CharacterTheme): PersonalityMap {
   const fearCount = randomInt(1, 2);
   const fears = [];
   for (let i = 0; i < fearCount; i++) {
-    const category = pickFromPool(pers.fearCategories) as FearCategory;
+    const category: FearCategory = pickFromPool(pers.fearCategories);
     const descriptions = FEAR_DESCRIPTIONS[category] ?? ['the unknown'];
+    const copingMechanism: CopingMechanism = pickFromPool(pers.copingMechanisms);
     fears.push({
       category,
       specific: pickRandom(descriptions),
       intensity: randomFloatRounded(0.3, 0.7),
-      triggers: pers.fearTriggers ? pickRandomCount([...pers.fearTriggers] as string[], 1, 2) : [],
-      copingMechanism: pickFromPool(pers.copingMechanisms) as CopingMechanism,
+      triggers: pers.fearTriggers ? pickRandomCountFromPool(pers.fearTriggers, 1, 2) : [],
+      copingMechanism,
     });
   }
 
   // Generate attachment style
-  const attachment = pickFromPool(pers.attachmentStyles) as AttachmentStyle;
+  const attachment: AttachmentStyle = pickFromPool(pers.attachmentStyles);
 
   // Generate emotional baseline
-  const emotionalBaseline = {
-    current: pickFromPool(pers.currentEmotions) as CoreEmotion,
-    intensity: pickFromPool(pers.emotionIntensities) as EmotionIntensity,
-    moodBaseline: pickFromPool(pers.moodBaselines) as CoreEmotion,
+  const emotionalBaseline: {
+    current: CoreEmotion;
+    intensity: EmotionIntensity;
+    moodBaseline: CoreEmotion;
+    moodStability: number;
+  } = {
+    current: pickFromPool(pers.currentEmotions),
+    intensity: pickFromPool(pers.emotionIntensities),
+    moodBaseline: pickFromPool(pers.moodBaselines),
     moodStability: randomFloatRounded(0.3, 0.7),
   };
 
@@ -428,10 +427,10 @@ function generatePersonalityMap(theme: CharacterTheme): PersonalityMap {
     threshold: randomFloatRounded(0.3, 0.7),
     recoveryRate: pickRandom(['slow', 'moderate', 'fast'] as const),
     soothingActivities: pers.soothingActivities
-      ? pickRandomCount([...pers.soothingActivities] as string[], 2, 4)
+      ? pickRandomCountFromPool(pers.soothingActivities, 2, 4)
       : [],
     stressIndicators: pers.stressIndicators
-      ? pickRandomCount([...pers.stressIndicators] as string[], 2, 3)
+      ? pickRandomCountFromPool(pers.stressIndicators, 2, 3)
       : [],
   };
 
@@ -456,7 +455,8 @@ function generateDetails(theme: CharacterTheme): CharacterDetail[] {
   const [minCount, maxCount] = theme.details.countRange;
   const count = randomInt(minCount, maxCount);
 
-  const areas = theme.details.focusAreas ?? (['preference', 'ability'] as CharacterDetailArea[]);
+  const areas =
+    theme.details.focusAreas ?? (['preference', 'ability'] satisfies CharacterDetailArea[]);
 
   for (let i = 0; i < count; i++) {
     const area = pickRandom(areas);

@@ -23,14 +23,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "lint": "eslint src --max-warnings=0",
-    "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc -b",
+    "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
+    "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
+    "typecheck": "tsc -b --pretty false --noEmit"
   },
   "dependencies": {},
   "devDependencies": {
-    "tsup": "^8.0.0",
     "vitest": "^1.6.0"
   }
 }

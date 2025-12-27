@@ -1,7 +1,4 @@
 import { z } from 'zod';
-import systemPromptJson from '../../../api/src/llm/prompts/system-prompt.json' with { type: 'json' };
-import safetyRulesJson from '../../../api/src/llm/prompts/safety-rules.json' with { type: 'json' };
-import safetyModeJson from '../../../api/src/llm/prompts/safety-mode.json' with { type: 'json' };
 
 const SystemPromptSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() });
 const SafetyRulesSchema = z.object({ rules: z.array(z.string().min(1)).nonempty() });
@@ -11,10 +8,24 @@ const SafetyModeSchema = z.object({
 });
 
 export function loadAndValidatePromptConfig() {
+  throw new Error(
+    'loadAndValidatePromptConfig is no longer supported without explicit JSON inputs. Use loadAndValidatePromptConfigFromJson.'
+  );
+}
+
+export function loadAndValidatePromptConfigFromJson(args: {
+  systemPrompt: unknown;
+  safetyRules: unknown;
+  safetyMode: unknown;
+}): {
+  systemRules: string[];
+  safetyRules: string[];
+  safetyMode: { safetyModeMessage: string; sensitiveNote: string };
+} {
   try {
-    const system = SystemPromptSchema.parse(systemPromptJson);
-    const safety = SafetyRulesSchema.parse(safetyRulesJson);
-    const mode = SafetyModeSchema.parse(safetyModeJson);
+    const system = SystemPromptSchema.parse(args.systemPrompt);
+    const safety = SafetyRulesSchema.parse(args.safetyRules);
+    const mode = SafetyModeSchema.parse(args.safetyMode);
     return {
       systemRules: system.rules,
       safetyRules: safety.rules,

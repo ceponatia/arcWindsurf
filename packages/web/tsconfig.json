@@ -1,9 +1,29 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    "rootDir": "src",
+    "outDir": "dist",
+
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
     "lib": ["dom", "dom.iterable", "es2023"],
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["dist"],
+  "references": [
+    { "path": "../db" },
+    { "path": "../generator" },
+    { "path": "../schemas" },
+    { "path": "../ui" },
+    { "path": "../utils" }
+  ]
 }

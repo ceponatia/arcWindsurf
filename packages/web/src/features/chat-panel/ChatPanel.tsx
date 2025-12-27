@@ -11,7 +11,7 @@ import {
 } from '../../shared/api/client.js';
 import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
 import { DebugSidebar } from '../chat/components/index.js';
-import { GOVERNOR_DEV_MODE, USE_TURNS_API } from '../../config.js';
+import { GOVERNOR_DEV_MODE } from '../../config.js';
 import type { NpcInstanceSummary } from '../../types.js';
 
 // Types for turn events from the API
@@ -156,7 +156,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     };
   }, []);
 
-  const debugUiEnabled = GOVERNOR_DEV_MODE && serverGovernorDevMode && USE_TURNS_API;
+  const debugUiEnabled = GOVERNOR_DEV_MODE && serverGovernorDevMode;
 
   // No longer render inline debug panels - we use the sidebar instead
   const renderDebugAfterMessage = useCallback((_message: ChatViewMessage, _idx: number) => {

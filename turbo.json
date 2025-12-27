@@ -11,25 +11,32 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", "node_modules/.cache/tsbuildinfo"]
     },
-    "clean": {
-      "dependsOn": ["^clean"],
-      "cache": false
+
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
+
+    "lint": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "test": {
-      "dependsOn": ["^build"],
+
+    "clean": {
+      "dependsOn": ["^clean"],
       "cache": false
-    },
-    "typecheck": {
-      "dependsOn": ["^typecheck"]
     }
   }
 }

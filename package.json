@@ -3,24 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm clean:dist && turbo build",
-    "check": "turbo lint && turbo typecheck && pnpm lint:md",
-    "clean": "turbo clean",
-    "clean:dist": "find packages -name 'dist' -type d -exec rm -rf {} + 2>/dev/null || true",
-    "precore": "pnpm install --frozen-lockfile",
-    "core": "node scripts/core.mjs",
-    "core:quit": "node scripts/core-quit.mjs",
-    "dev": "turbo dev",
-    "docker:down": "docker compose down",
-    "docker:up": "docker compose up --build",
-    "docker:up:detached": "docker compose up --build -d",
-    "lint": "turbo lint",
-    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore dist --ignore packages/web/dist --ignore .turbo",
-    "lint:staged": "lint-staged",
-    "prepare": "husky",
-    "test": "turbo test",
-    "test:trait": "node scripts/test-trait.mjs",
-    "typecheck": "turbo typecheck"
+    "build": "turbo run build",
+    "build:watch": "turbo run build --watch",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "refs:check": "node scripts/sync-ts-references.mjs && git diff --exit-code",
+    "refs:sync": "node scripts/sync-ts-references.mjs",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
   "lint-staged": {
     "*.{js,cjs,mjs,jsx,ts,tsx}": [
@@ -40,6 +30,7 @@
     "@commitlint/config-conventional": "^20.2.0",
     "@eslint/js": "^9.39.1",
     "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
+    "@types/node": "^24.10.1",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
@@ -48,6 +39,7 @@
     "markdownlint-cli": "^0.45.0",
     "prettier": "^3.6.2",
     "prettier-plugin-packagejson": "^2.5.19",
+    "rimraf": "^6.1.2",
     "secretlint": "^11.2.5",
     "tsup": "^8.5.1",
     "turbo": "^2.6.1",
@@ -55,5 +47,5 @@
     "typescript-eslint": "^8.46.4",
     "vitest": "^4.0.16"
   },
-  "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a"
+  "packageManager": "pnpm@10.26.2+sha512.0e308ff2005fc7410366f154f625f6631ab2b16b1d2e70238444dd6ae9d630a8482d92a451144debc492416896ed16f7b114a86ec68b8404b2443869e68ffda6"
 }

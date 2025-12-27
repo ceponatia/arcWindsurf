@@ -134,6 +134,16 @@ export const BodyPartHygieneConfigSchema = z.object({
 export type BodyPartHygieneConfig = z.infer<typeof BodyPartHygieneConfigSchema>;
 
 /**
+ * Raw hygiene row as stored in persistence (e.g., DB layer).
+ */
+export interface NpcHygieneRow {
+  bodyPart: string;
+  points: number;
+  level: number;
+  lastUpdatedAt?: Date | null;
+}
+
+/**
  * Schema for hygiene update input.
  */
 export const HygieneUpdateInputSchema = z.object({

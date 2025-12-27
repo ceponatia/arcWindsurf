@@ -1,6 +1,4 @@
-import type { CharacterProfile, SettingProfile, SessionTagInstance } from '@minimal-rpg/schemas';
 import type { ChatRole, ApiError } from '../types.js';
-import type { DbMessage } from '../db/types.js';
 
 // LLM chat roles
 /** Extended chat role including tool messages (for tool calling) */
@@ -137,24 +135,4 @@ export function buildProviderOptions(opts?: LlmGenerationOptions): {
   if (opts.top_p !== undefined) out.top_p = opts.top_p;
   if (opts.max_tokens !== undefined) out.max_tokens = opts.max_tokens;
   return out;
-}
-
-// =============================================================================
-// Prompt Building
-// =============================================================================
-
-// Prompt building
-export interface BuildPromptOptions {
-  character: CharacterProfile;
-  setting: SettingProfile;
-  history: DbMessage[];
-  historyWindow?: number;
-  summaryMaxChars?: number;
-  tagInstances?: SessionTagInstance[];
-}
-export type BuildPromptResult = { role: 'system' | 'user' | 'assistant'; content: string }[];
-
-export interface ContentFilterResult {
-  flagged: boolean;
-  note: string;
 }
