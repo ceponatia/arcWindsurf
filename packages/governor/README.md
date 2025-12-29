@@ -1,14 +1,11 @@
 # @minimal-rpg/governor
 
-The Governor is the orchestration layer for the Minimal RPG. It delegates turn processing to a tool-based turn handler where the LLM decides which tools to call based on player input.
+The Governor orchestrates player turns. The default path now routes directly through `NpcTurnHandler`, which executes `NpcAgent` without the legacy `npc_dialogue` tool-calling flow.
 
 ## Overview
 
-The Governor coordinates:
-
-1. **Turn Handling**: Delegating to ToolBasedTurnHandler for LLM tool calling
-2. **State Management**: Applying state patches returned from tool execution
-3. **Response Assembly**: Building TurnResult from tool outputs
+- Turn handling with `NpcTurnHandler` (direct NpcAgent execution, deterministic ordering)
+- State management via `StateManager` patch application
 
 ## Installation
 
@@ -16,148 +13,54 @@ The Governor coordinates:
 pnpm add @minimal-rpg/governor
 ```
 
-## Usage
-
-### Basic Usage
+## Usage (default NPC path)
 
 ```typescript
-import { createGovernor, createToolBasedTurnHandler } from '@minimal-rpg/governor';
+import { createGovernor, NpcTurnHandler } from '@minimal-rpg/governor';
 import { StateManager } from '@minimal-rpg/state-manager';
+import { NpcAgent } from '@minimal-rpg/agents';
 
-// Create dependencies
 const stateManager = new StateManager();
+const npcAgent = new NpcAgent({ /* inject llmProvider + services as needed */ });
 
-// Create tool turn handler (requires LLM integration setup)
-const toolTurnHandler = createToolBasedTurnHandler({
-  stateSlices: gameStateSlices,
-  conversationHistory: history,
-  chatWithTools: openRouterChatWithTools,
+const npcTurnHandler = new NpcTurnHandler({
+  npcAgent,
+  ownerEmail: 'player@example.com',
+  stateSlices: gameStateSlices, // snapshot for this turn
 });
 
-// Create governor
 const governor = createGovernor({
   stateManager,
-  toolTurnHandler, // Required
-  logging: {
-    logTurns: true,
-    logStateChanges: true,
-  },
+  toolTurnHandler: npcTurnHandler,
 });
 
-// Handle a turn
 const result = await governor.handleTurn({
   sessionId: 'session-123',
-  playerInput: 'go north',
-  baseline: { location: { name: 'Town Square' } },
-  overrides: {},
+  playerInput: 'talk to Taylor about the festival',
 });
 
 console.log(result.message);
-// "You head north into the forest..."
 ```
 
-### With TurnInput Object
+### Legacy tool-calling
 
-```typescript
-const result = await governor.handleTurn({
-  sessionId: 'session-123',
-  playerInput: 'talk to the merchant',
-  baseline: gameState,
-  overrides: sessionOverrides,
-  conversationHistory: [
-    { speaker: 'player', content: 'hello', timestamp: new Date() },
-    { speaker: 'character', content: 'Welcome!', timestamp: new Date() },
-  ],
-  turnNumber: 5,
-});
-```
+The legacy `ToolBasedTurnHandler` path has been removed from the public exports. Use `NpcTurnHandler` for NPC dialogue or behavior; non-NPC tool flows should migrate to explicit handlers in their owning packages.
 
-### Simple Overload
-
-```typescript
-const result = await governor.handleTurn('session-123', 'look around');
-```
-
-## Tool-Based Architecture
-
-The Governor uses LLM tool calling instead of rule-based intent detection:
-
-- **Tools define available actions** (`get_sensory_detail`, `npc_dialogue`, `navigate_player`, etc.)
-- **LLM decides which tools to call** based on player input and context
-- **Tools return state patches** that the Governor applies to game state
-
-This eliminates the need for separate intent detection, reducing latency and improving accuracy.
-
-## NPC Dialogue Batch Ordering
-
-When the LLM returns a contiguous batch of `npc_dialogue` tool calls, the Governor executes them in a deterministic reordered sequence.
-
-Current rules (see `orderNpcDialogueBatch`):
-
-- Tier: `addressed` > `nearby` > `background`
-- Within a tier: stable by original LLM-provided order
-- `npc_priority` is extracted for observability but is not used for sorting
-- `proximity_level` is only used to bucket into `nearby` vs `background` (no sorting within `nearby`)
-
-Important behavioral implications:
-
-- Event ordering: for an `npc_dialogue` batch, `tool-called` and `tool-result` events are emitted in the reordered execution sequence (not the original LLM tool_calls order). This differs from non-NPC tools where events reflect the original tool_calls order.
-- State patch ordering: state patches returned by NPC dialogue tools are merged in the same reordered execution sequence. If multiple NPCs modify the same state fields, the final state depends on the reordered execution, not the original LLM sequence.
-
-Observability:
-
-- `npc-dialogue-batch-ordered` includes `batchId`, `toolCallId`, and `originalIndex` for each item so consumers can reconstruct the model-provided order.
-- `tool-called` / `tool-result` for NPC batches include `batchId`, `originalToolCallIndex`, and `executionIndex` for correlation and to disambiguate model vs execution order.
-
-## TurnResult Structure
+## TurnResult structure
 
 ```typescript
 interface TurnResult {
-  message: string; // Player-facing narrative
-  success: boolean; // Whether turn completed successfully
-  events?: TurnEvent[]; // Events emitted during turn
-  stateChanges?: TurnStateChanges; // Summary of state changes
-  metadata?: TurnMetadata; // Processing metadata
-  error?: TurnError; // Error details if failed
-}
-```
-
-## Configuration Options
-
-```typescript
-interface GovernorConfig {
-  stateManager: StateManager; // Required
-  toolTurnHandler: ToolTurnHandler; // Required - LLM tool calling handler
-  npcTranscriptLoader?: NpcTranscriptLoader; // Optional - NPC history loading
-  actionSequencer?: ActionSequencer; // Optional - multi-action handling
-  logging?: {
-    logTurns?: boolean;
-    logStateChanges?: boolean;
-    logActionSequence?: boolean;
-  };
-  options?: {
-    devMode?: boolean; // Default: false
-    npcInterjectionThreshold?: number; // Default: 3
-    useActionSequencer?: boolean; // Default: false
-  };
-}
-```
-
-## Error Handling
-
-The governor handles errors gracefully and returns them in the TurnResult:
-
-```typescript
-const result = await governor.handleTurn(input);
-
-if (!result.success) {
-  console.error(`Error in ${result.error?.phase}: ${result.error?.message}`);
-  // Error codes: TOOL_EXECUTION_FAILED, STATE_UPDATE_FAILED, UNKNOWN_ERROR
+  message: string;
+  success: boolean;
+  events?: TurnEvent[];
+  stateChanges?: TurnStateChanges;
+  metadata?: TurnMetadata;
+  error?: TurnError;
 }
 ```
 
 ## Dependencies
 
-- `@minimal-rpg/state-manager` - State computation and patch application
-- `@minimal-rpg/agents` - Agent interfaces (for tool execution)
-- `fast-json-patch` - JSON Patch operations
+- `@minimal-rpg/state-manager` for patch application
+- `@minimal-rpg/agents` for agent implementations (NpcAgent, SensoryAgent, etc.)
+- `fast-json-patch` for JSON Patch operations

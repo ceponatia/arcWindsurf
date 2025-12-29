@@ -73,9 +73,9 @@ export interface SensoryContext {
 }
 
 /**
- * Configuration for the SensoryAgent.
+ * Configuration for the SensoryService.
  */
-export interface SensoryAgentConfig extends AgentConfig {
+export interface SensoryServiceConfig extends AgentConfig {
   /**
    * Confidence threshold for LLM inference when no explicit
    * sensory data is available. If the target has enough context
@@ -88,7 +88,7 @@ export interface SensoryAgentConfig extends AgentConfig {
 
   /**
    * Whether to allow LLM inference when no explicit sensory data exists.
-   * If false, the agent will silently ignore intents without data.
+   * If false, the service will silently ignore intents without data.
    *
    * Default: true
    */
@@ -108,3 +108,8 @@ export interface SensoryAgentConfig extends AgentConfig {
    */
   includeBodyRegionInPrompts?: boolean;
 }
+
+/**
+ * @deprecated Use SensoryServiceConfig instead
+ */
+export type SensoryAgentConfig = SensoryServiceConfig;

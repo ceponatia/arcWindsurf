@@ -12,6 +12,7 @@ import type {
   NpcAgentConfig,
   NpcAgentInput,
   NpcAgentOutput,
+  NpcAgentServices,
   NpcMessageRepository,
 } from './types.js';
 import type { NpcResponseConfig } from '@minimal-rpg/schemas';
@@ -41,10 +42,12 @@ export class NpcAgent extends BaseAgent {
 
   private readonly messageRepository: NpcMessageRepository | undefined;
   private readonly historyLimit: number;
+  private readonly services: NpcAgentServices;
 
   constructor(config: NpcAgentConfig = {}) {
     super(config);
-    this.messageRepository = config.services?.messageRepository;
+    this.services = config.services ?? {};
+    this.messageRepository = this.services.messageRepository;
     this.historyLimit = config.historyLimit ?? 30;
   }
 
@@ -67,29 +70,50 @@ export class NpcAgent extends BaseAgent {
       };
     }
 
-    const { conversationHistory, ...inputWithoutSharedHistory } = npcInput;
-    const effectiveHistory = await this.loadConversationHistory(npcInput);
-    const dialogueInput: NpcAgentInput = effectiveHistory
-      ? { ...inputWithoutSharedHistory, npcConversationHistory: effectiveHistory }
-      : conversationHistory
-        ? { ...inputWithoutSharedHistory, conversationHistory }
-        : inputWithoutSharedHistory;
+    // Enrich input with sensory context if service is available
+    if (this.services.sensoryService && !npcInput.sensoryContext) {
+      try {
+        const sensoryOutput = this.services.sensoryService.getSensoryContext(npcInput);
+        if (sensoryOutput.sensoryContext) {
+          npcInput.sensoryContext = sensoryOutput.sensoryContext;
+        }
+      } catch (error) {
+        console.warn('[NpcAgent] Failed to get sensory context', error);
+      }
+    }
+
+    const dialogueInput = await this.buildDialogueInput(npcInput);
 
     const output = this.llmProvider
       ? await this.generateLlmDialogue(dialogueInput, character)
       : this.generateTemplateDialogue(dialogueInput, character);
 
+    const outputWithDiagnostics = this.annotateWithServiceDiagnostics(output);
+
     return {
-      ...output,
+      ...outputWithDiagnostics,
       npcPriority: this.computeNpcPriority(dialogueInput),
     };
+  }
+
+  private async buildDialogueInput(input: NpcAgentInput): Promise<NpcAgentInput> {
+    const { conversationHistory: _omitSharedHistory, npcConversationHistory, ...rest } = input;
+    void _omitSharedHistory; // Explicitly drop shared history from NPC context
+    const fetchedHistory = await this.loadConversationHistory(input);
+    const effectiveHistory = fetchedHistory ?? npcConversationHistory;
+
+    if (effectiveHistory && effectiveHistory.length > 0) {
+      return { ...rest, npcConversationHistory: effectiveHistory };
+    }
+
+    return rest;
   }
 
   private async loadConversationHistory(
     input: NpcAgentInput
   ): Promise<ConversationTurn[] | undefined> {
     if (!this.messageRepository) {
-      return input.npcConversationHistory ?? input.conversationHistory;
+      return input.npcConversationHistory;
     }
 
     const ownerEmail = input.ownerEmail;
@@ -98,7 +122,7 @@ export class NpcAgent extends BaseAgent {
       input.npcId ?? input.stateSlices.npc?.instanceId ?? input.stateSlices.character?.instanceId;
 
     if (!ownerEmail || !sessionId || !npcId) {
-      return input.npcConversationHistory ?? input.conversationHistory;
+      return input.npcConversationHistory;
     }
 
     try {
@@ -111,8 +135,29 @@ export class NpcAgent extends BaseAgent {
     } catch (error) {
       // Preserve existing history if fetch fails; diagnostics recorded downstream via warnings
       console.warn('[NpcAgent] Failed to fetch NPC history', error);
-      return input.npcConversationHistory ?? input.conversationHistory;
+      return input.npcConversationHistory;
     }
+  }
+
+  private annotateWithServiceDiagnostics(output: AgentOutput): AgentOutput {
+    const servicesAvailable = {
+      messageRepository: Boolean(this.services.messageRepository),
+      sensoryService: Boolean(this.services.sensoryService),
+      proximityService: Boolean(this.services.proximityService),
+      hygieneService: Boolean(this.services.hygieneService),
+      memoryService: Boolean(this.services.memoryService),
+    };
+
+    return {
+      ...output,
+      diagnostics: {
+        ...output.diagnostics,
+        debug: {
+          ...(output.diagnostics?.debug ?? {}),
+          servicesAvailable,
+        },
+      },
+    };
   }
 
   private computeNpcPriority(input: NpcAgentInput): number {

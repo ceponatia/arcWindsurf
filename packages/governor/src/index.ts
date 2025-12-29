@@ -1,27 +1,6 @@
 // Core Governor
 export { Governor, createGovernor } from './core/governor.js';
 
-// Intent Types and Aliases (still used by agents for intent mapping)
-export {
-  INTENT_CONFIG,
-  INTENT_TYPES,
-  INTENT_ALIASES,
-  INTENT_TO_AGENT_MAP,
-  getIntentTypeList,
-  isValidIntentType,
-  resolveIntentType,
-  mapToAgentIntent,
-} from './intents/intents.js';
-
-// Pre-Parser (converts player input into ParsedAction[] for action sequencing)
-export {
-  LlmPreParser,
-  type LlmPreParserConfig,
-  type PreParserMessage,
-  type PreParserGenerateFn,
-  type PreParserGenerationResult,
-} from './intents/pre-parser.js';
-
 // Equipment Slot Resolution (bridges body regions to item slots)
 export {
   BODY_REGION_TO_EQUIPMENT_SLOTS,
@@ -50,6 +29,13 @@ export {
   type NpcEvaluationContext,
 } from './core/npc-evaluator.js';
 
+// NPC Turn Handler (default path, non-tool)
+export {
+  NpcTurnHandler,
+  type NpcTurnHandlerConfig,
+  type NpcTurnContext,
+} from './core/npc-turn-handler.js';
+
 // Tool Calling (Phase 2: LLM Tool Integration)
 export {
   // Types
@@ -63,7 +49,6 @@ export {
 
   // Tool Definitions
   GET_SENSORY_DETAIL_TOOL,
-  NPC_DIALOGUE_TOOL,
   UPDATE_PROXIMITY_TOOL,
   NAVIGATE_PLAYER_TOOL,
   EXAMINE_OBJECT_TOOL,
@@ -90,21 +75,7 @@ export {
   ALL_GAME_TOOLS,
   TOOLING_FAILURE_REPORT_TOOL,
   getActiveTools,
-
-  // Executor
-  ToolExecutor,
-  createToolExecutor,
-  type ToolExecutorConfig,
-  type FallbackToolHandler,
 } from './tools/index.js';
-
-// Proximity State Management
-export {
-  ProximityManager,
-  type ProximityUpdateResult,
-  type UpdateProximityParams,
-  type UpdateNpcProximityLevelParams,
-} from './proximity/index.js';
 
 // Location Graph Service (navigation, pathfinding, exit resolution)
 export {
@@ -115,14 +86,6 @@ export {
   type DirectionResolution,
   type ReachabilityResult,
 } from './location/index.js';
-
-// Tool-Based Turn Handler (Phase 4: LLM Tool Routing)
-export {
-  ToolBasedTurnHandler,
-  createToolBasedTurnHandler,
-  type ToolTurnHandlerConfig,
-  type ToolCallHistoryRecord,
-} from './core/tool-turn-handler.js';
 
 // Types
 export type {

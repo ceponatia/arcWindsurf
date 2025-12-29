@@ -32,6 +32,18 @@ export interface MemoryServiceLike {
   fetchMemories?(params: { sessionId: string; npcId: string; limit?: number }): Promise<unknown>;
 }
 
+export interface SensoryServiceLike {
+  getSensoryContext(input: AgentInput, segments?: unknown): AgentOutput;
+  generateSensoryNarrative(input: AgentInput, segments?: unknown): Promise<AgentOutput>;
+}
+
+export interface ProximityServiceLike {
+  getEngagementsForNpc(state: unknown, npcId: string): unknown[];
+}
+
+/**
+ * @deprecated Use SensoryServiceLike instead
+ */
 export interface SensoryAgentLike {
   execute(input: AgentInput): Promise<AgentOutput>;
 }
@@ -40,6 +52,9 @@ export interface NpcAgentServices {
   messageRepository?: NpcMessageRepository;
   hygieneService?: HygieneServiceLike;
   memoryService?: MemoryServiceLike;
+  sensoryService?: SensoryServiceLike;
+  proximityService?: ProximityServiceLike;
+  /** @deprecated Use sensoryService instead */
   sensoryAgent?: SensoryAgentLike;
 }
 

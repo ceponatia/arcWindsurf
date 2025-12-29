@@ -22,10 +22,9 @@ import {
 /**
  * The Governor orchestrates turn processing in the game.
  *
- * As of the tool-calling redesign, the Governor delegates all turn processing
- * to the ToolBasedTurnHandler. The LLM decides which tools to call based on
- * player input, eliminating the need for separate intent detection and
- * rule-based agent routing.
+ * The Governor delegates turn processing to an injected ToolTurnHandler
+ * implementation (e.g., the NpcTurnHandler). This keeps orchestration and
+ * state management here while agent-specific logic lives in the agents package.
  */
 export class Governor {
   private readonly stateManager: StateManager;

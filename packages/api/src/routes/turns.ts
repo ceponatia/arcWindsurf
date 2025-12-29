@@ -5,11 +5,10 @@
  * Uses extracted modules for validation, state loading, and persistence.
  */
 import type { Hono } from 'hono';
-import { getSession, getRecentToolCalls, getToolCallStats } from '../db/sessionsClient.js';
+import { getSession } from '../db/sessionsClient.js';
 import { notFound, serverError } from '../util/responses.js';
 import { loadStateForTurn } from '../sessions/state-loader.js';
 import { createGovernorForRequest } from '../governor/composition.js';
-import type { ToolHistoryContext } from '@minimal-rpg/governor';
 import type { AgentStateSlices } from '@minimal-rpg/agents';
 import { validateTurnRequest } from './turns/turn-request.js';
 import { loadSessionSnapshot } from './turns/session-snapshot.js';
@@ -24,43 +23,6 @@ import {
 import { processTurnInterest, executePromotion } from '../sessions/tier-service.js';
 import type { TurnContext, TurnPersistenceData } from './turns/types.js';
 import { getOwnerEmail } from '../auth/ownerEmail.js';
-
-/**
- * Builds usage hints based on tool call statistics.
- * These hints remind the LLM of established tool usage patterns.
- */
-function buildToolUsageHints(stats: {
-  totalCalls: number;
-  callsByTool: Record<string, number>;
-  recentTools: string[];
-}): string[] {
-  const hints: string[] = [];
-
-  // Hint about successful tool usage history
-  if (stats.totalCalls >= 5) {
-    hints.push(
-      `This session has successfully used tools ${stats.totalCalls} times. Continue using tools for game actions.`
-    );
-  }
-
-  // Hint about commonly used tools
-  const topTools = Object.entries(stats.callsByTool)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-    .map(([name]) => name);
-
-  if (topTools.length > 0) {
-    hints.push(`Most used tools: ${topTools.join(', ')}`);
-  }
-
-  // Remind about recently used tools
-  if (stats.recentTools.length > 0) {
-    const unique = [...new Set(stats.recentTools.slice(0, 3))];
-    hints.push(`Recently used: ${unique.join(', ')}`);
-  }
-
-  return hints;
-}
 
 export function registerTurnRoutes(app: Hono): void {
   /**
@@ -113,36 +75,7 @@ export function registerTurnRoutes(app: Hono): void {
 
     const turnIdx = snapshot.messages.at(-1)?.idx ?? 0;
 
-    // 6. Load tool call history for context (helps maintain tool calling patterns)
-    let toolHistory: ToolHistoryContext | undefined;
-    try {
-      const [recentCalls, stats] = await Promise.all([
-        getRecentToolCalls(ownerEmail, sessionId, { turnLimit: 5, limit: 20 }),
-        getToolCallStats(ownerEmail, sessionId),
-      ]);
-
-      if (stats.totalCalls > 0) {
-        toolHistory = {
-          recentToolCalls: recentCalls.map((c) => ({
-            turnIdx: c.turnIdx,
-            toolName: c.toolName,
-            success: c.success,
-          })),
-          stats: {
-            totalCalls: stats.totalCalls,
-            callsByTool: stats.callsByTool,
-            recentTools: stats.recentTools,
-          },
-          // Build usage hints based on tool patterns
-          usageHints: buildToolUsageHints(stats),
-        };
-      }
-    } catch (err) {
-      // Non-fatal - continue without tool history
-      console.warn('[turns] Failed to load tool history:', err);
-    }
-
-    // 7. Create governor and execute turn
+    // 6. Create governor and execute turn
     const stateSlices: AgentStateSlices = {
       character: loadedState.baseline.character as unknown as NonNullable<
         AgentStateSlices['character']
@@ -167,13 +100,6 @@ export function registerTurnRoutes(app: Hono): void {
       sessionId,
       stateSlices,
       ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
-      ...(loadedState.locationInfoMap.size > 0 && {
-        availableLocations: loadedState.locationInfoMap,
-      }),
-      ...(loadedState.playerLocationId !== undefined && {
-        playerLocationId: loadedState.playerLocationId,
-      }),
-      turnIdx: turnIdx + 1, // Next turn index for tool history tracking
     });
 
     // Include proximity in baseline so state patches can be applied
@@ -190,7 +116,6 @@ export function registerTurnRoutes(app: Hono): void {
       sessionTags: snapshot.sessionTags,
       ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
       ...(snapshot.persona ? { persona: snapshot.persona } : {}),
-      ...(toolHistory ? { toolHistory } : {}),
     };
 
     const turnResult = await governor.handleTurn(turnContext);

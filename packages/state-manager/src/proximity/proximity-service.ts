@@ -1,5 +1,5 @@
 /**
- * Proximity Manager - Thin wrapper for proximity-specific state logic.
+ * Proximity Service - Thin wrapper for proximity-specific state logic.
  *
  * Provides convenience methods for manipulating proximity state,
  * generating JSON Patch operations for state updates.
@@ -62,17 +62,17 @@ export interface UpdateNpcProximityLevelParams {
 }
 
 // =============================================================================
-// Proximity Manager
+// Proximity Service
 // =============================================================================
 
 /**
  * Manages proximity state operations and generates JSON Patch operations.
  */
-export class ProximityManager {
+export class ProximityService {
   /**
    * Validate a proximity state object.
    */
-  static validate(state: unknown): { success: boolean; data?: ProximityState; error?: string } {
+  validate(state: unknown): { success: boolean; data?: ProximityState; error?: string } {
     const result = ProximityStateSchema.safeParse(state);
     if (result.success) {
       return { success: true, data: result.data };
@@ -83,7 +83,7 @@ export class ProximityManager {
   /**
    * Create a default empty proximity state.
    */
-  static createDefault(): ProximityState {
+  createDefault(): ProximityState {
     return createDefaultProximityState();
   }
 
@@ -94,7 +94,7 @@ export class ProximityManager {
    * @param params - Update parameters
    * @returns Result with patches to apply
    */
-  static updateEngagement(
+  updateEngagement(
     currentState: ProximityState,
     params: UpdateProximityParams
   ): ProximityUpdateResult {
@@ -131,7 +131,7 @@ export class ProximityManager {
   /**
    * Update general proximity level to an NPC.
    */
-  static updateNpcProximityLevel(
+  updateNpcProximityLevel(
     currentState: ProximityState,
     params: UpdateNpcProximityLevelParams
   ): ProximityUpdateResult {
@@ -160,14 +160,14 @@ export class ProximityManager {
   /**
    * Get all active engagements for an NPC.
    */
-  static getEngagementsForNpc(state: ProximityState, npcId: string): SensoryEngagement[] {
+  getEngagementsForNpc(state: ProximityState, npcId: string): SensoryEngagement[] {
     return Object.values(state.engagements).filter((e) => e.npcId === npcId);
   }
 
   /**
    * Get recent engagements (within N turns).
    */
-  static getRecentEngagements(
+  getRecentEngagements(
     state: ProximityState,
     currentTurn: number,
     withinTurns = 3
@@ -180,7 +180,7 @@ export class ProximityManager {
   /**
    * Touch an engagement to update lastActiveAt without changing intensity.
    */
-  static touchEngagement(
+  touchEngagement(
     currentState: ProximityState,
     npcId: string,
     bodyPart: string,
@@ -216,10 +216,7 @@ export class ProximityManager {
   /**
    * End all engagements for an NPC (e.g., when NPC leaves).
    */
-  static endAllEngagementsForNpc(
-    currentState: ProximityState,
-    npcId: string
-  ): ProximityUpdateResult {
+  endAllEngagementsForNpc(currentState: ProximityState, npcId: string): ProximityUpdateResult {
     const engagementsToEnd = Object.entries(currentState.engagements).filter(
       ([, e]) => e.npcId === npcId
     );
@@ -248,7 +245,7 @@ export class ProximityManager {
   // Private Handlers
   // ===========================================================================
 
-  private static handleEngage(
+  private handleEngage(
     key: string,
     existing: SensoryEngagement | undefined,
     params: UpdateProximityParams
@@ -297,7 +294,7 @@ export class ProximityManager {
     };
   }
 
-  private static handleIntensify(
+  private handleIntensify(
     key: string,
     existing: SensoryEngagement | undefined,
     newIntensity: EngagementIntensity | undefined,
@@ -371,7 +368,7 @@ export class ProximityManager {
     };
   }
 
-  private static handleReduce(
+  private handleReduce(
     key: string,
     existing: SensoryEngagement | undefined,
     newIntensity: EngagementIntensity | undefined,
@@ -421,10 +418,7 @@ export class ProximityManager {
     };
   }
 
-  private static handleEnd(
-    key: string,
-    existing: SensoryEngagement | undefined
-  ): ProximityUpdateResult {
+  private handleEnd(key: string, existing: SensoryEngagement | undefined): ProximityUpdateResult {
     if (!existing) {
       return {
         success: true,

@@ -12,12 +12,12 @@ export { RulesAgent } from './rules/rules-agent.js';
 export { MAP_INTENT_TYPES, type MapIntentType } from './map/types.js';
 export { RULES_INTENT_TYPES, type RulesIntentType } from './rules/types.js';
 
-// Sensory agent
+// Sensory service
 export {
-  SensoryAgent,
+  SensoryService,
   isSensoryIntent,
   type ScentData,
-  type SensoryAgentConfig,
+  type SensoryServiceConfig,
   type SensoryContext,
   type SensoryIntentType,
 } from './sensory/index.js';
@@ -31,5 +31,5 @@ export type {
   NpcAgentServices,
   HygieneServiceLike,
   MemoryServiceLike,
-  SensoryAgentLike,
+  SensoryServiceLike,
 } from './npc/types.js';

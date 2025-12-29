@@ -71,6 +71,8 @@ export function buildEnhancedSystemPrompt(
 export function buildDialogueSystemPrompt(character: CharacterSlice, input: AgentInput): string {
   const parts: string[] = [];
 
+  const npcInput = input as NpcAgentInput;
+
   parts.push(`You are writing for the character ${character.name}.`);
   parts.push(buildFormattingContract());
 
@@ -112,6 +114,27 @@ export function buildDialogueSystemPrompt(character: CharacterSlice, input: Agen
     parts.push(...input.knowledgeContext.slice(0, 5).map((item) => `- ${item.content}`));
   }
 
+  const routingLines: string[] = [];
+  if (npcInput.isDirectlyAddressed) {
+    routingLines.push('Player directly addressed you this turn.');
+  }
+  if (npcInput.proximityLevel) {
+    routingLines.push(`Proximity to player: ${npcInput.proximityLevel}.`);
+  }
+  if (npcInput.npcTags?.length) {
+    routingLines.push(`NPC tags in effect: ${npcInput.npcTags.join(', ')}.`);
+  }
+  if (npcInput.locationTags?.length) {
+    routingLines.push(`Location tags: ${npcInput.locationTags.join(', ')}.`);
+  }
+  if (npcInput.sessionTags?.length) {
+    routingLines.push(`Session tags: ${npcInput.sessionTags.join(', ')}.`);
+  }
+  if (routingLines.length) {
+    parts.push('\nRouting context:');
+    parts.push(...routingLines.map((line) => `- ${line}`));
+  }
+
   parts.push(...serializeAffinity(input));
 
   const npcContext = extractNpcContext(input);
@@ -134,7 +157,7 @@ export function buildDialogueSystemPrompt(character: CharacterSlice, input: Agen
 export function buildDialogueUserPrompt(input: AgentInput): string {
   const parts: string[] = [];
 
-  const convo = input.npcConversationHistory ?? input.conversationHistory;
+  const convo = input.npcConversationHistory;
 
   if (convo && convo.length > 0) {
     parts.push('Recent conversation:');

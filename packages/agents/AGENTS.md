@@ -17,3 +17,10 @@ Domain-specific workers that execute game actions. Each agent handles a specific
 - **state-manager**: Agents produce JSON Patch operations; does not apply them directly
 - **governor**: Receives agent outputs; governor orchestrates execution and applies patches
 - **retrieval**: Agents receive knowledge context as input (passed through by governor)
+- **characters**: Reads character data (and hygiene/sensory state when available) to ground responses
+- **utils**: Reuses shared logging, error, and formatting helpers; avoid duplicating cross-cutting utilities in agents
+
+## Authoring Notes
+
+- Keep each agent in its own module folder with its domain types in a local `types.ts`. Only promote shared types to `src/types.ts` when they are used across multiple agents.
+- Inject external services (LLM providers, repositories, hygiene/memory services) via config; avoid direct instantiation inside agents.

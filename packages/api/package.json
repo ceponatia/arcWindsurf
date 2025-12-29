@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "dev": "tsx watch src/server.ts",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "typecheck": "tsc -b --pretty false"

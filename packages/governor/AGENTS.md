@@ -10,6 +10,7 @@ Turn orchestration layer. Routes player input to LLM tool calls, aggregates outp
 - Aggregating tool outputs into player-facing responses
 - Coordinating state patch application
 - Turn lifecycle logging and error handling
+- Do NOT put any code specific to agents in the governor package. This should go in the `agents` package.
 
 ## Package Connections
 

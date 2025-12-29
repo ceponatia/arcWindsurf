@@ -50,7 +50,6 @@ describe('tools exports', () => {
     const names = toolNames(ALL_GAME_TOOLS);
     const requiredNames = [
       'get_sensory_detail',
-      'npc_dialogue',
       'update_proximity',
       'navigate_player',
       'examine_object',

@@ -13,6 +13,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"

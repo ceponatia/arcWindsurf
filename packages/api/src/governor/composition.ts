@@ -2,39 +2,27 @@ import {
   createGovernor,
   type Governor,
   type GovernorConfig,
-  createToolBasedTurnHandler,
-  type ToolTurnHandlerConfig,
-  ToolExecutor,
-  type FallbackToolHandler,
-  type LocationInfo,
-  type ToolCallHistoryRecord,
+  NpcTurnHandler,
+  type NpcTurnHandlerConfig,
 } from '@minimal-rpg/governor';
-import { StateManager, DEFAULT_STATE_MANAGER_CONFIG } from '@minimal-rpg/state-manager';
+import {
+  StateManager,
+  DEFAULT_STATE_MANAGER_CONFIG,
+  ProximityService,
+} from '@minimal-rpg/state-manager';
 import {
   createDefaultRegistry,
-  MapAgent,
   NpcAgent,
-  RulesAgent,
-  SensoryAgent,
+  SensoryService,
   type LlmProvider as AgentLlmProvider,
   type LlmGenerateOptions as AgentLlmGenerateOptions,
   type LlmResponse as AgentLlmResponse,
   type AgentStateSlices,
   type NpcMessageRepository,
 } from '@minimal-rpg/agents';
-import {
-  HygieneService,
-  FileHygieneModifiersProvider,
-  DbHygieneRepository,
-} from '@minimal-rpg/characters';
-import { generateWithOpenRouter, chatWithOpenRouterTools } from '../llm/openrouter.js';
+import { generateWithOpenRouter } from '../llm/openrouter.js';
 import { getConfig } from '../util/config.js';
-import { getNpcOwnHistory, appendToolCallHistoryBatch } from '../db/sessionsClient.js';
-import { createSessionToolHandler, getSessionTools } from '../llm/tools/index.js';
-import { db } from '../db/prismaClient.js';
-
-// Simple process-local singletons for now; can be replaced with
-// request-scoped or DI-driven instances later if needed.
+import { getNpcOwnHistory } from '../db/sessionsClient.js';
 
 const stateManager = new StateManager({
   ...DEFAULT_STATE_MANAGER_CONFIG,
@@ -43,19 +31,6 @@ const stateManager = new StateManager({
 });
 
 const agentRegistry = createDefaultRegistry();
-
-let hygieneService: HygieneService | null = null;
-
-function getHygieneService(): HygieneService {
-  if (hygieneService) {
-    return hygieneService;
-  }
-
-  const repository = new DbHygieneRepository(db);
-  const modifiers = new FileHygieneModifiersProvider();
-  hygieneService = new HygieneService({ repository, modifiers });
-  return hygieneService;
-}
 
 let sharedAgentLlmProvider: AgentLlmProvider | undefined;
 
@@ -140,23 +115,36 @@ function getAgentLlmProvider(): AgentLlmProvider | undefined {
 }
 
 function ensureAgentsRegistered(): void {
-  // Only perform one-time registration on first use
   if (agentRegistry.size > 0) {
     return;
   }
 
   const llmProvider = getAgentLlmProvider();
+  const sensoryService = new SensoryService(llmProvider ? { llmProvider } : {});
+  const proximityService = new ProximityService();
 
-  agentRegistry.register(new MapAgent());
   agentRegistry.register(
     new NpcAgent(
       llmProvider
-        ? { llmProvider, services: { messageRepository: npcMessageRepository }, historyLimit: 50 }
-        : { services: { messageRepository: npcMessageRepository }, historyLimit: 50 }
+        ? {
+            llmProvider,
+            services: {
+              messageRepository: npcMessageRepository,
+              sensoryService,
+              proximityService,
+            },
+            historyLimit: 50,
+          }
+        : {
+            services: {
+              messageRepository: npcMessageRepository,
+              sensoryService,
+              proximityService,
+            },
+            historyLimit: 50,
+          }
     )
   );
-  agentRegistry.register(new RulesAgent());
-  agentRegistry.register(new SensoryAgent(llmProvider ? { llmProvider } : {}));
 }
 
 export interface GovernorFactoryOptions {
@@ -166,135 +154,44 @@ export interface GovernorFactoryOptions {
   sessionId: string;
   stateSlices: AgentStateSlices;
   turnTagContext?: import('@minimal-rpg/governor').TurnTagContext;
-  /** Available locations for navigation (from LocationGraphService) */
-  availableLocations?: Map<string, LocationInfo>;
-  /** Current player location ID */
-  playerLocationId?: string;
-  /** Current turn index for tool history tracking */
-  turnIdx?: number;
 }
 
-/**
- * Options for creating the tool turn handler.
- */
-interface ToolTurnHandlerOptions {
+interface NpcTurnHandlerOptions {
   ownerEmail: string;
-  sessionId: string;
   stateSlices: AgentStateSlices;
-  turnTagContext?: import('@minimal-rpg/governor').TurnTagContext;
-  availableLocations?: Map<string, LocationInfo>;
-  playerLocationId?: string;
-  turnIdx?: number;
 }
 
-/**
- * Create a tool-based turn handler (now the only mode).
- * Throws if OPENROUTER_API_KEY is not configured.
- */
-function createToolTurnHandlerOrThrow(
-  options: ToolTurnHandlerOptions
-): ReturnType<typeof createToolBasedTurnHandler> {
-  const { sessionId, stateSlices, turnTagContext, availableLocations, playerLocationId, turnIdx } =
-    options;
-  const { ownerEmail } = options;
-  const cfg = getConfig();
-
-  if (!cfg.openrouterApiKey) {
-    throw new Error('[Governor] OPENROUTER_API_KEY is required for tool-calling mode');
-  }
-
-  // Ensure agents are registered for tool executor
+function createNpcTurnHandler(options: NpcTurnHandlerOptions): NpcTurnHandler {
   ensureAgentsRegistered();
 
-  const sensoryAgent = agentRegistry.get('sensory') as SensoryAgent | undefined;
   const npcAgent = agentRegistry.get('npc') as NpcAgent | undefined;
 
-  if (!sensoryAgent || !npcAgent) {
-    throw new Error('[Governor] Required agents (sensory, npc) not registered');
+  if (!npcAgent) {
+    throw new Error('[Governor] Required agent (npc) not registered');
   }
 
-  // Create session tool handler as fallback for session-focused tools
-  const sessionToolHandler = createSessionToolHandler({ ownerEmail, sessionId });
-  const fallbackHandler: FallbackToolHandler = (toolCall) => sessionToolHandler.execute(toolCall);
-
-  const toolExecutor = new ToolExecutor({
-    sensoryAgent,
+  const handlerConfig: NpcTurnHandlerConfig = {
     npcAgent,
-    hygieneService: getHygieneService(),
-    ownerEmail,
-    sessionId,
-    stateSlices,
-    fallbackHandler,
-    ...(turnTagContext !== undefined && { turnTagContext }),
-    ...(availableLocations !== undefined && { availableLocations }),
-    ...(playerLocationId !== undefined && { playerLocationId }),
-  });
-
-  // Create callback to persist tool call history
-  const onToolCallsComplete = async (records: ToolCallHistoryRecord[]): Promise<void> => {
-    if (records.length === 0) return;
-
-    try {
-      await appendToolCallHistoryBatch(
-        records.map((r) => ({
-          ownerEmail,
-          sessionId,
-          turnIdx: turnIdx ?? 0,
-          toolName: r.toolName,
-          toolArgs: r.toolArgs,
-          toolResult: r.toolResult,
-          success: r.success,
-        }))
-      );
-    } catch (err) {
-      // Non-fatal - log but don't fail the turn
-      console.error('[Governor] Failed to persist tool call history:', err);
-    }
+    ownerEmail: options.ownerEmail,
+    stateSlices: options.stateSlices,
   };
 
-  const config: ToolTurnHandlerConfig = {
-    chatWithTools: async (opts) => {
-      return chatWithOpenRouterTools(opts);
-    },
-    apiKey: cfg.openrouterApiKey,
-    model: cfg.openrouterModel,
-    toolExecutor,
-    sessionId,
-    stateSlices,
-    additionalTools: getSessionTools(),
-    debug: cfg.governorDevMode,
-    onToolCallsComplete,
-  };
-
-  return createToolBasedTurnHandler(config);
+  return new NpcTurnHandler(handlerConfig);
 }
 
-/**
- * Create a Governor configured for tool-calling mode.
- * Tool-calling is now the only supported mode.
- */
 export function createGovernorForRequest(options: GovernorFactoryOptions): Governor {
   const cfg = getConfig();
 
-  // Ensure core agents are wired into the registry before handling turns
   ensureAgentsRegistered();
 
-  // Create tool turn handler (required)
-  const toolHandler = createToolTurnHandlerOrThrow({
+  const npcTurnHandler = createNpcTurnHandler({
     ownerEmail: options.ownerEmail,
-    sessionId: options.sessionId,
     stateSlices: options.stateSlices,
-    ...(options.turnTagContext !== undefined && { turnTagContext: options.turnTagContext }),
-    ...(options.availableLocations !== undefined && {
-      availableLocations: options.availableLocations,
-    }),
-    ...(options.playerLocationId !== undefined && { playerLocationId: options.playerLocationId }),
-    ...(options.turnIdx !== undefined && { turnIdx: options.turnIdx }),
   });
 
   const governorConfig: GovernorConfig = {
     stateManager,
-    toolTurnHandler: toolHandler,
+    toolTurnHandler: npcTurnHandler,
     npcTranscriptLoader: async ({ sessionId, npcId, limit }) => {
       const rows = await getNpcOwnHistory(options.ownerEmail, sessionId, npcId, {
         limit: limit ?? 50,
