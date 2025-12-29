@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { Build, ItemCategory, TagTargetType } from '@minimal-rpg/schemas';
 import type { CreateFullSessionRequest } from './shared/api/client.js';
+import type { UseFetchOnceResult } from './shared/hooks/useFetchOnce.js';
 
 export interface CharacterSummary {
   id: string;
@@ -316,9 +317,7 @@ export interface CharactersState {
   data: CharacterSummary[] | null;
 }
 
-export interface UseCharactersResult extends CharactersState {
-  retry: () => void;
-}
+export type UseCharactersResult = UseFetchOnceResult<CharacterSummary[]>;
 
 export interface SettingsState {
   loading: boolean;
@@ -326,9 +325,7 @@ export interface SettingsState {
   data: SettingSummary[] | null;
 }
 
-export interface UseSettingsResult extends SettingsState {
-  retry: () => void;
-}
+export type UseSettingsResult = UseFetchOnceResult<SettingSummary[]>;
 
 export interface TagSummary {
   id: string;
@@ -344,9 +341,7 @@ export interface TagsState {
   data: TagSummary[] | null;
 }
 
-export interface UseTagsResult extends TagsState {
-  retry: () => void;
-}
+export type UseTagsResult = UseFetchOnceResult<TagSummary[]>;
 
 export interface SessionsState {
   loading: boolean;
