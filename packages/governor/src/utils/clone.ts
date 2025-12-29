@@ -15,5 +15,14 @@ export function cloneJsonLike<T>(value: T): T {
     // fall through to JSON clone
   }
 
-  return JSON.parse(JSON.stringify(value)) as T;
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch (error) {
+    const baseMessage =
+      'cloneJsonLike: Failed to clone value. Ensure the value is JSON-serializable and contains no circular references.';
+    if (error instanceof Error && error.message) {
+      throw new Error(`${baseMessage} Original error: ${error.message}`);
+    }
+    throw new Error(baseMessage);
+  }
 }
