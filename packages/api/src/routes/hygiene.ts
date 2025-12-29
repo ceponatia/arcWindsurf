@@ -9,10 +9,12 @@ import { z } from 'zod';
 import {
   HygieneUpdateInputSchema,
   BODY_REGIONS,
+  applyHygieneEvent,
   calculateHygieneLevel,
   calculateDecayPoints,
   isFootRelatedPart,
   getSensoryModifierByLevel,
+  type HygieneEvent,
   type NpcHygieneState,
   type BodyPartHygieneState,
   type HygieneUpdateInput,
@@ -51,7 +53,7 @@ async function getNpcHygieneState(sessionId: string, npcId: string): Promise<Npc
   for (const row of rows) {
     bodyParts[row.bodyPart] = {
       points: row.points,
-      level: row.level as 0 | 1 | 2 | 3 | 4,
+      level: row.level as HygieneLevel,
       lastUpdatedAt: row.lastUpdatedAt?.toISOString(),
     };
   }
@@ -157,6 +159,7 @@ async function updateHygieneState(
     }
 
     const currentPart = currentState.bodyParts[region] ?? { points: 0, level: 0 };
+    const currentLevel = (currentPart.level ?? 0) as HygieneLevel;
 
     // Calculate new decay points
     const decayPoints = calculateDecayPoints(
@@ -165,7 +168,8 @@ async function updateHygieneState(
       input.activity,
       input.footwear,
       input.environment,
-      isFootRelatedPart(region)
+      isFootRelatedPart(region),
+      currentLevel
     );
 
     const newPoints = currentPart.points + decayPoints;
@@ -203,6 +207,57 @@ async function updateHygieneState(
   }
 
   return currentState;
+}
+
+/**
+ * Apply a discrete hygiene event and persist changes.
+ */
+async function applyHygieneEventToNpc(
+  sessionId: string,
+  npcId: string,
+  event: HygieneEvent
+): Promise<NpcHygieneState> {
+  const modifiers = await getSensoryModifiers();
+  const now = new Date();
+
+  let currentState = await getNpcHygieneState(sessionId, npcId);
+  if (Object.keys(currentState.bodyParts).length === 0) {
+    currentState = await initializeHygieneState(sessionId, npcId);
+  }
+
+  const nextState = applyHygieneEvent(currentState, event, modifiers.decayRates, now);
+
+  for (const [bodyPart, nextPart] of Object.entries(nextState.bodyParts)) {
+    const prev = currentState.bodyParts[bodyPart];
+    if (prev && prev.points === nextPart.points && prev.level === nextPart.level) {
+      continue;
+    }
+
+    await db.npcHygieneState.upsert({
+      where: {
+        sessionId_npcId_bodyPart: {
+          sessionId,
+          npcId,
+          bodyPart,
+        },
+      },
+      update: {
+        points: nextPart.points,
+        level: nextPart.level,
+        lastUpdatedAt: now,
+      },
+      create: {
+        sessionId,
+        npcId,
+        bodyPart,
+        points: nextPart.points,
+        level: nextPart.level,
+        lastUpdatedAt: now,
+      },
+    });
+  }
+
+  return nextState;
 }
 
 /**
@@ -323,6 +378,41 @@ export function registerHygieneRoutes(app: Hono): void {
     } catch (error) {
       console.error('Error cleaning body parts:', error);
       return c.json({ ok: false, error: 'Failed to clean body parts' } satisfies ApiError, 500);
+    }
+  });
+
+  // POST /sessions/:sessionId/npcs/:npcId/hygiene/event - Apply a discrete hygiene event
+  app.post('/sessions/:sessionId/npcs/:npcId/hygiene/event', async (c) => {
+    const sessionId = c.req.param('sessionId');
+    const npcId = c.req.param('npcId');
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
+    }
+
+    const hygieneEventSchema = z.union([
+      z.object({ kind: z.literal('clean'), event: z.string() }),
+      z.object({
+        kind: z.literal('dirty'),
+        event: z.string(),
+        bodyParts: z.array(z.string()).optional(),
+      }),
+    ]);
+
+    const parsed = hygieneEventSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
+    }
+
+    try {
+      const state = await applyHygieneEventToNpc(sessionId, npcId, parsed.data as HygieneEvent);
+      return c.json(state, 200);
+    } catch (error) {
+      console.error('Error applying hygiene event:', error);
+      return c.json({ ok: false, error: 'Failed to apply hygiene event' } satisfies ApiError, 500);
     }
   });
 

@@ -19,7 +19,7 @@ import type { GenderRegionConfig, GenderAppearanceRegionConfig } from './types.j
  * Body regions that are gender-specific.
  */
 export const GENDER_BODY_REGIONS: GenderRegionConfig = {
-  femaleOnly: ['breasts', 'nipples', 'vagina'] as const,
+  femaleOnly: ['leftBreast', 'rightBreast', 'leftNipple', 'rightNipple', 'vagina'] as const,
   maleOnly: ['penis'] as const,
 };
 
@@ -27,7 +27,7 @@ export const GENDER_BODY_REGIONS: GenderRegionConfig = {
  * Appearance regions that are gender-specific.
  */
 export const GENDER_APPEARANCE_REGIONS: GenderAppearanceRegionConfig = {
-  femaleOnly: ['breasts', 'nipples', 'vagina'] as const,
+  femaleOnly: ['leftBreast', 'rightBreast', 'leftNipple', 'rightNipple', 'vagina'] as const,
   maleOnly: ['penis'] as const,
 };
 

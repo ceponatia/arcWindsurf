@@ -1,5 +1,6 @@
 // Package barrel: flat re-exports and namespaced accessors
 export * from './shared/index.js';
+export * from './body-regions/index.js';
 export * from './character/index.js';
 export * from './persona/index.js';
 export * from './setting/index.js';

@@ -25,3 +25,6 @@ export * from './availability.js';
 
 // Hygiene state for tracking NPC cleanliness and sensory modifiers
 export * from './hygiene.js';
+
+// Discrete hygiene events (cleaning/dirtying)
+export * from './hygiene-events.js';

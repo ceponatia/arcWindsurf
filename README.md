@@ -294,7 +294,7 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **Activity Multipliers**: Different activities (idle, walking, running, labor, combat) affect decay rate
 - **Footwear Modifiers**: Barefoot/sandals/shoes/boots affect feet hygiene decay
 - **Environment Effects**: Dry/humid/rain/swimming conditions modify decay
-- **Sensory Modifiers**: Context-aware smell/touch/taste descriptions based on hygiene level (0-4)
+- **Sensory Modifiers**: Context-aware smell/touch/taste descriptions based on hygiene level (0-6)
 - **Governor Tools**: `update_npc_hygiene` and `get_hygiene_sensory` for runtime state management
 
 ### Intent & Interaction

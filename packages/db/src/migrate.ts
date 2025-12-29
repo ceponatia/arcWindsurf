@@ -125,7 +125,7 @@ async function run() {
 
   // Get already applied migrations
   const applied = await pool.query('SELECT name FROM _migrations');
-  const appliedSet = new Set((applied.rows as Array<{ name: string }>).map((r) => r.name));
+  const appliedSet = new Set((applied.rows as { name: string }[]).map((r) => r.name));
 
   for (const f of files) {
     if (appliedSet.has(f)) {

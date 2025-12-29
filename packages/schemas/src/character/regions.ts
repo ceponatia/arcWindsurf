@@ -15,51 +15,10 @@
 // character schemas decoupled from item schemas.
 // ============================================================================
 
-/**
- * Primary body regions - major areas that can have distinct properties.
- * These are the canonical regions used throughout the system for:
- * - Sensory data (scent, texture, visual appearance, flavor)
- * - Equipment slots (what clothing/armor covers this region)
- * - Intent routing (resolving player queries about specific body parts)
- * - Appearance attributes (structured build/physique data)
- */
-export const BODY_REGIONS = [
-  'head',
-  'face',
-  'ears',
-  'mouth',
-  'hair',
-  'neck',
-  'throat',
-  'shoulders',
-  'chest',
-  'breasts',
-  'nipples',
-  'back',
-  'lowerBack',
-  'torso',
-  'abdomen',
-  'navel',
-  'armpits',
-  'arms',
-  'hands',
-  'waist',
-  'hips',
-  'groin',
-  'buttocks',
-  'anus',
-  'penis',
-  'vagina',
-  'legs',
-  'thighs',
-  'knees',
-  'calves',
-  'ankles',
-  'feet',
-  'toes',
-] as const;
+import { BODY_REGIONS, type BodyRegion, type BodySide } from '../body-regions/index.js';
 
-export type BodyRegion = (typeof BODY_REGIONS)[number];
+export { BODY_REGIONS };
+export type { BodyRegion };
 
 /**
  * Body region aliases map natural language references to canonical regions.
@@ -86,7 +45,7 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   countenance: 'face',
   features: 'face',
 
-  // Ears aliases
+  // Ear aliases (side is applied in resolveBodyRegion)
   ear: 'ears',
   earlobe: 'ears',
   earlobes: 'ears',
@@ -96,15 +55,18 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   tongue: 'mouth',
   teeth: 'mouth',
 
-  // Eyes/nose on face (legacy, keep for backward compatibility)
-  eyes: 'face',
-  nose: 'face',
+  // Head detail aliases
+  brow: 'forehead',
+  forehead: 'forehead',
+  chin: 'chin',
+  cheek: 'face',
   cheeks: 'face',
-  forehead: 'face',
-  brow: 'face',
+  nose: 'nose',
+  eye: 'face',
+  eyes: 'face',
 
   // Neck aliases
-  nape: 'neck',
+  nape: 'nape',
 
   // Throat aliases
   adams_apple: 'throat',
@@ -114,18 +76,19 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   pecs: 'chest',
   pectorals: 'chest',
 
-  // Breast aliases (point to breasts region, not chest)
+  // Breast aliases (side is applied in resolveBodyRegion)
   breast: 'breasts',
   bosom: 'breasts',
   bust: 'breasts',
 
-  // Nipple aliases
+  // Nipple aliases (side is applied in resolveBodyRegion)
   nipple: 'nipples',
   areola: 'nipples',
   areolas: 'nipples',
 
   // Back aliases
-  spine: 'back',
+  spine: 'spine',
+  upper_back: 'upperBack',
 
   // Lower back aliases
   lower_back: 'lowerBack',
@@ -135,8 +98,8 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   body: 'torso',
   trunk: 'torso',
   ribs: 'torso',
-  side: 'torso',
-  sides: 'torso',
+  side: 'leftSide',
+  sides: 'leftSide',
 
   // Abdomen aliases
   stomach: 'abdomen',
@@ -149,19 +112,19 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   bellybutton: 'navel',
   umbilicus: 'navel',
 
-  // Armpit aliases
+  // Armpit aliases (side is applied in resolveBodyRegion)
   armpit: 'armpits',
   underarm: 'armpits',
   underarms: 'armpits',
   axilla: 'armpits',
 
   // Back aliases (additional)
-  shoulderblades: 'back',
+  shoulderblades: 'upperBack',
 
-  // Shoulder aliases
+  // Shoulder aliases (side is applied in resolveBodyRegion)
   shoulder: 'shoulders',
 
-  // Arm aliases
+  // Arm aliases (side is applied in resolveBodyRegion)
   arm: 'arms',
   bicep: 'arms',
   biceps: 'arms',
@@ -172,7 +135,7 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   wrist: 'arms',
   wrists: 'arms',
 
-  // Hand aliases
+  // Hand aliases (side is applied in resolveBodyRegion)
   hand: 'hands',
   palm: 'hands',
   palms: 'hands',
@@ -184,14 +147,14 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
 
   // Waist/hip aliases
   hip: 'hips',
-  pelvis: 'hips',
-  lap: 'hips',
+  pelvis: 'pelvis',
+  lap: 'pelvis',
 
   // Groin aliases
   crotch: 'groin',
   pubic: 'groin',
 
-  // Buttocks aliases
+  // Buttocks aliases (side is applied in resolveBodyRegion)
   butt: 'buttocks',
   ass: 'buttocks',
   rear: 'buttocks',
@@ -213,7 +176,7 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   vulva: 'vagina',
   labia: 'vagina',
 
-  // Leg aliases (general)
+  // Leg aliases (side is applied in resolveBodyRegion)
   leg: 'legs',
 
   // Thigh aliases
@@ -224,7 +187,7 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   kneecap: 'knees',
   kneecaps: 'knees',
 
-  // Calf aliases
+  // Calf/shin aliases
   calf: 'calves',
   shin: 'calves',
   shins: 'calves',
@@ -244,6 +207,8 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
 
   // Toe aliases
   toe: 'toes',
+  big_toe: 'toes',
+  bigtoe: 'toes',
 
   // Equipment-based aliases (item → body region it covers)
   shoes: 'feet',
@@ -281,6 +246,62 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
   collar: 'neck',
 };
 
+function extractSide(normalized: string): { side: BodySide | undefined; value: string } {
+  const cleaned = normalized.replace(/[_-]+/g, ' ').trim();
+
+  const prefix = /^(left|right)\s+(.+)$/.exec(cleaned);
+  if (prefix) {
+    return { side: prefix[1] as BodySide, value: prefix[2] ?? '' };
+  }
+
+  const suffix = /^(.+)\s+(left|right)$/.exec(cleaned);
+  if (suffix) {
+    return { side: suffix[2] as BodySide, value: suffix[1] ?? '' };
+  }
+
+  return { side: undefined, value: cleaned };
+}
+
+function applySideToRegion(region: BodyRegion, side: BodySide | undefined): BodyRegion {
+  if (!side) return region;
+
+  const sideMap: Partial<Record<BodyRegion, { left: BodyRegion; right: BodyRegion }>> = {
+    ears: { left: 'leftEar', right: 'rightEar' },
+    shoulders: { left: 'leftShoulder', right: 'rightShoulder' },
+    breasts: { left: 'leftBreast', right: 'rightBreast' },
+    nipples: { left: 'leftNipple', right: 'rightNipple' },
+    armpits: { left: 'leftArmpit', right: 'rightArmpit' },
+    arms: { left: 'leftArm', right: 'rightArm' },
+    hands: { left: 'leftHand', right: 'rightHand' },
+    hips: { left: 'leftHip', right: 'rightHip' },
+    buttocks: { left: 'leftButtock', right: 'rightButtock' },
+    legs: { left: 'leftLeg', right: 'rightLeg' },
+    thighs: { left: 'leftThigh', right: 'rightThigh' },
+    knees: { left: 'leftKnee', right: 'rightKnee' },
+    calves: { left: 'leftCalf', right: 'rightCalf' },
+    ankles: { left: 'leftAnkle', right: 'rightAnkle' },
+    feet: { left: 'leftFoot', right: 'rightFoot' },
+    toes: { left: 'leftBigToe', right: 'rightBigToe' },
+  };
+
+  const mapped = sideMap[region];
+  if (mapped) {
+    return side === 'left' ? mapped.left : mapped.right;
+  }
+
+  if (side === 'left' && region.startsWith('right')) {
+    const candidate = `left${region.slice('right'.length)}`;
+    return candidate as BodyRegion;
+  }
+
+  if (side === 'right' && region.startsWith('left')) {
+    const candidate = `right${region.slice('left'.length)}`;
+    return candidate as BodyRegion;
+  }
+
+  return region;
+}
+
 /**
  * Default body region for general/unspecified references.
  * When a player says "I smell them" without specifying a body part,
@@ -304,22 +325,28 @@ export function resolveBodyRegion(
   }
 
   const normalized = reference.toLowerCase().trim();
+  const { side, value } = extractSide(normalized);
 
   // Check if it's already a canonical region
   if (BODY_REGIONS.includes(normalized as BodyRegion)) {
     return normalized as BodyRegion;
   }
 
+  // Check if the side-stripped value is a canonical region
+  if (BODY_REGIONS.includes(value as BodyRegion)) {
+    return applySideToRegion(value as BodyRegion, side);
+  }
+
   // Check aliases
-  const aliased = BODY_REGION_ALIASES[normalized];
+  const aliased = BODY_REGION_ALIASES[value];
   if (aliased) {
-    return aliased;
+    return applySideToRegion(aliased, side);
   }
 
   // Fuzzy match: check if any alias contains the reference or vice versa
   for (const [alias, region] of Object.entries(BODY_REGION_ALIASES)) {
-    if (alias.includes(normalized) || normalized.includes(alias)) {
-      return region;
+    if (alias.includes(value) || value.includes(alias)) {
+      return applySideToRegion(region, side);
     }
   }
 
@@ -331,5 +358,10 @@ export function resolveBodyRegion(
  */
 export function isBodyReference(value: string): boolean {
   const normalized = value.toLowerCase().trim();
-  return BODY_REGIONS.includes(normalized as BodyRegion) || normalized in BODY_REGION_ALIASES;
+  const { value: stripped } = extractSide(normalized);
+  return (
+    BODY_REGIONS.includes(stripped as BodyRegion) ||
+    stripped in BODY_REGION_ALIASES ||
+    BODY_REGIONS.includes(normalized as BodyRegion)
+  );
 }

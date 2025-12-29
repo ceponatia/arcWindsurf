@@ -1,0 +1,17 @@
+export const LEG_REGIONS = [
+  'legs',
+  'leftLeg',
+  'rightLeg',
+  'thighs',
+  'leftThigh',
+  'rightThigh',
+  'knees',
+  'leftKnee',
+  'rightKnee',
+  'calves',
+  'leftCalf',
+  'rightCalf',
+  'leftShin',
+  'rightShin',
+  'ankles',
+] as const;

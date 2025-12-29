@@ -373,7 +373,7 @@ export interface NpcHygieneStateRow extends DbRow {
   bodyPart: string;
   /** Accumulated decay points */
   points: number;
-  /** Computed hygiene level 0-4 */
+  /** Computed hygiene level 0-6 */
   level: number;
   lastUpdatedAt?: Date;
   createdAt?: Date;

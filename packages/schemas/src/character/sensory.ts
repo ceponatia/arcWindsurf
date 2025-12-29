@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { BODY_REGIONS, type BodyRegion } from './regions.js';
+import type { HygieneLevel } from '../state/hygiene.js';
+import { DEFAULT_SCENTS, HYGIENE_SCENT_MODIFIERS, SCENT_TIERS } from './scent-defaults.js';
 
 // ============================================================================
 // Body Region Descriptors (Sensory Data)
@@ -110,45 +112,109 @@ export type BodyRegionData = z.infer<typeof BodyRegionDataSchema>;
  * }
  * ```
  */
-export const BodyMapSchema = z
-  .object({
-    head: BodyRegionDataSchema.optional(),
-    face: BodyRegionDataSchema.optional(),
-    ears: BodyRegionDataSchema.optional(),
-    mouth: BodyRegionDataSchema.optional(),
-    hair: BodyRegionDataSchema.optional(),
-    neck: BodyRegionDataSchema.optional(),
-    throat: BodyRegionDataSchema.optional(),
-    shoulders: BodyRegionDataSchema.optional(),
-    chest: BodyRegionDataSchema.optional(),
-    breasts: BodyRegionDataSchema.optional(),
-    nipples: BodyRegionDataSchema.optional(),
-    back: BodyRegionDataSchema.optional(),
-    lowerBack: BodyRegionDataSchema.optional(),
-    torso: BodyRegionDataSchema.optional(),
-    abdomen: BodyRegionDataSchema.optional(),
-    navel: BodyRegionDataSchema.optional(),
-    armpits: BodyRegionDataSchema.optional(),
-    arms: BodyRegionDataSchema.optional(),
-    hands: BodyRegionDataSchema.optional(),
-    waist: BodyRegionDataSchema.optional(),
-    hips: BodyRegionDataSchema.optional(),
-    groin: BodyRegionDataSchema.optional(),
-    buttocks: BodyRegionDataSchema.optional(),
-    anus: BodyRegionDataSchema.optional(),
-    penis: BodyRegionDataSchema.optional(),
-    vagina: BodyRegionDataSchema.optional(),
-    legs: BodyRegionDataSchema.optional(),
-    thighs: BodyRegionDataSchema.optional(),
-    knees: BodyRegionDataSchema.optional(),
-    calves: BodyRegionDataSchema.optional(),
-    ankles: BodyRegionDataSchema.optional(),
-    feet: BodyRegionDataSchema.optional(),
-    toes: BodyRegionDataSchema.optional(),
-  })
-  .partial();
+const BODY_MAP_SHAPE = Object.fromEntries(
+  BODY_REGIONS.map((region) => [region, BodyRegionDataSchema.optional()])
+) as Record<BodyRegion, z.ZodOptional<typeof BodyRegionDataSchema>>;
+
+export const BodyMapSchema = z.object(BODY_MAP_SHAPE).partial();
 
 export type BodyMap = z.infer<typeof BodyMapSchema>;
+
+// ============================================================================
+// Resolvers
+// ============================================================================
+
+export interface ResolvedScentContext {
+  source: 'user-defined' | 'tier-default' | 'none';
+  scent: RegionScent | undefined;
+  hygieneLevel: HygieneLevel;
+  modifiedIntensity: number;
+  modifiedNotes: string[];
+}
+
+type HygieneModulatedRegion = (typeof SCENT_TIERS)['hygieneModulated'][number];
+
+function isHygieneModulatedRegion(region: BodyRegion): region is HygieneModulatedRegion {
+  return (SCENT_TIERS.hygieneModulated as readonly BodyRegion[]).includes(region);
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+function mergeNotes(a: readonly string[] | undefined, b: readonly string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const item of a ?? []) {
+    if (!out.includes(item)) out.push(item);
+  }
+  for (const item of b ?? []) {
+    if (!out.includes(item)) out.push(item);
+  }
+  return out;
+}
+
+/**
+ * Resolve scent for a region using a fallback chain and optional hygiene modulation.
+ *
+ * Fallback order:
+ * 1) user-defined bodyMap[region].scent
+ * 2) tier default for the region
+ * 3) undefined
+ */
+export function resolveRegionScent(
+  bodyMap: BodyMap | undefined,
+  region: BodyRegion,
+  hygieneLevel: HygieneLevel = 0
+): ResolvedScentContext {
+  const userDefined = bodyMap?.[region]?.scent;
+  const tierDefault = DEFAULT_SCENTS[region];
+
+  const base: RegionScent | undefined = userDefined ?? tierDefault;
+  const source: ResolvedScentContext['source'] = userDefined
+    ? 'user-defined'
+    : tierDefault
+      ? 'tier-default'
+      : 'none';
+
+  if (!base) {
+    return {
+      source,
+      scent: undefined,
+      hygieneLevel,
+      modifiedIntensity: 0,
+      modifiedNotes: [],
+    };
+  }
+
+  if (!isHygieneModulatedRegion(region)) {
+    return {
+      source,
+      scent: base,
+      hygieneLevel,
+      modifiedIntensity: base.intensity,
+      modifiedNotes: base.notes ?? [],
+    };
+  }
+
+  const modifier = HYGIENE_SCENT_MODIFIERS[region][hygieneLevel];
+
+  const mergedNotes = mergeNotes(base.notes, modifier?.notes);
+  const modifiedIntensity = clamp01(modifier?.intensity ?? base.intensity);
+
+  const resolved: RegionScent = {
+    primary: modifier?.primary ?? base.primary,
+    intensity: modifiedIntensity,
+    ...(mergedNotes.length ? { notes: mergedNotes } : {}),
+  };
+
+  return {
+    source,
+    scent: resolved,
+    hygieneLevel,
+    modifiedIntensity,
+    modifiedNotes: mergedNotes,
+  };
+}
 
 // ============================================================================
 // Helper Functions

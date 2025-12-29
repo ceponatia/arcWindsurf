@@ -1,0 +1,18 @@
+export const UPPER_BODY_REGIONS = [
+  'shoulders',
+  'leftShoulder',
+  'rightShoulder',
+  'chest',
+  'leftPectoral',
+  'rightPectoral',
+  'breasts',
+  'leftBreast',
+  'rightBreast',
+  'nipples',
+  'leftNipple',
+  'rightNipple',
+  'upperBack',
+  'back',
+  'spine',
+  'lowerBack',
+] as const;

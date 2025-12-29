@@ -21,7 +21,7 @@ interface BodySectionProps {
   removeBodyEntry: (idx: number) => void;
 }
 
-const REGION_LABELS: Record<BodyRegion, string> = {
+const REGION_LABELS: Partial<Record<BodyRegion, string>> = {
   head: 'Head',
   face: 'Face',
   ears: 'Ears',
@@ -57,6 +57,18 @@ const REGION_LABELS: Record<BodyRegion, string> = {
   toes: 'Toes',
 };
 
+function formatRegionLabel(region: BodyRegion): string {
+  const explicit = REGION_LABELS[region];
+  if (explicit) return explicit;
+
+  const spaced = region
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .trim();
+
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 /**
  * Get available body regions based on character gender.
  * Gender-specific regions are only shown for appropriate genders.
@@ -64,7 +76,15 @@ const REGION_LABELS: Record<BodyRegion, string> = {
 function getAvailableRegions(gender?: string): BodyRegion[] {
   const normalizedGender = gender?.toLowerCase().trim();
   const baseRegions = BODY_REGIONS.filter(
-    (r) => r !== 'breasts' && r !== 'nipples' && r !== 'penis' && r !== 'vagina'
+    (r) =>
+      r !== 'breasts' &&
+      r !== 'leftBreast' &&
+      r !== 'rightBreast' &&
+      r !== 'nipples' &&
+      r !== 'leftNipple' &&
+      r !== 'rightNipple' &&
+      r !== 'penis' &&
+      r !== 'vagina'
   );
 
   if (!normalizedGender) {
@@ -73,7 +93,16 @@ function getAvailableRegions(gender?: string): BodyRegion[] {
 
   // Female-specific regions
   if (normalizedGender.includes('female') || normalizedGender.includes('woman')) {
-    return [...baseRegions, 'breasts', 'nipples', 'vagina'];
+    return [
+      ...baseRegions,
+      'breasts',
+      'leftBreast',
+      'rightBreast',
+      'nipples',
+      'leftNipple',
+      'rightNipple',
+      'vagina',
+    ];
   }
 
   // Male-specific regions
@@ -242,7 +271,7 @@ export const BodySection: React.FC<BodySectionProps> = ({
                   >
                     {availableRegions.map((region) => (
                       <option key={region} value={region}>
-                        {REGION_LABELS[region]}
+                        {formatRegionLabel(region)}
                       </option>
                     ))}
                   </select>

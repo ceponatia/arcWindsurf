@@ -876,42 +876,15 @@ Rules:
    * Get a human-readable label for a body region.
    */
   private getRegionLabel(region: BodyRegion): string {
-    const labels: Record<BodyRegion, string> = {
-      head: 'head',
-      face: 'face',
-      ears: 'ears',
-      mouth: 'mouth',
-      hair: 'hair',
-      neck: 'neck',
-      throat: 'throat',
-      shoulders: 'shoulders',
-      chest: 'chest',
-      breasts: 'breasts',
-      nipples: 'nipples',
-      back: 'back',
-      lowerBack: 'lower back',
-      torso: 'body',
-      abdomen: 'abdomen',
-      navel: 'navel',
-      armpits: 'armpits',
-      arms: 'arms',
-      hands: 'hands',
-      waist: 'waist',
-      hips: 'hips',
-      groin: 'groin',
-      buttocks: 'buttocks',
-      anus: 'anus',
-      penis: 'penis',
-      vagina: 'vagina',
-      legs: 'legs',
-      thighs: 'thighs',
-      knees: 'knees',
-      calves: 'calves',
-      ankles: 'ankles',
-      feet: 'feet',
-      toes: 'toes',
-    };
-    return labels[region] ?? region;
+    if (region === 'torso') {
+      return 'body';
+    }
+
+    return region
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .trim()
+      .toLowerCase();
   }
 
   /**

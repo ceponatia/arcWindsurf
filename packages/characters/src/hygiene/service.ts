@@ -1,9 +1,11 @@
 import {
   BODY_REGIONS,
+  applyHygieneEvent,
   calculateDecayPoints,
   calculateHygieneLevel,
   getSensoryModifierByLevel,
   isFootRelatedPart,
+  type HygieneEvent,
   type HygieneLevel,
 } from '@minimal-rpg/schemas';
 import type { HygieneServiceDeps, HygieneUpdateRequest, HygieneUpdateResult } from './types.js';
@@ -73,6 +75,7 @@ export class HygieneService {
       }
 
       const current = state.bodyParts[region] ?? { points: 0, level: 0 };
+      const currentLevel = (current.level ?? 0) as HygieneLevel;
 
       const decayPoints = calculateDecayPoints(
         config.baseDecayPerTurn,
@@ -80,7 +83,8 @@ export class HygieneService {
         input.activity,
         input.footwear,
         input.environment,
-        isFootRelatedPart(region)
+        isFootRelatedPart(region),
+        currentLevel
       );
 
       const points = current.points + decayPoints;
@@ -97,6 +101,36 @@ export class HygieneService {
     }
 
     return { state };
+  }
+
+  /**
+   * Apply a discrete hygiene event (cleaning/dirtying) to an NPC and persist it.
+   */
+  async applyEvent(
+    sessionId: string,
+    npcId: string,
+    event: HygieneEvent
+  ): Promise<HygieneUpdateResult> {
+    const modifiers = await this.modifiers.load();
+    const at = this.now();
+
+    let state = await this.repository.getState(sessionId, npcId);
+    if (Object.keys(state.bodyParts).length === 0) {
+      state = await this.initialize(sessionId, npcId);
+    }
+
+    const nextState = applyHygieneEvent(state, event, modifiers.decayRates, at);
+
+    for (const [bodyPart, nextPart] of Object.entries(nextState.bodyParts)) {
+      const prev = state.bodyParts[bodyPart];
+      if (prev && prev.points === nextPart.points && prev.level === nextPart.level) {
+        continue;
+      }
+
+      await this.repository.upsertPart(sessionId, npcId, bodyPart, nextPart);
+    }
+
+    return { state: nextState };
   }
 
   async getSensoryModifier(

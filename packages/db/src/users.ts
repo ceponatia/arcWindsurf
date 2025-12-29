@@ -74,20 +74,26 @@ function toIsoDate(v: unknown): string {
   return new Date().toISOString();
 }
 
+function isUserPreferences(value: unknown): value is UserPreferences {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 function parsePreferences(raw: unknown): UserPreferences {
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    return raw as UserPreferences;
+  if (isUserPreferences(raw)) {
+    return raw;
   }
+
   if (typeof raw === 'string') {
     try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        return parsed as UserPreferences;
+      const parsed: unknown = JSON.parse(raw);
+      if (isUserPreferences(parsed)) {
+        return parsed;
       }
     } catch {
       // ignore
     }
   }
+
   return {};
 }
 
@@ -297,7 +303,7 @@ export async function verifyLocalUserPassword(options: {
  * Get user preferences by identifier.
  * Returns default preferences if user doesn't exist.
  */
-export async function getUserPreferences(identifier: string = 'default'): Promise<UserPreferences> {
+export async function getUserPreferences(identifier = 'default'): Promise<UserPreferences> {
   const user = await getUserByIdentifier(identifier);
   return user?.preferences ?? { workspaceMode: 'wizard' };
 }
@@ -347,7 +353,7 @@ export async function setWorkspaceModePreference(
  * Returns 'wizard' if not set.
  */
 export async function getWorkspaceModePreference(
-  identifier: string = 'default'
+  identifier = 'default'
 ): Promise<'wizard' | 'compact'> {
   const prefs = await getUserPreferences(identifier);
   return prefs.workspaceMode ?? 'wizard';

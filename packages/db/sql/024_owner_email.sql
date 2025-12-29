@@ -15,11 +15,11 @@ ALTER TABLE user_sessions
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE user_sessions
-  ADD CONSTRAINT IF NOT EXISTS user_sessions_owner_email_nonempty
+  ADD CONSTRAINT user_sessions_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE user_sessions
-  ADD CONSTRAINT IF NOT EXISTS user_sessions_no_public_owner
+  ADD CONSTRAINT user_sessions_no_public_owner
   CHECK (owner_email <> 'public');
 
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_sessions_id_owner
@@ -36,11 +36,11 @@ ALTER TABLE messages
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE messages
-  ADD CONSTRAINT IF NOT EXISTS messages_owner_email_nonempty
+  ADD CONSTRAINT messages_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE messages
-  ADD CONSTRAINT IF NOT EXISTS messages_no_public_owner
+  ADD CONSTRAINT messages_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE messages
@@ -63,11 +63,11 @@ ALTER TABLE npc_messages
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE npc_messages
-  ADD CONSTRAINT IF NOT EXISTS npc_messages_owner_email_nonempty
+  ADD CONSTRAINT npc_messages_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE npc_messages
-  ADD CONSTRAINT IF NOT EXISTS npc_messages_no_public_owner
+  ADD CONSTRAINT npc_messages_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE npc_messages
@@ -90,11 +90,11 @@ ALTER TABLE character_instances
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE character_instances
-  ADD CONSTRAINT IF NOT EXISTS character_instances_owner_email_nonempty
+  ADD CONSTRAINT character_instances_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE character_instances
-  ADD CONSTRAINT IF NOT EXISTS character_instances_no_public_owner
+  ADD CONSTRAINT character_instances_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE character_instances
@@ -117,11 +117,11 @@ ALTER TABLE setting_instances
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE setting_instances
-  ADD CONSTRAINT IF NOT EXISTS setting_instances_owner_email_nonempty
+  ADD CONSTRAINT setting_instances_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE setting_instances
-  ADD CONSTRAINT IF NOT EXISTS setting_instances_no_public_owner
+  ADD CONSTRAINT setting_instances_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE setting_instances
@@ -144,11 +144,11 @@ ALTER TABLE session_history
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_history
-  ADD CONSTRAINT IF NOT EXISTS session_history_owner_email_nonempty
+  ADD CONSTRAINT session_history_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_history
-  ADD CONSTRAINT IF NOT EXISTS session_history_no_public_owner
+  ADD CONSTRAINT session_history_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_history
@@ -171,11 +171,11 @@ ALTER TABLE state_change_log
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE state_change_log
-  ADD CONSTRAINT IF NOT EXISTS state_change_log_owner_email_nonempty
+  ADD CONSTRAINT state_change_log_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE state_change_log
-  ADD CONSTRAINT IF NOT EXISTS state_change_log_no_public_owner
+  ADD CONSTRAINT state_change_log_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE state_change_log
@@ -198,11 +198,11 @@ ALTER TABLE tool_call_history
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE tool_call_history
-  ADD CONSTRAINT IF NOT EXISTS tool_call_history_owner_email_nonempty
+  ADD CONSTRAINT tool_call_history_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE tool_call_history
-  ADD CONSTRAINT IF NOT EXISTS tool_call_history_no_public_owner
+  ADD CONSTRAINT tool_call_history_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE tool_call_history
@@ -225,11 +225,11 @@ ALTER TABLE conversation_summaries
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE conversation_summaries
-  ADD CONSTRAINT IF NOT EXISTS conversation_summaries_owner_email_nonempty
+  ADD CONSTRAINT conversation_summaries_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE conversation_summaries
-  ADD CONSTRAINT IF NOT EXISTS conversation_summaries_no_public_owner
+  ADD CONSTRAINT conversation_summaries_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE conversation_summaries
@@ -252,11 +252,11 @@ ALTER TABLE session_location_state
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_location_state
-  ADD CONSTRAINT IF NOT EXISTS session_location_state_owner_email_nonempty
+  ADD CONSTRAINT session_location_state_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_location_state
-  ADD CONSTRAINT IF NOT EXISTS session_location_state_no_public_owner
+  ADD CONSTRAINT session_location_state_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_location_state
@@ -279,11 +279,11 @@ ALTER TABLE session_inventory_state
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_inventory_state
-  ADD CONSTRAINT IF NOT EXISTS session_inventory_state_owner_email_nonempty
+  ADD CONSTRAINT session_inventory_state_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_inventory_state
-  ADD CONSTRAINT IF NOT EXISTS session_inventory_state_no_public_owner
+  ADD CONSTRAINT session_inventory_state_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_inventory_state
@@ -306,11 +306,11 @@ ALTER TABLE session_time_state
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_time_state
-  ADD CONSTRAINT IF NOT EXISTS session_time_state_owner_email_nonempty
+  ADD CONSTRAINT session_time_state_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_time_state
-  ADD CONSTRAINT IF NOT EXISTS session_time_state_no_public_owner
+  ADD CONSTRAINT session_time_state_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_time_state
@@ -333,11 +333,11 @@ ALTER TABLE scene_actions
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE scene_actions
-  ADD CONSTRAINT IF NOT EXISTS scene_actions_owner_email_nonempty
+  ADD CONSTRAINT scene_actions_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE scene_actions
-  ADD CONSTRAINT IF NOT EXISTS scene_actions_no_public_owner
+  ADD CONSTRAINT scene_actions_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE scene_actions
@@ -360,11 +360,11 @@ ALTER TABLE session_affinity_state
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_affinity_state
-  ADD CONSTRAINT IF NOT EXISTS session_affinity_state_owner_email_nonempty
+  ADD CONSTRAINT session_affinity_state_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_affinity_state
-  ADD CONSTRAINT IF NOT EXISTS session_affinity_state_no_public_owner
+  ADD CONSTRAINT session_affinity_state_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_affinity_state
@@ -387,11 +387,11 @@ ALTER TABLE session_npc_location_state
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_npc_location_state
-  ADD CONSTRAINT IF NOT EXISTS session_npc_location_state_owner_email_nonempty
+  ADD CONSTRAINT session_npc_location_state_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_npc_location_state
-  ADD CONSTRAINT IF NOT EXISTS session_npc_location_state_no_public_owner
+  ADD CONSTRAINT session_npc_location_state_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_npc_location_state
@@ -414,11 +414,11 @@ ALTER TABLE session_npc_simulation_cache
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_npc_simulation_cache
-  ADD CONSTRAINT IF NOT EXISTS session_npc_simulation_cache_owner_email_nonempty
+  ADD CONSTRAINT session_npc_simulation_cache_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_npc_simulation_cache
-  ADD CONSTRAINT IF NOT EXISTS session_npc_simulation_cache_no_public_owner
+  ADD CONSTRAINT session_npc_simulation_cache_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_npc_simulation_cache
@@ -441,11 +441,11 @@ ALTER TABLE session_location_occupancy_cache
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_location_occupancy_cache
-  ADD CONSTRAINT IF NOT EXISTS session_location_occupancy_cache_owner_email_nonempty
+  ADD CONSTRAINT session_location_occupancy_cache_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_location_occupancy_cache
-  ADD CONSTRAINT IF NOT EXISTS session_location_occupancy_cache_no_public_owner
+  ADD CONSTRAINT session_location_occupancy_cache_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_location_occupancy_cache
@@ -468,11 +468,11 @@ ALTER TABLE session_player_interest
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_player_interest
-  ADD CONSTRAINT IF NOT EXISTS session_player_interest_owner_email_nonempty
+  ADD CONSTRAINT session_player_interest_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_player_interest
-  ADD CONSTRAINT IF NOT EXISTS session_player_interest_no_public_owner
+  ADD CONSTRAINT session_player_interest_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_player_interest
@@ -495,11 +495,11 @@ ALTER TABLE npc_hygiene_state
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE npc_hygiene_state
-  ADD CONSTRAINT IF NOT EXISTS npc_hygiene_state_owner_email_nonempty
+  ADD CONSTRAINT npc_hygiene_state_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE npc_hygiene_state
-  ADD CONSTRAINT IF NOT EXISTS npc_hygiene_state_no_public_owner
+  ADD CONSTRAINT npc_hygiene_state_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE npc_hygiene_state
@@ -522,11 +522,11 @@ ALTER TABLE npc_schedules
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE npc_schedules
-  ADD CONSTRAINT IF NOT EXISTS npc_schedules_owner_email_nonempty
+  ADD CONSTRAINT npc_schedules_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE npc_schedules
-  ADD CONSTRAINT IF NOT EXISTS npc_schedules_no_public_owner
+  ADD CONSTRAINT npc_schedules_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE npc_schedules
@@ -549,11 +549,11 @@ ALTER TABLE item_instances
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE item_instances
-  ADD CONSTRAINT IF NOT EXISTS item_instances_owner_email_nonempty
+  ADD CONSTRAINT item_instances_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE item_instances
-  ADD CONSTRAINT IF NOT EXISTS item_instances_no_public_owner
+  ADD CONSTRAINT item_instances_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE item_instances
@@ -576,11 +576,11 @@ ALTER TABLE session_tag_bindings
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_tag_bindings
-  ADD CONSTRAINT IF NOT EXISTS session_tag_bindings_owner_email_nonempty
+  ADD CONSTRAINT session_tag_bindings_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_tag_bindings
-  ADD CONSTRAINT IF NOT EXISTS session_tag_bindings_no_public_owner
+  ADD CONSTRAINT session_tag_bindings_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_tag_bindings
@@ -603,11 +603,11 @@ ALTER TABLE session_personas
   ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL;
 
 ALTER TABLE session_personas
-  ADD CONSTRAINT IF NOT EXISTS session_personas_owner_email_nonempty
+  ADD CONSTRAINT session_personas_owner_email_nonempty
   CHECK (length(owner_email) > 0);
 
 ALTER TABLE session_personas
-  ADD CONSTRAINT IF NOT EXISTS session_personas_no_public_owner
+  ADD CONSTRAINT session_personas_no_public_owner
   CHECK (owner_email <> 'public');
 
 ALTER TABLE session_personas

@@ -1,4 +1,9 @@
-import type { BodyPartHygieneState, NpcHygieneRow, NpcHygieneState } from '@minimal-rpg/schemas';
+import type {
+  BodyPartHygieneState,
+  HygieneLevel,
+  NpcHygieneRow,
+  NpcHygieneState,
+} from '@minimal-rpg/schemas';
 import type { HygieneRepository } from './types.js';
 
 interface HygieneDb {
@@ -34,7 +39,7 @@ interface HygieneDb {
 function toPartState(row: NpcHygieneRow): BodyPartHygieneState {
   return {
     points: row.points,
-    level: row.level as 0 | 1 | 2 | 3 | 4,
+    level: row.level as HygieneLevel,
     lastUpdatedAt: row.lastUpdatedAt ? row.lastUpdatedAt.toISOString() : undefined,
   };
 }

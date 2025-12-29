@@ -1,0 +1,16 @@
+export const HEAD_REGIONS = [
+  'head',
+  'face',
+  'ears',
+  'forehead',
+  'leftEye',
+  'rightEye',
+  'nose',
+  'leftCheek',
+  'rightCheek',
+  'chin',
+  'mouth',
+  'hair',
+  'leftEar',
+  'rightEar',
+] as const;

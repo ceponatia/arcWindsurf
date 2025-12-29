@@ -338,7 +338,7 @@ function mapProfileToForm(profile: CharacterProfile): FormState {
     next.appearance = physique;
   } else if (physique && typeof physique === 'object') {
     // Structured physique + body map visual → appearance entries
-    next.appearances = physiqueToEntries(physique as Physique, profile.body);
+    next.appearances = physiqueToEntries(physique, profile.body);
   } else {
     // No physique, but may have body map visual data
     next.appearances = physiqueToEntries(undefined, profile.body);

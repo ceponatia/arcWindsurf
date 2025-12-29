@@ -9,7 +9,12 @@
  * schemas with item schemas. This module bridges the two at runtime.
  */
 
-import { type BodyRegion, resolveBodyRegion } from '@minimal-rpg/schemas';
+import {
+  BODY_REGIONS,
+  type BodyRegion,
+  getGroupForRegion,
+  resolveBodyRegion,
+} from '@minimal-rpg/schemas';
 import { type ClothingSlot } from '@minimal-rpg/schemas';
 
 // Re-export ClothingSlot as EquipmentSlot for clarity in this context
@@ -22,80 +27,129 @@ export type EquipmentSlot = ClothingSlot;
  * Example: 'chest' is covered by 'torso' slot items (shirts, jackets, etc.)
  * Example: 'face' may be covered by 'head' slot items (helmets, masks)
  */
-export const BODY_REGION_TO_EQUIPMENT_SLOTS: Record<BodyRegion, EquipmentSlot[]> = {
-  head: ['head'],
-  face: ['head'], // masks, helmets with visors
-  ears: ['head', 'accessory'], // earrings, earmuffs
-  mouth: ['head'], // masks, gags
-  hair: ['head'], // hats, headwear
-  neck: ['torso', 'accessory'], // collars, necklaces, scarves
-  throat: ['torso', 'accessory'], // chokers, collars
-  shoulders: ['torso'], // covered by shirts, jackets
-  chest: ['torso'],
-  breasts: ['torso'], // covered by shirts, bras, etc.
-  nipples: ['torso'], // covered by shirts, bras, etc.
-  back: ['torso'],
-  lowerBack: ['torso'], // covered by shirts, jackets
-  torso: ['torso'],
-  abdomen: ['torso'], // covered by shirts
-  navel: ['torso'], // covered by shirts
-  armpits: ['torso'], // covered by shirts
-  arms: ['torso'], // sleeves of shirts/jackets
-  hands: ['hands'],
-  waist: ['torso', 'accessory'], // belts, waistbands
-  hips: ['legs'], // pants, skirts start at hips
-  groin: ['legs'], // covered by pants, underwear
-  buttocks: ['legs'], // covered by pants, underwear
-  anus: ['legs'], // covered by pants, underwear
-  penis: ['legs'], // covered by pants, underwear
-  vagina: ['legs'], // covered by pants, underwear
-  legs: ['legs'],
-  thighs: ['legs'], // covered by pants, skirts
-  knees: ['legs'], // covered by pants
-  calves: ['legs'], // covered by pants
-  ankles: ['legs', 'feet'], // covered by pants or socks
-  feet: ['feet'],
-  toes: ['feet'], // covered by shoes, socks
-};
+function uniq<T>(items: readonly T[]): T[] {
+  const out: T[] = [];
+  for (const item of items) {
+    if (!out.includes(item)) out.push(item);
+  }
+  return out;
+}
+
+function isHandRegion(region: BodyRegion): boolean {
+  return (
+    region === 'hands' ||
+    region.includes('Hand') ||
+    region.includes('Palm') ||
+    region.includes('Fingers')
+  );
+}
+
+function isFootRegion(region: BodyRegion): boolean {
+  return (
+    region === 'feet' ||
+    region === 'toes' ||
+    region.includes('Foot') ||
+    region.endsWith('Toe') ||
+    region.endsWith('Ankle') ||
+    region.endsWith('Heel') ||
+    region.endsWith('Sole') ||
+    region.endsWith('Arch')
+  );
+}
+
+function isEarRegion(region: BodyRegion): boolean {
+  return region === 'ears' || region.endsWith('Ear');
+}
+
+function isHipOrPelvis(region: BodyRegion): boolean {
+  return region.endsWith('Hip') || region === 'pelvis';
+}
+
+/**
+ * Get the equipment slots that cover a specific body region.
+ */
+export function getEquipmentSlotsForRegion(region: BodyRegion): EquipmentSlot[] {
+  const slots: EquipmentSlot[] = [];
+
+  // Hands and feet have dedicated slots.
+  if (isHandRegion(region)) {
+    slots.push('hands');
+  }
+
+  if (isFootRegion(region)) {
+    slots.push('feet');
+
+    // Ankles are often covered by both pants/socks and shoes.
+    if (region.endsWith('Ankle')) {
+      slots.push('legs');
+    }
+  }
+
+  const group = getGroupForRegion(region);
+
+  if (group === 'head') {
+    slots.push('head');
+    if (isEarRegion(region)) {
+      slots.push('accessory');
+    }
+  }
+
+  if (group === 'neck' || group === 'upperBody' || group === 'torso' || group === 'arms') {
+    // Hands remain a dedicated slot; sleeves cover wrists/arms.
+    if (!isHandRegion(region)) {
+      slots.push('torso');
+    }
+
+    // Common accessory coverage.
+    if (region === 'neck' || region === 'throat' || region === 'waist') {
+      slots.push('accessory');
+    }
+  }
+
+  if (group === 'groin' || group === 'legs' || isHipOrPelvis(region)) {
+    slots.push('legs');
+  }
+
+  // Any region could be covered by an accessory (rings, earrings, belts, collars).
+  if (isEarRegion(region) || region === 'neck' || region === 'throat' || region === 'waist') {
+    slots.push('accessory');
+  }
+
+  // Fallback: if nothing matched, treat as torso coverage.
+  if (slots.length === 0) {
+    slots.push('torso');
+  }
+
+  return uniq(slots);
+}
+
+/**
+ * Maps body regions to the equipment slots that cover them.
+ *
+ * Derived from BODY_REGIONS and getEquipmentSlotsForRegion() to stay in sync
+ * with the canonical region taxonomy.
+ */
+export const BODY_REGION_TO_EQUIPMENT_SLOTS: Record<BodyRegion, EquipmentSlot[]> =
+  Object.fromEntries(BODY_REGIONS.map((r) => [r, getEquipmentSlotsForRegion(r)])) as Record<
+    BodyRegion,
+    EquipmentSlot[]
+  >;
 
 /**
  * Maps equipment slots back to the primary body regions they cover.
  * Useful for describing what a piece of equipment covers.
  */
+/**
+ * Maps equipment slots back to the body regions they cover.
+ * Derived from BODY_REGIONS and getEquipmentSlotsForRegion() to stay in sync.
+ */
 export const EQUIPMENT_SLOT_TO_BODY_REGIONS: Record<EquipmentSlot, BodyRegion[]> = {
-  head: ['head', 'face', 'ears', 'mouth', 'hair'],
-  torso: [
-    'neck',
-    'throat',
-    'shoulders',
-    'chest',
-    'breasts',
-    'nipples',
-    'back',
-    'lowerBack',
-    'torso',
-    'abdomen',
-    'navel',
-    'armpits',
-    'arms',
-    'waist',
-  ],
-  legs: [
-    'hips',
-    'groin',
-    'buttocks',
-    'anus',
-    'penis',
-    'vagina',
-    'legs',
-    'thighs',
-    'knees',
-    'calves',
-    'ankles',
-  ],
-  feet: ['feet', 'toes', 'ankles'],
-  hands: ['hands'],
-  accessory: ['neck', 'throat', 'waist', 'ears'], // necklaces, belts, rings, earrings, etc.
+  head: BODY_REGIONS.filter((r) => getEquipmentSlotsForRegion(r).includes('head')),
+  torso: BODY_REGIONS.filter((r) => getEquipmentSlotsForRegion(r).includes('torso')),
+  legs: BODY_REGIONS.filter((r) => getEquipmentSlotsForRegion(r).includes('legs')),
+  feet: BODY_REGIONS.filter((r) => getEquipmentSlotsForRegion(r).includes('feet')),
+  hands: BODY_REGIONS.filter((r) => getEquipmentSlotsForRegion(r).includes('hands')),
+  accessory: BODY_REGIONS.filter((r) => getEquipmentSlotsForRegion(r).includes('accessory')),
 };
 
 /**
@@ -108,20 +162,6 @@ export const EQUIPMENT_SLOT_TO_BODY_REGIONS: Record<EquipmentSlot, BodyRegion[]>
  * getEquipmentSlotsForRegion('feet') // => ['feet']
  * getEquipmentSlotsForRegion('chest') // => ['torso']
  * getEquipmentSlotsForRegion('neck') // => ['torso', 'accessory']
- */
-export function getEquipmentSlotsForRegion(region: BodyRegion): EquipmentSlot[] {
-  return BODY_REGION_TO_EQUIPMENT_SLOTS[region];
-}
-
-/**
- * Get all body regions covered by an equipment slot.
- *
- * @param slot - The equipment slot
- * @returns Array of body regions covered by items in this slot
- *
- * @example
- * getBodyRegionsForSlot('feet') // => ['feet']
- * getBodyRegionsForSlot('torso') // => ['neck', 'shoulders', 'torso', 'chest', 'back', 'arms', 'waist']
  */
 export function getBodyRegionsForSlot(slot: EquipmentSlot): BodyRegion[] {
   return EQUIPMENT_SLOT_TO_BODY_REGIONS[slot];

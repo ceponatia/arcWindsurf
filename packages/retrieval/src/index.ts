@@ -1,6 +1,9 @@
 // Types
 export * from './types.js';
 
+// Data loaders
+export { loadSensoryModifiers, type LoadedSensoryModifiers } from './loaders/sensory-modifiers.js';
+
 // Scoring utilities
 export {
   DEFAULT_SCORING_WEIGHTS,

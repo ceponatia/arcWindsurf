@@ -2,12 +2,14 @@
  * Hygiene state schemas for tracking NPC cleanliness over time.
  *
  * The hygiene system models gradual decay of cleanliness through accumulated
- * "decay points" that translate to hygiene levels 0-4:
+ * "decay points" that translate to hygiene levels 0-6:
  * - Level 0: Clean (fresh, no noticeable scent)
  * - Level 1: Mild (faint hints, only noticeable up close)
  * - Level 2: Moderate (noticeable in normal conversation distance)
  * - Level 3: Strong (obvious, potentially distracting)
  * - Level 4: Extreme (overpowering, affects social interactions)
+ * - Level 5: Filthy (unmistakable, unpleasant at a distance)
+ * - Level 6: Putrid (overwhelming, dominating the scene)
  *
  * Decay points accumulate based on:
  * - Base decay rate per turn (varies by body part)
@@ -20,24 +22,63 @@ import { z } from 'zod';
 import { BODY_REGIONS } from '../character/regions.js';
 
 /**
- * Hygiene levels from clean (0) to extreme (4).
+ * Hygiene levels from clean (0) to putrid (6).
  */
-export const HYGIENE_LEVELS = [0, 1, 2, 3, 4] as const;
+export const HYGIENE_LEVELS = [0, 1, 2, 3, 4, 5, 6] as const;
 export type HygieneLevel = (typeof HYGIENE_LEVELS)[number];
+
+/**
+ * Human-readable hygiene level names.
+ */
+export const HYGIENE_LEVEL_NAMES: Record<HygieneLevel, string> = {
+  0: 'pristine',
+  1: 'fresh',
+  2: 'normal',
+  3: 'stale',
+  4: 'dirty',
+  5: 'filthy',
+  6: 'putrid',
+};
+
+/**
+ * Non-linear decay multipliers by current hygiene level.
+ *
+ * Intuition: freshness fades quickly, but reaching/remaining truly filthy is slower;
+ * the maximum level stops accumulating further decay.
+ */
+export const HYGIENE_DECAY_MULTIPLIERS: Record<HygieneLevel, number> = {
+  0: 1.0,
+  1: 0.67,
+  2: 0.5,
+  3: 0.4,
+  4: 0.33,
+  5: 0.25,
+  6: 0.0,
+};
 
 /**
  * Activity types that affect decay rate.
  */
-export const ACTIVITY_TYPES = ['idle', 'walking', 'running', 'labor', 'combat'] as const;
+export const ACTIVITY_TYPES = [
+  'resting',
+  'idle',
+  'walking',
+  'running',
+  'working',
+  'labor',
+  'combat',
+] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 /**
  * Activity multipliers for decay calculation.
  */
 export const ACTIVITY_MULTIPLIERS: Record<ActivityType, number> = {
+  resting: 0.25,
   idle: 0.5,
   walking: 1.0,
   running: 2.0,
+  working: 1.5,
   labor: 2.5,
   combat: 3.0,
 };
@@ -95,8 +136,8 @@ export type SensoryType = (typeof SENSORY_TYPES)[number];
 export const BodyPartHygieneStateSchema = z.object({
   /** Accumulated decay points */
   points: z.number().min(0).default(0),
-  /** Computed hygiene level (0-4) */
-  level: z.number().min(0).max(4).default(0),
+  /** Computed hygiene level (0-6) */
+  level: z.number().min(0).max(6).default(0),
   /** ISO timestamp of last update */
   lastUpdatedAt: z.string().datetime().optional(),
 });
@@ -125,8 +166,15 @@ export type NpcHygieneState = z.infer<typeof NpcHygieneStateSchema>;
 export const BodyPartHygieneConfigSchema = z.object({
   /** Body part this config applies to */
   bodyPart: z.string(),
-  /** Point thresholds for levels 1, 2, 3, 4 */
-  thresholds: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  /** Point thresholds (legacy supported) for levels 1-6 */
+  thresholds: z
+    .union([
+      z.tuple([z.number(), z.number(), z.number(), z.number()]),
+      z.tuple([z.number(), z.number(), z.number(), z.number(), z.number()]),
+      z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
+      z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
+    ])
+    .transform((thresholds): HygieneThresholds => normalizeHygieneThresholds(thresholds)),
   /** Base decay points per turn */
   baseDecayPerTurn: z.number().min(0),
 });
@@ -178,6 +226,10 @@ export const SensoryModifierLevelsSchema = z.object({
   '3': z.string(),
   /** Extreme modifier */
   '4': z.string(),
+  /** Filthy modifier (optional for backward compatibility) */
+  '5': z.string().optional().default(''),
+  /** Putrid modifier (optional for backward compatibility) */
+  '6': z.string().optional().default(''),
 });
 
 export type SensoryModifierLevels = z.infer<typeof SensoryModifierLevelsSchema>;
@@ -221,17 +273,97 @@ export type SensoryModifiersData = z.infer<typeof SensoryModifiersDataSchema>;
 // ============================================================================
 
 /**
+ * Threshold tuple for the 7-level hygiene system.
+ *
+ * This is the minimum points for each hygiene level 0-6.
+ * - thresholds[0] must be 0
+ * - thresholds[1]..thresholds[6] are the boundaries for levels 1..6
+ */
+export type HygieneThresholds = readonly [number, number, number, number, number, number, number];
+
+/**
+ * Default thresholds for the 7-level hygiene system.
+ *
+ * These values are used when legacy configurations provide fewer than 6 thresholds.
+ */
+export const DEFAULT_HYGIENE_THRESHOLDS: HygieneThresholds = [0, 10, 25, 50, 100, 200, 400];
+
+/**
+ * Normalize legacy threshold arrays (length 4 or 5) into the 7-level tuple (length 6).
+ *
+ * - 4 thresholds (levels 1-4) are extended using DEFAULT_HYGIENE_THRESHOLDS for 5-6
+ * - 5 thresholds (levels 1-5) are extended using DEFAULT_HYGIENE_THRESHOLDS for level 6
+ */
+export type HygieneThresholdsLegacy =
+  | readonly [number, number, number, number]
+  | readonly [number, number, number, number, number]
+  | readonly [number, number, number, number, number, number]
+  | HygieneThresholds;
+
+export function normalizeHygieneThresholds(
+  thresholds: HygieneThresholdsLegacy | readonly number[]
+): HygieneThresholds {
+  if (thresholds.length === 7) {
+    return thresholds as HygieneThresholds;
+  }
+
+  if (thresholds.length === 6) {
+    const t = thresholds as readonly [number, number, number, number, number, number];
+    return [0, t[0], t[1], t[2], t[3], t[4], t[5]];
+  }
+
+  if (thresholds.length === 5) {
+    const t = thresholds as readonly [number, number, number, number, number];
+    return [0, t[0], t[1], t[2], t[3], t[4], DEFAULT_HYGIENE_THRESHOLDS[6]];
+  }
+
+  if (thresholds.length === 4) {
+    const t = thresholds as readonly [number, number, number, number];
+    return [
+      0,
+      t[0],
+      t[1],
+      t[2],
+      t[3],
+      DEFAULT_HYGIENE_THRESHOLDS[5],
+      DEFAULT_HYGIENE_THRESHOLDS[6],
+    ];
+  }
+
+  return DEFAULT_HYGIENE_THRESHOLDS;
+}
+
+/**
  * Calculate hygiene level from decay points using thresholds.
  */
-export function calculateHygieneLevel(
-  points: number,
-  thresholds: [number, number, number, number]
-): HygieneLevel {
-  if (points >= thresholds[3]) return 4;
-  if (points >= thresholds[2]) return 3;
-  if (points >= thresholds[1]) return 2;
-  if (points >= thresholds[0]) return 1;
+export function calculateHygieneLevel(points: number, thresholds: HygieneThresholds): HygieneLevel {
+  if (points >= thresholds[6]) return 6;
+  if (points >= thresholds[5]) return 5;
+  if (points >= thresholds[4]) return 4;
+  if (points >= thresholds[3]) return 3;
+  if (points >= thresholds[2]) return 2;
+  if (points >= thresholds[1]) return 1;
   return 0;
+}
+
+/**
+ * Clamp an arbitrary number into a valid HygieneLevel (0-6).
+ */
+export function clampHygieneLevel(level: number): HygieneLevel {
+  return Math.min(6, Math.max(0, Math.floor(level))) as HygieneLevel;
+}
+
+/**
+ * Get the minimum points that correspond to a given hygiene level.
+ *
+ * Level 0 maps to 0 points.
+ * Levels 1-6 map to the threshold boundary for that level.
+ */
+export function getMinPointsForLevel(
+  level: HygieneLevel,
+  thresholds: HygieneThresholds = DEFAULT_HYGIENE_THRESHOLDS
+): number {
+  return thresholds[level];
 }
 
 /**
@@ -243,7 +375,8 @@ export function calculateDecayPoints(
   activity: ActivityType,
   footwear?: FootwearType,
   environment?: EnvironmentType,
-  isFootPart = false
+  isFootPart = false,
+  currentLevel?: HygieneLevel
 ): number {
   let multiplier = ACTIVITY_MULTIPLIERS[activity];
 
@@ -255,6 +388,11 @@ export function calculateDecayPoints(
   // Apply environment multiplier
   if (environment) {
     multiplier *= ENVIRONMENT_MULTIPLIERS[environment];
+  }
+
+  // Optional level-aware decay curve (kept optional for backward compatibility)
+  if (currentLevel !== undefined) {
+    multiplier *= HYGIENE_DECAY_MULTIPLIERS[currentLevel];
   }
 
   return baseDecay * turnsElapsed * multiplier;
@@ -284,23 +422,76 @@ export function createInitialHygieneState(npcId: string): NpcHygieneState {
  * Check if a body part is foot-related (for footwear modifier).
  */
 export function isFootRelatedPart(bodyPart: string): boolean {
-  return bodyPart === 'feet';
+  return (
+    bodyPart === 'feet' ||
+    bodyPart === 'toes' ||
+    bodyPart === 'ankles' ||
+    bodyPart.endsWith('Foot') ||
+    bodyPart.endsWith('Ankle') ||
+    bodyPart.endsWith('Heel') ||
+    bodyPart.endsWith('Sole') ||
+    bodyPart.endsWith('Arch') ||
+    bodyPart.endsWith('Toe')
+  );
 }
 
 /**
  * Reset hygiene for specific body parts (cleaning action).
  */
-export function resetBodyPartHygiene(state: NpcHygieneState, bodyParts: string[]): NpcHygieneState {
+export function resetBodyPartHygiene(
+  state: NpcHygieneState,
+  bodyParts: string[],
+  targetLevel: HygieneLevel = 0,
+  decayRates?: Record<string, BodyPartHygieneConfig>,
+  at: Date = new Date()
+): NpcHygieneState {
   const newBodyParts = { ...state.bodyParts };
+  const now = at.toISOString();
 
   for (const part of bodyParts) {
     if (newBodyParts[part]) {
+      const thresholds = decayRates?.[part]?.thresholds ?? DEFAULT_HYGIENE_THRESHOLDS;
       newBodyParts[part] = {
-        points: 0,
-        level: 0,
-        lastUpdatedAt: new Date().toISOString(),
+        points: getMinPointsForLevel(targetLevel, thresholds),
+        level: targetLevel,
+        lastUpdatedAt: now,
       };
     }
+  }
+
+  return {
+    ...state,
+    bodyParts: newBodyParts,
+  };
+}
+
+/**
+ * Increase hygiene (dirtying) for specific body parts by adding decay points.
+ *
+ * This is useful for instant "dirtying events" (mud, sweat, etc.) that should
+ * add an explicit amount of decay rather than applying per-turn multipliers.
+ */
+export function increaseBodyPartHygiene(
+  state: NpcHygieneState,
+  decayRates: Record<string, BodyPartHygieneConfig>,
+  bodyParts: string[],
+  pointsToAdd: number,
+  at: Date = new Date()
+): NpcHygieneState {
+  const newBodyParts = { ...state.bodyParts };
+  const now = at.toISOString();
+
+  for (const part of bodyParts) {
+    const current = newBodyParts[part] ?? { points: 0, level: 0 };
+    const thresholds = decayRates[part]?.thresholds ?? DEFAULT_HYGIENE_THRESHOLDS;
+    const nextPoints = Math.max(0, current.points + Math.max(0, pointsToAdd));
+    const nextLevel = calculateHygieneLevel(nextPoints, thresholds);
+
+    newBodyParts[part] = {
+      points: nextPoints,
+      level: nextLevel,
+      lastUpdatedAt: now,
+    };
   }
 
   return {
@@ -361,6 +552,7 @@ export function applyHygieneDecay(
     }
 
     const currentPart = newBodyParts[bodyPart] ?? { points: 0, level: 0 };
+    const currentLevel = clampHygieneLevel(currentPart.level);
 
     const decayPoints = calculateDecayPoints(
       config.baseDecayPerTurn,
@@ -368,7 +560,8 @@ export function applyHygieneDecay(
       input.activity,
       input.footwear,
       input.environment,
-      isFootRelatedPart(bodyPart)
+      isFootRelatedPart(bodyPart),
+      currentLevel
     );
 
     const newPoints = currentPart.points + decayPoints;

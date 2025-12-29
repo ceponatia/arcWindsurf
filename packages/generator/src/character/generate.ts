@@ -297,7 +297,15 @@ function generateBodyMap(
     // Visual data is handled by the physique/appearance section, not body sensory
 
     // Flavor (only for specific intimate/mouth regions, with lower probability)
-    const flavorRegions = ['mouth', 'neck', 'breasts', 'groin', 'vagina', 'penis'];
+    const flavorRegions = [
+      'mouth',
+      'neck',
+      'leftBreast',
+      'rightBreast',
+      'groin',
+      'vagina',
+      'penis',
+    ];
     if (flavorRegions.includes(region) && randomBool(0.3)) {
       const flavorPool = flavorPrimaries ?? SKIN_FLAVORS_WEIGHTED;
       regionData.flavor = {
