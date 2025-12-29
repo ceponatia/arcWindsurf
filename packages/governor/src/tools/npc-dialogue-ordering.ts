@@ -51,6 +51,7 @@ export function orderNpcDialogueBatch(
   const enriched: OrderedNpcDialogueBatchItem[] = items.map((item) => {
     const npcId = typeof item.result['npc_id'] === 'string' ? item.result['npc_id'] : 'unknown';
     const npcPriorityRaw = item.result['npc_priority'];
+    // Note: npcPriority is currently captured for debugging/future use and does not affect sorting.
     const npcPriority =
       typeof npcPriorityRaw === 'number' && Number.isFinite(npcPriorityRaw) ? npcPriorityRaw : 0;
     const tier = getTier(item.result);
