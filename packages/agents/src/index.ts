@@ -21,3 +21,15 @@ export {
   type SensoryContext,
   type SensoryIntentType,
 } from './sensory/index.js';
+
+// NPC agent types
+export type {
+  NpcAgentConfig,
+  NpcAgentInput,
+  NpcAgentOutput,
+  NpcMessageRepository,
+  NpcAgentServices,
+  HygieneServiceLike,
+  MemoryServiceLike,
+  SensoryAgentLike,
+} from './npc/types.js';

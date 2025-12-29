@@ -59,6 +59,9 @@ export interface AgentOutput {
   /** Player-facing narrative text */
   narrative: string;
 
+  /** Optional priority for deterministic merge ordering (used by NPC agents) */
+  npcPriority?: number;
+
   /** Proposed state changes as JSON Patch operations */
   statePatches?: Operation[];
 

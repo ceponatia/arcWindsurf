@@ -1,12 +1,19 @@
-# Agents - Agents Package
+# @minimal-rpg/agents
+
+## Purpose
+
+Domain-specific workers that execute game actions. Each agent handles a specific behavior domain (navigation, dialogue, rules, parsing) and returns narrative text plus state patches.
 
 ## Scope
 
-You must keep this package limited to:
-
 - Agent interfaces, contracts, and base classes
-- Agent implementations for navigation, dialogue, rules, parsing, and other domain behaviors
-- Agent registry/lookup and intent-based dispatch utilities
-- Agent execution helpers, diagnostics, and shared agent-specific utilities
+- Agent implementations: `MapAgent`, `NpcAgent`, `RulesAgent`, `ParserAgent`
+- Agent registry and intent-based dispatch
+- Agent execution helpers and diagnostics
 
-Any other code **MUST** be placed in the appropriate package and not in the Agents package.
+## Package Connections
+
+- **schemas**: Uses shared types for state slices, intents, and agent I/O
+- **state-manager**: Agents produce JSON Patch operations; does not apply them directly
+- **governor**: Receives agent outputs; governor orchestrates execution and applies patches
+- **retrieval**: Agents receive knowledge context as input (passed through by governor)

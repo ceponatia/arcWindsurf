@@ -1,12 +1,19 @@
-# Agents - UI Package
+# @minimal-rpg/ui
+
+## Purpose
+
+Shared React component library for Minimal RPG frontends. Provides reusable UI primitives styled with Tailwind CSS.
 
 ## Scope
 
-You must keep this package limited to:
+- Shared UI components, layouts, and primitives
+- Styling tokens, themes, and Tailwind helpers
+- UI-specific hooks and composition helpers
+- Build configuration for bundling components
 
-- Shared UI components, layouts, and primitives for Minimal RPG frontends
-- Styling tokens, themes, and Tailwind-compatible helpers used by components
-- UI-specific hooks, utilities, and composition helpers
-- Build/configuration assets required to bundle and export UI components
+## Package Connections
 
-Any other code **MUST** be placed in the appropriate package and not in the UI package.
+- **schemas**: Uses types for component props (e.g., message shapes)
+- **web**: Web frontend imports and composes UI components
+
+This package is presentation-only. It has no dependencies on game logic packages.

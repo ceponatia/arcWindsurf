@@ -20,6 +20,7 @@ import {
   type LlmGenerateOptions as AgentLlmGenerateOptions,
   type LlmResponse as AgentLlmResponse,
   type AgentStateSlices,
+  type NpcMessageRepository,
 } from '@minimal-rpg/agents';
 import {
   HygieneService,
@@ -28,7 +29,7 @@ import {
 } from '@minimal-rpg/characters';
 import { generateWithOpenRouter, chatWithOpenRouterTools } from '../llm/openrouter.js';
 import { getConfig } from '../util/config.js';
-import { getNpcMessages, appendToolCallHistoryBatch } from '../db/sessionsClient.js';
+import { getNpcOwnHistory, appendToolCallHistoryBatch } from '../db/sessionsClient.js';
 import { createSessionToolHandler, getSessionTools } from '../llm/tools/index.js';
 import { db } from '../db/prismaClient.js';
 
@@ -57,6 +58,22 @@ function getHygieneService(): HygieneService {
 }
 
 let sharedAgentLlmProvider: AgentLlmProvider | undefined;
+
+const npcMessageRepository: NpcMessageRepository = {
+  async fetchOwnHistory({ ownerEmail, sessionId, npcId, limit }) {
+    const rows = await getNpcOwnHistory(
+      ownerEmail,
+      sessionId,
+      npcId,
+      limit !== undefined ? { limit } : {}
+    );
+    return rows.map((row) => ({
+      speaker: row.speaker === 'npc' ? 'character' : row.speaker,
+      content: row.content,
+      timestamp: new Date(row.createdAt),
+    }));
+  },
+};
 
 function getAgentLlmProvider(): AgentLlmProvider | undefined {
   if (sharedAgentLlmProvider) {
@@ -131,7 +148,13 @@ function ensureAgentsRegistered(): void {
   const llmProvider = getAgentLlmProvider();
 
   agentRegistry.register(new MapAgent());
-  agentRegistry.register(new NpcAgent(llmProvider ? { llmProvider } : {}));
+  agentRegistry.register(
+    new NpcAgent(
+      llmProvider
+        ? { llmProvider, services: { messageRepository: npcMessageRepository }, historyLimit: 50 }
+        : { services: { messageRepository: npcMessageRepository }, historyLimit: 50 }
+    )
+  );
   agentRegistry.register(new RulesAgent());
   agentRegistry.register(new SensoryAgent(llmProvider ? { llmProvider } : {}));
 }
@@ -198,6 +221,7 @@ function createToolTurnHandlerOrThrow(
     sensoryAgent,
     npcAgent,
     hygieneService: getHygieneService(),
+    ownerEmail,
     sessionId,
     stateSlices,
     fallbackHandler,
@@ -272,7 +296,7 @@ export function createGovernorForRequest(options: GovernorFactoryOptions): Gover
     stateManager,
     toolTurnHandler: toolHandler,
     npcTranscriptLoader: async ({ sessionId, npcId, limit }) => {
-      const rows = await getNpcMessages(options.ownerEmail, sessionId, npcId, {
+      const rows = await getNpcOwnHistory(options.ownerEmail, sessionId, npcId, {
         limit: limit ?? 50,
       });
       return rows.map((row) => ({

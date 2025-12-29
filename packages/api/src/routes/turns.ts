@@ -9,7 +9,7 @@ import { getSession, getRecentToolCalls, getToolCallStats } from '../db/sessions
 import { notFound, serverError } from '../util/responses.js';
 import { loadStateForTurn } from '../sessions/state-loader.js';
 import { createGovernorForRequest } from '../governor/composition.js';
-import type { ConversationTurn, ToolHistoryContext } from '@minimal-rpg/governor';
+import type { ToolHistoryContext } from '@minimal-rpg/governor';
 import type { AgentStateSlices } from '@minimal-rpg/agents';
 import { validateTurnRequest } from './turns/turn-request.js';
 import { loadSessionSnapshot } from './turns/session-snapshot.js';
@@ -187,13 +187,6 @@ export function registerTurnRoutes(app: Hono): void {
       playerInput: input,
       baseline: baselineWithProximity,
       overrides: loadedState.overrides,
-      conversationHistory: snapshot.messages.map(
-        (m): ConversationTurn => ({
-          speaker: m.role === 'user' ? 'player' : 'character',
-          content: m.content,
-          timestamp: new Date(m.createdAt),
-        })
-      ),
       sessionTags: snapshot.sessionTags,
       ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
       ...(snapshot.persona ? { persona: snapshot.persona } : {}),

@@ -72,6 +72,29 @@ function readJsonRecord(value: unknown): Record<string, unknown> | null {
   return null;
 }
 
+function readStrArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v)))
+      .filter((v) => v.length > 0);
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v)))
+          .filter((v) => v.length > 0);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  return [];
+}
+
 export async function createSession(
   ownerEmail: OwnerEmail,
   id: UUID,
@@ -257,7 +280,8 @@ export async function appendNpcMessage(
   sessionId: UUID,
   npcId: string,
   speaker: 'player' | 'npc' | 'narrator',
-  content: string
+  content: string,
+  options: { witnessedBy?: string[] } = {}
 ): Promise<void> {
   const lastRes: QueryResult<DbRow> = await pool.query(
     'SELECT idx FROM npc_messages WHERE session_id = $1 AND owner_email = $2 AND npc_id = $3 ORDER BY idx DESC LIMIT 1',
@@ -266,9 +290,11 @@ export async function appendNpcMessage(
   const last = lastRes.rows[0] as Record<string, unknown> | undefined;
   const nextIdx = (Number(last?.['idx'] ?? 0) || 0) + 1;
 
+  const witnessedBy = options.witnessedBy ?? [];
+
   await pool.query(
-    'INSERT INTO npc_messages (id, owner_email, session_id, npc_id, idx, speaker, content) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-    [genUUID(), ownerEmail, sessionId, npcId, nextIdx, speaker, content]
+    'INSERT INTO npc_messages (id, owner_email, session_id, npc_id, idx, speaker, content, witnessed_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [genUUID(), ownerEmail, sessionId, npcId, nextIdx, speaker, content, witnessedBy]
   );
 }
 
@@ -277,6 +303,7 @@ export interface NpcMessage {
   speaker: 'player' | 'npc' | 'narrator';
   content: string;
   createdAt: string;
+  witnessedBy?: string[];
 }
 
 export async function getNpcMessages(
@@ -298,8 +325,40 @@ export async function getNpcMessages(
       speaker: (rec['speaker'] as 'player' | 'npc' | 'narrator') ?? 'npc',
       content: readStr(rec, 'content', ''),
       createdAt: toIsoDate(rec['created_at']),
+      witnessedBy: readStrArray(rec['witnessed_by']),
     };
   });
+}
+
+export async function getNpcOwnHistory(
+  ownerEmail: OwnerEmail,
+  sessionId: UUID,
+  npcId: string,
+  options: { limit?: number } = {}
+): Promise<NpcMessage[]> {
+  const limit = options.limit ?? 50;
+  const res: QueryResult<DbRow> = await pool.query(
+    `SELECT * FROM npc_messages
+     WHERE owner_email = $1
+       AND session_id = $2
+       AND (npc_id = $3 OR $3 = ANY(witnessed_by))
+     ORDER BY idx DESC
+     LIMIT $4`,
+    [ownerEmail, sessionId, npcId, limit]
+  );
+
+  const messages = res.rows.map((r) => {
+    const rec = r as Record<string, unknown>;
+    return {
+      idx: Number(rec['idx'] ?? 0),
+      speaker: (rec['speaker'] as 'player' | 'npc' | 'narrator') ?? 'npc',
+      content: readStr(rec, 'content', ''),
+      createdAt: toIsoDate(rec['created_at']),
+      witnessedBy: readStrArray(rec['witnessed_by']),
+    };
+  });
+
+  return messages.reverse();
 }
 
 export interface StateChangeLogEntry {
@@ -1628,8 +1687,8 @@ function playerInterestFromRow(row: Record<string, unknown>): PlayerInterestReco
   }
 
   return {
-    id: id,
-    sessionId: sessionId,
+    id,
+    sessionId,
     npcId,
     score: typeof score === 'number' ? score : typeof score === 'string' ? parseFloat(score) : 0,
     totalInteractions:

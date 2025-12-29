@@ -1,12 +1,22 @@
-# Agents - Web Package
+# @minimal-rpg/web
+
+## Purpose
+
+Vite-based React frontend for Minimal RPG. The player-facing web client that communicates with the API backend.
 
 ## Scope
 
-You must keep this package limited to:
+- Web frontend pages, routes, and feature components
+- Client-side state management (Zustand) and API integration
+- Frontend configuration, assets, and Vite build tooling
+- Composition of shared UI components
 
-- Web frontend application code (pages, routes, and feature components)
-- Client-side state and API integration for the web experience
-- Frontend configuration, assets, and build tooling for the Vite app
-- Composition of shared UI components and utilities for the web client
+## Package Connections
 
-Any other code **MUST** be placed in the appropriate package and not in the Web package.
+- **ui**: Imports shared React components
+- **schemas**: Uses types for API request/response shapes
+- **generator**: Calls generator for character creation
+- **utils**: Shared utility functions
+- **db**: Indirect dependency through API (web does not call db directly)
+
+This package is the frontend entry point. All backend communication goes through the API package.

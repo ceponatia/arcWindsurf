@@ -6,6 +6,7 @@ import {
   appendMessage as rawAppendMessage,
   appendNpcMessage as rawAppendNpcMessage,
   getNpcMessages as rawGetNpcMessages,
+  getNpcOwnHistory as rawGetNpcOwnHistory,
   appendStateChangeLog as rawAppendStateChangeLog,
   appendSessionHistoryEntry as rawAppendSessionHistoryEntry,
   getSessionHistory as rawGetSessionHistory,
@@ -93,6 +94,7 @@ export const deleteSession = rawDeleteSession as SessionsClientLike['deleteSessi
 export const appendMessage = rawAppendMessage as SessionsClientLike['appendMessage'];
 export const appendNpcMessage = rawAppendNpcMessage as SessionsClientLike['appendNpcMessage'];
 export const getNpcMessages = rawGetNpcMessages as SessionsClientLike['getNpcMessages'];
+export const getNpcOwnHistory = rawGetNpcOwnHistory as SessionsClientLike['getNpcOwnHistory'];
 export const appendStateChangeLog =
   rawAppendStateChangeLog as SessionsClientLike['appendStateChangeLog'];
 export const appendSessionHistoryEntry =

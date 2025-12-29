@@ -1,12 +1,20 @@
-# Agents - Schemas Package
+# @minimal-rpg/schemas
+
+## Purpose
+
+Shared Zod schemas and TypeScript types for the entire monorepo. The single source of truth for data shapes and validation.
 
 ## Scope
 
-You must keep this package limited to:
+- Zod schemas for all domain entities (characters, settings, sessions, state)
+- TypeScript type definitions inferred from schemas
+- Serialization and deserialization helpers
+- No runtime logic beyond validation
 
-- Data schemas
-- Validation schemas
-- Serialization and deserialization
-- Type definitions
+## Package Connections
 
-Any other code **MUST** be placed in the appropriate package and not in the Schemas package.
+This package has no internal workspace dependencies. It is imported by nearly every other package:
+
+- **agents**, **api**, **characters**, **generator**, **governor**, **retrieval**, **state-manager**, **ui**, **utils**, **web**
+
+All packages depend on schemas for type safety and runtime validation.

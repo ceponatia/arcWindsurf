@@ -1,12 +1,20 @@
-# Agents - State Manager Package
+# @minimal-rpg/state-manager
+
+## Purpose
+
+Pure, in-memory state management. Merges baseline templates with session overrides and applies JSON Patch (RFC 6902) mutations. Does not persist state; that is handled by db and api.
 
 ## Scope
 
-You must keep this package limited to:
+- State merge/diff/apply logic using JSON Patch
+- State slice registration and default state management
+- Validation hooks via Zod schema integration
+- Types and utilities for state computation
 
-- State merge/diff/apply logic using JSON Patch and related operations
-- State slice registration, configuration, and default state management
-- Validation hooks and schema integration for state operations
-- Types and utilities for state computation, patching, and diffing
+## Package Connections
 
-Any other code **MUST** be placed in the appropriate package and not in the State Manager package.
+- **schemas**: Uses Zod schemas for state validation
+- **governor**: Governor calls `applyPatches` to mutate state after tool execution
+- **agents**: Agents produce patches consumed by state-manager
+- **api**: API uses state-manager to compute effective state for sessions
+- **characters**: Character state flows through state-manager slices

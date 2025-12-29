@@ -1,12 +1,21 @@
-# Agents - Governor Package
+# @minimal-rpg/governor
+
+## Purpose
+
+Turn orchestration layer. Routes player input to LLM tool calls, aggregates outputs, and applies state patches. The central coordinator between agents and state.
 
 ## Scope
 
-You must keep this package limited to:
-
 - Turn orchestration and tool-based turn handling
-- Aggregating agent/tool outputs into player-facing responses and events
-- Coordinating state patch application with the state manager
-- Turn lifecycle logging, configuration, and error handling for orchestration
+- Aggregating tool outputs into player-facing responses
+- Coordinating state patch application
+- Turn lifecycle logging and error handling
 
-Any other code **MUST** be placed in the appropriate package and not in the Governor package.
+## Package Connections
+
+- **agents**: Invokes agent logic through tool execution
+- **state-manager**: Applies collected JSON Patches to game state
+- **schemas**: Uses turn input/output types and state slice schemas
+- **retrieval**: Retrieves knowledge context before tool execution
+- **characters**: Accesses character data for turn context
+- **utils**: Shared helpers and error handling

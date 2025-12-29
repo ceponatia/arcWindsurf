@@ -593,8 +593,7 @@ export class ToolBasedTurnHandler {
 
   /**
    * Build initial messages including system prompt and context.
-   * Reduces history window to 10 messages to maintain tool calling patterns.
-   * Injects tool usage reminder for conversations with established tool history.
+   * Uses scene context and player input; shared conversation history is no longer injected.
    */
   private buildInitialMessages(input: TurnInput): ChatMessageWithTools[] {
     const messages: ChatMessageWithTools[] = [];
@@ -612,44 +611,6 @@ export class ToolBasedTurnHandler {
         role: 'system',
         content: `[Context from earlier in conversation]\n${input.conversationSummary}`,
       });
-    }
-
-    // Add conversation history if available
-    // Reduced from 18 to 10 messages to prevent tool calling pattern degradation
-    const historyWindow = 10;
-    if (input.conversationHistory && input.conversationHistory.length > 0) {
-      const history = input.conversationHistory.slice(-historyWindow);
-
-      // If this is a long conversation with tool history, add a synthetic tool usage reminder
-      // This helps maintain the pattern of tool calling that the LLM doesn't see in raw history
-      if (
-        input.toolHistory?.stats?.totalCalls &&
-        input.toolHistory.stats.totalCalls > 5 &&
-        input.conversationHistory.length > historyWindow
-      ) {
-        const recentTools = input.toolHistory.stats.recentTools ?? [];
-        const toolHints = input.toolHistory.usageHints ?? [];
-        const toolsUsed =
-          recentTools.length > 0 ? recentTools.join(', ') : 'npc_dialogue, get_sensory_detail';
-
-        messages.push({
-          role: 'system',
-          content:
-            `[Tool Usage Pattern - IMPORTANT]\n` +
-            `This conversation has ${input.toolHistory.stats.totalCalls} tool calls across ${input.conversationHistory.length} turns.\n` +
-            `Most recent tools used: ${toolsUsed}\n` +
-            `${toolHints.length > 0 ? `Guidance: ${toolHints.join('; ')}\n` : ''}` +
-            `Continue using tools as established. Every player interaction requires at least one tool call.`,
-        });
-      }
-
-      for (const turn of history) {
-        if (turn.speaker === 'player') {
-          messages.push({ role: 'user', content: turn.content });
-        } else {
-          messages.push({ role: 'assistant', content: turn.content });
-        }
-      }
     }
 
     // Add current player input

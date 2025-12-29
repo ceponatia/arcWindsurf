@@ -1,12 +1,20 @@
-# Agents - Characters Package
+# @minimal-rpg/characters
+
+## Purpose
+
+Character domain logic and services. Manages character profiles, body maps, hygiene state, and personality data.
 
 ## Scope
 
-You must keep this package limited to:
+- Character domain models and state shapes
+- Services for loading, saving, and updating character data
+- Domain logic: hygiene calculations, body map handling, personality utilities
+- Character-focused helpers for state updates
 
-- Character domain models, types, and state shapes (profiles, body maps, hygiene, personality)
-- Character services and repositories for loading, saving, and updating character data
-- Domain logic for hygiene calculations, body map handling, and personality utilities
-- Character-focused helpers for integrating with agents, governor, or state updates
+## Package Connections
 
-Any other code **MUST** be placed in the appropriate package and not in the Characters package.
+- **schemas**: Uses character-related Zod schemas and types
+- **state-manager**: Integrates with state slices for character state
+- **agents**: Provides character context to agents
+- **retrieval**: Extracts knowledge nodes from character profiles
+- **utils**: Shared parsing and formatting helpers

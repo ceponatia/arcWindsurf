@@ -4,7 +4,6 @@
 import type { LoadedTurnState } from '../../sessions/state-loader.js';
 import type {
   TurnStateContext,
-  ConversationTurn,
   SessionTag,
   TurnTagContext,
   ToolHistoryContext,
@@ -36,7 +35,6 @@ export interface TurnContext {
   playerInput: string;
   baseline: TurnStateContext;
   overrides: Partial<TurnStateContext>;
-  conversationHistory: ConversationTurn[];
   sessionTags: SessionTag[];
   turnTagContext?: TurnTagContext;
   persona?: PersonaProfile;

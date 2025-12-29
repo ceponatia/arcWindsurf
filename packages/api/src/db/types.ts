@@ -19,6 +19,7 @@ export interface DbNpcMessage {
   speaker: 'player' | 'npc' | 'narrator';
   content: string;
   createdAt: string;
+  witnessedBy?: string[];
 }
 
 export interface StateChangeLogEntry {
@@ -440,9 +441,16 @@ export interface SessionsClientLike {
     sessionId: string,
     npcId: string,
     speaker: 'player' | 'npc' | 'narrator',
-    content: string
+    content: string,
+    options?: { witnessedBy?: string[] }
   ): Promise<void>;
   getNpcMessages(
+    ownerEmail: OwnerEmail,
+    sessionId: string,
+    npcId: string,
+    options?: { limit?: number }
+  ): Promise<DbNpcMessage[]>;
+  getNpcOwnHistory(
     ownerEmail: OwnerEmail,
     sessionId: string,
     npcId: string,

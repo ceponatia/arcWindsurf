@@ -1,12 +1,17 @@
-# Agents - Generator Package
+# @minimal-rpg/generator
+
+## Purpose
+
+Random content generation for game entities. Creates characters (and future entity types) using themed value pools with configurable biases.
 
 ## Scope
 
-You must keep this package limited to:
-
-- Random generation logic for game entities (characters and future domains)
+- Random generation logic for characters and future domains
 - Theme definitions, value pools, and weighting/bias configurations
 - Generation utilities, filters, and composition helpers
-- Generator-specific input/output types and shared generator abstractions
+- Generator-specific types and abstractions
 
-Any other code **MUST** be placed in the appropriate package and not in the Generator package.
+## Package Connections
+
+- **schemas**: Uses `CharacterProfile` and related types for generated output
+- **web**: Web client calls generator for character creation UI

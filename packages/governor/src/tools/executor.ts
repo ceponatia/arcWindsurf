@@ -7,11 +7,11 @@
  */
 import type { Operation } from 'fast-json-patch';
 import type { ToolCall, ToolResult, StatePatches } from './types.js';
-import type { SensoryAgent, NpcAgent } from '@minimal-rpg/agents';
-import type { AgentStateSlices } from '@minimal-rpg/agents';
+import type { AgentStateSlices, NpcAgent, NpcAgentInput, SensoryAgent } from '@minimal-rpg/agents';
 import { HygieneService } from '@minimal-rpg/characters';
 import type {
   ProximityState,
+  ProximityLevel,
   ProximityAction,
   SenseType,
   EngagementIntensity,
@@ -177,6 +177,9 @@ export interface ToolExecutorConfig {
   /** Hygiene domain service for hygiene-related tools */
   hygieneService: HygieneService;
 
+  /** Tenant/owner scoping for NPC transcript retrieval */
+  ownerEmail: string;
+
   /** Current session ID */
   sessionId: string;
 
@@ -243,6 +246,7 @@ export class ToolExecutor {
   private readonly sensoryAgent: SensoryAgent;
   private readonly npcAgent: NpcAgent;
   private readonly hygieneService: HygieneService;
+  private readonly ownerEmail: string;
   private readonly sessionId: string;
   private readonly stateSlices: AgentStateSlices;
   private readonly proximityState: ProximityState;
@@ -260,6 +264,7 @@ export class ToolExecutor {
     this.sensoryAgent = config.sensoryAgent;
     this.npcAgent = config.npcAgent;
     this.hygieneService = config.hygieneService;
+    this.ownerEmail = config.ownerEmail;
     this.sessionId = config.sessionId;
     this.stateSlices = config.stateSlices;
     this.proximityState = config.proximityState ?? createDefaultProximityState();
@@ -435,11 +440,14 @@ export class ToolExecutor {
 
       if (supportsHygiene) {
         try {
+          const bodyPart = args.body_part!;
+          const targetId = args.target;
+          const senseType = args.sense_type as 'smell' | 'touch' | 'taste';
           const hygiene = await this.hygieneService.getSensoryModifier(
             this.sessionId,
-            args.target,
-            args.body_part,
-            args.sense_type
+            targetId,
+            bodyPart,
+            senseType
           );
           hygieneLevel = hygiene.level;
           hygieneModifier = hygiene.modifier;
@@ -542,8 +550,9 @@ export class ToolExecutor {
    * Note: This returns NPC context data, not generated dialogue.
    * The LLM uses this context to write the actual dialogue.
    */
-  private executeNpcDialogue(args: NpcDialogueToolArgs): ToolResult {
+  private async executeNpcDialogue(args: NpcDialogueToolArgs): Promise<ToolResult> {
     const npc = this.stateSlices.npc ?? this.stateSlices.character;
+    const npcId = args.npc_id;
 
     if (!npc) {
       return {
@@ -553,7 +562,7 @@ export class ToolExecutor {
       };
     }
 
-    // Extract personality context for LLM
+    // Extract personality context for LLM compatibility/debugging
     const personalityContext: Record<string, unknown> = {};
 
     if (npc.personalityMap) {
@@ -576,32 +585,67 @@ export class ToolExecutor {
     }
 
     const npcTagInstructions =
-      this.turnTagContext?.byNpcInstanceId?.[args.npc_id] ?? ([] as TagInstruction[]);
+      this.turnTagContext?.byNpcInstanceId?.[npcId] ?? ([] as TagInstruction[]);
     const locationTagInstructions = this.turnTagContext?.playerLocationId
       ? (this.turnTagContext.byLocationId?.[this.turnTagContext.playerLocationId] ??
         ([] as TagInstruction[]))
       : ([] as TagInstruction[]);
 
-    return {
-      success: true,
-      npc_id: args.npc_id,
-      npc_name: npc.name,
-      npc_summary: npc.backstory?.slice(0, 200), // Truncate for context
-      personality: personalityContext,
-      player_utterance: args.player_utterance,
-      interaction_type: args.interaction_type ?? 'speech',
-      suggested_tone: args.tone ?? 'neutral',
-      // Current mood could come from session state in future
-      current_mood: 'neutral',
+    const proximityLevel: ProximityLevel | undefined = this.proximityState.npcProximity?.[npcId];
+    const npcTags = npcTagInstructions.map((t) => t.tagName);
+    const locationTags = locationTagInstructions.map((t) => t.tagName);
+    const sessionTags = this.turnTagContext?.session?.map((t) => t.tagName) ?? [];
 
-      // Prompt tag routing (MVP): apply these instructions only while writing THIS NPC's lines.
-      npc_tag_instructions:
-        npcTagInstructions.length > 0 ? this.renderTagInstructions(npcTagInstructions) : undefined,
-      location_tag_instructions:
-        locationTagInstructions.length > 0
-          ? this.renderTagInstructions(locationTagInstructions)
-          : undefined,
+    const npcInput: NpcAgentInput = {
+      sessionId: this.sessionId,
+      playerInput: args.player_utterance,
+      npcId,
+      intent: { type: 'talk', params: { npcId, target: npc.name }, confidence: 1 },
+      stateSlices: this.stateSlices,
+      isDirectlyAddressed: true,
+      npcTags,
+      locationTags,
+      sessionTags,
+      ownerEmail: this.ownerEmail,
+      ...(proximityLevel !== undefined ? { proximityLevel } : {}),
     };
+
+    try {
+      const output = await this.npcAgent.execute(npcInput);
+      const statePatches: StatePatches | undefined = output.statePatches
+        ? { state: output.statePatches }
+        : undefined;
+
+      return {
+        success: true,
+        npc_id: npcId,
+        npc_name: npc.name,
+        npc_summary: npc.backstory?.slice(0, 200),
+        personality: personalityContext,
+        narrative: output.narrative,
+        npc_priority: output.npcPriority,
+        interaction_type: args.interaction_type ?? 'speech',
+        suggested_tone: args.tone ?? 'neutral',
+        current_mood: 'neutral',
+        ...(statePatches ? { statePatches } : {}),
+        ...(output.events ? { events: output.events } : {}),
+        ...(output.diagnostics ? { diagnostics: output.diagnostics } : {}),
+        npc_tag_instructions:
+          npcTagInstructions.length > 0
+            ? this.renderTagInstructions(npcTagInstructions)
+            : undefined,
+        location_tag_instructions:
+          locationTagInstructions.length > 0
+            ? this.renderTagInstructions(locationTagInstructions)
+            : undefined,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: `NPC dialogue failed: ${message}`,
+      };
+    }
   }
 
   // ===========================================================================
@@ -1258,7 +1302,7 @@ export class ToolExecutor {
         sense_type: args.sense_type,
         hygiene_level: level,
         hygiene_modifier: modifier,
-        hint: modifier ? undefined : 'No hygiene modifier found for this body part',
+        ...(modifier ? {} : { hint: 'No hygiene modifier found for this body part' }),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -105,6 +105,7 @@ function createToolExecutor(options: {
     sensoryAgent,
     npcAgent,
     hygieneService,
+    ownerEmail: 'owner@example.com',
     sessionId: 'session-1',
     stateSlices: options.stateSlices ?? ({} as AgentStateSlices),
   });

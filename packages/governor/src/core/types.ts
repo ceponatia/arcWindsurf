@@ -64,7 +64,6 @@ export interface TurnInput {
   turnNumber?: number;
   baseline?: TurnStateContext;
   overrides?: DeepPartial<TurnStateContext>;
-  conversationHistory?: ConversationTurn[];
   sessionTags?: SessionTagInstance[];
   /** Routed per-turn tag context (session/NPC/location), computed by API snapshot layer */
   turnTagContext?: TurnTagContext;

@@ -1,16 +1,23 @@
-# Agents - API Package
+# @minimal-rpg/api
+
+## Purpose
+
+HTTP backend server exposing REST endpoints for the game client. Handles requests, validates input, and delegates to domain packages for business logic.
 
 ## Scope
 
-You must keep this package limited to:
+- HTTP routes and controllers (Hono framework)
+- Request validation and auth/permissions
+- Middleware and webhooks
+- Transport-level concerns only; no domain logic
 
-- HTTP routes (REST, RPC, GraphQL)
-- Request validation
-- Auth / permissions
-- Controllers / handlers
-- Middleware
-- Webhooks
-- Transport-level concerns
-- Very light orchestration
+## Package Connections
 
-Any other code **MUST** be placed in the appropriate package and not in the API package.
+- **governor**: Delegates turn processing via `handleTurn`
+- **db**: Loads and persists sessions, messages, profiles, and instances
+- **schemas**: Validates request/response shapes
+- **state-manager**: Retrieves effective state for sessions
+- **agents**: Provides agent instances to governor
+- **retrieval**: Invokes retrieval for context building
+- **characters**: Loads character data for sessions
+- **utils**: Shared helpers (errors, parsing)

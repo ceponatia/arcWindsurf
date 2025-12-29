@@ -1,14 +1,19 @@
 import { BaseAgent } from '../core/base.js';
 import type {
-  AgentConfig,
   AgentInput,
   AgentIntent,
   AgentOutput,
   AgentType,
   CharacterSlice,
+  ConversationTurn,
   IntentType,
 } from '../core/types.js';
-import type { NpcAgentInput } from './types.js';
+import type {
+  NpcAgentConfig,
+  NpcAgentInput,
+  NpcAgentOutput,
+  NpcMessageRepository,
+} from './types.js';
 import type { NpcResponseConfig } from '@minimal-rpg/schemas';
 import {
   buildDialogueSystemPrompt,
@@ -34,18 +39,24 @@ export class NpcAgent extends BaseAgent {
   /** Intent types this agent can handle */
   private static readonly HANDLED_INTENTS: IntentType[] = ['talk', 'narrate'];
 
-  constructor(config: AgentConfig = {}) {
+  private readonly messageRepository: NpcMessageRepository | undefined;
+  private readonly historyLimit: number;
+
+  constructor(config: NpcAgentConfig = {}) {
     super(config);
+    this.messageRepository = config.services?.messageRepository;
+    this.historyLimit = config.historyLimit ?? 30;
   }
 
   canHandle(intent: AgentIntent): boolean {
     return NpcAgent.HANDLED_INTENTS.includes(intent.type);
   }
 
-  protected async process(input: AgentInput): Promise<AgentOutput> {
+  protected async process(input: AgentInput): Promise<NpcAgentOutput> {
     // Prefer an explicit NPC slice when provided; fall back to the
     // primary character slice for backward compatibility.
-    const character = input.stateSlices.npc ?? input.stateSlices.character;
+    const npcInput = input as NpcAgentInput;
+    const character = npcInput.stateSlices.npc ?? npcInput.stateSlices.character;
 
     if (!character) {
       return {
@@ -56,33 +67,85 @@ export class NpcAgent extends BaseAgent {
       };
     }
 
-    // If we have an LLM provider, use it for dialogue
-    if (this.llmProvider) {
-      return this.generateLlmDialogue(input, character);
+    const { conversationHistory, ...inputWithoutSharedHistory } = npcInput;
+    const effectiveHistory = await this.loadConversationHistory(npcInput);
+    const dialogueInput: NpcAgentInput = effectiveHistory
+      ? { ...inputWithoutSharedHistory, npcConversationHistory: effectiveHistory }
+      : conversationHistory
+        ? { ...inputWithoutSharedHistory, conversationHistory }
+        : inputWithoutSharedHistory;
+
+    const output = this.llmProvider
+      ? await this.generateLlmDialogue(dialogueInput, character)
+      : this.generateTemplateDialogue(dialogueInput, character);
+
+    return {
+      ...output,
+      npcPriority: this.computeNpcPriority(dialogueInput),
+    };
+  }
+
+  private async loadConversationHistory(
+    input: NpcAgentInput
+  ): Promise<ConversationTurn[] | undefined> {
+    if (!this.messageRepository) {
+      return input.npcConversationHistory ?? input.conversationHistory;
     }
 
-    // Fallback to template-based dialogue
-    return this.generateTemplateDialogue(input, character);
+    const ownerEmail = input.ownerEmail;
+    const sessionId = input.sessionId;
+    const npcId =
+      input.npcId ?? input.stateSlices.npc?.instanceId ?? input.stateSlices.character?.instanceId;
+
+    if (!ownerEmail || !sessionId || !npcId) {
+      return input.npcConversationHistory ?? input.conversationHistory;
+    }
+
+    try {
+      return await this.messageRepository.fetchOwnHistory({
+        ownerEmail,
+        sessionId,
+        npcId,
+        limit: this.historyLimit,
+      });
+    } catch (error) {
+      // Preserve existing history if fetch fails; diagnostics recorded downstream via warnings
+      console.warn('[NpcAgent] Failed to fetch NPC history', error);
+      return input.npcConversationHistory ?? input.conversationHistory;
+    }
+  }
+
+  private computeNpcPriority(input: NpcAgentInput): number {
+    const base = input.isDirectlyAddressed ? 3 : 1;
+
+    const proximityScore: Record<string, number> = {
+      intimate: 2.5,
+      close: 2,
+      near: 1.5,
+      distant: 1,
+    };
+
+    const proximity = input.proximityLevel ? (proximityScore[input.proximityLevel] ?? 1) : 1;
+    const tagWeight = (input.npcTags?.length ?? 0) > 0 ? 0.5 : 0;
+    return Number((base + proximity + tagWeight).toFixed(2));
   }
 
   /**
    * Generate dialogue using the LLM provider.
    */
   private async generateLlmDialogue(
-    input: AgentInput,
+    input: NpcAgentInput,
     character: CharacterSlice
   ): Promise<AgentOutput> {
     // Use enhanced prompt if we have action sequences
-    const npcInput = input as NpcAgentInput;
     const hasActionSequence =
-      npcInput.actionSequence && npcInput.actionSequence.completedActions.length > 0;
+      input.actionSequence && input.actionSequence.completedActions.length > 0;
 
     let systemPrompt: string;
     if (hasActionSequence) {
       // Import the default config at runtime to avoid circular dependencies
-      const responseConfig: NpcResponseConfig =
-        npcInput.responseConfig ?? getDefaultResponseConfig();
-      systemPrompt = buildEnhancedSystemPrompt(character, npcInput, responseConfig);
+      const responseConfig: NpcResponseConfig = input.responseConfig ?? getDefaultResponseConfig();
+      systemPrompt = buildEnhancedSystemPrompt(character, input, responseConfig);
     } else {
       systemPrompt = buildDialogueSystemPrompt(character, input);
     }
