@@ -88,6 +88,27 @@ The Governor uses LLM tool calling instead of rule-based intent detection:
 
 This eliminates the need for separate intent detection, reducing latency and improving accuracy.
 
+## NPC Dialogue Batch Ordering
+
+When the LLM returns a contiguous batch of `npc_dialogue` tool calls, the Governor executes them in a deterministic reordered sequence.
+
+Current rules (see `orderNpcDialogueBatch`):
+
+- Tier: `addressed` > `nearby` > `background`
+- Within a tier: stable by original LLM-provided order
+- `npc_priority` is extracted for observability but is not used for sorting
+- `proximity_level` is only used to bucket into `nearby` vs `background` (no sorting within `nearby`)
+
+Important behavioral implications:
+
+- Event ordering: for an `npc_dialogue` batch, `tool-called` and `tool-result` events are emitted in the reordered execution sequence (not the original LLM tool_calls order). This differs from non-NPC tools where events reflect the original tool_calls order.
+- State patch ordering: state patches returned by NPC dialogue tools are merged in the same reordered execution sequence. If multiple NPCs modify the same state fields, the final state depends on the reordered execution, not the original LLM sequence.
+
+Observability:
+
+- `npc-dialogue-batch-ordered` includes `batchId`, `toolCallId`, and `originalIndex` for each item so consumers can reconstruct the model-provided order.
+- `tool-called` / `tool-result` for NPC batches include `batchId`, `originalToolCallIndex`, and `executionIndex` for correlation and to disambiguate model vs execution order.
+
 ## TurnResult Structure
 
 ```typescript

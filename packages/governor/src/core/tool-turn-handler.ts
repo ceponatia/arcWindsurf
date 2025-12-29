@@ -12,6 +12,7 @@
  * The LLM must understand context to decide if a tool is needed.
  */
 import type { Operation } from 'fast-json-patch';
+import { randomUUID } from 'node:crypto';
 import type { AgentOutput } from '@minimal-rpg/agents';
 import type {
   TurnInput,
@@ -415,7 +416,11 @@ export class ToolBasedTurnHandler {
               events.push({
                 type: 'tool-called',
                 timestamp: new Date(),
-                payload: { tool: toolCall.function.name, args: toolCall.function.arguments },
+                payload: {
+                  tool: toolCall.function.name,
+                  toolCallId: toolCall.id,
+                  args: toolCall.function.arguments,
+                },
               });
 
               const result: ToolResult = await this.toolExecutor.execute(toolCall);
@@ -437,6 +442,7 @@ export class ToolBasedTurnHandler {
                 timestamp: new Date(),
                 payload: {
                   tool: toolCall.function.name,
+                  toolCallId: toolCall.id,
                   success: result.success,
                   hasPatches: !!result.statePatches,
                 },
@@ -473,23 +479,34 @@ export class ToolBasedTurnHandler {
             }))
           );
 
+          const batchId = this.createNpcBatchId();
+
+          // IMPORTANT: This reorders the contiguous `npc_dialogue` batch for execution.
+          // - `tool-called` / `tool-result` events for this batch are emitted in *execution order*
+          //   (the reordered sequence), not the original LLM tool_calls order.
+          // - State patches from these tool results are merged in the same execution order.
+          // Consumers who need to reconstruct the original LLM-provided order should use the
+          // `npc-dialogue-batch-ordered` event payload (`originalIndex` + `toolCallId`).
+
           events.push({
             type: 'npc-dialogue-batch-ordered',
             timestamp: new Date(),
             payload: {
+              batchId,
               batchSize: ordered.length,
               parallelMs,
               ordering: ordered.map((o) => ({
                 npcId: o.npcId,
                 tier: o.tier,
                 npcPriority: o.npcPriority,
+                originalIndex: o.originalIndex,
                 toolCallId: o.toolCall.id,
               })),
             },
             source: 'ToolTurnHandler',
           });
 
-          for (const item of ordered) {
+          ordered.forEach((item, executionIndex) => {
             const toolCall = item.toolCall;
             const result = item.result;
 
@@ -498,7 +515,14 @@ export class ToolBasedTurnHandler {
             events.push({
               type: 'tool-called',
               timestamp: new Date(),
-              payload: { tool: toolCall.function.name, args: toolCall.function.arguments },
+              payload: {
+                tool: toolCall.function.name,
+                toolCallId: toolCall.id,
+                args: toolCall.function.arguments,
+                batchId,
+                originalToolCallIndex: item.originalIndex,
+                executionIndex,
+              },
             });
 
             toolCallResults.set(toolCall.id, result);
@@ -519,8 +543,12 @@ export class ToolBasedTurnHandler {
               timestamp: new Date(),
               payload: {
                 tool: toolCall.function.name,
+                toolCallId: toolCall.id,
                 success: result.success,
                 hasPatches: !!result.statePatches,
+                batchId,
+                originalToolCallIndex: item.originalIndex,
+                executionIndex,
               },
             });
 
@@ -537,7 +565,7 @@ export class ToolBasedTurnHandler {
               tool_call_id: toolCall.id,
               content: JSON.stringify(resultForLLM),
             });
-          }
+          });
         }
 
         // Get next response (may have more tool calls or final answer)
@@ -1011,6 +1039,13 @@ ${tagLines.join('\n\n')}
   /**
    * Merge new state patches into accumulated patches.
    * Patches for the same slice are appended (applied sequentially).
+   *
+   * Ordering note:
+   * - The append order is the tool execution order.
+   * - For most tools, execution order matches the LLM-provided `tool_calls` order.
+   * - For contiguous `npc_dialogue` batches, the Governor may reorder tool execution (see
+   *   `orderNpcDialogueBatch`). In that case, patch merge order may differ from the LLM's
+   *   original sequence, which can affect the final state when patches overlap.
    */
   private mergeStatePatches(target: StatePatches, source: StatePatches): void {
     for (const [sliceKey, patches] of Object.entries(source)) {
@@ -1053,6 +1088,17 @@ ${tagLines.join('\n\n')}
       }
     }
     return Array.from(paths);
+  }
+
+  /**
+   * Generate a batch identifier for npc_dialogue execution batches.
+   */
+  private createNpcBatchId(): string {
+    try {
+      return randomUUID();
+    } catch {
+      return `npc_batch_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
   }
 
   /**

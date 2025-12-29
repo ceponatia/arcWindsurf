@@ -39,11 +39,29 @@ function tierRank(tier: NpcDialogueTier): number {
 }
 
 /**
- * Order npc_dialogue results deterministically.
+ * Order `npc_dialogue` results deterministically.
  *
- * Rules:
- * - tier: addressed > nearby > background
- * - within tier: preserve original input order
+ * This function is used by the tool-calling turn handler to reorder a contiguous batch of
+ * `npc_dialogue` tool calls that were returned by the LLM.
+ *
+ * Ordering rules:
+ * - Tier: `addressed` > `nearby` > `background`
+ * - Within a tier: stable by `originalIndex` (the LLM-provided order)
+ *
+ * Tier classification:
+ * - `addressed` when the tool result includes `is_directly_addressed === true`
+ * - `nearby` when `proximity_level` is one of: `intimate`, `close`, `near`
+ * - Otherwise: `background`
+ *
+ * Notes:
+ * - `npcPriority` is extracted for observability/debugging but is NOT used for sorting.
+ * - `proximity_level` is only used to bucket into `nearby` vs `background`. We intentionally
+ *   do not sort within `nearby` by proximity (e.g. intimate vs close vs near).
+ * - Missing or non-string `proximity_level` is treated as `background`.
+ *
+ * Downstream implications (important):
+ * - The Governor executes the reordered batch and merges state patches in that execution order.
+ *   If multiple NPCs touch the same state fields, the final state depends on this ordering.
  */
 export function orderNpcDialogueBatch(
   items: NpcDialogueBatchItem[]
