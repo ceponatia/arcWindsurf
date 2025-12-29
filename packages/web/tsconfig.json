@@ -18,7 +18,7 @@
     "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
   "include": ["src"],
-  "exclude": ["dist"],
+  "exclude": ["dist", "**/*.test.ts", "**/*.test.tsx"],
   "references": [
     { "path": "../db" },
     { "path": "../generator" },

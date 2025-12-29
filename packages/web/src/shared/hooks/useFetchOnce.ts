@@ -58,7 +58,7 @@ export function useFetchOnce<TData, TRaw = TData>({
     fetcherRef.current(ctrl.signal)
       .then((raw) => {
         fetchedRef.current = true;
-        const data = mapDataRef.current ? mapDataRef.current(raw) : (raw as TData);
+        const data = mapDataRef.current ? mapDataRef.current(raw) : (raw as unknown as TData);
         setState({ loading: false, error: null, data });
       })
       .catch((err: unknown) => {
