@@ -600,7 +600,7 @@ export class ToolExecutor {
     const isDirectlyAddressed =
       typeof args.player_utterance === 'string' && typeof npc.name === 'string'
         ? args.player_utterance.toLowerCase().includes(npc.name.toLowerCase())
-        : true;
+        : false;
 
     const stateSlicesSnapshot = cloneJsonLike(this.stateSlices);
 
