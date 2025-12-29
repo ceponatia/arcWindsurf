@@ -18,6 +18,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.6",
     "@minimal-rpg/agents": "workspace:*",
+    "@minimal-rpg/characters": "workspace:*",
     "@minimal-rpg/db": "workspace:*",
     "@minimal-rpg/governor": "workspace:*",
     "@minimal-rpg/retrieval": "workspace:*",

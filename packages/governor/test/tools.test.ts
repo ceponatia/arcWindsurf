@@ -8,6 +8,7 @@ import {
   INVENTORY_TOOLS,
   LOCATION_TOOLS,
   RELATIONSHIP_TOOLS,
+  HYGIENE_TOOLS,
   TIME_TOOLS,
   getActiveTools,
 } from '../src/index.js';
@@ -36,6 +37,7 @@ describe('tools exports', () => {
       ...toolNames(TIME_TOOLS),
       ...toolNames(RELATIONSHIP_TOOLS),
       ...toolNames(LOCATION_TOOLS),
+      ...toolNames(HYGIENE_TOOLS),
       ...toolNames(DEBUG_TOOLS),
     ];
     expect(names).toEqual(expected);

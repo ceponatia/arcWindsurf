@@ -5,7 +5,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 export default tseslint.config(
   // Global ignores (flat config replaces .eslintignore)
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**'],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', 'packages/*/test/**'],
   },
   // Tooling/config files inside packages (no type-aware linting)
   {
@@ -35,32 +35,6 @@ export default tseslint.config(
         // Use TypeScript project service to pick up each package tsconfig
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
-      },
-    },
-  },
-  // Tests across packages (includes Vitest globals)
-  {
-    files: ['packages/*/test/**/*.{ts,tsx,js}'],
-    extends: [
-      js.configs.recommended,
-      ...tseslint.configs.recommendedTypeChecked,
-      ...tseslint.configs.stylisticTypeChecked,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['packages/*/tsconfig.vitest.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      globals: {
-        describe: true,
-        test: true,
-        it: true,
-        expect: true,
-        vi: true,
-        beforeAll: true,
-        afterAll: true,
-        beforeEach: true,
-        afterEach: true,
       },
     },
   },

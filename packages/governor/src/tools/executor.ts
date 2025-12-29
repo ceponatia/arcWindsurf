@@ -9,6 +9,7 @@ import type { Operation } from 'fast-json-patch';
 import type { ToolCall, ToolResult, StatePatches } from './types.js';
 import type { SensoryAgent, NpcAgent } from '@minimal-rpg/agents';
 import type { AgentStateSlices } from '@minimal-rpg/agents';
+import { HygieneService } from '@minimal-rpg/characters';
 import type {
   ProximityState,
   ProximityAction,
@@ -131,6 +132,27 @@ interface ToolingFailureReportArgs {
   notes?: string;
 }
 
+interface GetHygieneSensoryToolArgs {
+  npc_id: string;
+  body_part: string;
+  sense_type: 'smell' | 'touch' | 'taste';
+}
+
+interface UpdateNpcHygieneToolArgs {
+  npc_id: string;
+  activity: 'idle' | 'walking' | 'running' | 'labor' | 'combat';
+  turns_elapsed?: number;
+  footwear?:
+    | 'barefoot'
+    | 'sandals'
+    | 'shoes_with_socks'
+    | 'shoes_no_socks'
+    | 'boots_heavy'
+    | 'boots_sealed';
+  environment?: 'dry' | 'humid' | 'rain' | 'swimming';
+  cleaned_parts?: string[];
+}
+
 // =============================================================================
 // Fallback Handler Type
 // =============================================================================
@@ -151,6 +173,9 @@ export interface ToolExecutorConfig {
 
   /** The NpcAgent instance for dialogue tool calls */
   npcAgent: NpcAgent;
+
+  /** Hygiene domain service for hygiene-related tools */
+  hygieneService: HygieneService;
 
   /** Current session ID */
   sessionId: string;
@@ -217,6 +242,7 @@ export interface LocationInfo {
 export class ToolExecutor {
   private readonly sensoryAgent: SensoryAgent;
   private readonly npcAgent: NpcAgent;
+  private readonly hygieneService: HygieneService;
   private readonly sessionId: string;
   private readonly stateSlices: AgentStateSlices;
   private readonly proximityState: ProximityState;
@@ -233,6 +259,7 @@ export class ToolExecutor {
   constructor(config: ToolExecutorConfig) {
     this.sensoryAgent = config.sensoryAgent;
     this.npcAgent = config.npcAgent;
+    this.hygieneService = config.hygieneService;
     this.sessionId = config.sessionId;
     this.stateSlices = config.stateSlices;
     this.proximityState = config.proximityState ?? createDefaultProximityState();
@@ -309,6 +336,12 @@ export class ToolExecutor {
         return this.executeGetNpcMemory(args as GetNpcMemoryToolArgs);
       case 'update_relationship':
         return this.executeUpdateRelationship(args as UpdateRelationshipToolArgs);
+
+      // Priority 6: Hygiene tools
+      case 'get_hygiene_sensory':
+        return this.executeGetHygieneSensory(args as GetHygieneSensoryToolArgs);
+      case 'update_npc_hygiene':
+        return this.executeUpdateNpcHygiene(args as UpdateNpcHygieneToolArgs);
 
       // Debug: Tooling diagnostics
       case 'tooling_failure_report':
@@ -391,6 +424,31 @@ export class ToolExecutor {
       // Generate proximity state patch if we have a body part and NPC target
       const statePatches = this.buildSensoryProximityPatches(args);
 
+      // Enrich with hygiene modifiers when applicable
+      let hygieneLevel: number | undefined;
+      let hygieneModifier: string | undefined;
+      let hygieneError: string | undefined;
+
+      const supportsHygiene =
+        !!args.body_part &&
+        (args.sense_type === 'smell' || args.sense_type === 'touch' || args.sense_type === 'taste');
+
+      if (supportsHygiene) {
+        try {
+          const hygiene = await this.hygieneService.getSensoryModifier(
+            this.sessionId,
+            args.target,
+            args.body_part,
+            args.sense_type
+          );
+          hygieneLevel = hygiene.level;
+          hygieneModifier = hygiene.modifier;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          hygieneError = `Hygiene lookup failed: ${message}`;
+        }
+      }
+
       return {
         success: true,
         sense_type: args.sense_type,
@@ -398,6 +456,10 @@ export class ToolExecutor {
         body_part: args.body_part,
         sensory_data: output.sensoryContext.available,
         narrative_hints: output.sensoryContext.narrativeHints,
+        ...(hygieneLevel !== undefined
+          ? { hygiene_level: hygieneLevel, hygiene_modifier: hygieneModifier }
+          : {}),
+        ...(hygieneError ? { hygiene_error: hygieneError } : {}),
         ...(statePatches ? { statePatches } : {}),
       };
     } catch (error) {
@@ -1170,6 +1232,87 @@ export class ToolExecutor {
         lastOccurred: this.timeState.current,
       },
     ];
+  }
+
+  // ===========================================================================
+  // Priority 6: Hygiene Tool Handlers (IMPLEMENTED)
+  // ===========================================================================
+
+  /**
+   * Retrieve hygiene-driven sensory modifier for a specific body part and sense.
+   * Returns current hygiene level alongside descriptive modifier text.
+   */
+  private async executeGetHygieneSensory(args: GetHygieneSensoryToolArgs): Promise<ToolResult> {
+    try {
+      const { level, modifier } = await this.hygieneService.getSensoryModifier(
+        this.sessionId,
+        args.npc_id,
+        args.body_part,
+        args.sense_type
+      );
+
+      return {
+        success: true,
+        npc_id: args.npc_id,
+        body_part: args.body_part,
+        sense_type: args.sense_type,
+        hygiene_level: level,
+        hygiene_modifier: modifier,
+        hint: modifier ? undefined : 'No hygiene modifier found for this body part',
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: `Hygiene lookup failed: ${message}`,
+      };
+    }
+  }
+
+  /**
+   * Update hygiene state based on recent activity and optional cleaning.
+   * Persists the change and returns state patches for the hygiene slice.
+   */
+  private async executeUpdateNpcHygiene(args: UpdateNpcHygieneToolArgs): Promise<ToolResult> {
+    try {
+      const result = await this.hygieneService.update(this.sessionId, {
+        npcId: args.npc_id,
+        turnsElapsed: args.turns_elapsed ?? 1,
+        activity: args.activity,
+        footwear: args.footwear,
+        environment: args.environment,
+        cleanedParts: args.cleaned_parts,
+      });
+
+      const statePatches: StatePatches = {
+        hygiene: [
+          {
+            op: 'add',
+            path: `/${args.npc_id}`,
+            value: result.state,
+          },
+        ],
+      };
+
+      return {
+        success: true,
+        npc_id: args.npc_id,
+        activity: args.activity,
+        turns_elapsed: args.turns_elapsed ?? 1,
+        cleaned_parts: args.cleaned_parts,
+        environment: args.environment,
+        footwear: args.footwear,
+        hygiene_state: result.state,
+        updated_body_parts: Object.keys(result.state.bodyParts),
+        statePatches,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: `Hygiene update failed: ${message}`,
+      };
+    }
   }
 }
 

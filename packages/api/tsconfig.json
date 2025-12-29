@@ -18,6 +18,9 @@
       "path": "../agents"
     },
     {
+      "path": "../characters"
+    },
+    {
       "path": "../db"
     },
     {

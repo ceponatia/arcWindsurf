@@ -21,10 +21,16 @@ import {
   type LlmResponse as AgentLlmResponse,
   type AgentStateSlices,
 } from '@minimal-rpg/agents';
+import {
+  HygieneService,
+  FileHygieneModifiersProvider,
+  DbHygieneRepository,
+} from '@minimal-rpg/characters';
 import { generateWithOpenRouter, chatWithOpenRouterTools } from '../llm/openrouter.js';
 import { getConfig } from '../util/config.js';
 import { getNpcMessages, appendToolCallHistoryBatch } from '../db/sessionsClient.js';
 import { createSessionToolHandler, getSessionTools } from '../llm/tools/index.js';
+import { db } from '../db/prismaClient.js';
 
 // Simple process-local singletons for now; can be replaced with
 // request-scoped or DI-driven instances later if needed.
@@ -36,6 +42,19 @@ const stateManager = new StateManager({
 });
 
 const agentRegistry = createDefaultRegistry();
+
+let hygieneService: HygieneService | null = null;
+
+function getHygieneService(): HygieneService {
+  if (hygieneService) {
+    return hygieneService;
+  }
+
+  const repository = new DbHygieneRepository(db);
+  const modifiers = new FileHygieneModifiersProvider();
+  hygieneService = new HygieneService({ repository, modifiers });
+  return hygieneService;
+}
 
 let sharedAgentLlmProvider: AgentLlmProvider | undefined;
 
@@ -178,6 +197,7 @@ function createToolTurnHandlerOrThrow(
   const toolExecutor = new ToolExecutor({
     sensoryAgent,
     npcAgent,
+    hygieneService: getHygieneService(),
     sessionId,
     stateSlices,
     fallbackHandler,

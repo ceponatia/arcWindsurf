@@ -783,8 +783,15 @@ export const ALL_GAME_TOOLS: ToolDefinition[] = [
  * Start with CORE_TOOLS, expand as handlers are implemented.
  */
 export function getActiveTools(): ToolDefinition[] {
-  // Phase 8 implementation: core + time + relationship + location tools are active
-  return [...CORE_TOOLS, ...TIME_TOOLS, ...RELATIONSHIP_TOOLS, ...LOCATION_TOOLS, ...DEBUG_TOOLS];
+  // Phase 8 implementation: core + time + relationship + location + hygiene tools are active
+  return [
+    ...CORE_TOOLS,
+    ...TIME_TOOLS,
+    ...RELATIONSHIP_TOOLS,
+    ...LOCATION_TOOLS,
+    ...HYGIENE_TOOLS,
+    ...DEBUG_TOOLS,
+  ];
 
   // Future: return ALL_GAME_TOOLS when all handlers ready
 }

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@minimal-rpg/agents": "workspace:*",
+    "@minimal-rpg/characters": "workspace:*",
     "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
     "@minimal-rpg/state-manager": "workspace:*",

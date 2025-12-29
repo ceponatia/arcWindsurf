@@ -99,6 +99,9 @@ importers:
       '@minimal-rpg/agents':
         specifier: workspace:*
         version: link:../agents
+      '@minimal-rpg/characters':
+        specifier: workspace:*
+        version: link:../characters
       '@minimal-rpg/db':
         specifier: workspace:*
         version: link:../db
@@ -195,6 +198,9 @@ importers:
       '@minimal-rpg/agents':
         specifier: workspace:*
         version: link:../agents
+      '@minimal-rpg/characters':
+        specifier: workspace:*
+        version: link:../characters
       '@minimal-rpg/retrieval':
         specifier: workspace:*
         version: link:../retrieval
