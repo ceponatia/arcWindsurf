@@ -4,7 +4,7 @@ import { useFetchOnce } from './useFetchOnce.js';
 
 describe('useFetchOnce', () => {
   it('fetches data once and retries on demand', async () => {
-    const fetcher = vi.fn<[], Promise<string>>().mockResolvedValue('value');
+    const fetcher = vi.fn<[AbortSignal], Promise<string>>().mockResolvedValue('value');
     const { result } = renderHook(() =>
       useFetchOnce<string>({
         fetcher,
@@ -31,7 +31,7 @@ describe('useFetchOnce', () => {
 
   it('retains previous data and surfaces errors when fetch fails', async () => {
     const fetcher = vi
-      .fn<[], Promise<string>>()
+      .fn<[AbortSignal], Promise<string>>()
       .mockResolvedValueOnce('initial')
       .mockRejectedValueOnce(new Error('boom'));
 

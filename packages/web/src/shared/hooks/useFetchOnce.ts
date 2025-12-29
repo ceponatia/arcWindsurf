@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
 
 export interface FetchState<TData> {
@@ -32,7 +32,7 @@ export function useFetchOnce<TData, TRaw = TData>({
   const controllerRef = useRef<AbortController | null>(null);
   const fetchedRef = useRef(false);
 
-  const fetchOnce = () => {
+  const fetchOnce = useCallback(() => {
     if (fetchedRef.current) return;
 
     controllerRef.current?.abort();
@@ -61,14 +61,14 @@ export function useFetchOnce<TData, TRaw = TData>({
           data: prev.data ?? initialData,
         }));
       });
-  };
+  }, [errorMessage, fetcher, initialData, mapData]);
 
   useEffect(() => {
     fetchOnce();
     return () => {
       controllerRef.current?.abort();
     };
-  }, []);
+  }, [fetchOnce]);
 
   const retry = () => {
     fetchedRef.current = false;
