@@ -33,6 +33,7 @@ import type { ToolExecutor } from '../tools/executor.js';
 import type { AgentStateSlices } from '@minimal-rpg/agents';
 import type { ProximityState, SensoryEngagement } from '@minimal-rpg/schemas';
 import { getActiveTools } from '../tools/definitions.js';
+import { orderNpcDialogueBatch } from '../tools/npc-dialogue-ordering.js';
 
 // =============================================================================
 // Configuration
@@ -393,58 +394,150 @@ export class ToolBasedTurnHandler {
           );
         }
 
-        for (const toolCall of currentToolCalls) {
-          toolCallsMade.push(toolCall);
+        let cursor = 0;
+        while (cursor < currentToolCalls.length) {
+          const start = cursor;
+          const isNpcBatch = currentToolCalls[cursor]?.function.name === 'npc_dialogue';
 
-          events.push({
-            type: 'tool-called',
-            timestamp: new Date(),
-            payload: { tool: toolCall.function.name, args: toolCall.function.arguments },
-          });
-
-          // Execute tool
-          const result: ToolResult = await this.toolExecutor.execute(toolCall);
-
-          // Track result for persistence
-          toolCallResults.set(toolCall.id, result);
-
-          // Collect state patches from tool result
-          if (result.statePatches) {
-            this.mergeStatePatches(accumulatedPatches, result.statePatches);
-
-            if (this.debug) {
-              const sliceKeys = Object.keys(result.statePatches);
-              console.log(
-                `[ToolTurnHandler] Collected patches for slices: ${sliceKeys.join(', ')}`
-              );
-            }
+          while (
+            cursor < currentToolCalls.length &&
+            (currentToolCalls[cursor]?.function.name === 'npc_dialogue') === isNpcBatch
+          ) {
+            cursor++;
           }
 
+          const batchCalls = currentToolCalls.slice(start, cursor);
+
+          if (!isNpcBatch) {
+            for (const toolCall of batchCalls) {
+              toolCallsMade.push(toolCall);
+
+              events.push({
+                type: 'tool-called',
+                timestamp: new Date(),
+                payload: { tool: toolCall.function.name, args: toolCall.function.arguments },
+              });
+
+              const result: ToolResult = await this.toolExecutor.execute(toolCall);
+              toolCallResults.set(toolCall.id, result);
+
+              if (result.statePatches) {
+                this.mergeStatePatches(accumulatedPatches, result.statePatches);
+
+                if (this.debug) {
+                  const sliceKeys = Object.keys(result.statePatches);
+                  console.log(
+                    `[ToolTurnHandler] Collected patches for slices: ${sliceKeys.join(', ')}`
+                  );
+                }
+              }
+
+              events.push({
+                type: 'tool-result',
+                timestamp: new Date(),
+                payload: {
+                  tool: toolCall.function.name,
+                  success: result.success,
+                  hasPatches: !!result.statePatches,
+                },
+              });
+
+              messages.push({
+                role: 'assistant',
+                content: null,
+                tool_calls: [toolCall],
+              });
+
+              const resultForLLM = { ...result };
+              delete resultForLLM.statePatches;
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(resultForLLM),
+              });
+            }
+            continue;
+          }
+
+          const parallelStart = Date.now();
+          const batchResults: ToolResult[] = await Promise.all(
+            batchCalls.map((toolCall) => this.toolExecutor.execute(toolCall))
+          );
+          const parallelMs = Date.now() - parallelStart;
+
+          const ordered = orderNpcDialogueBatch(
+            batchCalls.map((toolCall, index) => ({
+              toolCall,
+              result: batchResults[index]!,
+              originalIndex: index,
+            }))
+          );
+
           events.push({
-            type: 'tool-result',
+            type: 'npc-dialogue-batch-ordered',
             timestamp: new Date(),
             payload: {
-              tool: toolCall.function.name,
-              success: result.success,
-              hasPatches: !!result.statePatches,
+              batchSize: ordered.length,
+              parallelMs,
+              ordering: ordered.map((o) => ({
+                npcId: o.npcId,
+                tier: o.tier,
+                npcPriority: o.npcPriority,
+                toolCallId: o.toolCall.id,
+              })),
             },
+            source: 'ToolTurnHandler',
           });
 
-          // Add assistant's tool call to messages
-          messages.push({
-            role: 'assistant',
-            content: null,
-            tool_calls: [toolCall],
-          });
+          for (const item of ordered) {
+            const toolCall = item.toolCall;
+            const result = item.result;
 
-          // Add tool result to messages (exclude statePatches for LLM)
-          const resultForLLM = { ...result };
-          delete resultForLLM.statePatches;
-          messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(resultForLLM),
-          });
+            toolCallsMade.push(toolCall);
+
+            events.push({
+              type: 'tool-called',
+              timestamp: new Date(),
+              payload: { tool: toolCall.function.name, args: toolCall.function.arguments },
+            });
+
+            toolCallResults.set(toolCall.id, result);
+
+            if (result.statePatches) {
+              this.mergeStatePatches(accumulatedPatches, result.statePatches);
+
+              if (this.debug) {
+                const sliceKeys = Object.keys(result.statePatches);
+                console.log(
+                  `[ToolTurnHandler] Collected patches for slices: ${sliceKeys.join(', ')}`
+                );
+              }
+            }
+
+            events.push({
+              type: 'tool-result',
+              timestamp: new Date(),
+              payload: {
+                tool: toolCall.function.name,
+                success: result.success,
+                hasPatches: !!result.statePatches,
+              },
+            });
+
+            messages.push({
+              role: 'assistant',
+              content: null,
+              tool_calls: [toolCall],
+            });
+
+            const resultForLLM = { ...result };
+            delete resultForLLM.statePatches;
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(resultForLLM),
+            });
+          }
         }
 
         // Get next response (may have more tool calls or final answer)

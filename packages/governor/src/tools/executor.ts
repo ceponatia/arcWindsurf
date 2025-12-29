@@ -7,6 +7,7 @@
  */
 import type { Operation } from 'fast-json-patch';
 import type { ToolCall, ToolResult, StatePatches } from './types.js';
+import { cloneJsonLike } from '../utils/clone.js';
 import type { AgentStateSlices, NpcAgent, NpcAgentInput, SensoryAgent } from '@minimal-rpg/agents';
 import { HygieneService } from '@minimal-rpg/characters';
 import type {
@@ -596,13 +597,20 @@ export class ToolExecutor {
     const locationTags = locationTagInstructions.map((t) => t.tagName);
     const sessionTags = this.turnTagContext?.session?.map((t) => t.tagName) ?? [];
 
+    const isDirectlyAddressed =
+      typeof args.player_utterance === 'string' && typeof npc.name === 'string'
+        ? args.player_utterance.toLowerCase().includes(npc.name.toLowerCase())
+        : true;
+
+    const stateSlicesSnapshot = cloneJsonLike(this.stateSlices);
+
     const npcInput: NpcAgentInput = {
       sessionId: this.sessionId,
       playerInput: args.player_utterance,
       npcId,
       intent: { type: 'talk', params: { npcId, target: npc.name }, confidence: 1 },
-      stateSlices: this.stateSlices,
-      isDirectlyAddressed: true,
+      stateSlices: stateSlicesSnapshot,
+      isDirectlyAddressed,
       npcTags,
       locationTags,
       sessionTags,
@@ -624,6 +632,11 @@ export class ToolExecutor {
         personality: personalityContext,
         narrative: output.narrative,
         npc_priority: output.npcPriority,
+        is_directly_addressed: isDirectlyAddressed,
+        proximity_level: proximityLevel,
+        npc_tags_count: npcTags.length,
+        location_tags_count: locationTags.length,
+        session_tags_count: sessionTags.length,
         interaction_type: args.interaction_type ?? 'speech',
         suggested_tone: args.tone ?? 'neutral',
         current_mood: 'neutral',
