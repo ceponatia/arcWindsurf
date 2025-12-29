@@ -29,8 +29,18 @@ export function useFetchOnce<TData, TRaw = TData>({
     error: null,
     data: initialData,
   });
+  const fetcherRef = useRef(fetcher);
+  const mapDataRef = useRef(mapData);
   const controllerRef = useRef<AbortController | null>(null);
   const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
+  useEffect(() => {
+    mapDataRef.current = mapData;
+  }, [mapData]);
 
   const fetchOnce = useCallback(() => {
     if (fetchedRef.current) return;
@@ -45,10 +55,10 @@ export function useFetchOnce<TData, TRaw = TData>({
       data: prev.data ?? initialData,
     }));
 
-    fetcher(ctrl.signal)
+    fetcherRef.current(ctrl.signal)
       .then((raw) => {
         fetchedRef.current = true;
-        const data = mapData ? mapData(raw) : (raw as unknown as TData);
+        const data = mapDataRef.current ? mapDataRef.current(raw) : (raw as TData);
         setState({ loading: false, error: null, data });
       })
       .catch((err: unknown) => {
@@ -61,7 +71,7 @@ export function useFetchOnce<TData, TRaw = TData>({
           data: prev.data ?? initialData,
         }));
       });
-  }, [errorMessage, fetcher, initialData, mapData]);
+  }, [errorMessage, initialData]);
 
   useEffect(() => {
     fetchOnce();
