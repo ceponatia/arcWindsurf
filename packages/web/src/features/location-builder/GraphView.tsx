@@ -2,7 +2,7 @@
  * GraphView Component
  * React Flow based visual graph editor for location maps.
  */
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -158,11 +158,11 @@ export function GraphView({
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Sync with external state when props change
-  useMemo(() => {
+  useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
 
-  useMemo(() => {
+  useEffect(() => {
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 

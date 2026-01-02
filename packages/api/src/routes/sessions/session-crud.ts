@@ -80,6 +80,7 @@ export async function handleCreateSession(
         profileJson: JSON.stringify(character),
         overridesJson: JSON.stringify({}),
         role: 'primary',
+        ownerEmail,
       },
     });
 
@@ -91,6 +92,7 @@ export async function handleCreateSession(
         templateId: setting.id,
         templateSnapshot: JSON.stringify(setting),
         profileJson: JSON.stringify(setting),
+        ownerEmail,
       },
     });
 

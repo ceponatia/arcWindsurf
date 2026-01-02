@@ -1,5 +1,6 @@
 import { pool } from './client.js';
 import { seedBuiltInTags } from './seeds/built-in-tags.js';
+import { seedTestEntities } from './seeds/test-entities.js';
 import type { BuiltInTagSeedMode } from './seeds/built-in-tags.js';
 
 /**
@@ -8,8 +9,12 @@ import type { BuiltInTagSeedMode } from './seeds/built-in-tags.js';
  * - `--mode insert|upsert`
  * - `--upsert` (alias for `--mode upsert`)
  */
-function parseSeedArgs(argv: string[]): { builtInTagsMode: BuiltInTagSeedMode } {
+function parseSeedArgs(argv: string[]): {
+  builtInTagsMode: BuiltInTagSeedMode;
+  includeTestEntities: boolean;
+} {
   let builtInTagsMode: BuiltInTagSeedMode = 'insert';
+  let includeTestEntities = false;
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] ?? '';
@@ -33,19 +38,28 @@ function parseSeedArgs(argv: string[]): { builtInTagsMode: BuiltInTagSeedMode } 
         builtInTagsMode = v;
       }
     }
+
+    if (a === '--test-entities' || a === '--seed-test-entities') {
+      includeTestEntities = true;
+    }
   }
 
-  return { builtInTagsMode };
+  return { builtInTagsMode, includeTestEntities };
 }
 
 async function run() {
-  const { builtInTagsMode } = parseSeedArgs(
+  const { builtInTagsMode, includeTestEntities } = parseSeedArgs(
     (globalThis as unknown as { process?: { argv?: string[] } }).process?.argv ?? []
   );
   console.log('[db] Running seeds...');
 
   // Seed built-in tags
   await seedBuiltInTags(pool, { mode: builtInTagsMode });
+
+  // Seed test entities (setting + character + location map)
+  if (includeTestEntities) {
+    await seedTestEntities(pool, { mode: builtInTagsMode });
+  }
 
   console.log('[db] Seeds complete.');
   await pool.end();

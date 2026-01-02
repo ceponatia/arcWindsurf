@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useWorkspaceStore } from '../store.js';
 import { LocationBuilder } from '../../location-builder/index.js';
 import type { LocationMapListResponse } from '../../location-builder/types.js';
-import { MapPin, Plus, Check, Loader2, AlertCircle, X, ExternalLink } from 'lucide-react';
+import { MapPin, Plus, Check, Loader2, AlertCircle, X, ExternalLink, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../../../config.js';
 
 const API_BASE = API_BASE_URL;
@@ -41,6 +41,18 @@ async function fetchMaps(settingId: string): Promise<MapSummary[]> {
     console.error('Failed to fetch location maps:', err);
   }
   return [];
+}
+
+async function deleteMap(mapId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/location-maps/${mapId}`, {
+      method: 'DELETE',
+    });
+    return res.ok || res.status === 204;
+  } catch (err) {
+    console.error('Failed to delete map:', err);
+    return false;
+  }
 }
 
 export function LocationsStep() {
@@ -103,6 +115,27 @@ export function LocationsStep() {
       void fetchMaps(settingId).then(setMaps);
     }
     setShowBuilder(false);
+  };
+
+  // Handle delete map
+  const handleDeleteMap = async (mapId: string, mapName: string) => {
+    if (!confirm(`Are you sure you want to delete "${mapName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    const success = await deleteMap(mapId);
+    if (success) {
+      // If deleted map was selected, clear selection
+      if (locations?.mapId === mapId) {
+        setLocations(null);
+      }
+      // Refresh list
+      if (settingId) {
+        void fetchMaps(settingId).then(setMaps);
+      }
+    } else {
+      setError('Failed to delete map');
+    }
   };
 
   // Show builder full screen
@@ -246,13 +279,25 @@ export function LocationsStep() {
                   </div>
 
                   {/* Actions */}
-                  <div className="mt-3 pt-3 border-t flex justify-end">
+                  <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDeleteMap(map.id, map.name);
+                      }}
+                      className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded"
+                      title="Delete Map"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEditMap(map.id);
                       }}
-                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                       Edit

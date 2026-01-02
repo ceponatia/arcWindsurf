@@ -50,6 +50,18 @@ export function useAuth(): UseAuthState {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    // Bypass auth if configured (dev only)
+    if (import.meta.env.VITE_BYPASS_AUTH === 'true') {
+      setUser({
+        identifier: 'dev-admin',
+        role: 'admin',
+        email: 'admin@example.com',
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const supabase = getSupabaseClient();
       let supabaseToken: string | null = null;

@@ -26,6 +26,7 @@ import {
   loadSensoryModifiers,
   type LoadedSensoryModifiers,
 } from '../data/sensoryModifiersLoader.js';
+import { getOwnerEmail } from '../auth/ownerEmail.js';
 
 // Cache for sensory modifiers
 let sensoryModifiersCache: LoadedSensoryModifiers | null = null;
@@ -67,7 +68,11 @@ async function getNpcHygieneState(sessionId: string, npcId: string): Promise<Npc
 /**
  * Initialize hygiene state for an NPC (all body parts at level 0).
  */
-async function initializeHygieneState(sessionId: string, npcId: string): Promise<NpcHygieneState> {
+async function initializeHygieneState(
+  sessionId: string,
+  npcId: string,
+  ownerEmail: string
+): Promise<NpcHygieneState> {
   const now = new Date();
   const bodyParts: Record<string, BodyPartHygieneState> = {};
 
@@ -89,6 +94,7 @@ async function initializeHygieneState(sessionId: string, npcId: string): Promise
         points: 0,
         level: 0,
         lastUpdatedAt: now,
+        ownerEmail,
       },
     });
 
@@ -110,7 +116,8 @@ async function initializeHygieneState(sessionId: string, npcId: string): Promise
  */
 async function updateHygieneState(
   sessionId: string,
-  input: HygieneUpdateInput
+  input: HygieneUpdateInput,
+  ownerEmail: string
 ): Promise<NpcHygieneState> {
   const modifiers = await getSensoryModifiers();
   const now = new Date();
@@ -118,7 +125,7 @@ async function updateHygieneState(
   // Get current state or initialize
   let currentState = await getNpcHygieneState(sessionId, input.npcId);
   if (Object.keys(currentState.bodyParts).length === 0) {
-    currentState = await initializeHygieneState(sessionId, input.npcId);
+    currentState = await initializeHygieneState(sessionId, input.npcId, ownerEmail);
   }
 
   // Handle cleaning action first
@@ -196,6 +203,7 @@ async function updateHygieneState(
         points: newPoints,
         level: newLevel,
         lastUpdatedAt: now,
+        ownerEmail,
       },
     });
 
@@ -215,14 +223,15 @@ async function updateHygieneState(
 async function applyHygieneEventToNpc(
   sessionId: string,
   npcId: string,
-  event: HygieneEvent
+  event: HygieneEvent,
+  ownerEmail: string
 ): Promise<NpcHygieneState> {
   const modifiers = await getSensoryModifiers();
   const now = new Date();
 
   let currentState = await getNpcHygieneState(sessionId, npcId);
   if (Object.keys(currentState.bodyParts).length === 0) {
-    currentState = await initializeHygieneState(sessionId, npcId);
+    currentState = await initializeHygieneState(sessionId, npcId, ownerEmail);
   }
 
   const nextState = applyHygieneEvent(currentState, event, modifiers.decayRates, now);
@@ -253,6 +262,7 @@ async function applyHygieneEventToNpc(
         points: nextPart.points,
         level: nextPart.level,
         lastUpdatedAt: now,
+        ownerEmail,
       },
     });
   }
@@ -282,9 +292,10 @@ export function registerHygieneRoutes(app: Hono): void {
   app.post('/sessions/:sessionId/npcs/:npcId/hygiene/initialize', async (c) => {
     const sessionId = c.req.param('sessionId');
     const npcId = c.req.param('npcId');
+    const ownerEmail = getOwnerEmail(c);
 
     try {
-      const state = await initializeHygieneState(sessionId, npcId);
+      const state = await initializeHygieneState(sessionId, npcId, ownerEmail);
       return c.json(state, 201);
     } catch (error) {
       console.error('Error initializing hygiene state:', error);
@@ -314,8 +325,10 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
+    const ownerEmail = getOwnerEmail(c);
+
     try {
-      const state = await updateHygieneState(sessionId, parsed.data);
+      const state = await updateHygieneState(sessionId, parsed.data, ownerEmail);
       return c.json(state, 200);
     } catch (error) {
       console.error('Error updating hygiene state:', error);
@@ -345,6 +358,7 @@ export function registerHygieneRoutes(app: Hono): void {
     }
 
     const now = new Date();
+    const ownerEmail = getOwnerEmail(c);
 
     try {
       // Reset specified body parts
@@ -369,6 +383,7 @@ export function registerHygieneRoutes(app: Hono): void {
             points: 0,
             level: 0,
             lastUpdatedAt: now,
+            ownerEmail,
           },
         });
       }
@@ -407,8 +422,10 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
+    const ownerEmail = getOwnerEmail(c);
+
     try {
-      const state = await applyHygieneEventToNpc(sessionId, npcId, parsed.data as HygieneEvent);
+      const state = await applyHygieneEventToNpc(sessionId, npcId, parsed.data as HygieneEvent, ownerEmail);
       return c.json(state, 200);
     } catch (error) {
       console.error('Error applying hygiene event:', error);

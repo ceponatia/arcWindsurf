@@ -82,6 +82,7 @@ export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): 
         overridesJson: JSON.stringify({}),
         role: normalizedRole,
         label: label.length > 0 ? label : null,
+        ownerEmail,
       },
     });
   } catch (err) {

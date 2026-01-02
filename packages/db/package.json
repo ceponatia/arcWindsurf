@@ -17,6 +17,7 @@
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
+    "db:seed:test-entities": "tsx src/seed.ts --test-entities --mode upsert",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"

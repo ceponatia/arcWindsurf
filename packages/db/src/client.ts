@@ -139,16 +139,21 @@ export const db = {
     },
     async upsert(args: {
       where: { id: string };
-      create: { id: string; characterTemplateId: string; settingTemplateId: string };
+      create: {
+        id: string;
+        characterTemplateId: string;
+        settingTemplateId: string;
+        ownerEmail: string;
+      };
       update: { characterTemplateId: string; settingTemplateId: string };
     }): Promise<UserSessionRow> {
       const { id } = args.where;
-      const { characterTemplateId, settingTemplateId } = args.create;
+      const { characterTemplateId, settingTemplateId, ownerEmail } = args.create;
       const { rows } = await query(
-        `INSERT INTO user_sessions (id, character_template_id, setting_template_id) VALUES ($1, $2, $3)
+        `INSERT INTO user_sessions (id, character_template_id, setting_template_id, owner_email) VALUES ($1, $2, $3, $4)
          ON CONFLICT (id) DO UPDATE SET character_template_id = EXCLUDED.character_template_id, setting_template_id = EXCLUDED.setting_template_id, updated_at = now()
          RETURNING *`,
-        [id, characterTemplateId, settingTemplateId]
+        [id, characterTemplateId, settingTemplateId, ownerEmail]
       );
       return camelizeRow<UserSessionRow>(rows[0]!);
     },
@@ -447,12 +452,13 @@ export const db = {
         overridesJson?: string;
         role?: string;
         label?: string | null;
+        ownerEmail: string;
       };
     }): Promise<CharacterInstanceRow> {
       const d = args.data;
       const { rows } = await query(
-        `INSERT INTO character_instances (id, session_id, template_id, template_snapshot, profile_json, overrides_json, role, label)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, COALESCE($6::jsonb, '{}'::jsonb), COALESCE($7, 'primary'), $8)
+        `INSERT INTO character_instances (id, session_id, template_id, template_snapshot, profile_json, overrides_json, role, label, owner_email)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, COALESCE($6::jsonb, '{}'::jsonb), COALESCE($7, 'primary'), $8, $9)
          RETURNING *`,
         [
           d.id,
@@ -463,6 +469,7 @@ export const db = {
           d.overridesJson,
           d.role,
           d.label ?? null,
+          d.ownerEmail,
         ]
       );
       return camelizeRow<CharacterInstanceRow>(rows[0]!);
@@ -545,14 +552,23 @@ export const db = {
         templateSnapshot: string;
         profileJson: string;
         overridesJson?: string;
+        ownerEmail: string;
       };
     }): Promise<SettingInstanceRow> {
       const d = args.data;
       const { rows } = await query(
-        `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json, overrides_json)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, COALESCE($6::jsonb, '{}'::jsonb))
+        `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json, overrides_json, owner_email)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, COALESCE($6::jsonb, '{}'::jsonb), $7)
          RETURNING *`,
-        [d.id, d.sessionId, d.templateId, d.templateSnapshot, d.profileJson, d.overridesJson]
+        [
+          d.id,
+          d.sessionId,
+          d.templateId,
+          d.templateSnapshot,
+          d.profileJson,
+          d.overridesJson,
+          d.ownerEmail,
+        ]
       );
       return camelizeRow<SettingInstanceRow>(rows[0]!);
     },
@@ -686,14 +702,23 @@ export const db = {
         definitionSnapshot: string;
         ownerType: string;
         ownerId: string;
+        ownerEmail: string;
       };
     }): Promise<ItemInstanceRow> {
       const d = args.data;
       const { rows } = await query(
-        `INSERT INTO item_instances (id, session_id, definition_id, definition_snapshot, owner_type, owner_id)
-         VALUES ($1, $2, $3, $4::jsonb, $5, $6)
+        `INSERT INTO item_instances (id, session_id, definition_id, definition_snapshot, owner_type, owner_id, owner_email)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)
          RETURNING *`,
-        [d.id, d.sessionId, d.definitionId, d.definitionSnapshot, d.ownerType, d.ownerId]
+        [
+          d.id,
+          d.sessionId,
+          d.definitionId,
+          d.definitionSnapshot,
+          d.ownerType,
+          d.ownerId,
+          d.ownerEmail,
+        ]
       );
       return camelizeRow<ItemInstanceRow>(rows[0]!);
     },
@@ -812,14 +837,15 @@ export const db = {
         personaId: string;
         profileJson: string;
         overridesJson?: string;
+        ownerEmail: string;
       };
     }): Promise<SessionPersonaRow> {
-      const { sessionId, personaId, profileJson, overridesJson } = args.data;
+      const { sessionId, personaId, profileJson, overridesJson, ownerEmail } = args.data;
       const { rows } = await query(
-        `INSERT INTO session_personas (session_id, persona_id, profile_json, overrides_json)
-         VALUES ($1, $2, $3::jsonb, COALESCE($4::jsonb, '{}'::jsonb))
+        `INSERT INTO session_personas (session_id, persona_id, profile_json, overrides_json, owner_email)
+         VALUES ($1, $2, $3::jsonb, COALESCE($4::jsonb, '{}'::jsonb), $5)
          RETURNING *`,
-        [sessionId, personaId, profileJson, overridesJson]
+        [sessionId, personaId, profileJson, overridesJson, ownerEmail]
       );
       return camelizeRow<SessionPersonaRow>(rows[0]!);
     },
@@ -892,18 +918,19 @@ export const db = {
         points: number;
         level: number;
         lastUpdatedAt?: Date;
+        ownerEmail: string;
       };
       update: { points?: number; level?: number; lastUpdatedAt?: Date };
     }): Promise<NpcHygieneStateRow> {
       const { sessionId, npcId, bodyPart } = args.where.sessionId_npcId_bodyPart;
-      const { points, level, lastUpdatedAt } = args.create;
+      const { points, level, lastUpdatedAt, ownerEmail } = args.create;
       const { rows } = await query(
-        `INSERT INTO npc_hygiene_state (session_id, npc_id, body_part, points, level, last_updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO npc_hygiene_state (session_id, npc_id, body_part, points, level, last_updated_at, owner_email)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (session_id, npc_id, body_part) DO UPDATE SET
-           points = COALESCE($7, npc_hygiene_state.points),
-           level = COALESCE($8, npc_hygiene_state.level),
-           last_updated_at = COALESCE($9, npc_hygiene_state.last_updated_at)
+           points = COALESCE($8, npc_hygiene_state.points),
+           level = COALESCE($9, npc_hygiene_state.level),
+           last_updated_at = COALESCE($10, npc_hygiene_state.last_updated_at)
          RETURNING *`,
         [
           sessionId,
@@ -912,6 +939,7 @@ export const db = {
           points,
           level,
           lastUpdatedAt ?? new Date(),
+          ownerEmail,
           args.update.points ?? null,
           args.update.level ?? null,
           args.update.lastUpdatedAt ?? null,
@@ -1097,6 +1125,7 @@ export const db = {
         templateId?: string;
         scheduleData: unknown;
         placeholderMappings?: unknown;
+        ownerEmail: string;
       };
       update: {
         templateId?: string;
@@ -1105,14 +1134,14 @@ export const db = {
       };
     }): Promise<NpcScheduleRow> {
       const { sessionId, npcId } = args.where.sessionId_npcId;
-      const { templateId, scheduleData, placeholderMappings } = args.create;
+      const { templateId, scheduleData, placeholderMappings, ownerEmail } = args.create;
       const { rows } = await query(
-        `INSERT INTO npc_schedules (session_id, npc_id, template_id, schedule_data, placeholder_mappings)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO npc_schedules (session_id, npc_id, template_id, schedule_data, placeholder_mappings, owner_email)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (session_id, npc_id) DO UPDATE SET
-           template_id = COALESCE($6, npc_schedules.template_id),
-           schedule_data = COALESCE($7, npc_schedules.schedule_data),
-           placeholder_mappings = COALESCE($8, npc_schedules.placeholder_mappings)
+           template_id = COALESCE($7, npc_schedules.template_id),
+           schedule_data = COALESCE($8, npc_schedules.schedule_data),
+           placeholder_mappings = COALESCE($9, npc_schedules.placeholder_mappings)
          RETURNING *`,
         [
           sessionId,
@@ -1120,6 +1149,7 @@ export const db = {
           templateId ?? null,
           JSON.stringify(scheduleData),
           placeholderMappings ? JSON.stringify(placeholderMappings) : null,
+          ownerEmail,
           args.update.templateId ?? null,
           args.update.scheduleData ? JSON.stringify(args.update.scheduleData) : null,
           args.update.placeholderMappings ? JSON.stringify(args.update.placeholderMappings) : null,

@@ -252,6 +252,7 @@ export function registerPersonaRoutes(app: Hono): void {
           personaId: body.personaId,
           profileJson: JSON.stringify(profile),
           overridesJson: '{}',
+          ownerEmail,
         },
       });
     }

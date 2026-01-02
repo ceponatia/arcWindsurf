@@ -37,6 +37,23 @@ const RELATIONSHIP_PRESETS = [
   { value: 'student', label: 'Student', affinity: { trust: 0.6, fondness: 0.6, fear: 0.2 } },
 ] as const;
 
+/**
+ * Inverse relationship mapping for symmetric updates
+ */
+const RELATIONSHIP_INVERSES: Record<string, string> = {
+  stranger: 'stranger',
+  acquaintance: 'acquaintance',
+  friend: 'friend',
+  close_friend: 'close_friend',
+  rival: 'rival',
+  enemy: 'enemy',
+  colleague: 'colleague',
+  family: 'family',
+  romantic: 'romantic',
+  mentor: 'student',
+  student: 'mentor',
+};
+
 interface RelationshipsStepProps {
   characters: CharacterSummary[];
 }
@@ -98,7 +115,9 @@ function MatrixView({ actorIds, characters, npcs, relationships, onUpdate }: Mat
               <td className="p-2 border border-slate-700 bg-slate-800/30 text-slate-300 font-medium">
                 {getCharacterName(characters, npcs, fromId)}
               </td>
-              {actorIds.map((toId) => {
+              {actorIds.map((toId, colIndex) => {
+                const rowIndex = actorIds.indexOf(fromId);
+
                 if (fromId === toId) {
                   return (
                     <td
@@ -109,23 +128,45 @@ function MatrixView({ actorIds, characters, npcs, relationships, onUpdate }: Mat
                     </td>
                   );
                 }
+
                 const rel = getRelationship(fromId, toId);
+                const isUpperTriangle = rowIndex < colIndex;
+
+                if (isUpperTriangle) {
+                  return (
+                    <td key={toId} className="p-2 border border-slate-700 bg-slate-900/30">
+                      <select
+                        value={rel?.relationshipType ?? 'stranger'}
+                        onChange={(e) => {
+                          const preset = RELATIONSHIP_PRESETS.find(
+                            (p) => p.value === e.target.value
+                          );
+                          onUpdate(fromId, toId, e.target.value, preset?.affinity);
+                        }}
+                        className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-slate-200 text-xs focus:ring-1 focus:ring-violet-500"
+                      >
+                        {RELATIONSHIP_PRESETS.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  );
+                }
+
+                // Lower triangle - read only reflection
+                const preset = RELATIONSHIP_PRESETS.find(
+                  (p) => p.value === (rel?.relationshipType ?? 'stranger')
+                );
                 return (
-                  <td key={toId} className="p-2 border border-slate-700 bg-slate-900/30">
-                    <select
-                      value={rel?.relationshipType ?? 'stranger'}
-                      onChange={(e) => {
-                        const preset = RELATIONSHIP_PRESETS.find((p) => p.value === e.target.value);
-                        onUpdate(fromId, toId, e.target.value, preset?.affinity);
-                      }}
-                      className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-slate-200 text-xs"
-                    >
-                      {RELATIONSHIP_PRESETS.map((p) => (
-                        <option key={p.value} value={p.value}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
+                  <td
+                    key={toId}
+                    className="p-2 border border-slate-700 bg-slate-900/20 text-center"
+                  >
+                    <span className="text-xs text-slate-500 italic">
+                      {preset?.label ?? 'Stranger'}
+                    </span>
                   </td>
                 );
               })}
@@ -348,6 +389,22 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
     }
   };
 
+  // Handle symmetric relationship updates (for Matrix view)
+  const handleSymmetricUpdate = (
+    fromId: string,
+    toId: string,
+    type: string,
+    affinity?: RelationshipConfig['affinitySeed']
+  ) => {
+    // Update forward relationship
+    handleUpdate(fromId, toId, type, affinity);
+
+    // Update reverse relationship with inverse type
+    const inverseType = RELATIONSHIP_INVERSES[type] ?? type;
+    const inversePreset = RELATIONSHIP_PRESETS.find((p) => p.value === inverseType);
+    handleUpdate(toId, fromId, inverseType, inversePreset?.affinity);
+  };
+
   // Handle removal
   const handleRemove = (fromId: string, toId: string) => {
     removeRelationship(fromId, toId);
@@ -412,7 +469,7 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
           characters={characters}
           npcs={npcs}
           relationships={relationships}
-          onUpdate={handleUpdate}
+          onUpdate={handleSymmetricUpdate}
         />
       ) : (
         <ListView

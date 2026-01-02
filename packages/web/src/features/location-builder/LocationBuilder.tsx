@@ -15,9 +15,9 @@ import { GraphView } from './GraphView.js';
 import { PrefabLibrary } from './PrefabLibrary.js';
 import { SaveAsPrefabModal } from './SaveAsPrefabModal.js';
 import type { LocationBuilderProps } from './types.js';
-import { Save, X, Loader2, AlertCircle, TreePine, Network, Package } from 'lucide-react';
+import { Save, X, Loader2, AlertCircle, TreePine, Package } from 'lucide-react';
 
-type ViewTab = 'tree' | 'graph' | 'prefabs';
+type ViewTab = 'tree' | 'prefabs';
 
 /** Add Location Modal */
 interface AddLocationModalProps {
@@ -263,6 +263,11 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
     [insertPrefab]
   );
 
+  // Handle loading prefabs
+  const handleLoadPrefabs = useCallback(() => {
+    void loadPrefabs();
+  }, [loadPrefabs]);
+
   // Render loading state
   if (isLoading && !map) {
     return (
@@ -360,17 +365,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
               <TreePine className="h-4 w-4" />
               Hierarchy
             </button>
-            <button
-              onClick={() => setActiveTab('graph')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium ${
-                activeTab === 'graph'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Network className="h-4 w-4" />
-              Graph
-            </button>
+
             <button
               onClick={() => setActiveTab('prefabs')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium ${
@@ -395,23 +390,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
                 onDeleteNode={deleteNode}
               />
             )}
-            {activeTab === 'graph' && map && (
-              <GraphView
-                nodes={map.nodes}
-                connections={map.connections}
-                zoomLevel={zoomLevel}
-                viewport={viewport}
-                selection={selection}
-                mode={mode}
-                pendingEdge={pendingEdge}
-                onNodeClick={handleSelectNode}
-                onEdgeClick={handleSelectEdge}
-                onNodePositionChange={handleNodePositionChange}
-                onViewportChange={setViewport}
-                onPortClick={() => void cancelAddEdge()}
-                onConnect={(...args) => void handleConnect(...args)}
-              />
-            )}
+
             {activeTab === 'prefabs' && map && (
               <PrefabLibrary
                 prefabs={prefabs}
@@ -419,7 +398,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
                 nodes={map.nodes}
                 onInsertPrefab={handleInsertPrefab}
                 onDeletePrefab={(prefabId) => void deletePrefab(prefabId)}
-                onLoadPrefabs={() => void loadPrefabs()}
+                onLoadPrefabs={handleLoadPrefabs}
               />
             )}
           </div>

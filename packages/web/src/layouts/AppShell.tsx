@@ -381,8 +381,12 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
 
         {/* Main content area */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <section className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="p-6">
+          <section
+            className={`flex-1 ${
+              viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'
+            }`}
+          >
+            <div className={viewMode === 'chat' ? 'h-full' : 'p-6'}>
               <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
                 <MainContent
                   viewMode={viewMode}
@@ -623,7 +627,11 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+        <div
+          className={`flex-1 ${
+            viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-4'
+          }`}
+        >
           <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
             <MainContent
               viewMode={viewMode}

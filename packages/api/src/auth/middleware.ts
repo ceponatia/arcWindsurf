@@ -106,6 +106,15 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
     }
   }
 
+  // Bypass auth if configured (dev only)
+  if (process.env['BYPASS_AUTH'] === 'true') {
+    c.set(AUTH_CONTEXT_KEY as never, {
+      identifier: 'dev-admin',
+      role: 'admin',
+      email: 'admin@example.com',
+    } satisfies AuthUser);
+  }
+
   await next();
 }
 

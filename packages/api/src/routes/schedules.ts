@@ -13,6 +13,7 @@ import { ScheduleTemplateSchema, NpcScheduleSchema } from '@minimal-rpg/schemas'
 import { db } from '../db/prismaClient.js';
 import type { ApiError } from '../types.js';
 import type { ScheduleTemplateRow, NpcScheduleRow } from '../db/types.js';
+import { getOwnerEmail } from '../auth/ownerEmail.js';
 
 // =============================================================================
 // Request/Response Schemas
@@ -444,6 +445,7 @@ export function registerScheduleRoutes(app: Hono): void {
       }
 
       const { npcId, templateId, scheduleData, placeholderMappings } = parsed.data;
+      const ownerEmail = getOwnerEmail(c);
 
       // Validate schedule data against schema
       const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
@@ -465,10 +467,12 @@ export function registerScheduleRoutes(app: Hono): void {
         templateId?: string;
         scheduleData: unknown;
         placeholderMappings?: unknown;
+        ownerEmail: string;
       } = {
         sessionId,
         npcId,
         scheduleData,
+        ownerEmail,
       };
       if (templateId !== undefined) createData.templateId = templateId;
       if (placeholderMappings !== undefined) createData.placeholderMappings = placeholderMappings;
@@ -545,6 +549,7 @@ export function registerScheduleRoutes(app: Hono): void {
       }
 
       const { templateId, scheduleData, placeholderMappings } = parsed.data;
+      const ownerEmail = getOwnerEmail(c);
 
       // Validate schedule data if provided
       if (scheduleData !== undefined) {
@@ -568,10 +573,12 @@ export function registerScheduleRoutes(app: Hono): void {
         templateId?: string;
         scheduleData: unknown;
         placeholderMappings?: unknown;
+        ownerEmail: string;
       } = {
         sessionId,
         npcId,
         scheduleData: scheduleData ?? existing.scheduleData,
+        ownerEmail,
       };
       const existingTemplateId = existing.templateId;
       if (templateId !== undefined) {

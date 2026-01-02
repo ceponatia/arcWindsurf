@@ -12,6 +12,7 @@ import type { LoadedDataGetter } from '../../data/types.js';
 import { badRequest, serverError, notFound } from '../../util/responses.js';
 import { generateId, generateInstanceId } from '../../util/id.js';
 import { findCharacter, findSetting } from './shared.js';
+import { getAuthUser } from '../../auth/middleware.js';
 
 /**
  * Request schema for creating a full session
@@ -140,6 +141,13 @@ export async function handleCreateFullSession(
 ): Promise<Response> {
   console.log('[API] POST /sessions/create-full request received');
 
+  const user = getAuthUser(c);
+  const ownerEmail = user?.email ?? user?.identifier;
+
+  if (!ownerEmail) {
+    return badRequest(c, 'authenticated user required with email/identifier');
+  }
+
   const loaded = getLoaded();
   if (!loaded) {
     console.error('[API] Data not loaded');
@@ -250,17 +258,24 @@ export async function handleCreateFullSession(
     // 1. Create user session
     console.log('[API] Creating session:', sessionId);
     await client.query(
-      `INSERT INTO user_sessions (id, character_template_id, setting_template_id)
-       VALUES ($1, $2, $3)`,
-      [sessionId, primaryNpc?.characterId ?? '', request.settingId]
+      `INSERT INTO user_sessions (id, character_template_id, setting_template_id, owner_email)
+       VALUES ($1, $2, $3, $4)`,
+      [sessionId, primaryNpc?.characterId ?? '', request.settingId, ownerEmail]
     );
 
     // 2. Create setting instance
     console.log('[API] Creating setting instance:', settingInstanceId);
     await client.query(
-      `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json)
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)`,
-      [settingInstanceId, sessionId, setting.id, JSON.stringify(setting), JSON.stringify(setting)]
+      `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json, owner_email)
+       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)`,
+      [
+        settingInstanceId,
+        sessionId,
+        setting.id,
+        JSON.stringify(setting),
+        JSON.stringify(setting),
+        ownerEmail,
+      ]
     );
 
     // 3. Create NPC character instances
@@ -268,8 +283,8 @@ export async function handleCreateFullSession(
       console.log('[API] Creating character instance:', npc.id);
       await client.query(
         `INSERT INTO character_instances 
-         (id, session_id, template_id, template_snapshot, profile_json, overrides_json, role, label)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, '{}'::jsonb, $6, $7)`,
+         (id, session_id, template_id, template_snapshot, profile_json, overrides_json, role, label, owner_email)
+         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, '{}'::jsonb, $6, $7, $8)`,
         [
           npc.id,
           sessionId,
@@ -278,6 +293,7 @@ export async function handleCreateFullSession(
           JSON.stringify(npc.character),
           npc.role,
           npc.label,
+          ownerEmail,
         ]
       );
 
@@ -285,9 +301,9 @@ export async function handleCreateFullSession(
       if (npc.startLocationId) {
         await client.query(
           `INSERT INTO session_npc_location_state 
-           (id, session_id, npc_id, location_id, activity_json, arrived_at_json, interruptible)
-           VALUES ($1, $2, $3, $4, '{"type": "idle"}'::jsonb, '{}'::jsonb, TRUE)`,
-          [generateId(), sessionId, npc.id, npc.startLocationId]
+           (id, session_id, npc_id, location_id, activity_json, arrived_at_json, interruptible, owner_email)
+           VALUES ($1, $2, $3, $4, '{"type": "idle"}'::jsonb, '{}'::jsonb, TRUE, $5)`,
+          [generateId(), sessionId, npc.id, npc.startLocationId, ownerEmail]
         );
       }
     }
@@ -296,12 +312,13 @@ export async function handleCreateFullSession(
     if (request.personaId && personaProfile) {
       console.log('[API] Attaching persona:', request.personaId);
       await client.query(
-        `INSERT INTO session_personas (session_id, persona_id, profile_json, overrides_json)
-         VALUES ($1, $2, $3::jsonb, '{}'::jsonb)`,
+        `INSERT INTO session_personas (session_id, persona_id, profile_json, overrides_json, owner_email)
+         VALUES ($1, $2, $3::jsonb, '{}'::jsonb, $4)`,
         [
           sessionId,
           request.personaId,
           typeof personaProfile === 'string' ? personaProfile : JSON.stringify(personaProfile),
+          ownerEmail,
         ]
       );
     }
@@ -343,9 +360,16 @@ export async function handleCreateFullSession(
         }
 
         await client.query(
-          `INSERT INTO session_tag_bindings (id, session_id, tag_id, target_type, target_entity_id, enabled)
-           VALUES ($1, $2, $3, $4, $5, TRUE)`,
-          [bindingId, sessionId, normalized.tagId, normalized.targetType, targetEntityId]
+          `INSERT INTO session_tag_bindings (id, session_id, tag_id, target_type, target_entity_id, enabled, owner_email)
+           VALUES ($1, $2, $3, $4, $5, TRUE, $6)`,
+          [
+            bindingId,
+            sessionId,
+            normalized.tagId,
+            normalized.targetType,
+            targetEntityId,
+            ownerEmail,
+          ]
         );
 
         tagBindings.push({
@@ -364,8 +388,26 @@ export async function handleCreateFullSession(
       relationshipType: string;
     }[] = [];
 
+    // Helper to resolve actor ID (template ID or 'player') to instance ID or 'player'
+    const resolveActorId = (actorId: string): string | null => {
+      if (actorId === 'player') return 'player';
+      const instance = npcInstances.find((n) => n.characterId === actorId);
+      return instance ? instance.id : null;
+    };
+
     if (request.relationships) {
       for (const rel of request.relationships) {
+        const fromInstanceId = resolveActorId(rel.fromActorId);
+        const toInstanceId = resolveActorId(rel.toActorId);
+
+        // Skip if either actor cannot be resolved (e.g. NPC not in session)
+        if (!fromInstanceId || !toInstanceId) {
+          console.warn(
+            `[API] Skipping relationship: could not resolve actor IDs. From: ${rel.fromActorId} -> ${fromInstanceId}, To: ${rel.toActorId} -> ${toInstanceId}`
+          );
+          continue;
+        }
+
         const defaultAffinity = {
           trust: rel.affinitySeed?.trust ?? 0.5,
           fondness: rel.affinitySeed?.fondness ?? 0.5,
@@ -378,14 +420,20 @@ export async function handleCreateFullSession(
           createdAt,
         };
 
-        // Create affinity state for the 'to' actor perspective
+        // Create affinity state for the 'to' actor perspective (how 'to' feels about 'from')
         await client.query(
-          `INSERT INTO session_affinity_state (id, session_id, npc_id, state_json)
-           VALUES ($1, $2, $3, $4::jsonb)
+          `INSERT INTO session_affinity_state (id, session_id, npc_id, state_json, owner_email)
+           VALUES ($1, $2, $3, $4::jsonb, $5)
            ON CONFLICT (session_id, npc_id) DO UPDATE SET
              state_json = session_affinity_state.state_json || $4::jsonb,
              updated_at = now()`,
-          [generateId(), sessionId, rel.toActorId, JSON.stringify({ [rel.fromActorId]: state })]
+          [
+            generateId(),
+            sessionId,
+            toInstanceId,
+            JSON.stringify({ [fromInstanceId]: state }),
+            ownerEmail,
+          ]
         );
 
         relationshipResults.push({
@@ -410,18 +458,23 @@ export async function handleCreateFullSession(
       };
 
       await client.query(
-        `INSERT INTO session_time_state (id, session_id, state_json)
-         VALUES ($1, $2, $3::jsonb)`,
-        [generateId(), sessionId, JSON.stringify(timeState)]
+        `INSERT INTO session_time_state (id, session_id, state_json, owner_email)
+         VALUES ($1, $2, $3::jsonb, $4)`,
+        [generateId(), sessionId, JSON.stringify(timeState), ownerEmail]
       );
     }
 
     // 8. Initialize player location state if provided
     if (request.startLocationId) {
       await client.query(
-        `INSERT INTO session_location_state (id, session_id, state_json)
-         VALUES ($1, $2, $3::jsonb)`,
-        [generateId(), sessionId, JSON.stringify({ currentLocationId: request.startLocationId })]
+        `INSERT INTO session_location_state (id, session_id, state_json, owner_email)
+         VALUES ($1, $2, $3::jsonb, $4)`,
+        [
+          generateId(),
+          sessionId,
+          JSON.stringify({ currentLocationId: request.startLocationId }),
+          ownerEmail,
+        ]
       );
     }
 
@@ -453,7 +506,7 @@ export async function handleCreateFullSession(
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('[API] Failed to create full session, rolled back:', err);
-    return serverError(c, 'failed to create session');
+    return serverError(c, `failed to create session: ${(err as Error).message}`);
   } finally {
     client.release();
   }

@@ -221,6 +221,7 @@ export interface CharacterInstanceTable {
       overridesJson?: string;
       role?: string;
       label?: string | null;
+      ownerEmail: string;
     };
   }): Promise<CharacterInstanceRow>;
   update(args: {
@@ -246,6 +247,7 @@ export interface SettingInstanceTable {
       templateSnapshot: string;
       profileJson: string;
       overridesJson?: string;
+      ownerEmail: string;
     };
   }): Promise<SettingInstanceRow>;
   update(args: {
@@ -285,6 +287,7 @@ export interface ItemInstanceTable {
       definitionSnapshot: string;
       ownerType: string;
       ownerId: string;
+      ownerEmail: string;
     };
   }): Promise<ItemInstanceRow>;
   update(args: {
@@ -333,7 +336,7 @@ export interface PrismaClientLike {
     }): Promise<SessionPersonaRow[]>;
     findUnique(args: { where: { sessionId: string } }): Promise<SessionPersonaRow | null>;
     create(args: {
-      data: { sessionId: string; personaId: string; profileJson: string; overridesJson?: string };
+      data: { sessionId: string; personaId: string; profileJson: string; overridesJson?: string; ownerEmail: string };
     }): Promise<SessionPersonaRow>;
     update(args: {
       where: { sessionId: string };
@@ -357,6 +360,7 @@ export interface PrismaClientLike {
         points: number;
         level: number;
         lastUpdatedAt?: Date;
+        ownerEmail: string;
       };
       update: { points?: number; level?: number; lastUpdatedAt?: Date };
     }): Promise<NpcHygieneStateRow>;
@@ -405,6 +409,7 @@ export interface PrismaClientLike {
         templateId?: string;
         scheduleData: unknown;
         placeholderMappings?: unknown;
+        ownerEmail: string;
       };
       update: {
         templateId?: string;

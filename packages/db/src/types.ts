@@ -124,6 +124,7 @@ export interface CharacterInstanceRow extends DbRow {
   overridesJson?: string;
   role: string;
   label?: string | null;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -135,6 +136,7 @@ export interface SettingInstanceRow extends DbRow {
   templateSnapshot: string;
   profileJson: string;
   overridesJson?: string;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -152,6 +154,7 @@ export interface SessionPersonaRow extends DbRow {
   personaId: string;
   profileJson: string;
   overridesJson: string;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -181,6 +184,7 @@ export interface UserSessionRow extends DbRow {
   id: string;
   characterTemplateId: string;
   settingTemplateId: string;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
   messages?: MessageRow[];
@@ -217,6 +221,7 @@ export interface SessionTagBindingRow extends DbRow {
   target_type: 'session' | 'character' | 'npc' | 'player' | 'location' | 'setting';
   target_entity_id: string | null;
   enabled: boolean;
+  owner_email: string;
   created_at?: Date;
 }
 
@@ -251,6 +256,7 @@ export interface ItemInstanceRow extends DbRow {
   definitionSnapshot: unknown;
   ownerType: string;
   ownerId: string;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -320,6 +326,7 @@ export interface NpcLocationStateRow extends DbRow {
   arrivedAtJson: unknown;
   interruptible: boolean;
   scheduleSlotId: string | null;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -375,6 +382,7 @@ export interface NpcHygieneStateRow extends DbRow {
   points: number;
   /** Computed hygiene level 0-6 */
   level: number;
+  ownerEmail: string;
   lastUpdatedAt?: Date;
   createdAt?: Date;
 }
@@ -415,6 +423,7 @@ export interface NpcScheduleRow extends DbRow {
   scheduleData: unknown;
   /** JSONB map of placeholder key to resolved location ID */
   placeholderMappings: unknown;
+  ownerEmail: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
