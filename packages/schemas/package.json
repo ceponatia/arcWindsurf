@@ -28,7 +28,9 @@
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "typecheck": "tsc -b --pretty false --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
   "devDependencies": {
     "vitest": "^1.6.0"
   }

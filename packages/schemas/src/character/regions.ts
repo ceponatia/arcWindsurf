@@ -1,19 +1,18 @@
-// ============================================================================
-// Body Region Taxonomy
-// ============================================================================
-// Defines the canonical body regions used throughout the system.
-// This is the single source of truth for all body region references.
-//
-// Used by:
-// - Sensory data mapping (scents, textures, temperatures)
-// - Appearance attribute configuration (UI regions)
-// - Equipment slot mapping (what clothing covers what)
-// - Intent routing (resolving player queries about body parts)
-//
-// Note: Equipment slot mapping (body region → clothing slots) is handled
-// separately in the governor package's equipment-resolver.ts to keep
-// character schemas decoupled from item schemas.
-// ============================================================================
+/**
+ * Body Region Taxonomy
+ * Defines the canonical body regions used throughout the system.
+ * This is the single source of truth for all body region references.
+ *
+ * Used by:
+ * - Sensory data mapping (scents, textures, temperatures)
+ * - Appearance attribute configuration (UI regions)
+ * - Equipment slot mapping (what clothing covers what)
+ * - Intent routing (resolving player queries about body parts)
+ *
+ * Note: Equipment slot mapping (body region → clothing slots) is handled
+ * separately in the governor package's equipment-resolver.ts to keep
+ * character schemas decoupled from item schemas.
+ */
 
 import { BODY_REGIONS, type BodyRegion, type BodySide } from '../body-regions/index.js';
 

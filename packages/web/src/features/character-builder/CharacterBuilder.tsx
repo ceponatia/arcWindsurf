@@ -1,11 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { CharacterProfileSchema, type Gender } from '@minimal-rpg/schemas';
 import { generateCharacter, getTheme } from '@minimal-rpg/generator';
 import { mapZodErrorsToFields } from '@minimal-rpg/utils';
 import { persistCharacter, removeCharacter } from './api.js';
-import { AppearanceSection } from './components/AppearanceSection.js';
 import { BasicsSection } from './components/BasicsSection.js';
-import { BodySection } from './components/BodySection.js';
+import { BodyAppearanceSection } from './components/BodyAppearanceSection.js';
 import { DetailsSection } from './components/DetailsSection.js';
 import { PersonalitySection } from './components/PersonalitySection.js';
 import { PreviewSidebar } from './components/PreviewSidebar.js';
@@ -38,20 +37,15 @@ export const CharacterBuilder: React.FC<{
     updateDetailEntry,
     addDetailEntry,
     removeDetailEntry,
-    updateBodyEntry,
-    addBodyEntry,
-    removeBodyEntry,
-    updateAppearanceEntry,
-    addAppearanceEntry,
-    removeAppearanceEntry,
+    updateBody,
     loading,
     loadError,
   } = useCharacterBuilderForm(id);
 
   const [mode, setMode] = useState<CharacterBuilderMode>(initialMode);
-  const [activeTab, setActiveTab] = useState<
-    'basics' | 'appearance' | 'personality' | 'body' | 'details'
-  >('basics');
+  const [activeTab, setActiveTab] = useState<'basics' | 'body' | 'personality' | 'details'>(
+    'basics'
+  );
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +58,49 @@ export const CharacterBuilder: React.FC<{
   useAutoSave(`character-draft-${id ?? 'new'}`, form, 1000, !saving && !loading);
 
   // Change mode handler - preserves data when switching modes
-  const handleModeChange = useCallback((newMode: CharacterBuilderMode) => {
-    setMode(newMode);
-  }, []);
+  const handleModeChange = useCallback(
+    (newMode: CharacterBuilderMode) => {
+      const complexity = { quick: 0, standard: 1, advanced: 2 };
+      if (complexity[newMode] < complexity[mode]) {
+        setSuccess(`Switched to ${newMode} mode. Hidden data is preserved.`);
+        setTimeout(() => setSuccess(null), 3000);
+      }
+      setMode(newMode);
+    },
+    [mode]
+  );
+
+  // Debounced validation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!form.name && !form.id) return; // Skip empty form
+
+      const profile = buildProfile(form);
+      const validation = CharacterProfileSchema.safeParse(profile);
+      if (!validation.success) {
+        const fieldMap = mapZodErrorsToFields<FormKey>(validation.error, {
+          pathToField: (path: (string | number)[]) => {
+            const p = path.map(String);
+            const top: Record<string, FormKey> = {
+              id: 'id',
+              name: 'name',
+              age: 'age',
+              summary: 'summary',
+              backstory: 'backstory',
+              personality: 'personality',
+            };
+            const key = p[0];
+            if (!key) return undefined;
+            return Object.hasOwn(top, key) ? top[key] : undefined;
+          },
+        });
+        setFieldErrors(fieldMap as FormFieldErrors);
+      } else {
+        setFieldErrors({});
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [form, setFieldErrors]);
 
   const handleDelete = async () => {
     if (!id) return;
@@ -79,7 +113,7 @@ export const CharacterBuilder: React.FC<{
    * Generate missing fields using the generator and merge into form.
    * Uses fill-empty mode to preserve user-entered data.
    */
-  const handleGenerate = () => {
+  const handleGenerate = (section?: 'basics' | 'body' | 'personality' | 'details') => {
     setGenerating(true);
     setError(null);
     setSuccess(null);
@@ -100,10 +134,37 @@ export const CharacterBuilder: React.FC<{
       // Convert generated CharacterProfile to FormState
       const generatedForm = mapProfileToForm(character);
 
-      // Merge generated data into existing form, preserving user values
-      setForm((current) => mergeGeneratedIntoForm(current, generatedForm));
-
-      setSuccess('Generated missing fields');
+      if (section) {
+        // Section-specific overwrite
+        setForm((current) => {
+          const next = { ...current };
+          switch (section) {
+            case 'body':
+              next.body = generatedForm.body;
+              break;
+            case 'personality':
+              next.personality = generatedForm.personality;
+              next.personalityMap = generatedForm.personalityMap;
+              break;
+            case 'details':
+              next.details = generatedForm.details;
+              break;
+            case 'basics':
+              next.name = generatedForm.name;
+              next.age = generatedForm.age;
+              next.summary = generatedForm.summary;
+              next.backstory = generatedForm.backstory;
+              next.tags = generatedForm.tags;
+              break;
+          }
+          return next;
+        });
+        setSuccess(`Generated ${section}`);
+      } else {
+        // Default: Merge missing fields (fill-empty)
+        setForm((current) => mergeGeneratedIntoForm(current, generatedForm));
+        setSuccess('Generated missing fields');
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Generation failed');
     } finally {
@@ -158,9 +219,12 @@ export const CharacterBuilder: React.FC<{
 
   const tabs = [
     { id: 'basics', label: 'Basics', visible: modeConfig.sections.basics },
-    { id: 'appearance', label: 'Appearance', visible: modeConfig.sections.appearance },
+    {
+      id: 'body',
+      label: 'Attributes',
+      visible: modeConfig.sections.appearance || modeConfig.sections.body,
+    },
     { id: 'personality', label: 'Personality', visible: modeConfig.sections.personality },
-    { id: 'body', label: 'Body', visible: modeConfig.sections.body },
     { id: 'details', label: 'Details', visible: modeConfig.sections.details },
   ] as const;
 
@@ -232,41 +296,51 @@ export const CharacterBuilder: React.FC<{
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
             {/* Basics Section */}
             {activeTab === 'basics' && modeConfig.sections.basics && (
-              <BasicsSection
-                form={form}
-                fieldErrors={fieldErrors}
-                updateField={updateField}
-                visibleFields={modeConfig.basicFields}
-              />
-            )}
-
-            {/* Appearance Section */}
-            {activeTab === 'appearance' && modeConfig.sections.appearance && (
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <button
-                    onClick={() => handleGenerate()}
+                    onClick={() => handleGenerate('basics')}
                     className="text-xs text-violet-400 hover:text-violet-300"
                   >
-                    Generate Appearance
+                    Generate Basics
                   </button>
                 </div>
-                <AppearanceSection
-                  appearances={form.appearances}
-                  gender={form.gender}
-                  updateAppearanceEntry={updateAppearanceEntry}
-                  addAppearanceEntry={addAppearanceEntry}
-                  removeAppearanceEntry={removeAppearanceEntry}
+                <BasicsSection
+                  form={form}
+                  fieldErrors={fieldErrors}
+                  updateField={updateField}
+                  visibleFields={modeConfig.basicFields}
                 />
               </div>
             )}
+
+            {/* Body & Appearance Section */}
+            {activeTab === 'body' &&
+              (modeConfig.sections.appearance || modeConfig.sections.body) && (
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => handleGenerate('body')}
+                      className="text-xs text-violet-400 hover:text-violet-300"
+                    >
+                      Generate Body
+                    </button>
+                  </div>
+                  <BodyAppearanceSection
+                    body={form.body}
+                    gender={form.gender}
+                    race={form.race}
+                    updateBody={updateBody}
+                  />
+                </div>
+              )}
 
             {/* Personality Section */}
             {activeTab === 'personality' && modeConfig.sections.personality && (
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <button
-                    onClick={() => handleGenerate()}
+                    onClick={() => handleGenerate('personality')}
                     className="text-xs text-violet-400 hover:text-violet-300"
                   >
                     Generate Personality
@@ -281,25 +355,24 @@ export const CharacterBuilder: React.FC<{
               </div>
             )}
 
-            {/* Body Section */}
-            {activeTab === 'body' && modeConfig.sections.body && (
-              <BodySection
-                bodySensory={form.bodySensory}
-                gender={form.gender}
-                updateBodyEntry={updateBodyEntry}
-                addBodyEntry={addBodyEntry}
-                removeBodyEntry={removeBodyEntry}
-              />
-            )}
-
             {/* Details Section */}
             {activeTab === 'details' && modeConfig.sections.details && (
-              <DetailsSection
-                details={form.details}
-                updateDetailEntry={updateDetailEntry}
-                addDetailEntry={addDetailEntry}
-                removeDetailEntry={removeDetailEntry}
-              />
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleGenerate('details')}
+                    className="text-xs text-violet-400 hover:text-violet-300"
+                  >
+                    Generate Details
+                  </button>
+                </div>
+                <DetailsSection
+                  details={form.details}
+                  updateDetailEntry={updateDetailEntry}
+                  addDetailEntry={addDetailEntry}
+                  removeDetailEntry={removeDetailEntry}
+                />
+              </div>
             )}
           </div>
         </div>

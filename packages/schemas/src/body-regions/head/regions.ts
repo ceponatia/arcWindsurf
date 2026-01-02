@@ -6,6 +6,7 @@ export const HEAD_REGIONS = [
   'leftEye',
   'rightEye',
   'nose',
+  'cheeks',
   'leftCheek',
   'rightCheek',
   'chin',

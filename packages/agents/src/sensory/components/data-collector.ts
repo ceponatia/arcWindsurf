@@ -1,6 +1,12 @@
 import type { AgentInput, CharacterSlice, KnowledgeContextItem } from '../../core/types.js';
 import type { SensoryContext, SensoryIntentType, SensoryTargetType } from '../types.js';
-import { type BodyRegion, DEFAULT_BODY_REGION, resolveBodyRegion } from '@minimal-rpg/schemas';
+import {
+  type BodyRegion,
+  DEFAULT_BODY_REGION,
+  resolveBodyRegion,
+  ALL_HYGIENE_MODIFIERS,
+  type HygieneSensoryModifiers,
+} from '@minimal-rpg/schemas';
 
 /**
  * Component responsible for extracting sensory data from character profiles and knowledge context.
@@ -73,7 +79,7 @@ export class SensoryDataCollector {
 
     const { targetType, targetName, targetCharacter } = this.resolveTarget(target, npc, character);
 
-    let sensoryData = this.extractScentFromBodyMap(targetCharacter?.body, bodyRegion);
+    let sensoryData = this.extractScentFromBodyMap(targetCharacter, bodyRegion);
 
     if (Object.keys(sensoryData).length === 0) {
       sensoryData = this.extractScentFromKnowledge(input.knowledgeContext, bodyRegion);
@@ -110,7 +116,7 @@ export class SensoryDataCollector {
 
     const { targetType, targetName, targetCharacter } = this.resolveTarget(target, npc, character);
 
-    let sensoryData = this.extractTextureFromBodyMap(targetCharacter?.body, bodyRegion);
+    let sensoryData = this.extractTextureFromBodyMap(targetCharacter, bodyRegion);
 
     if (Object.keys(sensoryData).length === 0) {
       sensoryData = this.extractTextureFromKnowledge(input.knowledgeContext, bodyRegion);
@@ -136,6 +142,7 @@ export class SensoryDataCollector {
   ): Record<string, string> {
     const data: Record<string, string> = {};
     const body = character.body;
+    const hygiene = character.hygiene;
 
     // Collect unique body regions from all requests
     const bodyRegions = new Set<BodyRegion>();
@@ -146,44 +153,95 @@ export class SensoryDataCollector {
     // For each body region, collect ALL available sensory data
     for (const bodyRegion of bodyRegions) {
       const regionData = body?.[bodyRegion];
-      if (!regionData) continue;
+
+      // Get hygiene modifiers
+      const hygieneLevel = hygiene?.bodyParts?.[bodyRegion]?.level ?? 0;
+      const hygieneProfile = ALL_HYGIENE_MODIFIERS[bodyRegion];
+      // @ts-expect-error - Indexing with number on hygieneProfile
+      const hygieneModifiers = hygieneProfile?.[hygieneLevel] as
+        | HygieneSensoryModifiers
+        | undefined;
+
+      if (!regionData && !hygieneModifiers) continue;
 
       // Scent data
-      if (regionData.scent?.primary) {
-        data[`smell_${bodyRegion}`] = regionData.scent.primary;
-      }
-      if (regionData.scent?.intensity !== undefined) {
-        data[`smell_${bodyRegion}_intensity`] = String(regionData.scent.intensity);
-      }
-      if (regionData.scent?.notes?.length) {
-        data[`smell_${bodyRegion}_notes`] = regionData.scent.notes.join(', ');
+      const baseScent = regionData?.scent;
+      const hygieneScent = hygieneModifiers?.scent;
+
+      if (baseScent || hygieneScent) {
+        const primary = hygieneScent?.primary ?? baseScent?.primary;
+        if (primary) {
+          let scentText = primary;
+          const notes = [...(baseScent?.notes ?? []), ...(hygieneScent?.notes ?? [])];
+          if (notes.length > 0) {
+            scentText += ` with notes of ${notes.join(', ')}`;
+          }
+          data[`smell_${bodyRegion}`] = scentText;
+        }
+
+        const intensity = Math.max(baseScent?.intensity ?? 0, hygieneScent?.intensity ?? 0);
+        if (intensity > 0) {
+          data[`smell_${bodyRegion}_intensity`] = String(intensity);
+        }
       }
 
       // Texture data
-      if (regionData.texture?.primary) {
-        data[`touch_${bodyRegion}`] = regionData.texture.primary;
-      }
-      if (regionData.texture?.temperature && regionData.texture.temperature !== 'neutral') {
-        data[`touch_${bodyRegion}_temp`] = regionData.texture.temperature;
-      }
-      if (regionData.texture?.moisture && regionData.texture.moisture !== 'normal') {
-        data[`touch_${bodyRegion}_moisture`] = regionData.texture.moisture;
+      const baseTexture = regionData?.texture;
+      const hygieneTexture = hygieneModifiers?.texture;
+
+      if (baseTexture || hygieneTexture) {
+        const primary = hygieneTexture?.primary ?? baseTexture?.primary;
+        if (primary) {
+          data[`touch_${bodyRegion}`] = primary;
+        }
+
+        const temp = hygieneTexture?.temperature ?? baseTexture?.temperature;
+        if (temp && temp !== 'neutral') {
+          data[`touch_${bodyRegion}_temp`] = temp;
+        }
+
+        const moisture = hygieneTexture?.moisture ?? baseTexture?.moisture;
+        if (moisture && moisture !== 'normal') {
+          data[`touch_${bodyRegion}_moisture`] = moisture;
+        }
       }
 
       // Flavor data (for taste intents)
-      if (regionData.flavor?.primary) {
-        data[`taste_${bodyRegion}`] = regionData.flavor.primary;
-      }
-      if (regionData.flavor?.intensity !== undefined) {
-        data[`taste_${bodyRegion}_intensity`] = String(regionData.flavor.intensity);
-      }
-      if (regionData.flavor?.notes?.length) {
-        data[`taste_${bodyRegion}_notes`] = regionData.flavor.notes.join(', ');
+      const baseFlavor = regionData?.flavor;
+      const hygieneFlavor = hygieneModifiers?.flavor;
+
+      if (baseFlavor || hygieneFlavor) {
+        const primary = hygieneFlavor?.primary ?? baseFlavor?.primary;
+        if (primary) {
+          let flavorText = primary;
+          const notes = [...(baseFlavor?.notes ?? []), ...(hygieneFlavor?.notes ?? [])];
+          if (notes.length > 0) {
+            flavorText += ` with notes of ${notes.join(', ')}`;
+          }
+          data[`taste_${bodyRegion}`] = flavorText;
+        }
+
+        const intensity = Math.max(baseFlavor?.intensity ?? 0, hygieneFlavor?.intensity ?? 0);
+        if (intensity > 0) {
+          data[`taste_${bodyRegion}_intensity`] = String(intensity);
+        }
       }
 
       // Visual data
-      if (regionData.visual?.description) {
-        data[`visual_${bodyRegion}`] = regionData.visual.description;
+      const baseVisual = regionData?.visual;
+      const hygieneVisual = hygieneModifiers?.visual;
+
+      if (baseVisual || hygieneVisual) {
+        let description = baseVisual?.description ?? '';
+        if (hygieneVisual?.descriptionAppend) {
+          description = description
+            ? `${description}, ${hygieneVisual.descriptionAppend}`
+            : hygieneVisual.descriptionAppend;
+        }
+
+        if (description) {
+          data[`visual_${bodyRegion}`] = description;
+        }
       }
     }
 
@@ -191,31 +249,29 @@ export class SensoryDataCollector {
   }
 
   extractScentFromBodyMap(
-    bodyMap: CharacterSlice['body'],
+    character: CharacterSlice | undefined,
     bodyRegion: BodyRegion = this.defaultBodyRegion
   ): Record<string, string> {
+    if (!character) return {};
+    // Reuse collectCharacterSensoryData for consistency
+    const data = this.collectCharacterSensoryData(character, [
+      { type: 'smell', bodyPart: bodyRegion },
+    ]);
+
     const result: Record<string, string> = {};
-
-    if (!bodyMap) {
-      return result;
+    const regionScent = data[`smell_${bodyRegion}`];
+    if (regionScent) {
+      result[bodyRegion] = regionScent;
     }
 
-    const regionData = bodyMap[bodyRegion];
-    if (regionData?.scent) {
-      const scent = regionData.scent;
-      const scentText = scent.notes?.length
-        ? `${scent.primary} with notes of ${scent.notes.join(', ')}`
-        : scent.primary;
-      result[bodyRegion] = scentText;
-    }
-
+    // Fallback to torso/body scent if specific region not found
     if (!result[bodyRegion] && bodyRegion !== 'torso') {
-      const torsoData = bodyMap.torso;
-      if (torsoData?.scent) {
-        const scent = torsoData.scent;
-        result['bodyScent'] = scent.notes?.length
-          ? `${scent.primary} with notes of ${scent.notes.join(', ')}`
-          : scent.primary;
+      const torsoData = this.collectCharacterSensoryData(character, [
+        { type: 'smell', bodyPart: 'torso' },
+      ]);
+      const torsoScent = torsoData['smell_torso'];
+      if (torsoScent) {
+        result['bodyScent'] = torsoScent;
       }
     }
 
@@ -264,30 +320,23 @@ export class SensoryDataCollector {
   }
 
   extractTextureFromBodyMap(
-    bodyMap: CharacterSlice['body'],
+    character: CharacterSlice | undefined,
     bodyRegion: BodyRegion = this.defaultBodyRegion
   ): Record<string, string> {
+    if (!character) return {};
+    // Reuse collectCharacterSensoryData for consistency
+    const data = this.collectCharacterSensoryData(character, [
+      { type: 'touch', bodyPart: bodyRegion },
+    ]);
+
     const result: Record<string, string> = {};
-
-    if (!bodyMap) {
-      return result;
-    }
-
-    const regionData = bodyMap[bodyRegion];
-    if (regionData?.texture) {
-      const texture = regionData.texture;
-      const parts: string[] = [texture.primary];
-
-      if (texture.temperature && texture.temperature !== 'neutral') {
-        parts.push(texture.temperature);
-      }
-      if (texture.moisture && texture.moisture !== 'normal') {
-        parts.push(texture.moisture);
-      }
-      if (texture.notes?.length) {
-        parts.push(...texture.notes);
-      }
-
+    const touch = data[`touch_${bodyRegion}`];
+    if (touch) {
+      const parts: string[] = [touch];
+      const temp = data[`touch_${bodyRegion}_temp`];
+      if (temp) parts.push(temp);
+      const moisture = data[`touch_${bodyRegion}_moisture`];
+      if (moisture) parts.push(moisture);
       result[bodyRegion] = parts.join(', ');
     }
 

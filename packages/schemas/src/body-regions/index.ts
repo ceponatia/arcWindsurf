@@ -16,6 +16,9 @@ export * from './arms/index.js';
 export * from './groin/index.js';
 export * from './legs/index.js';
 export * from './feet/index.js';
+export * from './hygiene-registry.js';
+export * from './hierarchy.js';
+export * from './utils.js';
 
 /**
  * Expanded canonical body regions (left/right + detailed toes).

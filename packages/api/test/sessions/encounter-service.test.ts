@@ -4,7 +4,7 @@ import {
   generateNpcExitNarration,
   type EncounterNarrationOptions,
   type EncounterNpcInfo,
-} from '../../src/sessions/encounter-service.js';
+} from '../../src/services/encounter-service.js';
 
 const baseActivity = {
   type: 'reading',

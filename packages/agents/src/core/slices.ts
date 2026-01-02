@@ -8,6 +8,7 @@ import type {
   ParsedAction,
   ActionInterrupt,
   AccumulatedSensoryContext,
+  NpcHygieneState,
 } from '@minimal-rpg/schemas';
 import type { AgentIntent } from './intents.js';
 
@@ -147,6 +148,9 @@ export interface CharacterSlice {
 
   /** Body map with per-region sensory data (scent, texture, visual, flavor) */
   body?: BodyMap | undefined;
+
+  /** Hygiene state tracking cleanliness levels per body part */
+  hygiene?: NpcHygieneState | undefined;
 
   /** Structured personality map for detailed NPC behavior */
   personalityMap?: PersonalityMap | undefined;

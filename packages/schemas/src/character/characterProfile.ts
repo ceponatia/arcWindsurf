@@ -5,6 +5,7 @@ import { BodyMapSchema } from './sensory.js';
 import { CharacterBasicsSchema, type CharacterBasics } from './basics.js';
 import { CharacterDetailSchema, type CharacterDetail } from './details.js';
 import { PersonalityMapSchema, type PersonalityMap } from './personality.js';
+import { NpcHygieneStateSchema, type NpcHygieneState } from '../state/hygiene.js';
 
 export const CharacterProfileSchema = CharacterBasicsSchema.extend({
   // personality can be a simple string or an array of strings
@@ -31,6 +32,12 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
   body: BodyMapSchema.optional(),
 
   /**
+   * Hygiene state tracking cleanliness levels per body part.
+   * Used to dynamically modify sensory data (scent, texture, visual).
+   */
+  hygiene: NpcHygieneStateSchema.optional(),
+
+  /**
    * Structured personality map for NPC agent prompting.
    * Includes Big Five dimensions, emotional baseline, values, fears,
    * social patterns, speech style, and stress responses.
@@ -45,4 +52,4 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
 export type CharacterProfile = z.infer<typeof CharacterProfileSchema>;
 
 // Useful named re-exports for consumers
-export type { Physique, CharacterBasics, CharacterDetail, PersonalityMap };
+export type { Physique, CharacterBasics, CharacterDetail, PersonalityMap, NpcHygieneState };

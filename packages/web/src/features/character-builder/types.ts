@@ -28,6 +28,7 @@ import {
   RECOVERY_RATES,
   type CharacterDetailArea,
   type BodyRegion,
+  type BodyMap,
   type AppearanceRegion,
   type PersonalityDimension,
   type CoreEmotion,
@@ -315,10 +316,8 @@ export interface FormState {
   personalityMap: PersonalityFormState;
   /** Free-text appearance (alternative to structured entries) */
   appearance: string;
-  /** Structured appearance entries (region → attribute → value) */
-  appearances: AppearanceEntry[];
-  /** Body sensory entries (scent, texture, visual per region) */
-  bodySensory: BodySensoryEntry[];
+  /** Unified body map containing sensory and appearance data */
+  body: BodyMap;
   details: DetailFormEntry[];
 }
 
@@ -434,8 +433,7 @@ export const createInitialState = (): FormState => ({
   personality: '',
   personalityMap: createPersonalityFormState(),
   appearance: '',
-  appearances: [createAppearanceEntry()],
-  bodySensory: [createBodySensoryEntry()],
+  body: {},
   details: [createDetailEntry()],
 });
 

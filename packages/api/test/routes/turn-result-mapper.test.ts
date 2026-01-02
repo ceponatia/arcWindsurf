@@ -1,4 +1,4 @@
-import { mapTurnResultToDto } from '../../src/routes/turns/turn-result-mapper.js';
+import { mapTurnResultToDto } from '../../src/routes/game/turns/turn-result-mapper.js';
 import type { TurnResult } from '@minimal-rpg/governor';
 import type { Speaker } from '../../src/types.js';
 

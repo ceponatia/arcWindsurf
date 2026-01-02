@@ -11,9 +11,6 @@ export * from './body-region-groups.js';
 // Sensory data schemas (scent, texture, visual, flavor)
 export * from './sensory.js';
 
-// Default sensory data (tiered scent defaults)
-export * from './scent-defaults.js';
-
 // Other character facets
 export * from './basics.js';
 export * from './details.js';

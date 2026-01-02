@@ -17,5 +17,5 @@ function loadEnvFiles(): void {
 
 loadEnvFiles();
 
-const { startServer } = await import('./serverImpl.js');
+const { startServer } = await import('./server-impl.js');
 void startServer();

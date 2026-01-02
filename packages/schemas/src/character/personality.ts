@@ -1,15 +1,14 @@
 import { z } from 'zod';
 
-// ============================================================================
-// Personality Dimension Taxonomy
-// ============================================================================
-// Based on the Big Five (OCEAN) model, with facets and prompt injection support.
-// Enables:
-// - Atomic personality traits that map to LLM prompt fragments
-// - Conflict detection between incompatible traits
-// - Relationship-aware trait modulation
-// - Natural language aliasing for trait resolution
-// ============================================================================
+/**
+ * Personality Dimension Taxonomy
+ * Based on the Big Five (OCEAN) model, with facets and prompt injection support.
+ * Enables:
+ * - Atomic personality traits that map to LLM prompt fragments
+ * - Conflict detection between incompatible traits
+ * - Relationship-aware trait modulation
+ * - Natural language aliasing for trait resolution
+ */
 
 /**
  * Big Five personality dimensions - the foundation layer.
@@ -65,9 +64,7 @@ export const PERSONALITY_FACETS: Record<PersonalityDimension, readonly string[]>
   ],
 } as const;
 
-// ============================================================================
 // Trait Aliases (Natural Language Mapping)
-// ============================================================================
 
 /**
  * Maps natural language trait words to their personality dimension/facet.
@@ -160,9 +157,7 @@ export const TRAIT_ALIASES: Record<
   confident: { dimension: 'neuroticism', facet: 'self-consciousness', polarity: 'low' },
 };
 
-// ============================================================================
 // Emotional State System
-// ============================================================================
 
 export const CORE_EMOTIONS = [
   'joy',
@@ -195,9 +190,7 @@ export const EmotionalStateSchema = z.object({
 
 export type EmotionalState = z.infer<typeof EmotionalStateSchema>;
 
-// ============================================================================
 // Values & Motivations
-// ============================================================================
 
 export const CORE_VALUES = [
   // Achievement
@@ -254,9 +247,7 @@ export const ValueSchema = z.object({
 
 export type Value = z.infer<typeof ValueSchema>;
 
-// ============================================================================
 // Fears
-// ============================================================================
 
 export const FEAR_CATEGORIES = [
   'loss',
@@ -297,9 +288,7 @@ export const FearSchema = z.object({
 
 export type Fear = z.infer<typeof FearSchema>;
 
-// ============================================================================
 // Social Patterns
-// ============================================================================
 
 export const ATTACHMENT_STYLES = [
   'secure',
@@ -353,9 +342,7 @@ export const SocialPatternSchema = z.object({
 
 export type SocialPattern = z.infer<typeof SocialPatternSchema>;
 
-// ============================================================================
 // Speech Style
-// ============================================================================
 
 export const VOCABULARY_LEVELS = ['simple', 'average', 'educated', 'erudite', 'archaic'] as const;
 export const SENTENCE_STRUCTURES = ['terse', 'simple', 'moderate', 'complex', 'elaborate'] as const;
@@ -400,9 +387,7 @@ export const SpeechStyleSchema = z.object({
 
 export type SpeechStyle = z.infer<typeof SpeechStyleSchema>;
 
-// ============================================================================
 // Stress Response
-// ============================================================================
 
 export const STRESS_RESPONSES = ['fight', 'flight', 'freeze', 'fawn'] as const;
 export type StressResponse = (typeof STRESS_RESPONSES)[number];
@@ -426,9 +411,7 @@ export const StressBehaviorSchema = z.object({
 
 export type StressBehavior = z.infer<typeof StressBehaviorSchema>;
 
-// ============================================================================
 // Prompt Injection System
-// ============================================================================
 
 /**
  * Categories for trait prompts - used for budgeting.
@@ -685,9 +668,7 @@ export const TRAIT_PROMPTS: Record<string, TraitPrompt> = {
   },
 };
 
-// ============================================================================
 // Trait Conflict System
-// ============================================================================
 
 export type ConflictType = 'polar' | 'logical' | 'behavioral' | 'soft';
 
@@ -750,9 +731,7 @@ export const TRAIT_CONFLICTS: TraitConflict[] = [
   },
 ];
 
-// ============================================================================
 // Complete Personality Map Schema
-// ============================================================================
 
 /**
  * Dimension scores schema - numeric values for each Big Five dimension.
@@ -807,9 +786,7 @@ export const PersonalityMapSchema = z.object({
 
 export type PersonalityMap = z.infer<typeof PersonalityMapSchema>;
 
-// ============================================================================
 // Helper Functions
-// ============================================================================
 
 /**
  * Resolve a trait keyword to its personality dimension.

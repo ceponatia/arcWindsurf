@@ -10,6 +10,45 @@ interface BasicsSectionProps {
   visibleFields?: ModeConfig['basicFields'];
 }
 
+const TEMPLATES = [
+  {
+    label: 'Town Guard',
+    data: {
+      race: 'human',
+      alignment: 'lawful_neutral',
+      age: 30,
+      gender: 'male',
+      summary: 'A diligent guard who takes his job seriously.',
+      tags: 'guard, military, stern',
+      personality: 'Dutiful, suspicious, protective',
+    },
+  },
+  {
+    label: 'Merchant',
+    data: {
+      race: 'human',
+      alignment: 'neutral_good',
+      age: 45,
+      gender: 'female',
+      summary: 'A friendly merchant who loves a good deal.',
+      tags: 'merchant, wealthy, talkative',
+      personality: 'Charismatic, greedy, friendly',
+    },
+  },
+  {
+    label: 'Mysterious Stranger',
+    data: {
+      race: 'elf',
+      alignment: 'chaotic_neutral',
+      age: 120,
+      gender: 'unknown',
+      summary: 'A hooded figure sitting in the corner.',
+      tags: 'mysterious, magic, hooded',
+      personality: 'Secretive, observant, quiet',
+    },
+  },
+];
+
 export const BasicsSection: React.FC<BasicsSectionProps> = ({
   form,
   fieldErrors,
@@ -32,7 +71,32 @@ export const BasicsSection: React.FC<BasicsSectionProps> = ({
 
   return (
     <div className="border border-slate-800 rounded-lg overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Basics</div>
+      <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+        <span>Basics</span>
+        <select
+          className="text-xs bg-slate-800 text-slate-300 border border-slate-700 rounded px-2 py-1 outline-none focus:border-violet-500"
+          onChange={(e) => {
+            const template = TEMPLATES.find((t) => t.label === e.target.value);
+            if (template) {
+              Object.entries(template.data).forEach(([key, value]) => {
+                updateField(key as keyof FormState, value);
+              });
+            }
+            // Reset select
+            e.target.value = '';
+          }}
+          defaultValue=""
+        >
+          <option value="" disabled>
+            Load Template...
+          </option>
+          {TEMPLATES.map((t) => (
+            <option key={t.label} value={t.label}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* ID is always visible */}
         <label className="flex flex-col gap-1">

@@ -235,6 +235,10 @@ importers:
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.2)
 
   packages/schemas:
+    dependencies:
+      zod:
+        specifier: ^4.1.12
+        version: 4.1.12
     devDependencies:
       vitest:
         specifier: ^1.6.0
@@ -301,6 +305,9 @@ importers:
       '@minimal-rpg/schemas':
         specifier: workspace:*
         version: link:../schemas
+      fast-json-patch:
+        specifier: ^3.1.1
+        version: 3.1.1
     devDependencies:
       tsup:
         specifier: ^8.0.0

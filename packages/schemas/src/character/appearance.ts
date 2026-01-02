@@ -1,4 +1,13 @@
 import { BODY_REGIONS } from './regions.js';
+import { HEAD_APPEARANCE } from '../body-regions/head/appearance.js';
+import { NECK_APPEARANCE } from '../body-regions/neck/appearance.js';
+import { UPPER_BODY_APPEARANCE } from '../body-regions/upper-body/appearance.js';
+import { TORSO_APPEARANCE } from '../body-regions/torso/appearance.js';
+import { ARMS_APPEARANCE } from '../body-regions/arms/appearance.js';
+import { GROIN_APPEARANCE } from '../body-regions/groin/appearance.js';
+import { LEGS_APPEARANCE } from '../body-regions/legs/appearance.js';
+import { FEET_APPEARANCE } from '../body-regions/feet/appearance.js';
+import type { AppearanceAttributeDef } from '../body-regions/types.js';
 
 /**
  * Import shared physique schemas and types.
@@ -54,12 +63,11 @@ export {
   type Physique,
 };
 
-// ============================================================================
-// Appearance Region Taxonomy
-// ============================================================================
-// Defines appearance regions and their attributes for character building.
-// Uses canonical BODY_REGIONS from regions.ts plus 'overall' for general build.
-// ============================================================================
+/**
+ * Appearance Region Taxonomy
+ * Defines appearance regions and their attributes for character building.
+ * Uses canonical BODY_REGIONS from regions.ts plus 'overall' for general build.
+ */
 
 /**
  * Appearance regions - includes all BODY_REGIONS plus 'overall', 'eyes', and 'skin'.
@@ -73,25 +81,13 @@ export const APPEARANCE_REGIONS = ['overall', 'eyes', 'skin', ...BODY_REGIONS] a
 
 export type AppearanceRegion = (typeof APPEARANCE_REGIONS)[number];
 
-// ============================================================================
-// Region Attributes Configuration
-// ============================================================================
-// Defines what attributes are available for each appearance region.
-// Used by the character builder to dynamically render attribute dropdowns.
-// ============================================================================
-
 /**
- * Attribute definitions with optional preset values.
- * If `values` is provided, a dropdown is shown; otherwise a text input.
+ * Region Attributes Configuration
+ * Defines what attributes are available for each appearance region.
+ * Used by the character builder to dynamically render attribute dropdowns.
  */
-export interface AppearanceAttributeDef {
-  /** Display label for the attribute */
-  label: string;
-  /** Preset values for dropdown, or undefined for free text */
-  values?: readonly string[];
-  /** Placeholder for free text inputs */
-  placeholder?: string;
-}
+
+export type { AppearanceAttributeDef };
 
 const DEFAULT_REGION_ATTRIBUTES: Record<string, AppearanceAttributeDef> = {
   description: { label: 'Description', placeholder: 'e.g., distinctive' },
@@ -119,55 +115,21 @@ function buildAppearanceRegionAttributes(): Record<
   };
 
   // Appearance-specific regions (not in BODY_REGIONS)
-  out.eyes = {
-    color: { label: 'Color', placeholder: 'e.g., brown, blue, green' },
-    shape: { label: 'Shape', placeholder: 'e.g., almond, round, hooded' },
-  };
+  out.eyes = HEAD_APPEARANCE['eyes'] ?? DEFAULT_REGION_ATTRIBUTES;
   out.skin = {
     tone: { label: 'Tone', placeholder: 'e.g., pale, tan, olive, dark' },
     condition: { label: 'Condition', placeholder: 'e.g., clear, freckled, scarred' },
   };
 
-  // Commonly-edited regions
-  out.hair = {
-    color: { label: 'Color', placeholder: 'e.g., black, brown, blonde, red' },
-    style: { label: 'Style', placeholder: 'e.g., long, short, braided, messy' },
-  };
-
-  out.leftFoot = {
-    size: { label: 'Size', values: APPEARANCE_FEET_SIZES },
-    shape: { label: 'Shape', placeholder: 'e.g., narrow, wide, average' },
-  };
-  out.rightFoot = out.leftFoot;
-
-  out.leftHand = {
-    size: { label: 'Size', placeholder: 'e.g., small, average, large' },
-    description: { label: 'Description', placeholder: 'e.g., calloused' },
-  };
-  out.rightHand = out.leftHand;
-
-  out.leftArm = {
-    build: { label: 'Build', values: APPEARANCE_ARMS_BUILD },
-    length: { label: 'Length', values: APPEARANCE_ARMS_LENGTH },
-  };
-  out.rightArm = out.leftArm;
-
-  out.leftLeg = {
-    build: { label: 'Build', values: APPEARANCE_LEGS_BUILD },
-    length: { label: 'Length', values: APPEARANCE_LEGS_LENGTH },
-  };
-  out.rightLeg = out.leftLeg;
-
-  out.leftBreast = {
-    size: { label: 'Size', placeholder: 'e.g., small, average, large' },
-    shape: { label: 'Shape', placeholder: 'e.g., perky, full, soft' },
-  };
-  out.rightBreast = out.leftBreast;
-
-  out.leftNipple = {
-    description: { label: 'Description', placeholder: 'e.g., small, prominent' },
-  };
-  out.rightNipple = out.leftNipple;
+  // Merge all region appearances
+  Object.assign(out, HEAD_APPEARANCE);
+  Object.assign(out, NECK_APPEARANCE);
+  Object.assign(out, UPPER_BODY_APPEARANCE);
+  Object.assign(out, TORSO_APPEARANCE);
+  Object.assign(out, ARMS_APPEARANCE);
+  Object.assign(out, GROIN_APPEARANCE);
+  Object.assign(out, LEGS_APPEARANCE);
+  Object.assign(out, FEET_APPEARANCE);
 
   return out;
 }
