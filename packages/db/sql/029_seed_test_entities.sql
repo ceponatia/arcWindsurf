@@ -149,6 +149,8 @@ VALUES (
     "name": "Alex Chen",
     "age": 17,
     "gender": "male",
+    "race": "Human",
+    "alignment": "True Neutral",
     "summary": "A high-achieving senior feeling the pressure of college applications.",
     "backstory": "Alex has always been at the top of his class. With college applications due and the debate team finals approaching, he''s starting to crack under the pressure. He spends most of his time in the library or the computer lab.",
     "tags": ["student", "senior", "academic"],

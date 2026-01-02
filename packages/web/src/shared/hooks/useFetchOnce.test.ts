@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { useFetchOnce } from './useFetchOnce.js';

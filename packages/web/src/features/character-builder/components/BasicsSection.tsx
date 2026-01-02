@@ -1,5 +1,6 @@
 import React from 'react';
 import { getInlineErrorProps } from '@minimal-rpg/utils';
+import { RACES, ALIGNMENTS } from '@minimal-rpg/schemas';
 import type { FormFieldErrors, FormState, ModeConfig, UpdateFieldFn } from '../types.js';
 
 interface BasicsSectionProps {
@@ -20,6 +21,8 @@ export const BasicsSection: React.FC<BasicsSectionProps> = ({
     name: true,
     age: true,
     gender: true,
+    race: true,
+    alignment: true,
     summary: true,
     backstory: true,
     tags: true,
@@ -100,6 +103,54 @@ export const BasicsSection: React.FC<BasicsSectionProps> = ({
             {fieldErrors.gender && (
               <span id="gender-error" className="text-sm text-red-400">
                 {fieldErrors.gender}
+              </span>
+            )}
+          </label>
+        )}
+
+        {fields.race && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-400">Race</span>
+            <select
+              className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+              value={form.race}
+              onChange={(e) => updateField('race', e.target.value)}
+              {...getInlineErrorProps('race', fieldErrors.race)}
+            >
+              <option value="">Select race...</option>
+              {RACES.map((race) => (
+                <option key={race} value={race}>
+                  {race}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.race && (
+              <span id="race-error" className="text-sm text-red-400">
+                {fieldErrors.race}
+              </span>
+            )}
+          </label>
+        )}
+
+        {fields.alignment && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-400">Alignment</span>
+            <select
+              className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
+              value={form.alignment}
+              onChange={(e) => updateField('alignment', e.target.value)}
+              {...getInlineErrorProps('alignment', fieldErrors.alignment)}
+            >
+              <option value="">Select alignment...</option>
+              {ALIGNMENTS.map((alignment) => (
+                <option key={alignment} value={alignment}>
+                  {alignment}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.alignment && (
+              <span id="alignment-error" className="text-sm text-red-400">
+                {fieldErrors.alignment}
               </span>
             )}
           </label>

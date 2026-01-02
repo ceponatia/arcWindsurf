@@ -2,11 +2,22 @@
  * LocationsStep Component
  * Step for selecting/creating location maps in the session workspace.
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useWorkspaceStore } from '../store.js';
+import { SelectableCard } from '../components/SelectableCard.js';
 import { LocationBuilder } from '../../location-builder/index.js';
-import type { LocationMapListResponse } from '../../location-builder/types.js';
-import { MapPin, Plus, Check, Loader2, AlertCircle, X, ExternalLink, Trash2 } from 'lucide-react';
+import {
+  MapPin,
+  Plus,
+  Check,
+  Loader2,
+  AlertCircle,
+  X,
+  ExternalLink,
+  Trash2,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 import { API_BASE_URL } from '../../../config.js';
 
 const API_BASE = API_BASE_URL;
@@ -18,29 +29,6 @@ interface MapSummary {
   nodeCount: number;
   connectionCount: number;
   createdAt: string;
-}
-
-/** Fetch available maps for a setting */
-async function fetchMaps(settingId: string): Promise<MapSummary[]> {
-  try {
-    const res = await fetch(
-      `${API_BASE}/location-maps?setting_id=${encodeURIComponent(settingId)}`
-    );
-    const data = (await res.json()) as unknown as LocationMapListResponse;
-    if (data.ok && data.maps) {
-      return data.maps.map((m) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-        nodeCount: m.nodeCount,
-        connectionCount: m.connectionCount,
-        createdAt: m.createdAt,
-      }));
-    }
-  } catch (err) {
-    console.error('Failed to fetch location maps:', err);
-  }
-  return [];
 }
 
 async function deleteMap(mapId: string): Promise<boolean> {
@@ -55,29 +43,21 @@ async function deleteMap(mapId: string): Promise<boolean> {
   }
 }
 
-export function LocationsStep() {
+interface LocationsStepProps {
+  maps: MapSummary[];
+  loading: boolean;
+  onRefresh: () => void;
+}
+
+export function LocationsStep({ maps, loading, onRefresh }: LocationsStepProps) {
   const { locations, setting, setLocations, setStep } = useWorkspaceStore();
-  const [maps, setMaps] = useState<MapSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
+  const [isPoppedOut, setIsPoppedOut] = useState(false);
 
   // Get setting ID from workspace state
   const settingId = setting?.settingId;
-
-  // Fetch maps when setting changes
-  useEffect(() => {
-    if (!settingId) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    void fetchMaps(settingId).then((result) => {
-      setMaps(result);
-      setIsLoading(false);
-    });
-  }, [settingId]);
 
   // Select a map
   const handleSelectMap = (mapId: string) => {
@@ -85,7 +65,7 @@ export function LocationsStep() {
     if (map) {
       setLocations({
         mapId: map.id,
-        mapName: map.name,
+        mapName: map.name ?? 'Untitled Map',
         startLocationId: null, // Can be set later
       });
     }
@@ -110,10 +90,7 @@ export function LocationsStep() {
 
   // Handle save from builder
   const handleBuilderSave = () => {
-    // Refresh maps list
-    if (settingId) {
-      void fetchMaps(settingId).then(setMaps);
-    }
+    onRefresh();
     setShowBuilder(false);
   };
 
@@ -129,16 +106,13 @@ export function LocationsStep() {
       if (locations?.mapId === mapId) {
         setLocations(null);
       }
-      // Refresh list
-      if (settingId) {
-        void fetchMaps(settingId).then(setMaps);
-      }
+      onRefresh();
     } else {
       setError('Failed to delete map');
     }
   };
 
-  // Show builder full screen
+  // Show builder
   if (showBuilder && settingId) {
     const builderProps = {
       settingId,
@@ -146,10 +120,70 @@ export function LocationsStep() {
       onClose: () => setShowBuilder(false),
       ...(editingMapId ? { mapId: editingMapId } : {}),
     };
+
+    if (isPoppedOut) {
+      return (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-100 border-b border-slate-200">
+            <div className="font-medium text-slate-700">Location Builder (Full Screen)</div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsPoppedOut(false)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded"
+              >
+                <Minimize2 className="h-4 w-4" />
+                Dock
+              </button>
+              <button
+                onClick={() => setShowBuilder(false)}
+                className="p-1.5 text-slate-500 hover:bg-slate-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 relative">
+            <LocationBuilder {...builderProps} />
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="fixed inset-0 z-50 bg-white">
-        <LocationBuilder {...builderProps} />
-      </div>
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
+          onClick={() => setShowBuilder(false)}
+        />
+
+        {/* Slide-over Panel */}
+        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-5xl bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+            <h3 className="font-semibold text-slate-800">Location Builder</h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsPoppedOut(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded transition-colors"
+                title="Open in full screen"
+              >
+                <Maximize2 className="h-4 w-4" />
+                Pop Out
+              </button>
+              <button
+                onClick={() => setShowBuilder(false)}
+                className="p-1.5 text-slate-500 hover:bg-slate-200 rounded transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <LocationBuilder {...builderProps} />
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -189,38 +223,33 @@ export function LocationsStep() {
 
       {/* Current selection */}
       {locations?.mapId && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Check className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <div className="font-medium text-blue-900">{locations.mapName}</div>
-                <div className="text-sm text-blue-700">Selected for this session</div>
-              </div>
-            </div>
+        <SelectableCard
+          title={locations.mapName ?? 'Unknown Map'}
+          subtitle="Selected for this session"
+          selected={true}
+          icon={<Check className="h-5 w-5 text-violet-400" />}
+          actions={
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleEditMap(locations.mapId!)}
-                className="px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100 rounded"
+                className="px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-900/50 rounded"
               >
                 Edit Map
               </button>
               <button
                 onClick={handleClearSelection}
-                className="p-1.5 hover:bg-blue-100 rounded"
+                className="p-1.5 hover:bg-violet-900/50 rounded text-violet-300"
                 title="Clear selection"
               >
-                <X className="h-4 w-4 text-blue-600" />
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </div>
+          }
+        />
       )}
 
       {/* Loading state */}
-      {isLoading && (
+      {loading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
@@ -235,57 +264,34 @@ export function LocationsStep() {
       )}
 
       {/* Available maps */}
-      {!isLoading && maps.length > 0 && (
+      {!loading && maps.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-3">Available Maps ({maps.length})</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {maps.map((map) => {
               const isSelected = locations?.mapId === map.id;
               return (
-                <div
+                <SelectableCard
                   key={map.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                  }`}
+                  title={map.name}
+                  description={map.description}
+                  selected={isSelected}
                   onClick={() => handleSelectMap(map.id)}
+                  icon={<MapPin className="h-5 w-5" />}
+                  badges={isSelected ? <Check className="h-4 w-4 text-violet-400" /> : null}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${isSelected ? 'bg-blue-100' : 'bg-gray-100'}`}
-                      >
-                        <MapPin
-                          className={`h-5 w-5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}
-                        />
-                      </div>
-                      <div>
-                        <div className="font-medium">{map.name}</div>
-                        {map.description && (
-                          <div className="text-sm text-gray-500 line-clamp-1">
-                            {map.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {isSelected && <Check className="h-5 w-5 text-blue-600" />}
-                  </div>
-
-                  {/* Stats */}
-                  <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
                     <span>{map.nodeCount} locations</span>
                     <span>{map.connectionCount} connections</span>
                   </div>
 
-                  {/* Actions */}
-                  <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                  <div className="flex justify-between items-center">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         void handleDeleteMap(map.id, map.name);
                       }}
-                      className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded"
+                      className="flex items-center gap-1 text-sm text-red-400 hover:text-red-300 px-2 py-1 rounded"
                       title="Delete Map"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -297,13 +303,13 @@ export function LocationsStep() {
                         e.stopPropagation();
                         handleEditMap(map.id);
                       }}
-                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded"
+                      className="flex items-center gap-1 text-sm text-violet-400 hover:text-violet-300 px-2 py-1 rounded"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                       Edit
                     </button>
                   </div>
-                </div>
+                </SelectableCard>
               );
             })}
           </div>
@@ -311,7 +317,7 @@ export function LocationsStep() {
       )}
 
       {/* Empty state */}
-      {!isLoading && maps.length === 0 && (
+      {!loading && maps.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
           <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
           <p className="text-gray-600 mb-2">No location maps yet</p>

@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { useWorkspaceStore, useSettingState } from '../store.js';
+import { SelectableCard } from '../components/SelectableCard.js';
 import type { SettingSummary } from '../../../types.js';
 import type { SettingProfile } from '@minimal-rpg/schemas';
 
@@ -81,28 +82,20 @@ export const SettingStep: React.FC<SettingStepProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {settings.map((setting) => (
-                <button
+                <SelectableCard
                   key={setting.id}
+                  title={setting.name}
+                  description={setting.tone}
+                  selected={settingState.settingId === setting.id}
                   onClick={() => void handleSelectSetting(setting)}
-                  className={`
-                    text-left p-4 rounded-lg border transition-all
-                    ${
-                      settingState.settingId === setting.id
-                        ? 'border-violet-500 bg-violet-950/40'
-                        : 'border-slate-700 bg-slate-800/50 hover:border-slate-600 hover:bg-slate-800'
-                    }
-                  `}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-slate-200">{setting.name}</span>
-                    {settingState.settingId === setting.id && (
+                  badges={
+                    settingState.settingId === setting.id ? (
                       <span className="text-xs px-2 py-0.5 rounded bg-violet-600/30 text-violet-300">
                         Selected
                       </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-slate-400 line-clamp-2">{setting.tone}</p>
-                </button>
+                    ) : null
+                  }
+                />
               ))}
             </div>
           )}

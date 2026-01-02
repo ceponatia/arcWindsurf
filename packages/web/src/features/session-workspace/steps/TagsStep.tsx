@@ -4,6 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useWorkspaceStore, useTagsState, useNpcsState } from '../store.js';
+import { SelectableCard } from '../components/SelectableCard.js';
 import type { TagSelection, NpcSessionConfig } from '../store.js';
 import type { TagSummary, CharacterSummary } from '../../../types.js';
 import { AlertCircle } from 'lucide-react';
@@ -184,57 +185,41 @@ export const TagsStep: React.FC<TagsStepProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {visibleTags.map((tag) => {
                 const isSelected = selectedTagIds.includes(tag.id);
+                const config = getTagConfig(tag.id);
+                const targetCount = config?.targetEntityIds?.length ?? 0;
 
                 return (
-                  <div
+                  <SelectableCard
                     key={tag.id}
-                    className={`
-                      p-3 rounded-lg border transition-all
-                      ${
-                        isSelected
-                          ? 'border-violet-500/50 bg-violet-950/30'
-                          : 'border-slate-700 bg-slate-800/30'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
+                    title={tag.name}
+                    description={tag.shortDescription ?? undefined}
+                    selected={isSelected}
+                    onClick={() => handleToggleTag(tag)}
+                    className="p-3"
+                    badges={
+                      isSelected && targetCount > 0 ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                          {targetCount} {tag.targetType === 'location' ? 'locs' : 'NPCs'}
+                        </span>
+                      ) : null
+                    }
+                    actions={
+                      isSelected ? (
                         <button
-                          onClick={() => handleToggleTag(tag)}
-                          className={`
-                            w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
-                            ${
-                              isSelected
-                                ? 'border-violet-500 bg-violet-600'
-                                : 'border-slate-600 hover:border-slate-500'
-                            }
-                          `}
-                        >
-                          {isSelected && <span className="text-white text-xs">✓</span>}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-200 truncate">{tag.name}</p>
-                          {tag.shortDescription && (
-                            <p className="text-xs text-slate-500 line-clamp-1">
-                              {tag.shortDescription}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <button
-                          onClick={() => setShowConfigFor(showConfigFor === tag.id ? null : tag.id)}
-                          className="text-xs text-slate-500 hover:text-slate-300 ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowConfigFor(showConfigFor === tag.id ? null : tag.id);
+                          }}
+                          className="text-xs text-slate-500 hover:text-slate-300 p-1"
                         >
                           ⚙
                         </button>
-                      )}
-                    </div>
-
-                    {/* Inline Config */}
+                      ) : null
+                    }
+                  >
                     {isSelected && showConfigFor === tag.id && (
-                      <div className="mt-3 pt-3 border-t border-slate-700 space-y-3">
-                        {/* Targeting config */}
+                      <div className="space-y-3">
+                        {/* Target Character(s) */}
                         {tag.targetType === 'character' && (
                           <div>
                             <label className="text-xs text-slate-400 block mb-1">
@@ -280,6 +265,7 @@ export const TagsStep: React.FC<TagsStepProps> = ({
                           </div>
                         )}
 
+                        {/* Target Location(s) */}
                         {tag.targetType === 'location' && (
                           <div>
                             <label className="text-xs text-slate-400 block mb-1">
@@ -345,6 +331,7 @@ export const TagsStep: React.FC<TagsStepProps> = ({
                           </div>
                         )}
 
+                        {/* Prompt Text */}
                         {tag.promptText && (
                           <div>
                             <label className="text-xs text-slate-400">Prompt Effect</label>
@@ -355,7 +342,7 @@ export const TagsStep: React.FC<TagsStepProps> = ({
                         )}
                       </div>
                     )}
-                  </div>
+                  </SelectableCard>
                 );
               })}
             </div>

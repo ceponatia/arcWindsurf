@@ -6,7 +6,7 @@ import { useState, useMemo } from 'react';
 import { useWorkspaceStore, useNpcsState } from '../store.js';
 import type { RelationshipConfig, NpcSessionConfig } from '../store.js';
 import type { CharacterSummary } from '../../../types.js';
-import { Users, Plus, X, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Users, Plus, X, AlertCircle, ChevronDown, ChevronRight, Info } from 'lucide-react';
 
 /**
  * Common relationship presets
@@ -350,9 +350,10 @@ function ListView({
 
 export function RelationshipsStep({ characters }: RelationshipsStepProps) {
   const npcs = useNpcsState();
-  const { relationships, addRelationship, updateRelationship, removeRelationship } =
+  const { relationships, addRelationship, updateRelationship, removeRelationship, setStep } =
     useWorkspaceStore();
   const [viewMode, setViewMode] = useState<'auto' | 'matrix' | 'list'>('auto');
+  const [showLegend, setShowLegend] = useState(false);
 
   // Build actor IDs list: player + all NPC character IDs
   const actorIds = useMemo(() => {
@@ -416,7 +417,13 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
       <div className="flex flex-col items-center justify-center py-12 text-slate-500">
         <Users className="h-12 w-12 mb-4 text-slate-600" />
         <p className="text-lg mb-2">No NPCs selected</p>
-        <p className="text-sm">Add NPCs in the previous step to configure relationships.</p>
+        <p className="text-sm mb-4">Add NPCs in the previous step to configure relationships.</p>
+        <button
+          onClick={() => setStep('npcs')}
+          className="px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-500 transition-colors"
+        >
+          Go to NPCs Step
+        </button>
       </div>
     );
   }
@@ -432,35 +439,80 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
           </p>
         </div>
 
-        {/* View mode toggle */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">View:</span>
-          <select
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as 'auto' | 'matrix' | 'list')}
-            className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
+        <div className="flex items-center gap-4">
+          {/* Legend Toggle */}
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+              showLegend
+                ? 'bg-violet-900/50 text-violet-300'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
           >
-            <option value="auto">Auto ({actorIds.length <= 6 ? 'Matrix' : 'List'})</option>
-            <option value="matrix">Matrix</option>
-            <option value="list">List</option>
-          </select>
+            <Info className="w-3.5 h-3.5" />
+            Legend
+          </button>
+
+          {/* View mode toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">View:</span>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as 'auto' | 'matrix' | 'list')}
+              className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
+            >
+              <option value="auto">Auto ({actorIds.length <= 6 ? 'Matrix' : 'List'})</option>
+              <option value="matrix">Matrix</option>
+              <option value="list">List</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Info callout */}
-      <div className="flex items-start gap-3 p-4 bg-slate-800/30 border border-slate-700 rounded-lg">
-        <AlertCircle className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-slate-400">
-          <p>
-            Relationships define how characters know each other at the start of the session. Each
-            relationship has an affinity seed (trust, fondness, fear) that influences initial
-            interactions.
-          </p>
-          <p className="mt-2 text-slate-500">
-            By default, all relationships start as "Stranger" with neutral affinity.
-          </p>
+      {/* Legend Panel */}
+      {showLegend && (
+        <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-lg text-sm text-slate-400 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium text-slate-300 mb-2">Matrix View</h4>
+            <p className="text-xs mb-2">
+              The matrix shows relationships between all characters. The upper triangle (editable)
+              represents the relationship from the row character to the column character. The lower
+              triangle (read-only) shows the inverse relationship.
+            </p>
+            <p className="text-xs text-slate-500">
+              Example: Setting "Friend" for A → B automatically sets "Friend" for B → A.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium text-slate-300 mb-2">Relationship Types</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {RELATIONSHIP_PRESETS.slice(0, 6).map((p) => (
+                <div key={p.value}>
+                  <span className="font-medium text-slate-300">{p.label}</span>: Trust{' '}
+                  {p.affinity.trust}, Fondness {p.affinity.fondness}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Info callout */}
+      {!showLegend && (
+        <div className="flex items-start gap-3 p-4 bg-slate-800/30 border border-slate-700 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-slate-400">
+            <p>
+              Relationships define how characters know each other at the start of the session. Each
+              relationship has an affinity seed (trust, fondness, fear) that influences initial
+              interactions.
+            </p>
+            <p className="mt-2 text-slate-500">
+              By default, all relationships start as "Stranger" with neutral affinity.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Matrix or List view */}
       {effectiveView === 'matrix' ? (

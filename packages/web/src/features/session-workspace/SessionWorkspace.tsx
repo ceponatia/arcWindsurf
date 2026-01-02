@@ -10,6 +10,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { z } from 'zod';
 import {
   useWorkspaceStore,
   useCurrentStep,
@@ -30,6 +31,63 @@ import { RelationshipsStep } from './steps/RelationshipsStep.js';
 import { ReviewStep } from './steps/ReviewStep.js';
 import { CompactBuilder } from './CompactBuilder.js';
 import type { CharacterSummary, SettingSummary, PersonaSummary, TagSummary } from '../../types.js';
+import { API_BASE_URL } from '../../config.js';
+
+const API_BASE = API_BASE_URL;
+
+// Define schema for API response
+const LocationMapListResponseSchema = z.object({
+  ok: z.boolean(),
+  maps: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        nodeCount: z.number(),
+        connectionCount: z.number(),
+        createdAt: z.string(),
+      })
+    )
+    .optional(),
+  error: z.string().optional(),
+});
+
+export interface MapSummary {
+  id: string;
+  name: string;
+  description: string | undefined;
+  nodeCount: number;
+  connectionCount: number;
+  createdAt: string;
+}
+
+/** Fetch available maps for a setting */
+async function fetchMaps(settingId: string): Promise<MapSummary[]> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/location-maps?setting_id=${encodeURIComponent(settingId)}`
+    );
+    const rawData: unknown = await res.json();
+    const result = LocationMapListResponseSchema.safeParse(rawData);
+
+    if (result.success && result.data.ok && result.data.maps) {
+      return result.data.maps.map((m) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        nodeCount: m.nodeCount,
+        connectionCount: m.connectionCount,
+        createdAt: m.createdAt,
+      }));
+    } else if (!result.success) {
+      console.error('Failed to parse location maps response:', result.error);
+    }
+  } catch (err) {
+    console.error('Failed to fetch location maps:', err);
+  }
+  return [];
+}
 
 // ============================================================================
 // Types
@@ -192,6 +250,22 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [maps, setMaps] = useState<MapSummary[]>([]);
+  const [mapsLoading, setMapsLoading] = useState(false);
+
+  // Fetch maps when setting changes
+  useEffect(() => {
+    if (!settingState.settingId) {
+      setMaps([]);
+      return;
+    }
+
+    setMapsLoading(true);
+    void fetchMaps(settingState.settingId).then((result) => {
+      setMaps(result);
+      setMapsLoading(false);
+    });
+  }, [settingState.settingId]);
 
   // Auto-save draft effect
   useEffect(() => {
@@ -332,7 +406,21 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
           />
         );
       case 'locations':
-        return <LocationsStep />;
+        return (
+          <LocationsStep
+            maps={maps}
+            loading={mapsLoading}
+            onRefresh={() => {
+              if (settingState.settingId) {
+                setMapsLoading(true);
+                void fetchMaps(settingState.settingId).then((result) => {
+                  setMaps(result);
+                  setMapsLoading(false);
+                });
+              }
+            }}
+          />
+        );
       case 'npcs':
         return (
           <NpcsStep

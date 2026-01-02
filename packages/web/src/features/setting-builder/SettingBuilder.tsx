@@ -1,106 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { SettingProfileSchema, type SettingProfile } from '@minimal-rpg/schemas';
-import { mapZodErrorsToFields, getInlineErrorProps } from '@minimal-rpg/utils';
-import { splitList } from '../shared/stringLists.js';
-import { getSetting, saveSetting, deleteSetting } from '../../shared/api/client.js';
+import React, { useState } from 'react';
+import { SettingBackgroundSchema } from '@minimal-rpg/schemas';
+import { mapZodErrorsToFields } from '@minimal-rpg/utils';
+import { saveSetting, deleteSetting } from '../../shared/api/client.js';
 import { PreviewSidebar } from './components/PreviewSidebar.js';
-
-interface FormState {
-  id: string;
-  name: string;
-  lore: string;
-  themes: string;
-  /** User-defined tags as comma-separated string */
-  tags: string;
-}
-
-const initialState: FormState = {
-  id: '',
-  name: '',
-  lore: '',
-  themes: '',
-  tags: '',
-};
-
-type FormKey = keyof FormState;
-type FormFieldErrors = Partial<Record<FormKey, string>>;
+import { SettingGeneralForm } from './components/SettingGeneralForm.js';
+import { SettingRulesForm } from './components/SettingRulesForm.js';
+import { SettingTimeConfig } from './components/SettingTimeConfig.js';
+import { SettingFactionsForm } from './components/SettingFactionsForm.js';
+import { useSettingBuilderForm } from './hooks/useSettingBuilderForm.js';
+import { buildProfile } from './transformers.js';
+import { MODE_CONFIGS, type FormFieldErrors, type FormKey } from './types.js';
+import { useAutoSave } from '../../hooks/useAutoSave.js';
 
 export const SettingBuilder: React.FC<{
   id?: string | null;
   onSave?: () => void;
   onCancel?: () => void;
 }> = ({ id, onSave: onSaveCallback, onCancel }) => {
-  const [form, setForm] = useState(initialState);
+  const { form, fieldErrors, setFieldErrors, updateField, loading, loadError } =
+    useSettingBuilderForm(id);
+
+  const [activeTab, setActiveTab] = useState<'general' | 'rules' | 'time' | 'factions'>('general');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
-  /** Whether we're viewing/editing an existing setting vs creating new */
+
+  // Auto-save draft
+  useAutoSave(`setting-draft-${id ?? 'new'}`, form, 1000, !saving && !loading);
+
   const isEditing = Boolean(id);
-  /** Whether fields are unlocked for editing (always true for new, toggled for existing) */
-  const [isInEditMode, setIsInEditMode] = useState(!isEditing);
-  /** Track if user has saved at least once this session */
-  const [hasSaved, setHasSaved] = useState(false);
+  const modeConfig = MODE_CONFIGS.standard; // Only standard mode for now
 
-  useEffect(() => {
-    if (id) {
-      // Reset edit mode state when loading existing entity
-      setIsInEditMode(false);
-      setHasSaved(false);
-      getSetting(id)
-        .then((data) => {
-          setForm({
-            id: data.id,
-            name: data.name,
-            lore: data.lore,
-            themes: (data.themes ?? []).join(', '),
-            tags: (data.tags ?? []).join(', '),
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          setError('Failed to load setting');
-        });
-    } else {
-      // New entity starts in edit mode
-      setForm(initialState);
-      setIsInEditMode(true);
-      setHasSaved(false);
-    }
-  }, [id]);
+  const handleDelete = async () => {
+    if (!id) return;
+    setError(null);
+    await deleteSetting(id);
+    window.location.hash = '';
+  };
 
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function onSave() {
+  const handleSave = async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
     setFieldErrors({});
 
-    const themes = splitList(form.themes);
-    const tags = splitList(form.tags);
+    const profile = buildProfile(form);
 
-    const profile: SettingProfile = {
-      id: form.id.trim(),
-      name: form.name.trim(),
-      lore: form.lore.trim(),
-      themes: themes.length > 0 ? themes : undefined,
-      tags: tags.length > 0 ? tags : undefined,
-    };
+    // Use any cast for validation until schema types propagate
+    const validation = SettingBackgroundSchema.safeParse(profile);
 
-    // Client-side validation
-    const validation = SettingProfileSchema.safeParse(profile);
     if (!validation.success) {
       const fieldMap = mapZodErrorsToFields<FormKey>(validation.error, {
         pathToField: (path) => {
           const key = path[0] as string;
-          if (key in initialState) return key as FormKey;
+          // Map known top-level keys
+          if (['id', 'name', 'lore', 'themes', 'tags', 'tone', 'startingScenario'].includes(key)) {
+            return key as FormKey;
+          }
           return undefined as unknown as FormKey;
         },
       });
-      setFieldErrors(fieldMap);
+      setFieldErrors(fieldMap as FormFieldErrors);
       setError('Please fix the highlighted fields.');
       setSaving(false);
       return;
@@ -109,105 +69,66 @@ export const SettingBuilder: React.FC<{
     try {
       await saveSetting(profile);
       setSuccess('Saved successfully');
-      setHasSaved(true);
       if (onSaveCallback) onSaveCallback();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  async function handleDelete() {
-    if (!id) return;
-    setError(null);
-    await deleteSetting(id);
-    window.location.hash = '';
-  }
+  const disabled = saving || loading;
 
-  const disabled = saving || !isInEditMode;
-
-  // Determine close button label based on edit state
-  // - If not in edit mode (viewing): "Close"
-  // - If in edit mode and have saved: "Close"
-  // - If in edit mode and haven't saved (unsaved changes): "Cancel"
-  const closeLabel = !isInEditMode || hasSaved ? 'Close' : 'Cancel';
+  const tabs = [
+    { id: 'general', label: 'General', visible: modeConfig.sections.general },
+    { id: 'rules', label: 'Rules & Safety', visible: modeConfig.sections.rules },
+    { id: 'time', label: 'Time & Sim', visible: modeConfig.sections.time },
+    { id: 'factions', label: 'Factions', visible: modeConfig.sections.factions },
+  ] as const;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-200">Setting Builder</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-slate-200">Setting Builder</h2>
+      </div>
+
+      {loading && <p className="text-sm text-slate-400">Loading setting...</p>}
+      {loadError && !loading && <p className="text-sm text-amber-300">{loadError}</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left: Form */}
-        <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
-          <div className="border border-slate-800 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/60">Details</div>
-            <div className="p-4 grid grid-cols-1 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">ID</span>
-                <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                  value={form.id}
-                  onChange={(e) => update('id', e.target.value)}
-                  disabled={disabled}
-                  {...getInlineErrorProps('id', fieldErrors.id)}
-                />
-                {fieldErrors.id && (
-                  <span id="id-error" className="text-sm text-red-400">
-                    {fieldErrors.id}
-                  </span>
-                )}
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Name</span>
-                <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                  value={form.name}
-                  onChange={(e) => update('name', e.target.value)}
-                  disabled={disabled}
-                  {...getInlineErrorProps('name', fieldErrors.name)}
-                />
-                {fieldErrors.name && (
-                  <span id="name-error" className="text-sm text-red-400">
-                    {fieldErrors.name}
-                  </span>
-                )}
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Themes (comma separated)</span>
-                <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                  value={form.themes}
-                  onChange={(e) => update('themes', e.target.value)}
-                  disabled={disabled}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Tags (comma separated)</span>
-                <input
-                  className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                  value={form.tags}
-                  onChange={(e) => update('tags', e.target.value)}
-                  disabled={disabled}
-                  placeholder="tags can be used to filter and search settings"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Lore</span>
-                <textarea
-                  className="min-h-[200px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                  value={form.lore}
-                  onChange={(e) => update('lore', e.target.value)}
-                  disabled={disabled}
-                  {...getInlineErrorProps('lore', fieldErrors.lore)}
-                />
-                {fieldErrors.lore && (
-                  <span id="lore-error" className="text-sm text-red-400">
-                    {fieldErrors.lore}
-                  </span>
-                )}
-              </label>
-            </div>
+        <div className="lg:col-span-2 flex flex-col h-[calc(100vh-200px)]">
+          {/* Tabs */}
+          <div className="flex border-b border-slate-700 mb-4 overflow-x-auto">
+            {tabs.map(
+              (tab) =>
+                tab.visible && (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                    px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                    ${
+                      activeTab === tab.id
+                        ? 'border-violet-500 text-violet-400'
+                        : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                    }
+                  `}
+                  >
+                    {tab.label}
+                  </button>
+                )
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+            {activeTab === 'general' && (
+              <SettingGeneralForm form={form} fieldErrors={fieldErrors} updateField={updateField} />
+            )}
+            {activeTab === 'rules' && (
+              <SettingRulesForm form={form} fieldErrors={fieldErrors} updateField={updateField} />
+            )}
+            {activeTab === 'time' && <SettingTimeConfig />}
+            {activeTab === 'factions' && <SettingFactionsForm />}
           </div>
         </div>
 
@@ -218,13 +139,14 @@ export const SettingBuilder: React.FC<{
           saving={saving}
           error={error}
           success={success}
-          onSave={() => void onSave()}
+          onSave={() => void handleSave()}
           onCancel={onCancel}
-          onEdit={() => setIsInEditMode(true)}
           onDelete={handleDelete}
           isEditing={isEditing}
-          isInEditMode={isInEditMode}
-          closeLabel={closeLabel}
+          // Edit mode is always active in this new design
+          isInEditMode={true}
+          onEdit={() => undefined}
+          closeLabel="Close"
         />
       </div>
     </div>

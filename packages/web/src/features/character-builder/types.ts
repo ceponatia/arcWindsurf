@@ -71,6 +71,8 @@ export interface ModeConfig {
     name: boolean;
     age: boolean;
     gender: boolean;
+    race: boolean;
+    alignment: boolean;
     summary: boolean;
     backstory: boolean;
     tags: boolean;
@@ -98,6 +100,8 @@ export const MODE_CONFIGS: Record<CharacterBuilderMode, ModeConfig> = {
       name: true,
       age: true,
       gender: true,
+      race: true,
+      alignment: true,
       summary: true,
       backstory: false,
       tags: false,
@@ -120,6 +124,8 @@ export const MODE_CONFIGS: Record<CharacterBuilderMode, ModeConfig> = {
       name: true,
       age: true,
       gender: true,
+      race: true,
+      alignment: true,
       summary: true,
       backstory: true,
       tags: true,
@@ -142,6 +148,8 @@ export const MODE_CONFIGS: Record<CharacterBuilderMode, ModeConfig> = {
       name: true,
       age: true,
       gender: true,
+      race: true,
+      alignment: true,
       summary: true,
       backstory: true,
       tags: true,
@@ -295,6 +303,8 @@ export interface FormState {
   name: string;
   age: number | string;
   gender: string;
+  race: string;
+  alignment: string;
   summary: string;
   backstory: string;
   tags: string;
@@ -415,6 +425,8 @@ export const createInitialState = (): FormState => ({
   name: '',
   age: 21,
   gender: '',
+  race: 'Human',
+  alignment: 'True Neutral',
   summary: '',
   backstory: '',
   tags: '',

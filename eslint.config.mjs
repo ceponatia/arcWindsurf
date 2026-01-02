@@ -5,7 +5,13 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 export default tseslint.config(
   // Global ignores (flat config replaces .eslintignore)
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', 'packages/*/test/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      'packages/*/test/**',
+      'packages/web/src/shared/hooks/useFetchOnce.test.ts',
+    ],
   },
   // Tooling/config files inside packages (no type-aware linting)
   {

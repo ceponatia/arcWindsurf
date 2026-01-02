@@ -4,8 +4,10 @@
 
 import React, { useState } from 'react';
 import { useWorkspaceStore, useNpcsState } from '../store.js';
+import { SelectableCard } from '../components/SelectableCard.js';
 import type { CharacterSummary } from '../../../types.js';
 import type { NpcSessionConfig, NpcRole, NpcTier } from '../store.js';
+import { Search, Filter, X } from 'lucide-react';
 
 interface NpcsStepProps {
   characters: CharacterSummary[];
@@ -23,8 +25,22 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
   const npcs = useNpcsState();
   const { addNpc, removeNpc, updateNpc } = useWorkspaceStore();
   const [selectedForConfig, setSelectedForConfig] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterArchetype, setFilterArchetype] = useState<string | null>(null);
 
   const selectedNpcIds = npcs.map((n: NpcSessionConfig) => n.characterId);
+
+  // Get unique archetypes
+  const archetypes = Array.from(
+    new Set(characters.map((c) => c.archetype).filter(Boolean))
+  ) as string[];
+
+  // Filter characters
+  const filteredCharacters = characters.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesArchetype = filterArchetype ? c.archetype === filterArchetype : true;
+    return matchesSearch && matchesArchetype;
+  });
 
   const handleAddNpc = (character: CharacterSummary) => {
     const config: NpcSessionConfig = {
@@ -84,6 +100,45 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
             </div>
           </div>
 
+          {/* Search & Filter */}
+          <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/50 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search characters..."
+                className="w-full pl-8 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 placeholder-slate-500 focus:ring-1 focus:ring-violet-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            {archetypes.length > 0 && (
+              <div className="relative">
+                <select
+                  value={filterArchetype ?? ''}
+                  onChange={(e) => setFilterArchetype(e.target.value || null)}
+                  className="pl-2 pr-6 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 focus:ring-1 focus:ring-violet-500 appearance-none"
+                >
+                  <option value="">All Types</option>
+                  {archetypes.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+                <Filter className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
+              </div>
+            )}
+          </div>
+
           <div className="p-4 max-h-96 overflow-y-auto">
             {loading ? (
               <p className="text-sm text-slate-500 text-center py-8">Loading characters...</p>
@@ -97,44 +152,48 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                   Create Your First Character
                 </button>
               </div>
+            ) : filteredCharacters.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-500 mb-2">No characters match your search</p>
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterArchetype(null);
+                  }}
+                  className="text-xs text-violet-400 hover:text-violet-300"
+                >
+                  Clear filters
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">
-                {characters.map((character) => {
+                {filteredCharacters.map((character) => {
                   const isSelected = selectedNpcIds.includes(character.id);
                   return (
-                    <div
+                    <SelectableCard
                       key={character.id}
-                      className={`
-                        flex items-center justify-between p-3 rounded-lg border
-                        ${
-                          isSelected
-                            ? 'border-violet-500/50 bg-violet-950/30'
-                            : 'border-slate-700 bg-slate-800/30'
-                        }
-                      `}
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-slate-200">{character.name}</p>
-                        {character.archetype && (
-                          <p className="text-xs text-slate-500">{character.archetype}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() =>
-                          isSelected ? handleRemoveNpc(character.id) : handleAddNpc(character)
-                        }
-                        className={`
-                          text-xs px-3 py-1.5 rounded transition-colors
-                          ${
-                            isSelected
-                              ? 'bg-slate-700 text-slate-400 hover:bg-red-900/50 hover:text-red-400'
-                              : 'bg-violet-600 text-white hover:bg-violet-500'
+                      title={character.name}
+                      subtitle={character.archetype}
+                      selected={isSelected}
+                      className="p-3"
+                      actions={
+                        <button
+                          onClick={() =>
+                            isSelected ? handleRemoveNpc(character.id) : handleAddNpc(character)
                           }
-                        `}
-                      >
-                        {isSelected ? 'Remove' : 'Add'}
-                      </button>
-                    </div>
+                          className={`
+                            text-xs px-3 py-1.5 rounded transition-colors
+                            ${
+                              isSelected
+                                ? 'bg-slate-700 text-slate-400 hover:bg-red-900/50 hover:text-red-400'
+                                : 'bg-violet-600 text-white hover:bg-violet-500'
+                            }
+                          `}
+                        >
+                          {isSelected ? 'Remove' : 'Add'}
+                        </button>
+                      }
+                    />
                   );
                 })}
               </div>
@@ -156,45 +215,32 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
             ) : (
               <div className="space-y-2">
                 {npcs.map((npc: NpcSessionConfig) => (
-                  <div
+                  <SelectableCard
                     key={npc.characterId}
-                    className={`
-                      p-3 rounded-lg border cursor-pointer transition-all
-                      ${
-                        selectedForConfig === npc.characterId
-                          ? 'border-violet-500 bg-violet-950/40'
-                          : 'border-slate-700 bg-slate-800/30 hover:border-slate-600'
-                      }
-                    `}
+                    title={getCharacterName(npc.characterId)}
+                    selected={selectedForConfig === npc.characterId}
                     onClick={() =>
                       setSelectedForConfig(
                         selectedForConfig === npc.characterId ? null : npc.characterId
                       )
                     }
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-sm font-medium text-slate-200">
-                          {getCharacterName(npc.characterId)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400">
-                          {npc.role}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveNpc(npc.characterId);
-                          }}
-                          className="text-xs text-slate-500 hover:text-red-400"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    badges={
+                      <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400">
+                        {npc.role}
+                      </span>
+                    }
+                    actions={
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveNpc(npc.characterId);
+                        }}
+                        className="text-xs text-slate-500 hover:text-red-400 p-1"
+                      >
+                        ✕
+                      </button>
+                    }
+                  />
                 ))}
               </div>
             )}

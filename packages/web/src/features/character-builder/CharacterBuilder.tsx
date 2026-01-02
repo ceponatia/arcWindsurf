@@ -1,19 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import {
-  CharacterProfileSchema,
-  type BodyMap,
-  type BodyRegion,
-  type CharacterDetail,
-  type Physique,
-  type CharacterProfile,
-  type AppearanceRegion,
-  type PersonalityMap,
-  type Gender,
-  BODY_REGIONS,
-} from '@minimal-rpg/schemas';
+import { CharacterProfileSchema, type Gender } from '@minimal-rpg/schemas';
 import { generateCharacter, getTheme } from '@minimal-rpg/generator';
-import { mapZodErrorsToFields, parseBodyEntries } from '@minimal-rpg/utils';
-import { splitList } from '../shared/stringLists.js';
+import { mapZodErrorsToFields } from '@minimal-rpg/utils';
 import { persistCharacter, removeCharacter } from './api.js';
 import { AppearanceSection } from './components/AppearanceSection.js';
 import { BasicsSection } from './components/BasicsSection.js';
@@ -28,473 +16,12 @@ import {
 } from './hooks/useCharacterBuilderForm.js';
 import {
   MODE_CONFIGS,
-  type AppearanceEntry,
-  type BodySensoryEntry,
   type CharacterBuilderMode,
-  type DetailFormEntry,
   type FormFieldErrors,
   type FormKey,
-  type FormState,
-  type PersonalityFormState,
 } from './types.js';
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-const parsePersonality = (value: string): string | string[] => {
-  const parts = splitList(value);
-  if (parts.length <= 1) {
-    return parts[0] ?? '';
-  }
-  return parts;
-};
-
-/**
- * Build PersonalityMap from form state.
- * Only includes non-default values to keep the JSON compact.
- */
-const buildPersonalityMap = (pm: PersonalityFormState): PersonalityMap | undefined => {
-  const result: PersonalityMap = {};
-
-  // Traits (comma-separated string → array)
-  const traits = splitList(pm.traits);
-  if (traits.length > 0) {
-    result.traits = traits;
-  }
-
-  // Dimensions (only include if any differ from 0.5)
-  const dimensionScores = pm.dimensions.filter((d) => d.score !== 0.5);
-  if (dimensionScores.length > 0) {
-    result.dimensions = {};
-    for (const d of dimensionScores) {
-      result.dimensions[d.dimension] = d.score;
-    }
-  }
-
-  // Emotional baseline (only include if non-default)
-  const eb = pm.emotionalBaseline;
-  const hasEmotionalChanges =
-    eb.current !== 'anticipation' ||
-    eb.intensity !== 'mild' ||
-    eb.blend !== undefined ||
-    eb.moodBaseline !== 'trust' ||
-    eb.moodStability !== 0.5;
-  if (hasEmotionalChanges) {
-    result.emotionalBaseline = {
-      current: eb.current,
-      intensity: eb.intensity,
-      moodBaseline: eb.moodBaseline,
-      moodStability: eb.moodStability,
-      ...(eb.blend ? { blend: eb.blend } : {}),
-    };
-  }
-
-  // Values
-  if (pm.values.length > 0) {
-    result.values = pm.values.map((v) => ({
-      value: v.value,
-      priority: v.priority,
-    }));
-  }
-
-  // Fears
-  if (pm.fears.length > 0) {
-    result.fears = pm.fears
-      .filter((f) => f.specific.trim())
-      .map((f) => ({
-        category: f.category,
-        specific: f.specific,
-        intensity: f.intensity,
-        triggers: splitList(f.triggers),
-        copingMechanism: f.copingMechanism,
-      }));
-  }
-
-  // Attachment (only if non-default)
-  if (pm.attachment !== 'secure') {
-    result.attachment = pm.attachment;
-  }
-
-  // Social (only include if any differ from defaults)
-  const s = pm.social;
-  const hasSocialChanges =
-    s.strangerDefault !== 'neutral' ||
-    s.warmthRate !== 'moderate' ||
-    s.preferredRole !== 'supporter' ||
-    s.conflictStyle !== 'diplomatic' ||
-    s.criticismResponse !== 'reflective' ||
-    s.boundaries !== 'healthy';
-  if (hasSocialChanges) {
-    result.social = {
-      strangerDefault: s.strangerDefault,
-      warmthRate: s.warmthRate,
-      preferredRole: s.preferredRole,
-      conflictStyle: s.conflictStyle,
-      criticismResponse: s.criticismResponse,
-      boundaries: s.boundaries,
-    };
-  }
-
-  // Speech (only include if any differ from defaults)
-  const sp = pm.speech;
-  const hasSpeechChanges =
-    sp.vocabulary !== 'average' ||
-    sp.sentenceStructure !== 'moderate' ||
-    sp.formality !== 'neutral' ||
-    sp.humor !== 'occasional' ||
-    sp.humorType !== undefined ||
-    sp.expressiveness !== 'moderate' ||
-    sp.directness !== 'direct' ||
-    sp.pace !== 'moderate';
-  if (hasSpeechChanges) {
-    result.speech = {
-      vocabulary: sp.vocabulary,
-      sentenceStructure: sp.sentenceStructure,
-      formality: sp.formality,
-      humor: sp.humor,
-      expressiveness: sp.expressiveness,
-      directness: sp.directness,
-      pace: sp.pace,
-      ...(sp.humorType ? { humorType: sp.humorType } : {}),
-    };
-  }
-
-  // Stress (only include if any differ from defaults)
-  const st = pm.stress;
-  const hasStressChanges =
-    st.primary !== 'freeze' ||
-    st.secondary !== undefined ||
-    st.threshold !== 0.5 ||
-    st.recoveryRate !== 'moderate' ||
-    st.soothingActivities.trim() ||
-    st.stressIndicators.trim();
-  if (hasStressChanges) {
-    result.stress = {
-      primary: st.primary,
-      threshold: st.threshold,
-      recoveryRate: st.recoveryRate,
-      soothingActivities: splitList(st.soothingActivities),
-      stressIndicators: splitList(st.stressIndicators),
-      ...(st.secondary ? { secondary: st.secondary } : {}),
-    };
-  }
-
-  // Return undefined if nothing was set
-  return Object.keys(result).length > 0 ? result : undefined;
-};
-
-/**
- * Group appearance entries by region and attribute.
- * Returns a map: region → attribute → value
- */
-function groupAppearanceEntries(
-  entries: AppearanceEntry[]
-): Map<AppearanceRegion, Map<string, string>> {
-  const grouped = new Map<AppearanceRegion, Map<string, string>>();
-  for (const entry of entries) {
-    if (!entry.value.trim()) continue;
-    if (!grouped.has(entry.region)) {
-      grouped.set(entry.region, new Map());
-    }
-    grouped.get(entry.region)!.set(entry.attribute, entry.value.trim());
-  }
-  return grouped;
-}
-
-/**
- * Regions that are stored in Physique schema (limited set).
- * All other regions go into the body map's visual property.
- */
-const PHYSIQUE_REGIONS = new Set<AppearanceRegion>([
-  'overall',
-  'hair',
-  'eyes',
-  'skin',
-  'arms',
-  'legs',
-  'feet',
-  'face',
-]);
-
-/**
- * Gender-specific regions that should be excluded based on character gender.
- */
-const FEMALE_ONLY_REGIONS = new Set<AppearanceRegion>(['breasts', 'nipples', 'vagina']);
-const MALE_ONLY_REGIONS = new Set<AppearanceRegion>(['penis']);
-
-/**
- * Filter appearance entries to exclude gender-inappropriate regions.
- * This ensures that if a user changes gender, stale data isn't saved.
- */
-function filterAppearanceEntriesByGender(
-  entries: AppearanceEntry[],
-  gender: string
-): AppearanceEntry[] {
-  const normalizedGender = gender.trim().toLowerCase();
-
-  return entries.filter((entry) => {
-    // Female-only regions: exclude if male
-    if (FEMALE_ONLY_REGIONS.has(entry.region)) {
-      return normalizedGender === 'female' || normalizedGender === 'other' || !normalizedGender;
-    }
-    // Male-only regions: exclude if female
-    if (MALE_ONLY_REGIONS.has(entry.region)) {
-      return normalizedGender === 'male' || normalizedGender === 'other' || !normalizedGender;
-    }
-    return true;
-  });
-}
-
-/**
- * Filter body sensory entries to exclude gender-inappropriate regions.
- */
-function filterSensoryEntriesByGender(
-  entries: BodySensoryEntry[],
-  gender: string
-): BodySensoryEntry[] {
-  const normalizedGender = gender.trim().toLowerCase();
-
-  return entries.filter((entry) => {
-    // Female-only regions: exclude if male
-    if (FEMALE_ONLY_REGIONS.has(entry.region as AppearanceRegion)) {
-      return normalizedGender === 'female' || normalizedGender === 'other' || !normalizedGender;
-    }
-    // Male-only regions: exclude if female
-    if (MALE_ONLY_REGIONS.has(entry.region as AppearanceRegion)) {
-      return normalizedGender === 'male' || normalizedGender === 'other' || !normalizedGender;
-    }
-    return true;
-  });
-}
-
-/**
- * Build Physique from appearance entries.
- * Only includes regions that fit in the Physique schema.
- */
-const buildPhysique = (form: FormState): CharacterProfile['physique'] | undefined => {
-  // If free-text appearance is provided, use that
-  const textAppearance = form.appearance.trim();
-  if (textAppearance) {
-    return textAppearance;
-  }
-
-  // Group entries by region
-  const grouped = groupAppearanceEntries(form.appearances);
-  if (grouped.size === 0) {
-    return undefined;
-  }
-
-  // Check if we have any physique-compatible entries
-  const hasPhysiqueEntries = Array.from(grouped.keys()).some((region) =>
-    PHYSIQUE_REGIONS.has(region)
-  );
-  if (!hasPhysiqueEntries) {
-    return undefined;
-  }
-
-  // Extract values with defaults
-  const getValue = (region: AppearanceRegion, attr: string, fallback: string): string => {
-    return grouped.get(region)?.get(attr) ?? fallback;
-  };
-
-  const physique: Physique = {
-    build: {
-      height: getValue('overall', 'height', 'average') as Physique['build']['height'],
-      torso: getValue('overall', 'build', 'average') as Physique['build']['torso'],
-      skinTone: getValue('skin', 'tone', 'pale'),
-      arms: {
-        build: getValue('arms', 'build', 'average') as Physique['build']['arms']['build'],
-        length: getValue('arms', 'length', 'average') as Physique['build']['arms']['length'],
-      },
-      legs: {
-        build: getValue('legs', 'build', 'toned') as Physique['build']['legs']['build'],
-        length: getValue('legs', 'length', 'average') as Physique['build']['legs']['length'],
-      },
-      feet: {
-        size: getValue('feet', 'size', 'small') as Physique['build']['feet']['size'],
-        shape: getValue('feet', 'shape', 'average'),
-      },
-    },
-    appearance: {
-      hair: {
-        color: getValue('hair', 'color', 'brown'),
-        style: getValue('hair', 'style', 'straight'),
-        length: getValue('hair', 'length', 'medium'),
-      },
-      eyes: {
-        color: getValue('eyes', 'color', 'brown'),
-      },
-    },
-  };
-
-  // Add face features if present
-  const faceFeatures = getValue('face', 'features', '');
-  if (faceFeatures) {
-    physique.appearance.features = splitList(faceFeatures);
-  }
-
-  return physique;
-};
-
-/**
- * Build visual data for body map from appearance entries that don't fit in Physique.
- * Returns entries grouped by region with visual descriptions.
- */
-function buildAppearanceVisuals(
-  entries: AppearanceEntry[]
-): Map<BodyRegion, { description: string; features?: string[] }> {
-  const visuals = new Map<BodyRegion, { description: string; features?: string[] }>();
-
-  // Group by region
-  const grouped = groupAppearanceEntries(entries);
-
-  for (const [region, attrs] of grouped) {
-    // Skip regions that are handled by Physique schema
-    if (PHYSIQUE_REGIONS.has(region)) continue;
-
-    // Skip if not a valid body region
-    if (!BODY_REGIONS.includes(region as BodyRegion)) continue;
-
-    // Build description from all attributes
-    const descriptions: string[] = [];
-    const features: string[] = [];
-
-    for (const [attr, value] of attrs) {
-      if (attr === 'features' || attr === 'description') {
-        // Treat as features list
-        features.push(...splitList(value));
-      } else {
-        // Format as "attr: value"
-        descriptions.push(`${attr}: ${value}`);
-      }
-    }
-
-    if (descriptions.length > 0 || features.length > 0) {
-      const visual: { description: string; features?: string[] } = {
-        description: descriptions.length > 0 ? descriptions.join(', ') : (features[0] ?? ''),
-      };
-      if (features.length > 0) {
-        visual.features = features;
-      }
-      visuals.set(region as BodyRegion, visual);
-    }
-  }
-
-  return visuals;
-}
-
-/**
- * Build the body map from body sensory entries and appearance entries.
- * Sensory entries (scent, texture, flavor) are parsed from raw text.
- * Appearance entries for non-Physique regions are added as visual data.
- */
-const buildBody = (
-  sensoryEntries: BodySensoryEntry[],
-  appearanceEntries: AppearanceEntry[]
-): BodyMap | undefined => {
-  // Build visual data from appearance entries (for non-Physique regions)
-  const appearanceVisuals = buildAppearanceVisuals(appearanceEntries);
-
-  // Build sensory data from body sensory entries
-  // Format: "region: type: raw text" for each entry
-  const lines = sensoryEntries
-    .filter((e) => e.raw.trim())
-    .map((e) => `${e.region}: ${e.type}: ${e.raw.trim()}`);
-
-  let bodyMap: BodyMap = {};
-
-  if (lines.length > 0) {
-    // Join lines with semicolons for the parser
-    const input = lines.join('; ');
-    const result = parseBodyEntries(input);
-    bodyMap = result.bodyMap;
-  }
-
-  // Merge appearance visuals into body map
-  for (const [region, visual] of appearanceVisuals) {
-    bodyMap[region] ??= {};
-    bodyMap[region].visual = visual;
-  }
-
-  // Check if the map has any content
-  const hasContent = Object.values(bodyMap).some((region) => {
-    if (!region) return false;
-    const scentKeys = region.scent ? Object.keys(region.scent).length : 0;
-    const textureKeys = region.texture ? Object.keys(region.texture).length : 0;
-    const visualKeys = region.visual ? Object.keys(region.visual).length : 0;
-    const flavorKeys = region.flavor ? Object.keys(region.flavor).length : 0;
-    return scentKeys > 0 || textureKeys > 0 || visualKeys > 0 || flavorKeys > 0;
-  });
-
-  return hasContent ? bodyMap : undefined;
-};
-
-const mapDetailEntries = (entries: DetailFormEntry[]): CharacterDetail[] => {
-  const details: CharacterDetail[] = [];
-  for (const entry of entries) {
-    const label = entry.label.trim();
-    const value = entry.value.trim();
-    if (!label || !value) continue;
-    const parsedImportance = Number.parseFloat(entry.importance);
-    const importance = Number.isFinite(parsedImportance) ? clamp(parsedImportance, 0, 1) : 0.5;
-    const tags = splitList(entry.tags);
-    const notes = entry.notes.trim();
-    const detail: CharacterDetail = {
-      label,
-      value,
-      area: entry.area ?? 'custom',
-      importance,
-      tags,
-      ...(notes ? { notes } : {}),
-    };
-    details.push(detail);
-  }
-  return details;
-};
-
-const buildProfile = (form: FormState): CharacterProfile => {
-  const tags = splitList(form.tags);
-
-  // Filter entries by gender to exclude inappropriate regions
-  const filteredAppearances = filterAppearanceEntriesByGender(form.appearances, form.gender);
-  const filteredSensory = filterSensoryEntriesByGender(form.bodySensory, form.gender);
-
-  // Build with filtered entries
-  const formWithFilteredEntries = {
-    ...form,
-    appearances: filteredAppearances,
-  };
-
-  const physique = buildPhysique(formWithFilteredEntries);
-  const details = mapDetailEntries(form.details);
-  const body = buildBody(filteredSensory, filteredAppearances);
-  const personalityMap = buildPersonalityMap(form.personalityMap);
-
-  // Cast gender to Gender type if valid
-  const genderValue = form.gender.trim();
-  const validGenders = ['male', 'female', 'other', 'unknown'] as const;
-  const gender = validGenders.includes(genderValue as Gender) ? (genderValue as Gender) : undefined;
-
-  const profilePicTrimmed = form.profilePic?.trim();
-
-  const profile: CharacterProfile = {
-    id: form.id.trim(),
-    name: form.name.trim(),
-    age: Number.parseInt(String(form.age), 10),
-    ...(gender ? { gender } : {}),
-    summary: form.summary.trim(),
-    backstory: form.backstory.trim(),
-    tags,
-    tier: 'minor', // Default tier for manually created characters
-    personality: parsePersonality(form.personality),
-    ...(physique ? { physique } : {}),
-    ...(details.length ? { details } : {}),
-    ...(body ? { body } : {}),
-    ...(personalityMap ? { personalityMap } : {}),
-    ...(profilePicTrimmed ? { profilePic: profilePicTrimmed } : {}),
-  };
-
-  return profile;
-};
+import { buildProfile } from './transformers.js';
+import { useAutoSave } from '../../hooks/useAutoSave.js';
 
 export const CharacterBuilder: React.FC<{
   id?: string | null;
@@ -522,6 +49,9 @@ export const CharacterBuilder: React.FC<{
   } = useCharacterBuilderForm(id);
 
   const [mode, setMode] = useState<CharacterBuilderMode>(initialMode);
+  const [activeTab, setActiveTab] = useState<
+    'basics' | 'appearance' | 'personality' | 'body' | 'details'
+  >('basics');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -529,6 +59,9 @@ export const CharacterBuilder: React.FC<{
 
   const modeConfig = MODE_CONFIGS[mode];
   const isEditing = Boolean(id);
+
+  // Auto-save draft
+  useAutoSave(`character-draft-${id ?? 'new'}`, form, 1000, !saving && !loading);
 
   // Change mode handler - preserves data when switching modes
   const handleModeChange = useCallback((newMode: CharacterBuilderMode) => {
@@ -623,6 +156,14 @@ export const CharacterBuilder: React.FC<{
 
   const disabled = saving || loading;
 
+  const tabs = [
+    { id: 'basics', label: 'Basics', visible: modeConfig.sections.basics },
+    { id: 'appearance', label: 'Appearance', visible: modeConfig.sections.appearance },
+    { id: 'personality', label: 'Personality', visible: modeConfig.sections.personality },
+    { id: 'body', label: 'Body', visible: modeConfig.sections.body },
+    { id: 'details', label: 'Details', visible: modeConfig.sections.details },
+  ] as const;
+
   return (
     <div className="space-y-4">
       {/* Header with Mode Selector */}
@@ -664,58 +205,103 @@ export const CharacterBuilder: React.FC<{
       {loadError && !loading && <p className="text-sm text-amber-300">{loadError}</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
-          {/* Basics Section - always visible */}
-          {modeConfig.sections.basics && (
-            <BasicsSection
-              form={form}
-              fieldErrors={fieldErrors}
-              updateField={updateField}
-              visibleFields={modeConfig.basicFields}
-            />
-          )}
+        <div className="lg:col-span-2 flex flex-col h-[calc(100vh-200px)]">
+          {/* Tabs */}
+          <div className="flex border-b border-slate-700 mb-4 overflow-x-auto">
+            {tabs.map(
+              (tab) =>
+                tab.visible && (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                    px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                    ${
+                      activeTab === tab.id
+                        ? 'border-violet-500 text-violet-400'
+                        : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                    }
+                  `}
+                  >
+                    {tab.label}
+                  </button>
+                )
+            )}
+          </div>
 
-          {/* Appearance Section - Standard and Advanced */}
-          {modeConfig.sections.appearance && (
-            <AppearanceSection
-              appearances={form.appearances}
-              gender={form.gender}
-              updateAppearanceEntry={updateAppearanceEntry}
-              addAppearanceEntry={addAppearanceEntry}
-              removeAppearanceEntry={removeAppearanceEntry}
-            />
-          )}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+            {/* Basics Section */}
+            {activeTab === 'basics' && modeConfig.sections.basics && (
+              <BasicsSection
+                form={form}
+                fieldErrors={fieldErrors}
+                updateField={updateField}
+                visibleFields={modeConfig.basicFields}
+              />
+            )}
 
-          {/* Personality Section - Standard and Advanced */}
-          {modeConfig.sections.personality && (
-            <PersonalitySection
-              form={form}
-              fieldErrors={fieldErrors}
-              updateField={updateField}
-              isAdvanced={mode === 'advanced'}
-            />
-          )}
+            {/* Appearance Section */}
+            {activeTab === 'appearance' && modeConfig.sections.appearance && (
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleGenerate()}
+                    className="text-xs text-violet-400 hover:text-violet-300"
+                  >
+                    Generate Appearance
+                  </button>
+                </div>
+                <AppearanceSection
+                  appearances={form.appearances}
+                  gender={form.gender}
+                  updateAppearanceEntry={updateAppearanceEntry}
+                  addAppearanceEntry={addAppearanceEntry}
+                  removeAppearanceEntry={removeAppearanceEntry}
+                />
+              </div>
+            )}
 
-          {/* Body Section - Advanced only */}
-          {modeConfig.sections.body && (
-            <BodySection
-              bodySensory={form.bodySensory}
-              gender={form.gender}
-              updateBodyEntry={updateBodyEntry}
-              addBodyEntry={addBodyEntry}
-              removeBodyEntry={removeBodyEntry}
-            />
-          )}
+            {/* Personality Section */}
+            {activeTab === 'personality' && modeConfig.sections.personality && (
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleGenerate()}
+                    className="text-xs text-violet-400 hover:text-violet-300"
+                  >
+                    Generate Personality
+                  </button>
+                </div>
+                <PersonalitySection
+                  form={form}
+                  fieldErrors={fieldErrors}
+                  updateField={updateField}
+                  isAdvanced={mode === 'advanced'}
+                />
+              </div>
+            )}
 
-          {/* Details Section - Advanced only */}
-          {modeConfig.sections.details && (
-            <DetailsSection
-              details={form.details}
-              updateDetailEntry={updateDetailEntry}
-              addDetailEntry={addDetailEntry}
-              removeDetailEntry={removeDetailEntry}
-            />
-          )}
+            {/* Body Section */}
+            {activeTab === 'body' && modeConfig.sections.body && (
+              <BodySection
+                bodySensory={form.bodySensory}
+                gender={form.gender}
+                updateBodyEntry={updateBodyEntry}
+                addBodyEntry={addBodyEntry}
+                removeBodyEntry={removeBodyEntry}
+              />
+            )}
+
+            {/* Details Section */}
+            {activeTab === 'details' && modeConfig.sections.details && (
+              <DetailsSection
+                details={form.details}
+                updateDetailEntry={updateDetailEntry}
+                addDetailEntry={addDetailEntry}
+                removeDetailEntry={removeDetailEntry}
+              />
+            )}
+          </div>
         </div>
 
         <PreviewSidebar
@@ -729,7 +315,7 @@ export const CharacterBuilder: React.FC<{
           onSave={() => {
             void handleSave();
           }}
-          onGenerate={handleGenerate}
+          onGenerate={() => handleGenerate()}
           onCancel={onCancel}
           onDelete={handleDelete}
           isEditing={isEditing}

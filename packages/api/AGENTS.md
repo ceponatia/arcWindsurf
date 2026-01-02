@@ -2,22 +2,38 @@
 
 ## Purpose
 
-HTTP backend server exposing REST endpoints for the game client. Handles requests, validates input, and delegates to domain packages for business logic.
+The HTTP backend server for the Minimal RPG application. It exposes REST endpoints using the Hono framework, handling request routing, authentication, validation, and delegation to domain-specific packages. It serves as the entry point for client interactions.
 
-## Scope
+## Core Responsibilities
 
-- HTTP routes and controllers (Hono framework)
-- Request validation and auth/permissions
-- Middleware and webhooks
-- Transport-level concerns only; no domain logic
+- **HTTP Server**: Hono-based server with CORS and middleware support.
+- **Authentication**: JWT-based auth with middleware for protected routes (`src/auth`).
+- **Data Loading**: Loads initial character and setting data on startup (`src/data`).
+- **Routing**: Organized route handlers for various domains (`src/routes`).
+- **Configuration**: Manages runtime configuration and environment variables (`src/util/config.ts`).
+
+## Key Route Groups
+
+- **Auth**: Authentication and user management (`routes/auth.ts`).
+- **Sessions**: Game session management (`routes/sessions/`).
+- **Turns**: Turn processing and history (`routes/turns.ts`).
+- **Admin**: Database and session administration (`routes/adminDb.ts`, `routes/adminSessions.ts`).
+- **Entities**: Management of items, personas, tags, and location maps.
+- **User Preferences**: Handling user-specific settings (`routes/userPreferences.ts`).
+- **Hygiene**: System health and maintenance endpoints (`routes/hygiene.ts`).
+- **Workspace Drafts**: Managing drafts for content creation (`routes/workspaceDrafts.ts`).
+
+## Architecture
+
+- **Entry Point**: `src/server.ts` initializes the environment and starts the server defined in `src/serverImpl.ts`.
+- **Middleware**: Uses Hono middleware for error handling, CORS, and authentication (`attachAuthUser`, `requireAuthIfEnabled`).
+- **Data Access**: Interacts with `@minimal-rpg/db` for persistence and loads static data from `src/data`.
 
 ## Package Connections
 
-- **governor**: Delegates turn processing via `handleTurn`
-- **db**: Loads and persists sessions, messages, profiles, and instances
-- **schemas**: Validates request/response shapes
-- **state-manager**: Retrieves effective state for sessions
-- **agents**: Provides agent instances to governor
-- **retrieval**: Invokes retrieval for context building
-- **characters**: Loads character data for sessions
-- **utils**: Shared helpers (errors, parsing)
+- **@minimal-rpg/governor**: Delegates complex turn processing logic.
+- **@minimal-rpg/db**: Direct database access for CRUD operations.
+- **@minimal-rpg/schemas**: Shared Zod schemas for request/response validation.
+- **@minimal-rpg/state-manager**: State aggregation and management.
+- **@minimal-rpg/agents**: Agent definitions and logic, particularly the npc agent which is responsible for non-player character behavior and decision-making within the game.
+- **@minimal-rpg/characters**: Character data structures and logic.
