@@ -404,7 +404,6 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                   {APPEARANCE_REGION_LABELS[selectedRegion as AppearanceRegion] ?? selectedRegion}
                 </h3>
                 <div className="flex items-center gap-3">
-                  {/* @ts-expect-error: REGION_GROUPS access needs index signature fix */}
                   {selectedRegion && REGION_GROUPS[selectedRegion] && (
                     <button
                       onClick={() =>

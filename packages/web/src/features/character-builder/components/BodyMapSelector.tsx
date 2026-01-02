@@ -29,7 +29,7 @@ export const BodyMapSelector: React.FC<BodyMapSelectorProps> = ({
 
   const getFill = (region: string) => (isSelected(region) ? '#8b5cf6' : '#334155'); // violet-500 vs slate-700
 
-  const bodyMap = useMemo(() => getBodyMap(race, gender), [race, gender]);
+  const bodyMap = useMemo(() => getBodyMap(), [race, gender]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-slate-900/50 rounded-lg p-4 min-h-[400px]">
