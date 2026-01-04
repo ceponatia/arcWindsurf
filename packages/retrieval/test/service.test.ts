@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { InMemoryRetrievalService, NodeStore } from '../src/service.js';
+import { InMemoryRetrievalService, NodeStore } from '../src/services/index.js';
 import type { EmbeddingService, KnowledgeNode, RetrievalQuery } from '../src/types.js';
 
 const makeNode = (overrides: Partial<KnowledgeNode> = {}): KnowledgeNode => ({

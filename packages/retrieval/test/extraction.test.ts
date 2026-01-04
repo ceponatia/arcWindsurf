@@ -10,8 +10,8 @@ import {
   getValueAtPath,
   nodeContentChanged,
   valueToContent,
-} from '../src/extraction.js';
-import type { ExtractedNode } from '../src/extraction.js';
+} from '../src/extraction/index.js';
+import type { ExtractedNode } from '../src/extraction/index.js';
 import type { KnowledgeNode } from '../src/types.js';
 
 describe('getPathImportance', () => {

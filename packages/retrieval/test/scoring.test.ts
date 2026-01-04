@@ -10,7 +10,7 @@ import {
   filterByMinScore,
   scoreAndRankNodes,
   scoreNode,
-} from '../src/scoring.js';
+} from '../src/scoring/index.js';
 import type { KnowledgeNode, ScoredNode } from '../src/types.js';
 
 const makeNode = (overrides: Partial<KnowledgeNode> = {}): KnowledgeNode => ({
