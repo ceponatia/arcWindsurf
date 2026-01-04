@@ -21,7 +21,15 @@ import type {
   SessionLocationMapRecord,
 } from './types.js';
 
-export type { MessageSpeaker, MessageRole, Message, Session, SessionSummary } from './types.js';
+export type {
+  MessageSpeaker,
+  MessageRole,
+  Message,
+  Session,
+  SessionSummary,
+  PlayerInterestRecord,
+  SessionLocationMapRecord,
+} from './types.js';
 
 // Ensure typed UUID generator in environments without Node types
 const genUUID: RandomUUID = randomUUID as unknown as RandomUUID;
