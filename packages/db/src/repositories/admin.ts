@@ -1,14 +1,12 @@
-import { db, resolvedDbUrl, pool } from './client.js';
+import { db, resolvedDbUrl, pool } from '../utils/client.js';
 import type {
   DbColumn,
   DbOverviewResult,
   DbPathInfo,
-  DbRow as Row,
+  DbRow,
   DbTableOverview,
   QueryResult,
-} from './types.js';
-
-export type DbRow = Row;
+} from '../types.js';
 
 export async function getDbOverview(): Promise<DbOverviewResult> {
   // Introspect selected tables in public schema

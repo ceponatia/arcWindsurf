@@ -1,4 +1,4 @@
-import { pool } from './client.js';
+import { pool } from './utils/client.js';
 import { seedBuiltInTags } from './seeds/built-in-tags.js';
 import { seedTestEntities } from './seeds/test-entities.js';
 import type { BuiltInTagSeedMode } from './seeds/built-in-tags.js';

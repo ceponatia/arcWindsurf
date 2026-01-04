@@ -1,5 +1,5 @@
-import { getErrorMessage, isAbortError } from '../errors.js';
-import { safeJson, safeText } from '../fetch.js';
+import { getErrorMessage, isAbortError } from '../errors/errors.js';
+import { safeJson, safeText } from '../http/fetch.js';
 import type {
   ChatRole,
   LlmGenerationOptions,

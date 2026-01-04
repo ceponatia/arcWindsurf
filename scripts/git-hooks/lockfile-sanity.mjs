@@ -17,6 +17,22 @@ function getStagedFiles() {
 }
 
 /**
+ * Return unstaged file paths (modified but not added) as repo-relative paths.
+ *
+ * @returns {string[]}
+ */
+function getUnstagedFiles() {
+  const out = execFileSync('git', ['diff', '--name-only'], {
+    encoding: 'utf8',
+  });
+
+  return out
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
  * @param {string[]} stagedFiles
  * @returns {void}
  */
@@ -51,9 +67,12 @@ function assertPnpmLockUpdated(stagedFiles) {
   const pnpmLockStaged = stagedFiles.includes('pnpm-lock.yaml');
   if (pnpmLockStaged) return;
 
-  throw new Error(
-    'package.json is staged but pnpm-lock.yaml is not. Run `pnpm -w install` and stage pnpm-lock.yaml.'
-  );
+  const unstagedFiles = getUnstagedFiles();
+  if (unstagedFiles.includes('pnpm-lock.yaml')) {
+    throw new Error(
+      'package.json is staged but pnpm-lock.yaml has unstaged changes. Run `git add pnpm-lock.yaml`.'
+    );
+  }
 }
 
 /**

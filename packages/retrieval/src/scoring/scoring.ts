@@ -2,7 +2,7 @@
  * Scoring utilities for knowledge node retrieval.
  */
 
-import type { KnowledgeNode, ScoredNode, ScoringWeights } from './types.js';
+import type { KnowledgeNode, ScoredNode, ScoringWeights } from '../types.js';
 
 /**
  * Default scoring weights.

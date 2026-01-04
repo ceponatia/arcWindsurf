@@ -1,6 +1,6 @@
 import React from 'react';
 import Markdown from 'react-markdown';
-import { cn } from '../lib/utils.js';
+import { cn } from '../../lib/utils.js';
 
 export interface MessageContentProps {
   content: string;

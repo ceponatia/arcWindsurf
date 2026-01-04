@@ -12,18 +12,18 @@
  */
 export function resolveDatabaseUrl(env: Record<string, string | undefined>): {
   url: string;
-  source: 'DATABASE_URL' | 'DATABASE_URL_LOCAL' | 'DATABASE_URL_SUPABASE' | 'default-local';
+  source: 'DATABASE_URL' | 'DATABASE_URL_LOCAL' | 'DATABASE_URL_SUPABASE';
 } {
   const target = (env['DB_TARGET'] ?? '').trim().toLowerCase();
 
-  const defaultLocal = 'postgres://postgres:postgres@localhost:5432/minirpg';
-
   if (target === 'local') {
-    const url = env['DATABASE_URL_LOCAL'] ?? defaultLocal;
-    return {
-      url,
-      source: env['DATABASE_URL_LOCAL'] ? 'DATABASE_URL_LOCAL' : 'default-local',
-    };
+    if (env['DATABASE_URL_LOCAL']) {
+      return {
+        url: env['DATABASE_URL_LOCAL'],
+        source: 'DATABASE_URL_LOCAL',
+      };
+    }
+    throw new Error('DB_TARGET=local but DATABASE_URL_LOCAL is not defined');
   }
 
   if (target === 'supabase') {
@@ -33,12 +33,21 @@ export function resolveDatabaseUrl(env: Record<string, string | undefined>): {
     if (env['DATABASE_URL']) {
       return { url: env['DATABASE_URL'], source: 'DATABASE_URL' };
     }
-    return { url: defaultLocal, source: 'default-local' };
+    if (env['DATABASE_URL_LOCAL']) {
+      return { url: env['DATABASE_URL_LOCAL'], source: 'DATABASE_URL_LOCAL' };
+    }
+    throw new Error(
+      'DB_TARGET=supabase but no valid database URL found (checked DATABASE_URL_SUPABASE, DATABASE_URL, DATABASE_URL_LOCAL)'
+    );
   }
 
   if (env['DATABASE_URL']) {
     return { url: env['DATABASE_URL'], source: 'DATABASE_URL' };
   }
 
-  return { url: defaultLocal, source: 'default-local' };
+  if (env['DATABASE_URL_LOCAL']) {
+    return { url: env['DATABASE_URL_LOCAL'], source: 'DATABASE_URL_LOCAL' };
+  }
+
+  throw new Error('No database URL found (checked DATABASE_URL, DATABASE_URL_LOCAL)');
 }

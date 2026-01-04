@@ -1,5 +1,5 @@
 import React from 'react';
-import { BuilderActionPanel } from './BuilderActionPanel.js';
+import { BuilderActionPanel } from '../forms/BuilderActionPanel.js';
 
 export interface PreviewSidebarLayoutProps {
   /** Content to display in the preview card */

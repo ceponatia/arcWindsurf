@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
-import { registerType } from './pgvector.js';
-import { resolveDatabaseUrl } from './connection/resolveDatabaseUrl.js';
+import { registerType } from '../vector/pgvector.js';
+import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
 import type {
   CharacterInstanceRow,
   CharacterProfileRow,
@@ -22,7 +22,7 @@ import type {
   SettingInstanceRow,
   SqlParams,
   UserSessionRow,
-} from './types.js';
+} from '../types.js';
 
 const env: Record<string, string | undefined> =
   (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process

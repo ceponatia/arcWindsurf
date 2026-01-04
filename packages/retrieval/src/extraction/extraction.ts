@@ -2,7 +2,7 @@
  * Node extraction utilities for converting profile JSON into knowledge nodes.
  */
 
-import type { KnowledgeNode, NodeIngestionError } from './types.js';
+import type { KnowledgeNode, NodeIngestionError } from '../types.js';
 
 /**
  * Default paths to extract for character profiles.

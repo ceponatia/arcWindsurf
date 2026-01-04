@@ -5,8 +5,8 @@
  * Full authentication not implemented yet.
  */
 import crypto from 'node:crypto';
-import { pool } from './client.js';
-import type { DbRow, UUID } from './types.js';
+import { pool } from '../utils/client.js';
+import type { DbRow, UUID } from '../types.js';
 
 // =============================================================================
 // Types

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { pool } from './client.js';
+import { pool } from '../utils/client.js';
 import type {
   DbRow,
   MessageRole,
@@ -11,16 +11,16 @@ import type {
   SessionRecord,
   SessionSummaryRecord,
   UUID,
-} from './types.js';
+} from '../types.js';
 
-export type { MessageSpeaker } from './types.js';
+export type { MessageSpeaker } from '../types.js';
 
-export type { MessageRole } from './types.js';
+export type { MessageRole } from '../types.js';
 export type {
   SessionMessage as Message,
   SessionRecord as Session,
   SessionSummaryRecord as SessionSummary,
-} from './types.js';
+} from '../types.js';
 
 // Ensure typed UUID generator in environments without Node types
 const genUUID: RandomUUID = randomUUID as unknown as RandomUUID;

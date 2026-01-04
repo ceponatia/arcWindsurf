@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { pool } from './client.js';
+import { pool } from '../utils/client.js';
 import type {
   DbRow,
   OwnerEmail,
@@ -7,7 +7,7 @@ import type {
   QueryResult,
   SessionTagBindingRow,
   UUID,
-} from './types.js';
+} from '../types.js';
 
 // Ensure typed UUID generator
 type RandomUUID = () => UUID;

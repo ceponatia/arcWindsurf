@@ -18,7 +18,7 @@ import type {
   NodeIngestionInput,
   NodeIngestionResult,
   EmbeddingService,
-} from './types.js';
+} from '../types.js';
 
 import {
   DEFAULT_SCORING_WEIGHTS,
@@ -26,9 +26,9 @@ import {
   filterByMinScore,
   applyNarrativeDecay,
   boostNarrativeImportance,
-} from './scoring.js';
+} from '../scoring/scoring.js';
 
-import { extractNodes, createKnowledgeNode, diffNodes } from './extraction.js';
+import { extractNodes, createKnowledgeNode, diffNodes } from '../extraction/extraction.js';
 
 /**
  * Default retrieval configuration.
