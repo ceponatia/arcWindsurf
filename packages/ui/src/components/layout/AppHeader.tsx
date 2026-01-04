@@ -1,10 +1,5 @@
 import React from 'react';
-
-export interface AppHeaderProps {
-  characterName?: string | undefined;
-  settingName?: string | undefined;
-  hasSession?: boolean;
-}
+import type { AppHeaderProps } from './types.js';
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ characterName, settingName, hasSession }) => {
   const showInfo = hasSession && characterName && settingName;

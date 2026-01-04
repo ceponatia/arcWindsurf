@@ -1,17 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-export interface HelpPopoverProps {
-  /** Title of the help section */
-  title: string;
-  /** Content to display (can be JSX) */
-  children: React.ReactNode;
-  /** Optional link to full documentation */
-  docLink?: string;
-  /** Trigger element (defaults to help icon button) */
-  trigger?: React.ReactNode;
-  /** Additional CSS classes */
-  className?: string;
-}
+import type { HelpPopoverProps } from './types.js';
 
 /**
  * Popover component for more detailed contextual help.

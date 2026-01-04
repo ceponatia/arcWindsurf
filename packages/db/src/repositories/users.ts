@@ -6,7 +6,8 @@
  */
 import crypto from 'node:crypto';
 import { pool } from '../utils/client.js';
-import type { DbRow, UUID } from '../types.js';
+import type { DbRow } from '../types.js';
+import type { UserPreferences, UserRole, UserAccount } from './types.js';
 
 // =============================================================================
 // Types
@@ -15,32 +16,10 @@ import type { DbRow, UUID } from '../types.js';
 /**
  * User preferences stored in the database.
  */
-export interface UserPreferences {
-  /** Preferred workspace mode: wizard (step-by-step) or compact (power user) */
-  workspaceMode?: 'wizard' | 'compact' | undefined;
-  /** Future preferences can be added here */
-  [key: string]: unknown;
-}
-
-export type UserRole = 'user' | 'admin';
-
-export type AuthProvider = 'local' | 'supabase';
 
 /**
  * User account record.
  */
-export interface UserAccount {
-  id: UUID;
-  identifier: string;
-  displayName: string | null;
-  role: UserRole;
-  authProvider: AuthProvider;
-  supabaseUserId: UUID | null;
-  preferences: UserPreferences;
-  lastLoginAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Row type from the database.

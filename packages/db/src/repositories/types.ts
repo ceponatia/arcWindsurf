@@ -1,0 +1,239 @@
+import type {
+  MessageRole,
+  MessageSpeaker,
+  OwnerEmail,
+  SessionMessage,
+  SessionRecord,
+  SessionSummaryRecord,
+  UUID,
+} from '../types.js';
+
+export type { MessageSpeaker, MessageRole };
+export type {
+  SessionMessage as Message,
+  SessionRecord as Session,
+  SessionSummaryRecord as SessionSummary,
+};
+
+// From sessions.ts
+export interface SessionHistoryEntry {
+  id: UUID;
+  sessionId: UUID;
+  turnIdx: number;
+  ownerUserId: string | null;
+  playerInput: string;
+  context: Record<string, unknown> | null;
+  debug: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface NpcMessage {
+  idx: number;
+  speaker: 'player' | 'npc' | 'narrator';
+  content: string;
+  createdAt: string;
+  witnessedBy?: string[];
+}
+
+export interface StateChangeLogEntry {
+  id: UUID;
+  sessionId: UUID;
+  turnIdx: number | null;
+  patchCount: number;
+  modifiedPaths: string[];
+  agentTypes: string[];
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export type SessionSliceState = Record<string, unknown>;
+
+export interface SceneAction {
+  id: UUID;
+  sessionId: UUID;
+  actorId: string;
+  actorType: 'player' | 'npc';
+  actionType: 'speech' | 'action' | 'thought' | 'observation' | 'other';
+  content: string;
+  observableBy: string[];
+  locationId: string | null;
+  createdAt: string;
+  turnNumber: number | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface CreateSceneActionInput {
+  ownerEmail: OwnerEmail;
+  sessionId: UUID;
+  actorId: string;
+  actorType: 'player' | 'npc';
+  actionType: 'speech' | 'action' | 'thought' | 'observation' | 'other';
+  content: string;
+  observableBy: string[];
+  locationId?: string | null;
+  turnNumber?: number | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface AffinityStateRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  stateJson: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NpcLocationStateRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  locationId: string;
+  subLocationId: string | null;
+  activityJson: Record<string, unknown>;
+  arrivedAtJson: Record<string, unknown>;
+  interruptible: boolean;
+  scheduleSlotId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LocationOccupancyCacheRecord {
+  id: UUID;
+  sessionId: UUID;
+  locationId: string;
+  occupancyJson: Record<string, unknown>;
+  computedAtJson: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NpcSimulationCacheRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  lastComputedAtJson: Record<string, unknown>;
+  currentStateJson: Record<string, unknown>;
+  dayDecisionsJson: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlayerInterestRecord {
+  id: UUID;
+  sessionId: UUID;
+  npcId: string;
+  score: number;
+  totalInteractions: number;
+  turnsSinceInteraction: number;
+  peakScore: number;
+  currentTier: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceDraftRecord {
+  id: UUID;
+  userId: string;
+  name: string | null;
+  workspaceState: Record<string, unknown>;
+  currentStep: string;
+  validationState: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionLocationMapRecord {
+  id: UUID;
+  sessionId: UUID;
+  locationMapId: UUID;
+  overridesJson: Record<string, unknown>;
+  createdAt: string;
+  /** The full location map data (from joined location_maps table) */
+  locationMap?: {
+    id: UUID;
+    settingId: UUID;
+    name: string;
+    description: string | null;
+    isTemplate: boolean;
+    nodesJson: unknown[];
+    connectionsJson: unknown[];
+    defaultStartLocationId: string | null;
+    tags: string[];
+  };
+}
+
+// From tags.ts
+export interface ListTagsOptions {
+  owner?: string;
+  visibility?: 'private' | 'public' | 'unlisted';
+  category?: string;
+  activationMode?: 'always' | 'conditional';
+  isBuiltIn?: boolean;
+}
+
+export interface CreateTagInput {
+  owner?: string;
+  visibility?: 'private' | 'public' | 'unlisted';
+  name: string;
+  shortDescription?: string;
+  category?: string;
+  promptText: string;
+  activationMode?: 'always' | 'conditional';
+  targetType?: string;
+  triggers?: unknown[];
+  priority?: string;
+  compositionMode?: string;
+  conflictsWith?: string[];
+  requires?: string[];
+  isBuiltIn?: boolean;
+}
+
+export interface UpdateTagInput {
+  name?: string;
+  shortDescription?: string;
+  category?: string;
+  promptText?: string;
+  activationMode?: 'always' | 'conditional';
+  targetType?: string;
+  triggers?: unknown[];
+  priority?: string;
+  compositionMode?: string;
+  conflictsWith?: string[];
+  requires?: string[];
+  visibility?: 'private' | 'public' | 'unlisted';
+  changelog?: string;
+}
+
+export interface CreateBindingInput {
+  sessionId: string;
+  tagId: string;
+  targetType?: string;
+  targetEntityId?: string | null;
+  enabled?: boolean;
+}
+
+// From users.ts
+export interface UserPreferences {
+  /** Preferred workspace mode: wizard (step-by-step) or compact (power user) */
+  workspaceMode?: 'wizard' | 'compact' | undefined;
+  /** Future preferences can be added here */
+  [key: string]: unknown;
+}
+
+export type UserRole = 'user' | 'admin';
+
+export type AuthProvider = 'local' | 'supabase';
+
+export interface UserAccount {
+  id: UUID;
+  identifier: string;
+  displayName: string | null;
+  role: UserRole;
+  authProvider: AuthProvider;
+  supabaseUserId: UUID | null;
+  preferences: UserPreferences;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
 import type { FsPromisesLike, PathLike, SqlFile, SqlText } from '../types.js';
+import type { MigrationPool } from './types.js';
 
 // Load env vars for local/dev usage.
 // Source of truth: repo root `.env` (shared across the monorepo).
@@ -34,11 +35,6 @@ const isSupabase =
   resolvedDbUrl.includes('supabase.co') ||
   resolvedDbUrl.includes('supabase.com') ||
   resolvedDbUrl.includes('pooler.supabase.com');
-
-interface MigrationPool {
-  query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
-  end: () => Promise<void>;
-}
 
 const pool = new Pool({
   connectionString: resolvedDbUrl,

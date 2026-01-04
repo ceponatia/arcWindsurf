@@ -1,6 +1,6 @@
 // Core Governor
 export { Governor, createGovernor } from './core/governor.js';
-export { GovernorFactory, type GovernorFactoryConfig } from './factory.js';
+export { GovernorFactory, type GovernorFactoryConfig } from './factories/index.js';
 
 // Equipment Slot Resolution (bridges body regions to item slots)
 export {
@@ -12,7 +12,7 @@ export {
   resolveBodyWithEquipment,
   type EquipmentSlot,
   type BodyEquipmentResolution,
-} from './utils/equipment-resolver.js';
+} from './utils/index.js';
 
 // Action Sequencing
 export {

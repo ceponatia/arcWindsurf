@@ -8,6 +8,12 @@ import type {
   SessionTagBindingRow,
   UUID,
 } from '../types.js';
+import type {
+  ListTagsOptions,
+  CreateTagInput,
+  UpdateTagInput,
+  CreateBindingInput,
+} from './types.js';
 
 // Ensure typed UUID generator
 type RandomUUID = () => UUID;
@@ -47,14 +53,6 @@ function incrementVersion(currentVersion: string, hasChangelog: boolean): string
 // ============================================================================
 // Prompt Tags (Global Definitions)
 // ============================================================================
-
-export interface ListTagsOptions {
-  owner?: string;
-  visibility?: 'private' | 'public' | 'unlisted';
-  category?: string;
-  activationMode?: 'always' | 'conditional';
-  isBuiltIn?: boolean;
-}
 
 /**
  * List prompt tags with optional filtering.
@@ -119,23 +117,6 @@ export async function getPromptTag(id: UUID, owner?: string): Promise<PromptTagR
   return res.rows[0] as PromptTagRow | undefined;
 }
 
-export interface CreateTagInput {
-  owner?: string;
-  visibility?: 'private' | 'public' | 'unlisted';
-  name: string;
-  shortDescription?: string;
-  category?: string;
-  promptText: string;
-  activationMode?: 'always' | 'conditional';
-  targetType?: string;
-  triggers?: unknown[];
-  priority?: string;
-  compositionMode?: string;
-  conflictsWith?: string[];
-  requires?: string[];
-  isBuiltIn?: boolean;
-}
-
 /**
  * Create a new prompt tag with enhanced fields.
  */
@@ -167,22 +148,6 @@ export async function createPromptTag(input: CreateTagInput): Promise<PromptTagR
     ]
   );
   return res.rows[0] as PromptTagRow;
-}
-
-export interface UpdateTagInput {
-  name?: string;
-  shortDescription?: string;
-  category?: string;
-  promptText?: string;
-  activationMode?: 'always' | 'conditional';
-  targetType?: string;
-  triggers?: unknown[];
-  priority?: string;
-  compositionMode?: string;
-  conflictsWith?: string[];
-  requires?: string[];
-  visibility?: 'private' | 'public' | 'unlisted';
-  changelog?: string;
 }
 
 /**
@@ -293,14 +258,6 @@ export async function deletePromptTag(id: UUID, owner: string): Promise<boolean>
 // ============================================================================
 // Session Tag Bindings (Junction Table)
 // ============================================================================
-
-export interface CreateBindingInput {
-  sessionId: string;
-  tagId: string;
-  targetType?: string;
-  targetEntityId?: string | null;
-  enabled?: boolean;
-}
 
 /**
  * Bind a tag to a session, optionally targeting a specific entity.

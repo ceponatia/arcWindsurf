@@ -1,11 +1,7 @@
 import React from 'react';
 import Markdown from 'react-markdown';
 import { cn } from '../../lib/utils.js';
-
-export interface MessageContentProps {
-  content: string;
-  className?: string;
-}
+import type { MessageContentProps } from './types.js';
 
 export const MessageContent: React.FC<MessageContentProps> = ({ content, className }) => {
   return (

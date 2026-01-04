@@ -1,6 +1,6 @@
-import { createGovernor, type Governor } from './core/governor.js';
-import type { GovernorConfig } from './core/types.js';
-import { NpcTurnHandler } from './core/npc-turn-handler.js';
+import { createGovernor, type Governor } from '../core/governor.js';
+import type { GovernorConfig } from '../core/types.js';
+import { NpcTurnHandler } from '../core/npc-turn-handler.js';
 import type { AgentRegistry, NpcAgent, AgentStateSlices } from '@minimal-rpg/agents';
 import type { StateManager } from '@minimal-rpg/state-manager';
 

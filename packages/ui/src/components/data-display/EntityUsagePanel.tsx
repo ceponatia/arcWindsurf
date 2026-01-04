@@ -1,31 +1,5 @@
 import React from 'react';
-
-export interface SessionUsageInfo {
-  sessionId: string;
-  createdAt: string;
-  role?: string;
-}
-
-export interface EntityUsagePanelProps {
-  /** The entity type being displayed */
-  entityType: 'character' | 'setting' | 'persona' | 'location';
-  /** Sessions using this entity */
-  sessions: SessionUsageInfo[];
-  /** Total count of sessions */
-  totalCount: number;
-  /** Loading state */
-  loading?: boolean;
-  /** Error message */
-  error?: string | null;
-  /** Callback when a session is clicked */
-  onSessionClick?: (sessionId: string) => void;
-  /** Maximum sessions to display before "show more" */
-  maxDisplay?: number;
-  /** Whether the panel is collapsed */
-  collapsed?: boolean;
-  /** Callback to toggle collapse state */
-  onToggleCollapse?: () => void;
-}
+import type { EntityUsagePanelProps } from './types.js';
 
 /**
  * Shared component for displaying "Where is this used?" information.

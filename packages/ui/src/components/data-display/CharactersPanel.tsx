@@ -1,22 +1,5 @@
 import React from 'react';
-
-export interface CharactersPanelCharacterSummary {
-  id: string;
-  name: string;
-  summary: string;
-  tags?: string[] | null;
-}
-
-export interface CharactersPanelProps {
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  onEdit: (id: string) => void;
-  characters?: CharactersPanelCharacterSummary[] | null;
-  loading: boolean;
-  error: string | null;
-  onRefresh: () => void;
-  onDeleteRequest?: (id: string) => void;
-}
+import type { CharactersPanelProps } from './types.js';
 
 export const CharactersPanel: React.FC<CharactersPanelProps> = ({
   selectedId,

@@ -1,21 +1,5 @@
 import React from 'react';
-
-export interface PersonasPanelPersonaSummary {
-  id: string;
-  name: string;
-  summary: string;
-}
-
-export interface PersonasPanelProps {
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  onEdit: (id: string) => void;
-  personas?: PersonasPanelPersonaSummary[] | null;
-  loading: boolean;
-  error: string | null;
-  onRefresh: () => void;
-  onDeleteRequest?: (id: string) => void;
-}
+import type { PersonasPanelProps } from './types.js';
 
 export const PersonasPanel: React.FC<PersonasPanelProps> = ({
   selectedId,

@@ -1,4 +1,4 @@
-vi.mock('../src/client.js', () => {
+vi.mock('../src/utils/client.js', () => {
   const query = vi.fn();
   const connect = vi.fn();
   return {
@@ -6,7 +6,7 @@ vi.mock('../src/client.js', () => {
   };
 });
 
-import { pool } from '../src/client.js';
+import { pool } from '../src/utils/client.js';
 import {
   createSessionTagBinding,
   deleteSessionTagBinding,
@@ -16,7 +16,7 @@ import {
   updatePromptTag,
   type ListTagsOptions,
   type UpdateTagInput,
-} from '../src/tags.js';
+} from '../src/repositories/tags.js';
 
 const mockQuery = pool.query as unknown as ReturnType<typeof vi.fn>;
 

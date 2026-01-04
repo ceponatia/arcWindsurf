@@ -1,6 +1,7 @@
 import type { ZodError } from 'zod';
+import type { FieldErrorMap } from './types.js';
 
-export type FieldErrorMap<FieldKey extends string = string> = Partial<Record<FieldKey, string>>;
+export type { FieldErrorMap };
 
 export function mapZodErrorsToFields<FieldKey extends string = string>(
   error: ZodError<unknown>,

@@ -3,6 +3,9 @@
  */
 
 import type { KnowledgeNode, NodeIngestionError } from '../types.js';
+import type { ExtractedNode, NodeUpdatePair, NodeDiff } from './types.js';
+
+export type { ExtractedNode, NodeUpdatePair, NodeDiff };
 
 /**
  * Default paths to extract for character profiles.
@@ -199,18 +202,6 @@ export function valueToContent(value: unknown): string | null {
 }
 
 /**
- * Result of extracting nodes from a profile.
- */
-export interface ExtractedNode {
-  /** The path this node was extracted from */
-  path: string;
-  /** Human-readable content */
-  content: string;
-  /** Base importance for this path */
-  baseImportance: number;
-}
-
-/**
  * Extract knowledge nodes from a profile JSON.
  *
  * @param profileJson The profile to extract from
@@ -292,26 +283,6 @@ export function createKnowledgeNode(
  */
 export function nodeContentChanged(existing: KnowledgeNode, extracted: ExtractedNode): boolean {
   return existing.content !== extracted.content;
-}
-
-/**
- * Compute a diff between existing nodes and newly extracted nodes.
- */
-/** A node update pair with existing and new extracted data */
-export interface NodeUpdatePair {
-  existing: KnowledgeNode;
-  extracted: ExtractedNode;
-}
-
-export interface NodeDiff {
-  /** Nodes that need to be created (new paths) */
-  toCreate: ExtractedNode[];
-  /** Nodes that need to be updated (content changed) */
-  toUpdate: NodeUpdatePair[];
-  /** Nodes that are unchanged */
-  unchanged: KnowledgeNode[];
-  /** Existing nodes whose paths are no longer in the profile */
-  toRemove: KnowledgeNode[];
 }
 
 /**

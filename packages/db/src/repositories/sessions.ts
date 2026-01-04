@@ -1,44 +1,30 @@
 import { randomUUID } from 'node:crypto';
 import { pool } from '../utils/client.js';
+import type { DbRow, OwnerEmail, QueryResult, RandomUUID, UUID } from '../types.js';
 import type {
-  DbRow,
   MessageRole,
   MessageSpeaker,
-  OwnerEmail,
-  QueryResult,
-  RandomUUID,
-  SessionMessage,
-  SessionRecord,
-  SessionSummaryRecord,
-  UUID,
-} from '../types.js';
+  Message,
+  Session,
+  SessionSummary,
+  SessionHistoryEntry,
+  NpcMessage,
+  StateChangeLogEntry,
+  SessionSliceState,
+  SceneAction,
+  CreateSceneActionInput,
+  NpcLocationStateRecord,
+  LocationOccupancyCacheRecord,
+  NpcSimulationCacheRecord,
+  PlayerInterestRecord,
+  WorkspaceDraftRecord,
+  SessionLocationMapRecord,
+} from './types.js';
 
-export type { MessageSpeaker } from '../types.js';
-
-export type { MessageRole } from '../types.js';
-export type {
-  SessionMessage as Message,
-  SessionRecord as Session,
-  SessionSummaryRecord as SessionSummary,
-} from '../types.js';
+export type { MessageSpeaker, MessageRole, Message, Session, SessionSummary } from './types.js';
 
 // Ensure typed UUID generator in environments without Node types
 const genUUID: RandomUUID = randomUUID as unknown as RandomUUID;
-
-type Message = SessionMessage;
-type Session = SessionRecord;
-type SessionSummary = SessionSummaryRecord;
-
-export interface SessionHistoryEntry {
-  id: UUID;
-  sessionId: UUID;
-  turnIdx: number;
-  ownerUserId: string | null;
-  playerInput: string;
-  context: Record<string, unknown> | null;
-  debug: Record<string, unknown> | null;
-  createdAt: string;
-}
 
 function toIsoDate(v: unknown): string {
   if (v instanceof Date)
@@ -298,14 +284,6 @@ export async function appendNpcMessage(
   );
 }
 
-export interface NpcMessage {
-  idx: number;
-  speaker: 'player' | 'npc' | 'narrator';
-  content: string;
-  createdAt: string;
-  witnessedBy?: string[];
-}
-
 export async function getNpcMessages(
   ownerEmail: OwnerEmail,
   sessionId: UUID,
@@ -359,17 +337,6 @@ export async function getNpcOwnHistory(
   });
 
   return messages.reverse();
-}
-
-export interface StateChangeLogEntry {
-  id: UUID;
-  sessionId: UUID;
-  turnIdx: number | null;
-  patchCount: number;
-  modifiedPaths: string[];
-  agentTypes: string[];
-  metadata?: Record<string, unknown>;
-  createdAt: string;
 }
 
 export async function appendStateChangeLog(params: {
@@ -530,8 +497,6 @@ export async function getSessionHistoryAdmin(
 // Per-session state slices (location, inventory, time)
 // ---------------------------------------------------------------------------
 
-export type SessionSliceState = Record<string, unknown>;
-
 function readJsonObject(obj: Record<string, unknown>, key: string): SessionSliceState | null {
   const v = obj[key];
   if (v && typeof v === 'object') return v as SessionSliceState;
@@ -642,33 +607,6 @@ export async function upsertTimeState(
 // ============================================================================
 // Scene Actions
 // ============================================================================
-
-export interface SceneAction {
-  id: UUID;
-  sessionId: UUID;
-  actorId: string;
-  actorType: 'player' | 'npc';
-  actionType: 'speech' | 'action' | 'thought' | 'observation' | 'other';
-  content: string;
-  observableBy: string[];
-  locationId: string | null;
-  createdAt: string;
-  turnNumber: number | null;
-  metadata: Record<string, unknown> | null;
-}
-
-export interface CreateSceneActionInput {
-  ownerEmail: OwnerEmail;
-  sessionId: UUID;
-  actorId: string;
-  actorType: 'player' | 'npc';
-  actionType: 'speech' | 'action' | 'thought' | 'observation' | 'other';
-  content: string;
-  observableBy: string[];
-  locationId?: string | null;
-  turnNumber?: number | null;
-  metadata?: Record<string, unknown> | null;
-}
 
 /**
  * Create a new scene action.
@@ -824,14 +762,6 @@ function sceneActionFromRow(row: Record<string, unknown>): SceneAction {
  * NPC affinity state record.
  * Stores relationship scores, action history, milestones, etc.
  */
-export interface AffinityStateRecord {
-  id: UUID;
-  sessionId: UUID;
-  npcId: string;
-  stateJson: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Get affinity state for a specific NPC in a session.
@@ -932,19 +862,6 @@ export async function deleteAllAffinityStates(
  * NPC location state record.
  * Stores where an NPC is, what they're doing, and when they arrived.
  */
-export interface NpcLocationStateRecord {
-  id: UUID;
-  sessionId: UUID;
-  npcId: string;
-  locationId: string;
-  subLocationId: string | null;
-  activityJson: Record<string, unknown>;
-  arrivedAtJson: Record<string, unknown>;
-  interruptible: boolean;
-  scheduleSlotId: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Get NPC location state for a specific NPC in a session.
@@ -1174,15 +1091,6 @@ function npcLocationStateFromRow(row: Record<string, unknown>): NpcLocationState
 /**
  * Occupancy cache record.
  */
-export interface LocationOccupancyCacheRecord {
-  id: UUID;
-  sessionId: UUID;
-  locationId: string;
-  occupancyJson: Record<string, unknown>;
-  computedAtJson: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Get occupancy cache for a specific location.
@@ -1284,16 +1192,6 @@ function occupancyCacheFromRow(row: Record<string, unknown>): LocationOccupancyC
  * Simulation cache record.
  * Stores cached simulation state and schedule decisions for lazy simulation.
  */
-export interface NpcSimulationCacheRecord {
-  id: UUID;
-  sessionId: UUID;
-  npcId: string;
-  lastComputedAtJson: Record<string, unknown>;
-  currentStateJson: Record<string, unknown>;
-  dayDecisionsJson: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Get simulation cache for a specific NPC in a session.
@@ -1501,18 +1399,6 @@ function simulationCacheFromRow(row: Record<string, unknown>): NpcSimulationCach
 /**
  * Player interest score record from database.
  */
-export interface PlayerInterestRecord {
-  id: UUID;
-  sessionId: UUID;
-  npcId: string;
-  score: number;
-  totalInteractions: number;
-  turnsSinceInteraction: number;
-  peakScore: number;
-  currentTier: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Get player interest score for a specific NPC in a session.
@@ -1723,16 +1609,6 @@ function playerInterestFromRow(row: Record<string, unknown>): PlayerInterestReco
  * Session workspace draft record.
  * Stores in-progress session configurations before finalization.
  */
-export interface WorkspaceDraftRecord {
-  id: UUID;
-  userId: string;
-  name: string | null;
-  workspaceState: Record<string, unknown>;
-  currentStep: string;
-  validationState: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Create a new workspace draft.
@@ -1897,25 +1773,6 @@ function workspaceDraftFromRow(row: Record<string, unknown>): WorkspaceDraftReco
 /**
  * Location map record attached to a session.
  */
-export interface SessionLocationMapRecord {
-  id: UUID;
-  sessionId: UUID;
-  locationMapId: UUID;
-  overridesJson: Record<string, unknown>;
-  createdAt: string;
-  /** The full location map data (from joined location_maps table) */
-  locationMap?: {
-    id: UUID;
-    settingId: UUID;
-    name: string;
-    description: string | null;
-    isTemplate: boolean;
-    nodesJson: unknown[];
-    connectionsJson: unknown[];
-    defaultStartLocationId: string | null;
-    tags: string[];
-  };
-}
 
 /**
  * Get the location map attached to a session.

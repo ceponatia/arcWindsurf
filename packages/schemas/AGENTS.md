@@ -11,6 +11,13 @@ Shared Zod schemas and TypeScript types for the entire monorepo. The single sour
 - Serialization and deserialization helpers
 - No runtime logic beyond validation
 
+## Utility Helpers
+
+The package provides common Zod schema helpers in `src/utils/`:
+
+- `nullableOptional(schema)`: Creates a schema that accepts `T | null | undefined` and transforms `null` to `undefined`. Useful for database fields that might be null but should be treated as optional in domain objects.
+- `numericString`: A schema that accepts a string and transforms it to a number. Returns `undefined` if the string is empty or cannot be parsed as a number.
+
 ## Package Connections
 
 This package has no internal workspace dependencies. It is imported by nearly every other package:

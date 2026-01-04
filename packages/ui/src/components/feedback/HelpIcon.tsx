@@ -1,15 +1,5 @@
 import React, { useState } from 'react';
-
-export interface HelpIconProps {
-  /** Brief tooltip text for quick help */
-  tooltip: string;
-  /** Optional link to full documentation (hash route like "docs/character-builder") */
-  docLink?: string;
-  /** Size of the icon */
-  size?: 'sm' | 'md';
-  /** Additional CSS classes */
-  className?: string;
-}
+import type { HelpIconProps } from './types.js';
 
 /**
  * Help icon that shows a tooltip on hover and optionally links to full documentation.

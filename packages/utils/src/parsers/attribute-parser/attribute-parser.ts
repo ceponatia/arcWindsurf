@@ -1,57 +1,11 @@
-/**
- * A pattern for extracting structured data.
- */
-export interface ParserPattern {
-  /** Name of the pattern */
-  name: string;
+import type {
+  ParserPattern,
+  ExtractedAttribute,
+  ParserLlmProvider,
+  AttributeParserConfig,
+} from './types.js';
 
-  /** Regex pattern to match */
-  pattern: RegExp;
-
-  /** Target path in the profile (e.g., 'physique.appearance.hair.color') */
-  targetPath: string;
-
-  /** Which capture group to use (default: 1) */
-  captureGroup?: number;
-}
-
-/**
- * An extracted attribute from parsing.
- */
-export interface ExtractedAttribute {
-  /** Name of the attribute */
-  name: string;
-
-  /** Target path in the profile */
-  path: string;
-
-  /** Extracted value */
-  value: string;
-}
-
-/**
- * Minimal interface for an LLM provider needed by the parser.
- */
-export interface ParserLlmProvider {
-  generate(
-    prompt: string,
-    options?: {
-      systemPrompt?: string;
-      temperature?: number;
-      maxTokens?: number;
-    }
-  ): Promise<{ text: string; usage?: unknown }>;
-}
-
-/**
- * Configuration for the AttributeParser.
- */
-export interface AttributeParserConfig {
-  /** Regex patterns for extracting structured data */
-  patterns?: ParserPattern[];
-  /** Optional LLM provider for fallback extraction */
-  llmProvider?: ParserLlmProvider;
-}
+export type { ParserPattern, ExtractedAttribute, ParserLlmProvider, AttributeParserConfig };
 
 /**
  * Service responsible for parsing and normalizing profile data.

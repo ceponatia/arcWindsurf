@@ -1,25 +1,5 @@
 import React from 'react';
-
-export interface SessionsPanelSessionSummary {
-  id: string;
-  characterTemplateId: string;
-  characterInstanceId: string | null;
-  settingTemplateId: string;
-  settingInstanceId: string | null;
-  characterName?: string | null;
-  settingName?: string | null;
-  createdAt: string;
-}
-
-export interface SessionsPanelProps {
-  sessions: SessionsPanelSessionSummary[];
-  loading?: boolean;
-  error?: string | null;
-  activeId?: string | null;
-  onSelect?: (id: string) => void;
-  onRetry?: () => void;
-  onDelete?: (id: string) => void;
-}
+import type { SessionsPanelProps } from './types.js';
 
 const TrashIcon: React.FC<{ size?: number; className?: string }> = ({ size = 18, className }) => (
   <svg

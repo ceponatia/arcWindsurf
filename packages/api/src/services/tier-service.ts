@@ -29,8 +29,17 @@ import {
   getNpcsAboveInterestThreshold,
   upsertPlayerInterestScore,
   updateNpcTier,
-  type PlayerInterestRecord,
 } from '../db/sessionsClient.js';
+
+// Define local interface to fix lint errors with imported type
+interface LocalPlayerInterestRecord {
+  npcId: string;
+  score: number;
+  totalInteractions: number;
+  turnsSinceInteraction: number;
+  peakScore: number;
+  currentTier: string;
+}
 
 // =============================================================================
 // Types
@@ -91,7 +100,10 @@ export async function getAllInterestScores(
   ownerEmail: string,
   sessionId: string
 ): Promise<Map<string, PlayerInterestScore>> {
-  const records = await getAllPlayerInterestScores(ownerEmail, sessionId);
+  const records = (await getAllPlayerInterestScores(ownerEmail, sessionId)) as unknown as Map<
+    string,
+    LocalPlayerInterestRecord
+  >;
   const result = new Map<string, PlayerInterestScore>();
 
   for (const [npcId, record] of records) {
@@ -124,7 +136,10 @@ export async function processTurnInterest(
   const promotions: PromotionCheck[] = [];
 
   // Get existing interest scores
-  const existingScores = await getAllPlayerInterestScores(ownerEmail, sessionId);
+  const existingScores = (await getAllPlayerInterestScores(
+    ownerEmail,
+    sessionId
+  )) as unknown as Map<string, LocalPlayerInterestRecord>;
 
   // Process each NPC
   for (const npcId of allNpcIds) {
@@ -229,7 +244,11 @@ export async function getNpcsReadyForPromotion(
   ];
 
   for (const { tier, threshold } of thresholds) {
-    const records = await getNpcsAboveInterestThreshold(ownerEmail, sessionId, threshold);
+    const records = (await getNpcsAboveInterestThreshold(
+      ownerEmail,
+      sessionId,
+      threshold
+    )) as unknown as LocalPlayerInterestRecord[];
 
     for (const record of records) {
       if (record.currentTier === tier) {
@@ -252,12 +271,13 @@ export async function getNpcsReadyForPromotion(
 /**
  * Convert a database record to a PlayerInterestScore.
  */
-function recordToInterestScore(record: PlayerInterestRecord): PlayerInterestScore {
+function recordToInterestScore(record: unknown): PlayerInterestScore {
+  const r = record as LocalPlayerInterestRecord;
   return {
-    npcId: record.npcId,
-    score: record.score,
-    totalInteractions: record.totalInteractions,
-    turnsSinceInteraction: record.turnsSinceInteraction,
-    peakScore: record.peakScore,
+    npcId: r.npcId,
+    score: r.score,
+    totalInteractions: r.totalInteractions,
+    turnsSinceInteraction: r.turnsSinceInteraction,
+    peakScore: r.peakScore,
   };
 }

@@ -1,3 +1,5 @@
+import type { DatabaseConnectionInfo } from './types.js';
+
 /**
  * Resolve the Postgres connection string to use for this process.
  *
@@ -10,10 +12,9 @@
  * - If `DB_TARGET=supabase`, prefer `DATABASE_URL_SUPABASE`, else fall back to `DATABASE_URL`.
  * - Otherwise (default), use `DATABASE_URL` if set, else fall back to the local default.
  */
-export function resolveDatabaseUrl(env: Record<string, string | undefined>): {
-  url: string;
-  source: 'DATABASE_URL' | 'DATABASE_URL_LOCAL' | 'DATABASE_URL_SUPABASE';
-} {
+export function resolveDatabaseUrl(
+  env: Record<string, string | undefined>
+): DatabaseConnectionInfo {
   const target = (env['DB_TARGET'] ?? '').trim().toLowerCase();
 
   if (target === 'local') {
