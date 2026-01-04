@@ -48,7 +48,7 @@ async function run() {
   const Path = path as unknown as PathLike;
   const FS = fs as unknown as FsPromisesLike;
 
-  const sqlDir = Path.resolve(Path.dirname(new URL(import.meta.url).pathname), '../sql');
+  const sqlDir = Path.resolve(Path.dirname(new URL(import.meta.url).pathname), '../../sql');
   try {
     await FS.mkdir(sqlDir, { recursive: true });
   } catch {
