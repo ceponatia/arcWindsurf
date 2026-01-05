@@ -206,7 +206,7 @@ class NpcActor {
 
 **Current services used by NpcAgent** (from `NpcAgentServices`):
 - `messageRepository`: Fetches conversation history
-- `sensoryService`: Provides environmental awareness
+- `sensoryService`: Provides NPC-specific sensory details to the player (e.g., scent, skin texture); not general environment awareness
 - `proximityService`: Distance-based filtering
 - `hygieneService`: (unused currently)
 - `memoryService`: (unused currently)
@@ -239,6 +239,15 @@ class ActorScheduler {
   }
 }
 ```
+
+Player-first scheduling policies (anti-spam and “jump-in” friendliness):
+- **Conversation focus**: The player can set focus on 1-2 NPCs. Focused NPCs get a strong activation bias; non-focused NPCs are capped or deferred.
+- **Addressed detection**: If the player explicitly addresses an NPC by name/mention, that actor’s urgency is boosted; others back off.
+- **Grace window after player input**: After `player.spoke`, open a short silence window (e.g., 600–1200ms) where only directly addressed or focused NPCs may speak; background chatter queues as intents.
+- **Intent → commit two-step**: Actors publish `npc.intent` first; a scheduler selects 0-2 winners to emit `npc.spoke`, dropping or delaying the rest. Prevents multi-speaker dogpiles.
+- **Per-NPC patience budget**: Each actor has a patience counter that decays when pre-empted; repeated deferrals cause the actor to stand down or switch activities.
+- **Vicinity gating**: Actors outside the player’s vicinity can still act (simulation continues), but their dialogue is not eligible for the player-facing feed unless the player’s focus follows them.
+- **Budgeted concurrency**: Hard cap on concurrent `npc.spoke` per time slice (e.g., max 2), with jitter to avoid synchronized bursts.
 
 ### 5.4 Concurrency & Isolation
 
@@ -645,6 +654,65 @@ function onPlayerSubmit(input: string) {
   // 3. SSE will deliver confirmed events; reconcile
 }
 ```
+
+### 12.6 Player Text Input + World Bus: Conversation Flow and Anti-Spam
+
+Goal: Let players “jump in” with chosen NPCs while the world remains live, without NPCs spamming before the player can respond.
+
+- **Input as events**:
+  - `player.spoke { text }`
+  - `player.focus.set { npcIds: string[] }` and `player.focus.clear`
+  - `player.addressed { npcId }` (explicit addressing parsed from input)
+  - Optional `player.interrupt` to preempt ongoing narration
+
+- **Event flow (proposed)**:
+  1) Player submits text → publish `player.spoke` (+ optional `player.addressed`/`player.focus.set`).
+  2) A short, configurable silence window starts. Only focused or addressed NPCs are eligible to respond immediately.
+  3) NPCs publish `npc.intent` (with metadata like priority, proximity, patience). A scheduler selects at most N winners to emit `npc.spoke`.
+  4) Non-winning intents decay or are rescheduled; patience budgets prevent endless retries.
+
+- **Visibility and vicinity**:
+  - Each dialogue event includes `locationId` and an `audience` hint: `direct` (player-focused), `vicinity` (same room/area), or `global` (rare system-level broadcasts).
+  - The client subscribes to a filtered feed: player session + location/vicinity + direct focus. Off-vicinity events are still produced on the bus for simulation, but are not shown to the player unless they move focus or location.
+
+- **Mitigations against spam and impatience**:
+  - Grace window after `player.spoke` with a max-concurrency cap (e.g., 1–2 NPC responses).
+  - Intent/commit handshake so multiple NPCs don’t speak simultaneously.
+  - Per-actor cooldowns and patience budgets that back off after deferrals.
+  - Address/focus boosts that help the player talk to chosen NPCs first.
+
+- **Thriving without player interaction**:
+  - Background ticks (`time.advanced`) continue to drive goals and actions for all NPCs.
+  - Off-vicinity actions are reduced to state changes and analytics events; they only surface to the player UI when relevant by focus/vicinity rules.
+  - This preserves a living world while keeping the player’s view uncluttered.
+
+Type sketch for intents and visibility:
+```ts
+type Audience = 'direct' | 'vicinity' | 'global';
+
+type NpcIntent = {
+  type: 'npc.intent';
+  ts: number;
+  sessionId: string;
+  npcId: string;
+  locationId: string;
+  audience: Audience;
+  priority: number;      // computed from utility, focus, addressing
+  patienceMs: number;    // willingness to wait before speaking
+};
+
+type NpcSpoke = {
+  type: 'npc.spoke';
+  ts: number;
+  sessionId: string;
+  npcId: string;
+  locationId: string;
+  audience: Audience;    // used by UI subscription filter
+  text: string;
+};
+```
+
+These policies ensure the player can always “jump in” with targeted NPCs, while the rest of the world continues to evolve unobtrusively.
 
 ---
 
