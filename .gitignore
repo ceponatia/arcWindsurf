@@ -39,7 +39,6 @@ data/*
 .github/copilot-instructions.md
 .github/prompts/*
 .github/agents/*
-dev-docs/**
 
 ## Playwright
 /playwright-report/
