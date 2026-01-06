@@ -1,5 +1,6 @@
 ---
 description: Check code coverage of your project using Codacy
+auto_execution_mode: 1
 ---
 
 # codacy-check-coverage
