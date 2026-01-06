@@ -422,17 +422,10 @@ export function createInitialHygieneState(npcId: string): NpcHygieneState {
  * Check if a body part is foot-related (for footwear modifier).
  */
 export function isFootRelatedPart(bodyPart: string): boolean {
-  return (
-    bodyPart === 'feet' ||
-    bodyPart === 'toes' ||
-    bodyPart === 'ankles' ||
-    bodyPart.endsWith('Foot') ||
-    bodyPart.endsWith('Ankle') ||
-    bodyPart.endsWith('Heel') ||
-    bodyPart.endsWith('Sole') ||
-    bodyPart.endsWith('Arch') ||
-    bodyPart.endsWith('Toe')
-  );
+  const exactMatches = ['feet', 'toes', 'ankles'];
+  const suffixes = ['Foot', 'Ankle', 'Heel', 'Sole', 'Arch', 'Toe'];
+
+  return exactMatches.includes(bodyPart) || suffixes.some((s) => bodyPart.endsWith(s));
 }
 
 /**
@@ -528,54 +521,76 @@ export function applyHygieneDecay(
   decayRates: Record<string, BodyPartHygieneConfig>,
   input: HygieneUpdateInput
 ): NpcHygieneState {
-  const newBodyParts = { ...state.bodyParts };
   const now = new Date().toISOString();
+  let newBodyParts = { ...state.bodyParts };
 
   // Handle cleaning first
-  if (input.cleanedParts && input.cleanedParts.length > 0) {
-    for (const part of input.cleanedParts) {
-      if (newBodyParts[part]) {
-        newBodyParts[part] = {
-          points: 0,
-          level: 0,
-          lastUpdatedAt: now,
-        };
-      }
-    }
+  if (input.cleanedParts?.length) {
+    newBodyParts = applyCleaning(newBodyParts, input.cleanedParts, now);
   }
 
   // Apply decay to each body part
   for (const [bodyPart, config] of Object.entries(decayRates)) {
-    // Skip if cleaned
-    if (input.cleanedParts?.includes(bodyPart)) {
-      continue;
-    }
+    if (input.cleanedParts?.includes(bodyPart)) continue;
 
-    const currentPart = newBodyParts[bodyPart] ?? { points: 0, level: 0 };
-    const currentLevel = clampHygieneLevel(currentPart.level);
-
-    const decayPoints = calculateDecayPoints(
-      config.baseDecayPerTurn,
-      input.turnsElapsed,
-      input.activity,
-      input.footwear,
-      input.environment,
-      isFootRelatedPart(bodyPart),
-      currentLevel
+    newBodyParts[bodyPart] = calculateUpdatedPartState(
+      bodyPart,
+      config,
+      newBodyParts[bodyPart],
+      input,
+      now
     );
-
-    const newPoints = currentPart.points + decayPoints;
-    const newLevel = calculateHygieneLevel(newPoints, config.thresholds);
-
-    newBodyParts[bodyPart] = {
-      points: newPoints,
-      level: newLevel,
-      lastUpdatedAt: now,
-    };
   }
 
+  return { ...state, bodyParts: newBodyParts };
+}
+
+/**
+ * Internal helper to apply cleaning to specified body parts.
+ */
+function applyCleaning(
+  bodyParts: Record<string, BodyPartHygieneState>,
+  cleanedParts: string[],
+  now: string
+): Record<string, BodyPartHygieneState> {
+  const result = { ...bodyParts };
+  for (const part of cleanedParts) {
+    if (result[part]) {
+      result[part] = { points: 0, level: 0, lastUpdatedAt: now };
+    }
+  }
+  return result;
+}
+
+/**
+ * Internal helper to calculate updated state for a single body part.
+ */
+function calculateUpdatedPartState(
+  bodyPart: string,
+  config: BodyPartHygieneConfig,
+  currentPart: BodyPartHygieneState | undefined,
+  input: HygieneUpdateInput,
+  now: string
+): BodyPartHygieneState {
+  const existingPart = currentPart ?? { points: 0, level: 0 };
+  const currentLevel = clampHygieneLevel(existingPart.level);
+
+  const decayPoints = calculateDecayPoints(
+    config.baseDecayPerTurn,
+    input.turnsElapsed,
+    input.activity,
+    input.footwear,
+    input.environment,
+    isFootRelatedPart(bodyPart),
+    currentLevel
+  );
+
+  const newPoints = existingPart.points + decayPoints;
+  const newLevel = calculateHygieneLevel(newPoints, config.thresholds);
+
   return {
-    ...state,
-    bodyParts: newBodyParts,
+    points: newPoints,
+    level: newLevel,
+    lastUpdatedAt: now,
   };
 }

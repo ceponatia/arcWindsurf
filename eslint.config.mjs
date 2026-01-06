@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/package.json',
       'packages/*/test/**',
       'packages/web/src/shared/hooks/useFetchOnce.test.ts',
     ],
