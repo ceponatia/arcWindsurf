@@ -57,9 +57,30 @@ async function run() {
 
   // Only apply real, ordered migrations (e.g. 001_init.sql).
   // Ignore generated helpers like supabase_bootstrap.sql.
-  const files: SqlFile[] = (await FS.readdir(sqlDir))
-    .filter((f: string) => /^\d+_.+\.sql$/i.test(f))
-    .sort();
+  async function getSqlFiles(dir: string): Promise<string[]> {
+    const entries = await FS.readdir(dir, { withFileTypes: true });
+    const files = await Promise.all(
+      entries.map(async (entry) => {
+        const res = Path.resolve(dir, entry.name);
+        if (entry.isDirectory()) {
+          return getSqlFiles(res);
+        } else {
+          return res;
+        }
+      })
+    );
+    return files.flat();
+  }
+
+  const allFiles = await getSqlFiles(sqlDir);
+  const files: string[] = allFiles
+    .filter((f: string) => /^\d+_.+\.sql$/i.test(Path.basename(f)))
+    .sort((a, b) => {
+      // Sort primarily by filename to preserve numbering order across folders
+      const nameA = Path.basename(a);
+      const nameB = Path.basename(b);
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   console.log(
     `[db] Running migrations against ${redactDbUrl(resolvedDbUrl)} (source=${resolvedDb.source})`
@@ -124,18 +145,18 @@ async function run() {
   const appliedSet = new Set((applied.rows as { name: string }[]).map((r) => r.name));
 
   for (const f of files) {
-    if (appliedSet.has(f)) {
-      console.log(`[db] Skipping ${f} (already applied)`);
+    const relativeName = Path.relative(sqlDir, f);
+    if (appliedSet.has(relativeName)) {
+      console.log(`[db] Skipping ${relativeName} (already applied)`);
       continue;
     }
 
-    const p = Path.join(sqlDir, f);
-    const sql: SqlText = await FS.readFile(p, 'utf8');
-    console.log(`[db] Applying ${f}...`);
+    const sql: SqlText = await FS.readFile(f, 'utf8');
+    console.log(`[db] Applying ${relativeName}...`);
     await pool.query(sql);
 
     // Record this migration as applied
-    await pool.query('INSERT INTO _migrations (name) VALUES ($1)', [f]);
+    await pool.query('INSERT INTO _migrations (name) VALUES ($1)', [relativeName]);
   }
 
   console.log('[db] Migrations complete.');
