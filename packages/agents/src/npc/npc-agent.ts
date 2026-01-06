@@ -204,6 +204,10 @@ export class NpcAgent extends BaseAgent {
         maxTokens: this.config.maxTokens ?? 800, // Increased from 500 to allow richer responses with sensory details
       });
 
+      if (!response || !('text' in response)) {
+        throw new Error('Invalid response from LLM provider');
+      }
+
       const promptDebug = {
         system: systemPrompt,
         user: userPrompt,
@@ -213,7 +217,7 @@ export class NpcAgent extends BaseAgent {
       return {
         narrative: formatDialogueResponse(character.name, response.text),
         diagnostics: {
-          tokenUsage: response.usage,
+          tokenUsage: 'usage' in response ? response.usage : undefined,
           debug: promptDebug,
         },
       };

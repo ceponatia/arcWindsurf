@@ -185,7 +185,7 @@ function extractToolCalls(payload: OpenRouterResponse | null | undefined): ToolC
 
   if (Array.isArray(payload.choices) && payload.choices.length > 0) {
     const choice = payload.choices[0];
-    if (choice.message?.tool_calls && choice.message.tool_calls.length > 0) {
+    if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
       return choice.message.tool_calls;
     }
   }

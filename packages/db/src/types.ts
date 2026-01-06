@@ -8,7 +8,7 @@ export interface PgPoolLike {
 
 export interface FsPromisesLike {
   mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
-  readdir: (path: string) => Promise<string[]>;
+  readdir: (path: string, options?: { withFileTypes: boolean }) => Promise<any[]>;
   readFile: (path: string, encoding: 'utf8') => Promise<string>;
 }
 
@@ -16,6 +16,8 @@ export interface PathLike {
   resolve: (...segments: string[]) => string;
   dirname: (p: string) => string;
   join: (...segments: string[]) => string;
+  basename: (p: string) => string;
+  relative: (from: string, to: string) => string;
 }
 
 export type SqlFile = string;

@@ -3,6 +3,7 @@ import { redisPubSub, type EventHandler } from './adapters/redis-pubsub.js';
 import { type BusMiddleware } from './middleware/telemetry.js';
 
 export type WorldBusHandler = EventHandler;
+export type { WorldEvent };
 
 /**
  * The World Bus is the central nervous system of the simulation.

@@ -29,6 +29,7 @@
     "@minimal-rpg/state-manager": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
     "hono": "^4.10.6",
     "jose": "^6.1.0"
   },

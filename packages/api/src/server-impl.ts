@@ -20,7 +20,8 @@ import {
   worldBus, 
   telemetryMiddleware, 
   persistenceMiddleware, 
-  registerPersistenceHandler 
+  registerPersistenceHandler,
+  type WorldEvent
 } from '@minimal-rpg/bus';
 import { eventRepository, drizzle, sessions } from '@minimal-rpg/db';
 import { eq, sql } from 'drizzle-orm';
@@ -32,7 +33,7 @@ worldBus.use(telemetryMiddleware);
 worldBus.use(persistenceMiddleware);
 
 // Register persistence handler
-registerPersistenceHandler(async (event) => {
+registerPersistenceHandler(async (event: WorldEvent) => {
   const rawEvent = event as Record<string, unknown>;
   const payload = rawEvent['payload'] as Record<string, unknown> | undefined;
   const sessionId = (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
