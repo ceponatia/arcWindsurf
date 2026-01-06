@@ -12,10 +12,5 @@
     "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
   "include": ["src"],
-  "exclude": ["dist"],
-  "references": [
-    {
-      "path": "../schemas"
-    }
-  ]
+  "exclude": ["dist"]
 }

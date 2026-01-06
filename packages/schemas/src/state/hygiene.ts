@@ -19,6 +19,7 @@
  */
 
 import { z } from 'zod';
+import { getRecord } from '@minimal-rpg/utils';
 import { BODY_REGIONS } from '../character/regions.js';
 
 /**
@@ -363,6 +364,8 @@ export function getMinPointsForLevel(
   level: HygieneLevel,
   thresholds: HygieneThresholds = DEFAULT_HYGIENE_THRESHOLDS
 ): number {
+  // HygieneLevel (0-6) is validated and HygieneThresholds is a trusted 7-element tuple
+  // eslint-disable-next-line security/detect-object-injection
   return thresholds[level];
 }
 
@@ -378,20 +381,22 @@ export function calculateDecayPoints(
   isFootPart = false,
   currentLevel?: HygieneLevel
 ): number {
-  let multiplier = ACTIVITY_MULTIPLIERS[activity];
+  let multiplier = getRecord(ACTIVITY_MULTIPLIERS, activity);
 
   // Apply footwear multiplier only for feet-related parts
   if (isFootPart && footwear) {
-    multiplier *= FOOTWEAR_MULTIPLIERS[footwear];
+    multiplier *= getRecord(FOOTWEAR_MULTIPLIERS, footwear);
   }
 
   // Apply environment multiplier
   if (environment) {
-    multiplier *= ENVIRONMENT_MULTIPLIERS[environment];
+    multiplier *= getRecord(ENVIRONMENT_MULTIPLIERS, environment);
   }
 
   // Optional level-aware decay curve (kept optional for backward compatibility)
   if (currentLevel !== undefined) {
+    // HygieneLevel (0-6) is validated and HYGIENE_DECAY_MULTIPLIERS is a trusted 7-element tuple
+    // eslint-disable-next-line security/detect-object-injection
     multiplier *= HYGIENE_DECAY_MULTIPLIERS[currentLevel];
   }
 

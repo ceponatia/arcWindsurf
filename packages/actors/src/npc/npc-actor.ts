@@ -42,16 +42,19 @@ export class NpcActor implements Actor {
   }
 
   start(): void {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.machine.start();
     void this.lifecycle.start();
   }
 
   stop(): void {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.machine.stop();
     this.lifecycle.stop();
   }
 
   send(event: WorldEvent): void {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.machine.send({ type: 'WORLD_EVENT', event });
   }
 
@@ -70,6 +73,7 @@ export class NpcActor implements Actor {
    * Get the current machine state (for debugging).
    */
   getMachineState(): string {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const snapshot = this.machine.getSnapshot() as { value: unknown };
     return JSON.stringify(snapshot.value);
   }

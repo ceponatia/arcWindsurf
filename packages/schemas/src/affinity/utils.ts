@@ -5,6 +5,7 @@
  *
  * @see dev-docs/28-affinity-and-relationship-dynamics.md
  */
+import { getRecord, setRecord } from '@minimal-rpg/utils';
 import type {
   RelationshipScores,
   Disposition,
@@ -64,8 +65,8 @@ export function calculateDisposition(
 
   for (const { key, score } of dimensions) {
     if (score !== undefined) {
-      weightedSum += score * weights[key];
-      totalWeight += weights[key];
+      weightedSum += score * getRecord(weights, key);
+      totalWeight += getRecord(weights, key);
     }
   }
 
@@ -100,7 +101,7 @@ export function calculateDisposition(
   }
 
   // High attraction with low fondness
-  if ((affinity.attraction ?? 0) > 40 && affinity.fondness < 20) {
+  if (affinity.attraction > 40 && affinity.fondness < 20) {
     modifiers.push({
       source: 'conflicted-attraction',
       effect: 'attracted but emotionally distant',
@@ -138,7 +139,7 @@ export function calculateDisposition(
  * @returns Human-readable label
  */
 export function getAffinityLabel(dimension: AffinityDimension, value: number): AffinityLabel {
-  const thresholds = AFFINITY_THRESHOLDS[dimension];
+  const thresholds = getRecord(AFFINITY_THRESHOLDS, dimension);
   if (!thresholds) return 'neutral';
 
   for (const [label, [min, max]] of Object.entries(thresholds)) {
@@ -164,7 +165,7 @@ export function getAllAffinityLabels(
     trust: getAffinityLabel('trust', affinity.trust),
     respect: getAffinityLabel('respect', affinity.respect),
     comfort: getAffinityLabel('comfort', affinity.comfort),
-    attraction: getAffinityLabel('attraction', affinity.attraction ?? 0),
+    attraction: getAffinityLabel('attraction', affinity.attraction),
     fear: getAffinityLabel('fear', affinity.fear),
   };
 }
@@ -203,20 +204,18 @@ export function applyAffinityEffect(
 
   // Apply to dimension
   const result = { ...affinity };
-  const currentValue = result[effect.dimension];
+  const currentValue = getRecord(result, effect.dimension);
 
   if (effect.dimension === 'fear') {
     // Fear is 0-100
     result.fear = clamp((currentValue ?? 0) + change, 0, 100);
   } else if (effect.dimension === 'attraction') {
-    // Attraction is 0-100 and optional
-    if (result.attraction !== undefined) {
-      result.attraction = clamp(result.attraction + change, 0, 100);
-    }
+    // Attraction is 0-100
+    result.attraction = clamp(result.attraction + change, 0, 100);
   } else {
     // Other dimensions are -100 to 100
     const key = effect.dimension;
-    result[key] = clamp((result[key] ?? 0) + change, -100, 100);
+    setRecord(result, key, clamp(getRecord(result, key) + change, -100, 100));
   }
 
   return result;
@@ -338,9 +337,13 @@ export function applyAffinityDecay(
   ];
 
   for (const dimension of dimensions) {
+    // Not a Record: RelationshipScores has optional 'attraction' field
+    // eslint-disable-next-line security/detect-object-injection
     const value = result[dimension];
     if (value === undefined) continue;
 
+    // Not a Record: dimensionMultipliers is Partial<Record>
+    // eslint-disable-next-line security/detect-object-injection
     const multiplier = config.dimensionMultipliers?.[dimension] ?? 1;
     const decay = config.dailyDecayRate * multiplier * daysSinceLastInteraction;
 
@@ -358,9 +361,13 @@ export function applyAffinityDecay(
       // Other dimensions decay toward neutral zone
       if (value > config.decayCeiling) {
         const key = dimension;
+        // Not a Record: RelationshipScores has optional 'attraction' field
+        // eslint-disable-next-line security/detect-object-injection
         result[key] = Math.max(config.decayCeiling, value - decay);
       } else if (value < config.decayFloor) {
         const key = dimension;
+        // Not a Record: RelationshipScores has optional 'attraction' field
+        // eslint-disable-next-line security/detect-object-injection
         result[key] = Math.min(config.decayFloor, value + decay);
       }
     }
@@ -470,7 +477,7 @@ export function buildAffinityContext(
     insights.push('Feels tense and guarded around the player');
   }
 
-  if ((affinity.attraction ?? 0) > 40) {
+  if (affinity.attraction > 40) {
     insights.push('Attracted to the player');
   }
 
@@ -543,13 +550,16 @@ export function formatAffinityPrompt(context: AffinityContext): string {
 /**
  * Create default affinity scores.
  *
- * @param includeAttraction - Whether to include attraction dimension
+ * @param _includeAttraction - Deprecated parameter (attraction is now always included)
  * @returns Default affinity scores
+ * @deprecated Use DEFAULT_AFFINITY_SCORES directly (attraction is now always present)
  */
-export function createDefaultRelationshipScores(includeAttraction = false): RelationshipScores {
+export function createDefaultRelationshipScores(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _includeAttraction = false
+): RelationshipScores {
   return {
     ...DEFAULT_AFFINITY_SCORES,
-    attraction: includeAttraction ? 0 : undefined,
   };
 }
 

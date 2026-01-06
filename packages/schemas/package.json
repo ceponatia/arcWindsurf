@@ -29,6 +29,7 @@
     "typecheck": "tsc -b --pretty false --noEmit"
   },
   "dependencies": {
+    "@minimal-rpg/utils": "workspace:*",
     "zod": "^4.1.12"
   },
   "devDependencies": {

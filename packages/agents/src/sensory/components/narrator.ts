@@ -92,6 +92,11 @@ Rules:
         maxTokens: 150,
       });
 
+      if (!response) {
+        console.error('[SensoryService] No response from LLM');
+        return this.createIgnoreResponse('LLM returned no response');
+      }
+
       const prompts = {
         system: systemPrompt,
         user: userPrompt,
