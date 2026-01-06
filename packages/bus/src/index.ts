@@ -24,14 +24,14 @@ export class WorldBus {
    * Emit an event to the bus, running it through all middleware.
    */
   async emit(event: WorldEvent): Promise<void> {
-    let index = 0;
+    const queue = [...this.middlewares];
     const next = async (): Promise<void> => {
-      const middleware = this.middlewares[index++];
-      if (middleware) {
-        await middleware(event, next);
-      } else {
+      const middleware = queue.shift();
+      if (!middleware) {
         await redisPubSub.publish(event);
+        return;
       }
+      await middleware(event, next);
     };
     await next();
   }
