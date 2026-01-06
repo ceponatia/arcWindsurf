@@ -13,7 +13,6 @@ import {
   type ProximityAction,
   makeEngagementKey,
   createDefaultProximityState,
-  type ProximityAction,
 } from '@minimal-rpg/schemas';
 
 // =============================================================================
@@ -117,6 +116,7 @@ export class SpatialIndex {
     const { npcId, bodyPart, senseType, action, newIntensity, currentTick } = params;
     const key = makeEngagementKey(npcId, bodyPart, senseType);
     const engagements = state.engagements as Record<string, SensoryEngagement | undefined>;
+    const existing = engagements[key];
 
     switch (action) {
       case 'engage':

@@ -103,6 +103,34 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(tsx@4.20.6)(yaml@2.8.2)
 
+  packages/actors:
+    dependencies:
+      '@minimal-rpg/bus':
+        specifier: workspace:*
+        version: link:../bus
+      '@minimal-rpg/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@minimal-rpg/services':
+        specifier: workspace:*
+        version: link:../services
+      xstate:
+        specifier: ^5.18.2
+        version: 5.25.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.3
+      rimraf:
+        specifier: ^6.1.2
+        version: 6.1.2
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@22.19.3)(jsdom@27.3.0(postcss@8.5.6))
+
   packages/agents:
     dependencies:
       '@minimal-rpg/schemas':
@@ -4886,6 +4914,9 @@ packages:
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
+
+  xstate@5.25.0:
+    resolution: {integrity: sha512-yyWzfhVRoTHNLjLoMmdwZGagAYfmnzpm9gPjlX2MhJZsDojXGqRxODDOi4BsgGRKD46NZRAdcLp6CKOyvQS0Bw==}
 
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
@@ -9711,6 +9742,8 @@ snapshots:
   xml-name-validator@5.0.0: {}
 
   xmlchars@2.2.0: {}
+
+  xstate@5.25.0: {}
 
   xtend@4.0.2: {}
 

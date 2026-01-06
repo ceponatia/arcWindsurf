@@ -44,14 +44,6 @@ export type {
   TypeAtPath,
 } from './types.js';
 
-// Proximity Service
-export {
-  ProximityService,
-  type ProximityUpdateResult,
-  type UpdateProximityParams,
-  type UpdateNpcProximityLevelParams,
-} from './proximity/proximity-service.js';
-
 // Constants
 export { DEFAULT_STATE_MANAGER_CONFIG } from './types.js';
 

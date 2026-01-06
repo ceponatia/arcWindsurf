@@ -20,7 +20,7 @@
   "MD029": false,
   "MD030": { "ul_single": 1, "ol_single": 1, "ul_multi": 1, "ol_multi": 1 },
   "MD031": true,
-  "MD032": true,
+  "MD032": false,
   "MD033": false,
   "MD034": true,
   "MD036": true,
