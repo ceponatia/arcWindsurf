@@ -128,51 +128,40 @@ export class LocationGraphService {
     if (!sourceNode) return [];
 
     const exits: ResolvedExit[] = [];
+    const makeExit = (conn: LocationConnection, useReverse: boolean): ResolvedExit | null => {
+      const destinationId = useReverse ? conn.fromLocationId : conn.toLocationId;
+      const portId = useReverse ? conn.toPortId : conn.fromPortId;
+      const destNode = nodeIndex.get(destinationId);
+      const sourcePort = sourceNode.ports.find((p) => p.id === portId);
+
+      const baseExit: ResolvedExit = {
+        portId,
+        name: sourcePort?.name ?? conn.label ?? 'exit',
+        destinationId,
+        destinationName: destNode?.name ?? 'unknown',
+        travelMinutes: conn.travelMinutes ?? 5,
+        locked: conn.locked ?? false,
+        connectionId: conn.id,
+      };
+
+      if (sourcePort?.direction !== undefined) {
+        baseExit.direction = sourcePort.direction;
+      }
+      if (conn.lockReason !== undefined) {
+        baseExit.lockReason = conn.lockReason;
+      }
+
+      return baseExit;
+    };
 
     for (const conn of map.connections) {
       let exit: ResolvedExit | null = null;
 
       if (conn.fromLocationId === locationId) {
-        const destNode = nodeIndex.get(conn.toLocationId);
-        const sourcePort = sourceNode.ports.find((p) => p.id === conn.fromPortId);
-
-        const baseExit: ResolvedExit = {
-          portId: conn.fromPortId,
-          name: sourcePort?.name ?? conn.label ?? 'exit',
-          destinationId: conn.toLocationId,
-          destinationName: destNode?.name ?? 'unknown',
-          travelMinutes: conn.travelMinutes ?? 5,
-          locked: conn.locked ?? false,
-          connectionId: conn.id,
-        };
-        if (sourcePort?.direction !== undefined) {
-          baseExit.direction = sourcePort.direction;
-        }
-        if (conn.lockReason !== undefined) {
-          baseExit.lockReason = conn.lockReason;
-        }
-        exit = baseExit;
+        exit = makeExit(conn, false);
       }
       else if (conn.bidirectional && conn.toLocationId === locationId) {
-        const destNode = nodeIndex.get(conn.fromLocationId);
-        const sourcePort = sourceNode.ports.find((p) => p.id === conn.toPortId);
-
-        const baseExit: ResolvedExit = {
-          portId: conn.toPortId,
-          name: sourcePort?.name ?? conn.label ?? 'exit',
-          destinationId: conn.fromLocationId,
-          destinationName: destNode?.name ?? 'unknown',
-          travelMinutes: conn.travelMinutes ?? 5,
-          locked: conn.locked ?? false,
-          connectionId: conn.id,
-        };
-        if (sourcePort?.direction !== undefined) {
-          baseExit.direction = sourcePort.direction;
-        }
-        if (conn.lockReason !== undefined) {
-          baseExit.lockReason = conn.lockReason;
-        }
-        exit = baseExit;
+        exit = makeExit(conn, true);
       }
 
       if (exit && (includeLockedExits || !exit.locked)) {
