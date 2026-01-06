@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { CharacterProfileSchema } from '../src/character/index.js';
 import { SettingProfileSchema } from '../src/setting/index.js';
 import { LocationMapSchema } from '../src/location/index.js';

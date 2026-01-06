@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { RulesAgent } from '../src/rules/rules-agent.js';
 import type {
   AgentInput,

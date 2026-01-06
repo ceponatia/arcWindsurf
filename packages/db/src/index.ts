@@ -4,4 +4,6 @@ export * from './vector/index.js';
 export * from './utils/index.js';
 export * from './connection/index.js';
 export * from './seeds/index.js';
+export * from './schema/index.js';
+export * from './cache/session-cache.js';
 export * from './types.js';

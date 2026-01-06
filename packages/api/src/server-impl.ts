@@ -14,9 +14,51 @@ import { registerAdminRoutes } from './routes/admin/index.js';
 import { registerGameRoutes } from './routes/game/index.js';
 import { registerUserRoutes } from './routes/users/index.js';
 import { registerResourceRoutes } from './routes/resources/index.js';
+import streamRouter from './routes/stream.js';
 import { attachAuthUser, requireAuthIfEnabled } from './auth/middleware.js';
+import { 
+  worldBus, 
+  telemetryMiddleware, 
+  persistenceMiddleware, 
+  registerPersistenceHandler 
+} from '@minimal-rpg/bus';
+import { eventRepository, drizzle, sessions } from '@minimal-rpg/db';
+import { eq, sql } from 'drizzle-orm';
 
 const app = new Hono();
+
+// Initialize WorldBus middleware
+worldBus.use(telemetryMiddleware);
+worldBus.use(persistenceMiddleware);
+
+// Register persistence handler
+registerPersistenceHandler(async (event) => {
+  const rawEvent = event as Record<string, unknown>;
+  const payload = rawEvent['payload'] as Record<string, unknown> | undefined;
+  const sessionId = (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
+
+  if (sessionId) {
+    try {
+      // 1. Atomically increment event_seq in sessions table and get the new value
+      const updatedSessions = await drizzle.update(sessions)
+        .set({ 
+          eventSeq: sql`${sessions.eventSeq} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(sessions.id, sessionId))
+        .returning({ eventSeq: sessions.eventSeq });
+
+      const newSeq = updatedSessions[0]?.eventSeq;
+      
+      if (newSeq !== undefined) {
+        // 2. Save event with the new sequence
+        await eventRepository.save(sessionId, event, BigInt(newSeq));
+      }
+    } catch (err) {
+      console.error('[bus] persistence error:', err);
+    }
+  }
+});
 
 app.onError((err, c) => {
   console.error('[server] Unhandled error:', err);
@@ -88,6 +130,7 @@ export async function startServer(): Promise<void> {
   registerUserRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerGameRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerResourceRoutes(app);
+  app.route('/stream', streamRouter);
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });

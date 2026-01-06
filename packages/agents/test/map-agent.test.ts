@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { MapAgent } from '../src/map/map-agent.js';
 import type {
   AgentInput,

@@ -1,52 +1,57 @@
-import { EventEmitter } from 'events';
-import { type WorldEvent } from './events/schemas.js';
+import { type WorldEvent } from '@minimal-rpg/schemas';
+import { redisPubSub, type EventHandler } from './adapters/redis-pubsub.js';
+import { type BusMiddleware } from './middleware/telemetry.js';
 
-export type WorldBusHandler = (event: WorldEvent) => void | Promise<void>;
+export type WorldBusHandler = EventHandler;
 
 /**
  * The World Bus is the central nervous system of the simulation.
  * It facilitates event-driven communication between agents and system services.
+ * This version uses Redis for distributed pub/sub and supports middleware.
  */
 export class WorldBus {
-  private readonly emitter = new EventEmitter();
+  private middlewares: BusMiddleware[] = [];
 
-  constructor() {
-    // Increase max listeners if needed for many agents
-    this.emitter.setMaxListeners(100);
+  /**
+   * Add middleware to the bus.
+   */
+  use(middleware: BusMiddleware): void {
+    this.middlewares.push(middleware);
   }
 
   /**
-   * Emit an event to the bus.
+   * Emit an event to the bus, running it through all middleware.
    */
-  emit(event: WorldEvent): void {
-    this.emitter.emit('event', event);
-    // Also emit by type for easier filtering
-    this.emitter.emit(`type:${event.type}`, event);
+  async emit(event: WorldEvent): Promise<void> {
+    let index = 0;
+    const next = async (): Promise<void> => {
+      const middleware = this.middlewares[index++];
+      if (middleware) {
+        await middleware(event, next);
+      } else {
+        await redisPubSub.publish(event);
+      }
+    };
+    await next();
   }
 
   /**
-   * Subscribe to all events on the bus.
+   * Subscribe to events on the bus.
    */
-  onEvent(handler: WorldBusHandler): void {
-    this.emitter.on('event', handler);
-  }
-
-  /**
-   * Subscribe to a specific event type.
-   */
-  onType<T extends WorldEvent['type']>(
-    type: T,
-    handler: (event: Extract<WorldEvent, { type: T }>) => void
-  ): void {
-    this.emitter.on(`type:${type}`, handler as WorldBusHandler);
+  async subscribe(handler: WorldBusHandler): Promise<void> {
+    await redisPubSub.subscribe(handler);
   }
 
   /**
    * Remove a subscriber.
    */
-  offEvent(handler: WorldBusHandler): void {
-    this.emitter.off('event', handler);
+  unsubscribe(handler: WorldBusHandler): void {
+    redisPubSub.unsubscribe(handler);
   }
 }
 
 export const worldBus = new WorldBus();
+export * from './adapters/redis-pubsub.js';
+export * from './core/redis-client.js';
+export * from './middleware/telemetry.js';
+export * from './middleware/persistence.js';

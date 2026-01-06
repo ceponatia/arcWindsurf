@@ -14,6 +14,7 @@ export * from './npc-tier/index.js';
 export * from './schedule/index.js';
 export * from './simulation/index.js';
 export * from './affinity/index.js';
+export * from './events/index.js';
 export * from './utils/index.js';
 
 // Namespaced exports for convenience (avoid clashing with type names)
@@ -31,6 +32,7 @@ export * as NpcTier from './npc-tier/index.js';
 export * as Schedule from './schedule/index.js';
 export * as Simulation from './simulation/index.js';
 export * as Affinity from './affinity/index.js';
+export * as Events from './events/index.js';
 export * as Utils from './utils/index.js';
 
 // API-facing schemas (prompt configuration, etc.)

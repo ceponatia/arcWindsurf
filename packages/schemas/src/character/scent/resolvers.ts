@@ -78,7 +78,25 @@ export function resolveRegionScent(
   }
 
   const profile = HYGIENE_SCENT_MODIFIERS[region];
+  if (!profile) {
+    return {
+      source,
+      scent: base,
+      hygieneLevel,
+      modifiedIntensity: base.intensity,
+      modifiedNotes: base.notes ?? [],
+    };
+  }
   const modifiers = profile[hygieneLevel];
+  if (!modifiers) {
+    return {
+      source,
+      scent: base,
+      hygieneLevel,
+      modifiedIntensity: base.intensity,
+      modifiedNotes: base.notes ?? [],
+    };
+  }
   const modifier = modifiers.scent;
 
   const mergedNotes = mergeNotes(base.notes, modifier?.notes);

@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { DefaultAgentRegistry } from '../src/core/registry.js';
 import type { Agent, AgentIntent, AgentOutput, AgentType, IntentType } from '../src/core/types.js';
 

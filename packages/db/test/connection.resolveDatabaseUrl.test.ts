@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { resolveDatabaseUrl } from '../src/connection/resolve-database-url.js';
 
 describe('connection/resolveDatabaseUrl', () => {

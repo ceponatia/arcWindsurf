@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { SENSORY_INTENT_TYPES, isSensoryIntent } from '../src/sensory/types.js';
 import type { IntentType } from '../src/core/types.js';
 
