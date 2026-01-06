@@ -1,3 +1,6 @@
+## Migration backup
+packages/db/sql-bak
+
 ## Node
 node_modules
 *.log
