@@ -107,13 +107,13 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); }}
                 placeholder="Search characters..."
                 className="w-full pl-8 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 placeholder-slate-500 focus:ring-1 focus:ring-violet-500"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => { setSearchQuery(''); }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                 >
                   <X className="w-3 h-3" />
@@ -124,7 +124,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
               <div className="relative">
                 <select
                   value={filterArchetype ?? ''}
-                  onChange={(e) => setFilterArchetype(e.target.value || null)}
+                  onChange={(e) => { setFilterArchetype(e.target.value || null); }}
                   className="pl-2 pr-6 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 focus:ring-1 focus:ring-violet-500 appearance-none"
                 >
                   <option value="">All Types</option>
@@ -179,7 +179,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                       actions={
                         <button
                           onClick={() =>
-                            isSelected ? handleRemoveNpc(character.id) : handleAddNpc(character)
+                            { isSelected ? handleRemoveNpc(character.id) : handleAddNpc(character); }
                           }
                           className={`
                             text-xs px-3 py-1.5 rounded transition-colors

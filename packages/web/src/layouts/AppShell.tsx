@@ -507,7 +507,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     window.location.hash = '#/chat';
   };
 
-  const handleNavClose = () => setNavOpen(false);
+  const handleNavClose = () => { setNavOpen(false); };
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans flex flex-col">
@@ -517,7 +517,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
           ArcAgentic
         </button>
         <button
-          onClick={() => setNavOpen(!navOpen)}
+          onClick={() => { setNavOpen(!navOpen); }}
           className="p-2 rounded-md text-slate-300 hover:bg-slate-800"
         >
           <svg

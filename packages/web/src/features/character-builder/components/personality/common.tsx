@@ -11,7 +11,7 @@ export const Subsection: React.FC<{
     <div className="border border-slate-700 rounded-md overflow-hidden">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => { setOpen((prev) => !prev); }}
         className="w-full px-3 py-2 text-left text-xs font-medium text-slate-300 bg-slate-800/50 hover:bg-slate-800 flex items-center justify-between"
       >
         <span>{title}</span>

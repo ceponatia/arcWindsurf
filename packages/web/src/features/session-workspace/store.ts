@@ -665,7 +665,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
             ...currentState,
             ...(persistedState as Partial<WorkspaceState>),
             completedSteps: new Set(
-              (persistedState as { completedSteps?: WorkspaceStep[] })?.completedSteps ?? []
+              (persistedState as { completedSteps?: WorkspaceStep[] }).completedSteps ?? []
             ),
           }),
         }

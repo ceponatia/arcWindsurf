@@ -175,7 +175,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* Setting Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => toggleSection('setting')}
+              onClick={() => { toggleSection('setting'); }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -197,7 +197,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                 {settings.map((setting) => (
                   <button
                     key={setting.id}
-                    onClick={() => handleSelectSetting(setting)}
+                    onClick={() => { handleSelectSetting(setting); }}
                     className={`
                       w-full text-left p-2 rounded text-sm transition-colors
                       ${
@@ -217,7 +217,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* NPCs Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => toggleSection('npcs')}
+              onClick={() => { toggleSection('npcs'); }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -239,7 +239,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                   return (
                     <button
                       key={char.id}
-                      onClick={() => handleToggleNpc(char)}
+                      onClick={() => { handleToggleNpc(char); }}
                       className={`
                         w-full text-left p-2 rounded text-sm flex items-center justify-between transition-colors
                         ${
@@ -261,7 +261,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* Player Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => toggleSection('player')}
+              onClick={() => { toggleSection('player'); }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                 {personas.map((persona) => (
                   <button
                     key={persona.id}
-                    onClick={() => handleSelectPersona(persona)}
+                    onClick={() => { handleSelectPersona(persona); }}
                     className={`
                       w-full text-left p-2 rounded text-sm transition-colors
                       ${
@@ -323,7 +323,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* Tags Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => toggleSection('tags')}
+              onClick={() => { toggleSection('tags'); }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -343,7 +343,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                   return (
                     <button
                       key={tag.id}
-                      onClick={() => handleToggleTag(tag)}
+                      onClick={() => { handleToggleTag(tag); }}
                       className={`
                         w-full text-left p-2 rounded text-sm flex items-center justify-between transition-colors
                         ${

@@ -76,7 +76,7 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
             <input
               className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
               value={pm.traits}
-              onChange={(e) => updatePM('traits', e.target.value)}
+              onChange={(e) => { updatePM('traits', e.target.value); }}
               placeholder="e.g., friendliness:high, trust:low, speech:formal"
             />
             {traitValidation && traitValidation.hardConflicts.length > 0 && (
@@ -109,7 +109,7 @@ export const PersonalitySection: React.FC<PersonalitySectionProps> = ({
               <SelectInput
                 label="Attachment Style"
                 value={pm.attachment}
-                onChange={(v) => updatePM('attachment', v as PersonalityFormState['attachment'])}
+                onChange={(v) => { updatePM('attachment', v as PersonalityFormState['attachment']); }}
                 options={[
                   'secure',
                   'anxious-preoccupied',

@@ -178,7 +178,7 @@ export function buildDialogueUserPrompt(input: AgentInput): string {
       parts.push('\n(Remember: you cannot know their thoughts, only observe their demeanor)');
     }
   } else if (input.intent?.type === 'narrate') {
-    const narrateType = input.intent.params?.narrateType;
+    const narrateType = input.intent.params.narrateType;
     switch (narrateType) {
       case 'thought':
         parts.push(`Player's internal thought: ${input.playerInput}`);

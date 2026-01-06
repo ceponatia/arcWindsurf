@@ -78,8 +78,8 @@ export function resolveRegionScent(
   }
 
   const profile = HYGIENE_SCENT_MODIFIERS[region];
-  const modifiers = profile?.[hygieneLevel];
-  const modifier = modifiers?.scent;
+  const modifiers = profile[hygieneLevel];
+  const modifier = modifiers.scent;
 
   const mergedNotes = mergeNotes(base.notes, modifier?.notes);
   const modifiedIntensity = clamp01(modifier?.intensity ?? base.intensity);

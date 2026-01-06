@@ -42,7 +42,7 @@ export function pickWeighted<T>(items: readonly WeightedValue<T>[]): T {
   }
 
   // Fallback to last item (shouldn't happen with valid weights)
-  return items[items.length - 1]!.value;
+  return items[items.length - 1]?.value;
 }
 
 /**
@@ -79,14 +79,14 @@ export function pickMultipleFromPool<T>(pool: ValuePool<T>, count: number): T[] 
 
     let pickedIndex = available.length - 1;
     for (let idx = 0; idx < available.length; idx++) {
-      random -= available[idx]!.weight;
+      random -= available[idx]?.weight;
       if (random <= 0) {
         pickedIndex = idx;
         break;
       }
     }
 
-    result.push(available[pickedIndex]!.value);
+    result.push(available[pickedIndex]?.value);
     available.splice(pickedIndex, 1);
   }
 

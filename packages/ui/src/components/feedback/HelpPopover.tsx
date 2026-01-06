@@ -24,7 +24,7 @@ export const HelpPopover: React.FC<HelpPopoverProps> = ({
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      return () => { document.removeEventListener('mousedown', handleClickOutside); };
     }
   }, [isOpen]);
 
@@ -53,7 +53,7 @@ export const HelpPopover: React.FC<HelpPopoverProps> = ({
 
   return (
     <div className={`relative inline-block ${className}`} ref={popoverRef}>
-      <div onClick={() => setIsOpen(!isOpen)}>{trigger ?? defaultTrigger}</div>
+      <div onClick={() => { setIsOpen(!isOpen); }}>{trigger ?? defaultTrigger}</div>
 
       {isOpen && (
         <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-80 max-w-sm bg-slate-900 border border-slate-700 rounded-lg shadow-xl">
@@ -61,7 +61,7 @@ export const HelpPopover: React.FC<HelpPopoverProps> = ({
             <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={() => { setIsOpen(false); }}
               className="text-slate-400 hover:text-slate-200 transition-colors"
               aria-label="Close"
             >

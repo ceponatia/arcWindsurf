@@ -47,7 +47,7 @@ export async function persistAssistantMessage(
   message: string,
   speaker?: Speaker
 ): Promise<void> {
-  if (!message?.trim()) return;
+  if (!message.trim()) return;
 
   const speakerForDb = speaker
     ? {

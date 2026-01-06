@@ -66,7 +66,7 @@ export const BuilderActionPanel: React.FC<BuilderActionPanelProps> = ({
         {isEditing && isInEditMode && onDelete && (
           <button
             type="button"
-            onClick={() => setShowDeleteModal(true)}
+            onClick={() => { setShowDeleteModal(true); }}
             className={`w-full inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               isDeleting
                 ? 'bg-red-900 text-red-300 cursor-not-allowed'
@@ -98,7 +98,7 @@ export const BuilderActionPanel: React.FC<BuilderActionPanelProps> = ({
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowDeleteModal(false)}
+            onClick={() => { setShowDeleteModal(false); }}
             aria-hidden="true"
           />
 

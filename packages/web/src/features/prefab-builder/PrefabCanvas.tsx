@@ -179,7 +179,7 @@ export function PrefabCanvas({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => { window.removeEventListener('keydown', handleKeyDown); };
   }, [selectedNodeId, selectedEdgeId, onDeleteNode, onDeleteEdge]);
 
   // Convert data to React Flow format

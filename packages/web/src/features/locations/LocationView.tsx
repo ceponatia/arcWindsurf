@@ -278,7 +278,7 @@ function PrefabListView({ onCreateNew, onEdit }: PrefabListViewProps) {
             <div key={category} className="rounded-lg border border-slate-700 overflow-hidden">
               {/* Category Header */}
               <button
-                onClick={() => toggleCategory(category)}
+                onClick={() => { toggleCategory(category); }}
                 className="w-full flex items-center gap-2 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 transition-colors"
               >
                 {expandedCategories.has(category) ? (
@@ -299,7 +299,7 @@ function PrefabListView({ onCreateNew, onEdit }: PrefabListViewProps) {
                   {(groupedPrefabs[category] ?? []).map((prefab) => (
                     <div
                       key={prefab.id}
-                      onClick={() => onEdit(prefab.id)}
+                      onClick={() => { onEdit(prefab.id); }}
                       className="flex items-start gap-4 p-4 hover:bg-slate-800/30 transition-colors group cursor-pointer"
                     >
                       <div className="p-2 rounded-lg bg-violet-500/10 text-violet-400">

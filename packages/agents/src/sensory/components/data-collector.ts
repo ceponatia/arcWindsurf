@@ -60,11 +60,11 @@ export class SensoryDataCollector {
   }
 
   extractSmellContext(input: AgentInput): SensoryContext {
-    const target = input.intent?.params?.target?.toLowerCase();
+    const target = input.intent?.params.target?.toLowerCase();
     const npc = input.stateSlices.npc;
     const character = input.stateSlices.character;
 
-    let rawBodyPart = input.intent?.params?.bodyPart;
+    let rawBodyPart = input.intent?.params.bodyPart;
     if (!rawBodyPart && input.intent?.segments) {
       const smellSegment = input.intent.segments.find(
         (seg) => seg.type === 'sensory' && seg.sensoryType === 'smell'

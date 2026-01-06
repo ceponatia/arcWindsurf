@@ -62,7 +62,7 @@ export const SelectableCard: React.FC<SelectableCardProps> = ({
         </div>
 
         {actions && (
-          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2 shrink-0" onClick={(e) => { e.stopPropagation(); }}>
             {actions}
           </div>
         )}
@@ -71,7 +71,7 @@ export const SelectableCard: React.FC<SelectableCardProps> = ({
       {children && (
         <div
           className="mt-3 pt-3 border-t border-slate-700/50 cursor-default"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); }}
         >
           {children}
         </div>

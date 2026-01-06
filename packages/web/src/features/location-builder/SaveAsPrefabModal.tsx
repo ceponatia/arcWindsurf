@@ -79,7 +79,7 @@ export function SaveAsPrefabModal({ node, onSave, onCancel }: SaveAsPrefabModalP
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); }}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter prefab name..."
                 disabled={isSaving}
@@ -92,7 +92,7 @@ export function SaveAsPrefabModal({ node, onSave, onCancel }: SaveAsPrefabModalP
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => { setCategory(e.target.value); }}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 disabled={isSaving}
               >
@@ -111,7 +111,7 @@ export function SaveAsPrefabModal({ node, onSave, onCancel }: SaveAsPrefabModalP
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); }}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 rows={3}
                 placeholder="Describe this prefab..."

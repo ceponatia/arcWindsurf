@@ -39,7 +39,7 @@ export function extractJsonField<T>(text: string | null | undefined, field: stri
   if (!text) return undefined;
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
-    const value = parsed?.[field];
+    const value = parsed[field];
     return value as T | undefined;
   } catch {
     return undefined;

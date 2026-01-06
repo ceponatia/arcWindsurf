@@ -54,7 +54,7 @@ function InsertPrefabModal({ prefab, nodes, onConfirm, onCancel }: InsertPrefabM
             </label>
             <select
               value={selectedParent ?? ''}
-              onChange={(e) => setSelectedParent(e.target.value || null)}
+              onChange={(e) => { setSelectedParent(e.target.value || null); }}
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="">None (top level)</option>
@@ -72,7 +72,7 @@ function InsertPrefabModal({ prefab, nodes, onConfirm, onCancel }: InsertPrefabM
               <label className="block text-sm font-medium text-gray-700 mb-1">Entry Point</label>
               <select
                 value={selectedEntry}
-                onChange={(e) => setSelectedEntry(e.target.value)}
+                onChange={(e) => { setSelectedEntry(e.target.value); }}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 {prefab.entryPoints.map((ep) => (
@@ -95,7 +95,7 @@ function InsertPrefabModal({ prefab, nodes, onConfirm, onCancel }: InsertPrefabM
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(selectedParent, selectedEntry)}
+            onClick={() => { onConfirm(selectedParent, selectedEntry); }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             <MapPin className="h-4 w-4" />
@@ -195,7 +195,7 @@ export function PrefabLibrary({
               <div key={category}>
                 {/* Category header */}
                 <button
-                  onClick={() => toggleCategory(category)}
+                  onClick={() => { toggleCategory(category); }}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   {expandedCategories.has(category) ? (
@@ -232,14 +232,14 @@ export function PrefabLibrary({
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => setInsertModal(prefab)}
+                            onClick={() => { setInsertModal(prefab); }}
                             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                             title="Insert prefab"
                           >
                             Insert
                           </button>
                           <button
-                            onClick={() => setDeleteConfirm(prefab.id)}
+                            onClick={() => { setDeleteConfirm(prefab.id); }}
                             className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
                             title="Delete prefab"
                           >
@@ -262,7 +262,7 @@ export function PrefabLibrary({
           prefab={insertModal}
           nodes={nodes}
           onConfirm={handleInsertConfirm}
-          onCancel={() => setInsertModal(null)}
+          onCancel={() => { setInsertModal(null); }}
         />
       )}
 
@@ -277,7 +277,7 @@ export function PrefabLibrary({
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setDeleteConfirm(null)}
+                onClick={() => { setDeleteConfirm(null); }}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
               >
                 Cancel

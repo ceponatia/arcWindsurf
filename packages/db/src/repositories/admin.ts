@@ -51,7 +51,7 @@ export async function getDbOverview(): Promise<DbOverviewResult> {
     });
 
     const countRes = await pool.query(`SELECT COUNT(*)::int AS count FROM ${t}`);
-    const rowCount = Number((countRes.rows[0] as Record<string, unknown>)?.['count'] ?? 0);
+    const rowCount = Number((countRes.rows[0] as Record<string, unknown>)['count'] ?? 0);
 
     const hasCreatedAt = columns.some((c) => c.name === 'created_at');
     const order = hasCreatedAt ? 'ORDER BY created_at DESC' : '';

@@ -82,7 +82,7 @@ export async function chatWithOpenRouter(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => { controller.abort(); }, timeoutMs);
 
     try {
       const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
@@ -185,7 +185,7 @@ function extractToolCalls(payload: OpenRouterResponse | null | undefined): ToolC
 
   if (Array.isArray(payload.choices) && payload.choices.length > 0) {
     const choice = payload.choices[0];
-    if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
+    if (choice.message?.tool_calls && choice.message.tool_calls.length > 0) {
       return choice.message.tool_calls;
     }
   }

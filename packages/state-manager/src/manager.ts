@@ -406,8 +406,8 @@ export class StateManager {
       const slice = this.slices.get(sliceKey);
 
       // If slice isn't in sliceStates, use the registered default
-      const baseline = sliceState?.baseline ?? slice?.defaultState ?? {};
-      const overrides = sliceState?.overrides ?? {};
+      const baseline = sliceState.baseline ?? slice?.defaultState ?? {};
+      const overrides = sliceState.overrides ?? {};
 
       try {
         // Use slice-aware method if registered, otherwise use generic applyPatches

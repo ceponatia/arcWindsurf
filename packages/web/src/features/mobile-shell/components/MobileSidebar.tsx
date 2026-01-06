@@ -67,7 +67,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => { document.removeEventListener('keydown', handleKeyDown); };
   }, [handleKeyDown]);
 
   // Prevent body scroll when sidebar is open

@@ -272,7 +272,7 @@ export function getDayName(
   config: TimeConfig = DEFAULT_TIME_CONFIG
 ): string | undefined {
   const calendar = config.calendar;
-  if (!calendar?.dayNames?.length) return undefined;
+  if (!calendar?.dayNames.length) return undefined;
 
   const dayIndex = (time.absoluteDay - 1) % config.daysPerWeek;
   return calendar.dayNames[dayIndex];
@@ -286,7 +286,7 @@ export function getMonthName(
   config: TimeConfig = DEFAULT_TIME_CONFIG
 ): string | undefined {
   const calendar = config.calendar;
-  if (!calendar?.monthNames?.length) return undefined;
+  if (!calendar?.monthNames.length) return undefined;
 
   return calendar.monthNames[time.month - 1];
 }

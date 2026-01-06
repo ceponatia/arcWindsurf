@@ -17,7 +17,7 @@ describe('useFetchOnce', () => {
 
     expect(result.current.loading).toBe(true);
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => { expect(result.current.loading).toBe(false); });
     expect(result.current.data).toBe('value');
     expect(result.current.error).toBeNull();
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -27,7 +27,7 @@ describe('useFetchOnce', () => {
       result.current.retry();
     });
 
-    await waitFor(() => expect(result.current.data).toBe('next'));
+    await waitFor(() => { expect(result.current.data).toBe('next'); });
     expect(result.current.error).toBeNull();
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
@@ -45,7 +45,7 @@ describe('useFetchOnce', () => {
       })
     );
 
-    await waitFor(() => expect(result.current.data).toBe('initial'));
+    await waitFor(() => { expect(result.current.data).toBe('initial'); });
     expect(result.current.error).toBeNull();
 
     act(() => {

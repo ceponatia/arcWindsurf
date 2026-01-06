@@ -56,9 +56,9 @@ export function PropertiesPanel({
         locations={locations}
         autoFocusName={autoFocusName}
         onAutoFocusHandled={onAutoFocusHandled}
-        onUpdatePorts={(ports) => onUpdateInstance(selectedInstance.id, ports)}
-        onUpdateLocation={(updates) => onUpdateLocation(selectedLocation.id, updates)}
-        onDelete={() => onDeleteNode(selectedInstance.id)}
+        onUpdatePorts={(ports) => { onUpdateInstance(selectedInstance.id, ports); }}
+        onUpdateLocation={(updates) => { onUpdateLocation(selectedLocation.id, updates); }}
+        onDelete={() => { onDeleteNode(selectedInstance.id); }}
       />
     );
   }
@@ -70,7 +70,7 @@ export function PropertiesPanel({
         entryPoint={selectedEntryPoint}
         instances={instances}
         locations={locations}
-        onDelete={() => onDeleteNode(selectedEntryPoint.id)}
+        onDelete={() => { onDeleteNode(selectedEntryPoint.id); }}
       />
     );
   }
@@ -82,8 +82,8 @@ export function PropertiesPanel({
         connection={selectedConnection}
         instances={instances}
         locations={locations}
-        onUpdate={(updates) => onUpdateConnection(selectedConnection.id, updates)}
-        onDelete={() => onDeleteEdge(selectedConnection.id)}
+        onUpdate={(updates) => { onUpdateConnection(selectedConnection.id, updates); }}
+        onDelete={() => { onDeleteEdge(selectedConnection.id); }}
       />
     );
   }
@@ -124,7 +124,7 @@ function ExitDirectionSelect({
       {directions.map((dir) => (
         <button
           key={dir}
-          onClick={() => onChange(value === dir ? undefined : dir)}
+          onClick={() => { onChange(value === dir ? undefined : dir); }}
           className={`
             px-2 py-1 text-xs rounded capitalize
             ${value === dir ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}
@@ -201,7 +201,7 @@ function LocationInstancePanel({
             ref={nameInputRef}
             type="text"
             value={location.name}
-            onChange={(e) => onUpdateLocation({ name: e.target.value })}
+            onChange={(e) => { onUpdateLocation({ name: e.target.value }); }}
             className="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded text-slate-100 focus:ring-1 focus:ring-violet-500"
             placeholder="Location name..."
           />
@@ -212,7 +212,7 @@ function LocationInstancePanel({
           <label className="block text-xs font-medium text-slate-400 mb-1">Type</label>
           <select
             value={location.type}
-            onChange={(e) => onUpdateLocation({ type: e.target.value as Location['type'] })}
+            onChange={(e) => { onUpdateLocation({ type: e.target.value as Location['type'] }); }}
             className="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded text-slate-100 focus:ring-1 focus:ring-violet-500"
           >
             <option value="room">Room</option>
@@ -227,7 +227,7 @@ function LocationInstancePanel({
           <input
             type="text"
             value={location.summary ?? ''}
-            onChange={(e) => onUpdateLocation({ summary: e.target.value || undefined })}
+            onChange={(e) => { onUpdateLocation({ summary: e.target.value || undefined }); }}
             className="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-violet-500"
             placeholder="Brief one-line summary..."
           />
@@ -240,7 +240,7 @@ function LocationInstancePanel({
           </label>
           <textarea
             value={location.description ?? ''}
-            onChange={(e) => onUpdateLocation({ description: e.target.value || undefined })}
+            onChange={(e) => { onUpdateLocation({ description: e.target.value || undefined }); }}
             rows={3}
             className="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-violet-500 resize-none"
             placeholder="Describe this location for the AI narrator..."
@@ -296,7 +296,7 @@ function LocationInstancePanel({
                       )}
                     </div>
                     <button
-                      onClick={() => removePort(port.id)}
+                      onClick={() => { removePort(port.id); }}
                       className="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400"
                       title="Remove exit"
                     >
@@ -310,7 +310,7 @@ function LocationInstancePanel({
                     <input
                       type="text"
                       value={port.name}
-                      onChange={(e) => updatePort(port.id, { name: e.target.value })}
+                      onChange={(e) => { updatePort(port.id, { name: e.target.value }); }}
                       className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-100"
                     />
                   </div>
@@ -320,7 +320,7 @@ function LocationInstancePanel({
                     <label className="text-xs text-slate-500">Direction</label>
                     <ExitDirectionSelect
                       value={port.direction}
-                      onChange={(dir) => updatePort(port.id, { direction: dir })}
+                      onChange={(dir) => { updatePort(port.id, { direction: dir }); }}
                     />
                   </div>
 
@@ -328,7 +328,7 @@ function LocationInstancePanel({
                   <div className="flex items-center justify-between pt-1">
                     <label className="text-xs text-slate-500">Locked</label>
                     <button
-                      onClick={() => updatePort(port.id, { locked: !port.locked })}
+                      onClick={() => { updatePort(port.id, { locked: !port.locked }); }}
                       className={`
                         flex items-center gap-1.5 px-2 py-0.5 text-xs rounded
                         ${port.locked ? 'bg-red-600/20 text-red-400' : 'bg-slate-700 text-slate-400'}
@@ -347,7 +347,7 @@ function LocationInstancePanel({
                         type="text"
                         value={port.lockReason ?? ''}
                         onChange={(e) =>
-                          updatePort(port.id, { lockReason: e.target.value || undefined })
+                          { updatePort(port.id, { lockReason: e.target.value || undefined }); }
                         }
                         placeholder="e.g., Requires key"
                         className="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-slate-300 placeholder-slate-500"
@@ -364,7 +364,7 @@ function LocationInstancePanel({
             <input
               type="text"
               value={newPortName}
-              onChange={(e) => setNewPortName(e.target.value)}
+              onChange={(e) => { setNewPortName(e.target.value); }}
               placeholder="Add unconnected exit..."
               className="flex-1 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded text-slate-100 placeholder-slate-500"
               onKeyDown={(e) => e.key === 'Enter' && addPort()}

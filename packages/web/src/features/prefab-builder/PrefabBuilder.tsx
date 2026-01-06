@@ -297,7 +297,7 @@ export function PrefabBuilder({ prefabId, onSave, onBack }: PrefabBuilderProps) 
             onUpdateConnection={updateConnection}
             onDeleteNode={handleDeleteNode}
             onDeleteEdge={removeConnection}
-            onAutoFocusHandled={() => setShouldFocusName(false)}
+            onAutoFocusHandled={() => { setShouldFocusName(false); }}
           />
         </aside>
       </div>

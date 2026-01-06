@@ -198,7 +198,7 @@ export class NpcAgent extends BaseAgent {
     const userPrompt = buildDialogueUserPrompt(input);
 
     try {
-      const response = await this.llmProvider!.generate(userPrompt, {
+      const response = await this.llmProvider?.generate(userPrompt, {
         systemPrompt,
         temperature: this.config.temperature ?? 0.7,
         maxTokens: this.config.maxTokens ?? 800, // Increased from 500 to allow richer responses with sensory details

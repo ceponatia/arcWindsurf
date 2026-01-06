@@ -56,7 +56,7 @@ function AddLocationModal({ parentName, type, onConfirm, onCancel }: AddLocation
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); }}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={`Enter ${type} name...`}
                 autoFocus
@@ -69,7 +69,7 @@ function AddLocationModal({ parentName, type, onConfirm, onCancel }: AddLocation
               </label>
               <textarea
                 value={summary}
-                onChange={(e) => setSummary(e.target.value)}
+                onChange={(e) => { setSummary(e.target.value); }}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 rows={2}
                 placeholder="Brief description..."
@@ -338,7 +338,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
           {/* Close button */}
           {onClose && (
             <button
-              onClick={() => onClose()}
+              onClick={() => { onClose(); }}
               className="p-1.5 hover:bg-gray-200 rounded"
               title="Close"
             >
@@ -355,7 +355,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
           {/* Tab buttons */}
           <div className="flex border-b">
             <button
-              onClick={() => setActiveTab('tree')}
+              onClick={() => { setActiveTab('tree'); }}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium ${
                 activeTab === 'tree'
                   ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -367,7 +367,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
             </button>
 
             <button
-              onClick={() => setActiveTab('prefabs')}
+              onClick={() => { setActiveTab('prefabs'); }}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium ${
                 activeTab === 'prefabs'
                   ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -446,7 +446,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
           parentName={getParentName()}
           type={addModal.type}
           onConfirm={handleConfirmAdd}
-          onCancel={() => setAddModal(null)}
+          onCancel={() => { setAddModal(null); }}
         />
       )}
 
@@ -455,7 +455,7 @@ export function LocationBuilder({ settingId, mapId, onSave, onClose }: LocationB
         <SaveAsPrefabModal
           node={saveAsPrefabNode}
           onSave={handleConfirmSaveAsPrefab}
-          onCancel={() => setSaveAsPrefabNode(null)}
+          onCancel={() => { setSaveAsPrefabNode(null); }}
         />
       )}
     </div>

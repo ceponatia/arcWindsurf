@@ -62,7 +62,7 @@ export default defineConfig(() => ({
         // @xyflow/react ships ESM with a "use client" directive (Next.js hint).
         // Rollup warns during bundling even though it's harmless for our build.
         if (
-          warning?.code === 'MODULE_LEVEL_DIRECTIVE' &&
+          warning.code === 'MODULE_LEVEL_DIRECTIVE' &&
           typeof warning.message === 'string' &&
           warning.message.includes('"use client"')
         ) {

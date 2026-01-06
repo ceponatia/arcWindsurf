@@ -106,7 +106,7 @@ export const SettingStep: React.FC<SettingStepProps> = ({
       {settingState.settingId && (
         <div className="border border-slate-800 rounded-lg bg-slate-900/30">
           <button
-            onClick={() => setShowTimeConfig(!showTimeConfig)}
+            onClick={() => { setShowTimeConfig(!showTimeConfig); }}
             className="w-full px-4 py-3 flex items-center justify-between text-left"
           >
             <span className="text-sm font-medium text-slate-300">Time Configuration</span>

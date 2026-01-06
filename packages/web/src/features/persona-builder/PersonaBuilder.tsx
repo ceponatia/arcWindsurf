@@ -169,7 +169,7 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="text"
                   value={formState.id}
-                  onChange={(e) => updateField('id', e.target.value)}
+                  onChange={(e) => { updateField('id', e.target.value); }}
                   disabled={!!existingPersona}
                   placeholder="unique-persona-id"
                   className={inputClasses}
@@ -180,7 +180,7 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="text"
                   value={formState.name}
-                  onChange={(e) => updateField('name', e.target.value)}
+                  onChange={(e) => { updateField('name', e.target.value); }}
                   placeholder="Character name"
                   className={inputClasses}
                 />
@@ -190,7 +190,7 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="number"
                   value={formState.age}
-                  onChange={(e) => updateField('age', parseInt(e.target.value, 10))}
+                  onChange={(e) => { updateField('age', parseInt(e.target.value, 10)); }}
                   placeholder="25"
                   min={0}
                   max={999}
@@ -202,7 +202,7 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="text"
                   value={formState.gender}
-                  onChange={(e) => updateField('gender', e.target.value)}
+                  onChange={(e) => { updateField('gender', e.target.value); }}
                   placeholder="e.g., female, male, non-binary"
                   className={inputClasses}
                 />
@@ -220,7 +220,7 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
             >
               <textarea
                 value={formState.summary}
-                onChange={(e) => updateField('summary', e.target.value)}
+                onChange={(e) => { updateField('summary', e.target.value); }}
                 maxLength={500}
                 rows={4}
                 placeholder="A brief description of your persona's background and personality..."
@@ -234,7 +234,7 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
             <Field label="Physical Appearance" error={errors.appearance}>
               <textarea
                 value={formState.appearance}
-                onChange={(e) => updateField('appearance', e.target.value)}
+                onChange={(e) => { updateField('appearance', e.target.value); }}
                 rows={6}
                 placeholder="Describe your character's physical appearance, including height, build, hair, eyes, distinguishing features..."
                 className={textareaClasses}

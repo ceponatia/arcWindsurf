@@ -165,7 +165,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
     return (
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 border-b border-slate-800/50 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         <button
-          onClick={() => setActiveSubRegion(undefined)}
+          onClick={() => { setActiveSubRegion(undefined); }}
           className={`px-3 py-1 text-xs rounded-full whitespace-nowrap transition-colors ${
             !activeSubRegion
               ? 'bg-violet-600 text-white'
@@ -177,7 +177,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
         {subRegions.map((sub) => (
           <button
             key={sub}
-            onClick={() => setActiveSubRegion(sub)}
+            onClick={() => { setActiveSubRegion(sub); }}
             className={`px-3 py-1 text-xs rounded-full whitespace-nowrap transition-colors ${
               activeSubRegion === sub
                 ? 'bg-violet-600 text-white'
@@ -215,7 +215,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                   <select
                     className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                     value={regionData.appearance?.[key] ?? ''}
-                    onChange={(e) => updateAppearance(key, e.target.value)}
+                    onChange={(e) => { updateAppearance(key, e.target.value); }}
                   >
                     <option value="">Select...</option>
                     {def.values.map((v) => (
@@ -243,7 +243,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
             className="min-h-[80px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
             value={regionData.visual?.description ?? ''}
             placeholder={`Describe the visual appearance of ${SUB_REGION_LABELS[currentTargetRegion] ?? currentTargetRegion}...`}
-            onChange={(e) => updateVisualDescription(e.target.value)}
+            onChange={(e) => { updateVisualDescription(e.target.value); }}
           />
         </label>
       </div>
@@ -271,7 +271,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                 className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 value={regionData.scent?.primary ?? ''}
                 placeholder="e.g. Musk, Lavender"
-                onChange={(e) => updateSensory('scent', 'primary', e.target.value)}
+                onChange={(e) => { updateSensory('scent', 'primary', e.target.value); }}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -283,7 +283,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                 max="1"
                 className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 value={regionData.scent?.intensity ?? 0.5}
-                onChange={(e) => updateSensory('scent', 'intensity', parseFloat(e.target.value))}
+                onChange={(e) => { updateSensory('scent', 'intensity', parseFloat(e.target.value)); }}
               />
             </label>
           </div>
@@ -299,7 +299,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                 className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 value={regionData.texture?.primary ?? ''}
                 placeholder="e.g. Soft, Rough"
-                onChange={(e) => updateSensory('texture', 'primary', e.target.value)}
+                onChange={(e) => { updateSensory('texture', 'primary', e.target.value); }}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -307,7 +307,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
               <select
                 className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 value={regionData.texture?.temperature ?? 'neutral'}
-                onChange={(e) => updateSensory('texture', 'temperature', e.target.value)}
+                onChange={(e) => { updateSensory('texture', 'temperature', e.target.value); }}
               >
                 <option value="cold">Cold</option>
                 <option value="cool">Cool</option>
@@ -329,7 +329,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                 className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 value={regionData.flavor?.primary ?? ''}
                 placeholder="e.g. Salty, Sweet"
-                onChange={(e) => updateSensory('flavor', 'primary', e.target.value)}
+                onChange={(e) => { updateSensory('flavor', 'primary', e.target.value); }}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -341,7 +341,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                 max="1"
                 className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 value={regionData.flavor?.intensity ?? 0.5}
-                onChange={(e) => updateSensory('flavor', 'intensity', parseFloat(e.target.value))}
+                onChange={(e) => { updateSensory('flavor', 'intensity', parseFloat(e.target.value)); }}
               />
             </label>
           </div>
@@ -357,7 +357,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
           <h3 className="text-sm font-medium text-slate-300 mb-3">General</h3>
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => handleRegionSelect('overall')}
+              onClick={() => { handleRegionSelect('overall'); }}
               className={`w-full px-3 py-2 text-sm rounded-md border transition-colors text-left flex justify-between items-center ${
                 selectedRegion === 'overall'
                   ? 'bg-violet-600 border-violet-500 text-white'
@@ -428,7 +428,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                   )}
                   <div className="flex gap-1 bg-slate-950 rounded-lg p-1">
                     <button
-                      onClick={() => setActiveTab('appearance')}
+                      onClick={() => { setActiveTab('appearance'); }}
                       className={`px-3 py-1 text-xs rounded-md transition-colors ${
                         activeTab === 'appearance'
                           ? 'bg-violet-600 text-white'
@@ -438,7 +438,7 @@ export const BodyAppearanceSection: React.FC<BodyAppearanceSectionProps> = ({
                       Appearance
                     </button>
                     <button
-                      onClick={() => setActiveTab('sensory')}
+                      onClick={() => { setActiveTab('sensory'); }}
                       className={`px-3 py-1 text-xs rounded-md transition-colors ${
                         activeTab === 'sensory'
                           ? 'bg-violet-600 text-white'
