@@ -95,7 +95,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); };
   }, [loading, autoScroll]);
 
   const handleSend = () => {

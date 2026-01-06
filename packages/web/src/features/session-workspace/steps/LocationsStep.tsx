@@ -117,7 +117,7 @@ export function LocationsStep({ maps, loading, onRefresh }: LocationsStepProps) 
     const builderProps = {
       settingId,
       onSave: handleBuilderSave,
-      onClose: () => setShowBuilder(false),
+      onClose: () => { setShowBuilder(false); },
       ...(editingMapId ? { mapId: editingMapId } : {}),
     };
 
@@ -128,14 +128,14 @@ export function LocationsStep({ maps, loading, onRefresh }: LocationsStepProps) 
             <div className="font-medium text-slate-700">Location Builder (Full Screen)</div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsPoppedOut(false)}
+                onClick={() => { setIsPoppedOut(false); }}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded"
               >
                 <Minimize2 className="h-4 w-4" />
                 Dock
               </button>
               <button
-                onClick={() => setShowBuilder(false)}
+                onClick={() => { setShowBuilder(false); }}
                 className="p-1.5 text-slate-500 hover:bg-slate-200 rounded"
               >
                 <X className="h-5 w-5" />
@@ -163,7 +163,7 @@ export function LocationsStep({ maps, loading, onRefresh }: LocationsStepProps) 
             <h3 className="font-semibold text-slate-800">Location Builder</h3>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsPoppedOut(true)}
+                onClick={() => { setIsPoppedOut(true); }}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded transition-colors"
                 title="Open in full screen"
               >
@@ -231,7 +231,7 @@ export function LocationsStep({ maps, loading, onRefresh }: LocationsStepProps) 
           actions={
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleEditMap(locations.mapId!)}
+                onClick={() => { handleEditMap(locations.mapId!); }}
                 className="px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-900/50 rounded"
               >
                 Edit Map
@@ -276,7 +276,7 @@ export function LocationsStep({ maps, loading, onRefresh }: LocationsStepProps) 
                   title={map.name}
                   description={map.description}
                   selected={isSelected}
-                  onClick={() => handleSelectMap(map.id)}
+                  onClick={() => { handleSelectMap(map.id); }}
                   icon={<MapPin className="h-5 w-5" />}
                   badges={isSelected ? <Check className="h-4 w-4 text-violet-400" /> : null}
                 >

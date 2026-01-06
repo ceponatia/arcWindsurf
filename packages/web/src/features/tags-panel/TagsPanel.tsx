@@ -69,7 +69,7 @@ export const TagsPanel: React.FC<TagsPanelProps> = ({ selectedIds, onToggle, onE
       <div className="px-3 py-2 border-b border-gray-700 bg-gray-900/60 flex justify-between items-center">
         <h2 className="text-sm font-semibold text-white">Prompt Tags</h2>
         <button
-          onClick={() => handleEditClick()}
+          onClick={() => { handleEditClick(); }}
           className="text-xs px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded transition-colors"
         >
           + New Tag
@@ -87,8 +87,8 @@ export const TagsPanel: React.FC<TagsPanelProps> = ({ selectedIds, onToggle, onE
                 key={tag.id}
                 tag={tag}
                 isSelected={selectedIds.includes(tag.id)}
-                onToggle={() => onToggle(tag.id)}
-                onEdit={() => handleEditClick(tag.id)}
+                onToggle={() => { onToggle(tag.id); }}
+                onEdit={() => { handleEditClick(tag.id); }}
               />
             ))}
             {tags.length === 0 && (

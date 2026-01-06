@@ -193,7 +193,7 @@ export const SessionBuilder: React.FC<SessionBuilderProps> = ({
             <SelectableCard
               key={char.id}
               selected={selectedCharacterId === char.id}
-              onClick={() => handleCharacterSelect(char.id)}
+              onClick={() => { handleCharacterSelect(char.id); }}
               title={char.name}
               subtitle={char.summary}
               tags={char.tags}
@@ -214,7 +214,7 @@ export const SessionBuilder: React.FC<SessionBuilderProps> = ({
             <SelectableCard
               key={setting.id}
               selected={selectedSettingId === setting.id}
-              onClick={() => handleSettingSelect(setting.id)}
+              onClick={() => { handleSettingSelect(setting.id); }}
               title={setting.name}
               subtitle={setting.tone}
             />
@@ -233,7 +233,7 @@ export const SessionBuilder: React.FC<SessionBuilderProps> = ({
             <SelectableCard
               key={tag.id}
               selected={selectedTagIds.includes(tag.id)}
-              onClick={() => handleTagToggle(tag.id)}
+              onClick={() => { handleTagToggle(tag.id); }}
               title={tag.name}
               subtitle={tag.shortDescription ?? tag.promptText}
               variant="multi"

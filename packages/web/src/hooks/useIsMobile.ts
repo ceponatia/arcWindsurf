@@ -11,11 +11,11 @@ export function useIsMobile(breakpoint = 768): boolean {
       return;
     }
 
-    const handleResize = () => setIsMobile(detectIsMobile(breakpoint));
+    const handleResize = () => { setIsMobile(detectIsMobile(breakpoint)); };
 
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => { window.removeEventListener('resize', handleResize); };
   }, [breakpoint]);
 
   return isMobile;

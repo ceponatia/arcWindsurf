@@ -348,7 +348,7 @@ export async function loadStateForTurn(options: LoadStateOptions): Promise<Loade
 
   // Helper to extract nested property or default to empty
   const extractNestedOrEmpty = (obj: unknown, key: string): Record<string, unknown> => {
-    const value = (obj as Record<string, unknown>)?.[key];
+    const value = (obj as Record<string, unknown>)[key];
     if (value && typeof value === 'object') {
       return value as Record<string, unknown>;
     }

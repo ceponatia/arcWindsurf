@@ -97,7 +97,7 @@ const ToolCallsSection: React.FC<ToolCallsSectionProps> = ({ events }) => {
       <button
         type="button"
         className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={() => { setExpanded((prev) => !prev); }}
       >
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-blue-300">🔧 Tools</span>
@@ -234,7 +234,7 @@ const StateChangesSection: React.FC<StateChangesSectionProps> = ({ stateChanges 
               <button
                 type="button"
                 className="text-[10px] text-slate-400 hover:text-slate-200 underline"
-                onClick={() => setShowPatches((p) => !p)}
+                onClick={() => { setShowPatches((p) => !p); }}
               >
                 {showPatches ? 'Hide patches' : 'Show patches'}
               </button>
@@ -354,7 +354,7 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
                         type="button"
                         className="text-[10px] text-slate-400 hover:text-slate-200"
                         onClick={() =>
-                          setShowNarratives((prev) => ({ ...prev, [idx]: !prev[idx] }))
+                          { setShowNarratives((prev) => ({ ...prev, [idx]: !prev[idx] })); }
                         }
                       >
                         {showNarratives[idx] ? 'Hide' : 'Show'} narrative

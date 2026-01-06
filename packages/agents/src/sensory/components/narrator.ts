@@ -86,7 +86,7 @@ Rules:
     const userPrompt = `Player action: "${input.playerInput}"`;
 
     try {
-      const response = await this.llmProvider!.generate(userPrompt, {
+      const response = await this.llmProvider?.generate(userPrompt, {
         systemPrompt,
         temperature: 0.5,
         maxTokens: 150,

@@ -312,14 +312,14 @@ export class NpcTurnHandler implements ToolTurnHandler {
     const tagContext = turn.turnTagContext;
 
     const npcTags = ctx.npcId
-      ? (tagContext?.byNpcInstanceId?.[ctx.npcId]?.map((t) => t.tagName) ?? [])
+      ? (tagContext?.byNpcInstanceId[ctx.npcId]?.map((t) => t.tagName) ?? [])
       : [];
 
     const locationTags = tagContext?.playerLocationId
       ? (tagContext.byLocationId?.[tagContext.playerLocationId]?.map((t) => t.tagName) ?? [])
       : [];
 
-    const sessionTags = tagContext?.session?.map((t) => t.tagName) ?? [];
+    const sessionTags = tagContext?.session.map((t) => t.tagName) ?? [];
     const proximityLevel =
       ctx.proximityLevel ?? ctx.stateSlices.proximity?.npcProximity?.[ctx.npcId];
 

@@ -48,7 +48,7 @@ export function serializeIntentGuidance(intent?: AgentIntent): string[] {
   }
 
   if (intent.type === 'narrate') {
-    const narrateType = intent.params?.narrateType;
+    const narrateType = intent.params.narrateType;
     if (!narrateType) return [];
 
     const lines: string[] = [];

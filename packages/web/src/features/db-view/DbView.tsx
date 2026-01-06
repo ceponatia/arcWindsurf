@@ -234,7 +234,7 @@ export const DbView: React.FC = () => {
         if (e instanceof Error && e.name === 'AbortError') return;
         setError(e instanceof Error ? e.message : 'Failed to load DB overview');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); });
   }, []);
 
   useEffect(() => {

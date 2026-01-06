@@ -145,7 +145,7 @@ export function LocationBucket({
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); }}
             placeholder="Search locations..."
             className="w-full pl-8 pr-3 py-1.5 text-sm rounded-md bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent"
           />
@@ -156,7 +156,7 @@ export function LocationBucket({
           {(['all', 'region', 'building', 'room'] as const).map((type) => (
             <button
               key={type}
-              onClick={() => setFilterType(type)}
+              onClick={() => { setFilterType(type); }}
               className={`
                 px-2 py-1 text-xs rounded-md capitalize
                 ${filterType === type ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}
@@ -181,7 +181,7 @@ export function LocationBucket({
             {/* Templates section */}
             <div>
               <button
-                onClick={() => setShowTemplates(!showTemplates)}
+                onClick={() => { setShowTemplates(!showTemplates); }}
                 className="flex items-center gap-2 w-full text-left mb-2"
               >
                 {showTemplates ? (
@@ -209,7 +209,7 @@ export function LocationBucket({
             {/* Custom locations section */}
             <div>
               <button
-                onClick={() => setShowCustom(!showCustom)}
+                onClick={() => { setShowCustom(!showCustom); }}
                 className="flex items-center gap-2 w-full text-left mb-2"
               >
                 {showCustom ? (

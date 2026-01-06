@@ -63,7 +63,7 @@ handleTurn(input) → toolTurnHandler.handleTurn(input) → applyStateChanges(pa
 ```
 
 The Governor is a thin orchestrator that:
-1. Normalizes input (lines 72-76)
+
 2. Delegates to `ToolTurnHandler` (line 96)
 3. Applies patches via `StateManager` (lines 99-130)
 4. Handles errors uniformly (lines 137-139)

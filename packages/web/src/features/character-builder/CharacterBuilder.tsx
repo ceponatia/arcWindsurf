@@ -63,7 +63,7 @@ export const CharacterBuilder: React.FC<{
       const complexity = { quick: 0, standard: 1, advanced: 2 };
       if (complexity[newMode] < complexity[mode]) {
         setSuccess(`Switched to ${newMode} mode. Hidden data is preserved.`);
-        setTimeout(() => setSuccess(null), 3000);
+        setTimeout(() => { setSuccess(null); }, 3000);
       }
       setMode(newMode);
     },
@@ -99,7 +99,7 @@ export const CharacterBuilder: React.FC<{
         setFieldErrors({});
       }
     }, 1000);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); };
   }, [form, setFieldErrors]);
 
   const handleDelete = async () => {
@@ -242,7 +242,7 @@ export const CharacterBuilder: React.FC<{
             return (
               <button
                 key={m}
-                onClick={() => handleModeChange(m)}
+                onClick={() => { handleModeChange(m); }}
                 className={`
                   px-3 py-1.5 text-sm rounded transition-all
                   ${
@@ -277,7 +277,7 @@ export const CharacterBuilder: React.FC<{
                 tab.visible && (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => { setActiveTab(tab.id); }}
                     className={`
                     px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                     ${
@@ -299,7 +299,7 @@ export const CharacterBuilder: React.FC<{
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <button
-                    onClick={() => handleGenerate('basics')}
+                    onClick={() => { handleGenerate('basics'); }}
                     className="text-xs text-violet-400 hover:text-violet-300"
                   >
                     Generate Basics
@@ -320,7 +320,7 @@ export const CharacterBuilder: React.FC<{
                 <div className="space-y-4">
                   <div className="flex justify-end">
                     <button
-                      onClick={() => handleGenerate('body')}
+                      onClick={() => { handleGenerate('body'); }}
                       className="text-xs text-violet-400 hover:text-violet-300"
                     >
                       Generate Body
@@ -340,7 +340,7 @@ export const CharacterBuilder: React.FC<{
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <button
-                    onClick={() => handleGenerate('personality')}
+                    onClick={() => { handleGenerate('personality'); }}
                     className="text-xs text-violet-400 hover:text-violet-300"
                   >
                     Generate Personality
@@ -360,7 +360,7 @@ export const CharacterBuilder: React.FC<{
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <button
-                    onClick={() => handleGenerate('details')}
+                    onClick={() => { handleGenerate('details'); }}
                     className="text-xs text-violet-400 hover:text-violet-300"
                   >
                     Generate Details
@@ -388,7 +388,7 @@ export const CharacterBuilder: React.FC<{
           onSave={() => {
             void handleSave();
           }}
-          onGenerate={() => handleGenerate()}
+          onGenerate={() => { handleGenerate(); }}
           onCancel={onCancel}
           onDelete={handleDelete}
           isEditing={isEditing}
