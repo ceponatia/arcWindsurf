@@ -88,26 +88,41 @@ export const ARMS_HYGIENE_CONFIG = {
 
 export const ARMS_HYGIENE_MODIFIERS = flattenHygieneData(ARMS_HYGIENE_CONFIG, [...ARMS_REGIONS]);
 
+/**
+ * Grouped defaults for arms regions.
+ */
+export const ARMS_SCENT_DATA = {
+  armpits: {
+    armpits: NEUTRAL_FAINT,
+    leftArmpit: NEUTRAL_FAINT,
+    rightArmpit: NEUTRAL_FAINT,
+  },
+  arms: {
+    arms: CLEAN_SKIN,
+    leftArm: CLEAN_SKIN,
+    rightArm: CLEAN_SKIN,
+    leftUpperArm: CLEAN_SKIN,
+    rightUpperArm: CLEAN_SKIN,
+    leftElbow: CLEAN_SKIN,
+    rightElbow: CLEAN_SKIN,
+    leftForearm: CLEAN_SKIN,
+    rightForearm: CLEAN_SKIN,
+    leftWrist: CLEAN_SKIN,
+    rightWrist: CLEAN_SKIN,
+  },
+  hands: {
+    hands: CLEAN_SKIN,
+    leftHand: CLEAN_SKIN,
+    rightHand: CLEAN_SKIN,
+    leftPalm: CLEAN_SKIN,
+    rightPalm: CLEAN_SKIN,
+    leftFingers: CLEAN_SKIN,
+    rightFingers: CLEAN_SKIN,
+  },
+};
+
 export const ARMS_DEFAULT_SCENTS: Partial<Record<ArmsRegion, RegionScent>> = {
-  armpits: NEUTRAL_FAINT,
-  leftArmpit: NEUTRAL_FAINT,
-  rightArmpit: NEUTRAL_FAINT,
-  arms: CLEAN_SKIN,
-  leftArm: CLEAN_SKIN,
-  rightArm: CLEAN_SKIN,
-  leftUpperArm: CLEAN_SKIN,
-  rightUpperArm: CLEAN_SKIN,
-  leftElbow: CLEAN_SKIN,
-  rightElbow: CLEAN_SKIN,
-  leftForearm: CLEAN_SKIN,
-  rightForearm: CLEAN_SKIN,
-  leftWrist: CLEAN_SKIN,
-  rightWrist: CLEAN_SKIN,
-  hands: CLEAN_SKIN,
-  leftHand: CLEAN_SKIN,
-  rightHand: CLEAN_SKIN,
-  leftPalm: CLEAN_SKIN,
-  rightPalm: CLEAN_SKIN,
-  leftFingers: CLEAN_SKIN,
-  rightFingers: CLEAN_SKIN,
+  ...ARMS_SCENT_DATA.armpits,
+  ...ARMS_SCENT_DATA.arms,
+  ...ARMS_SCENT_DATA.hands,
 };

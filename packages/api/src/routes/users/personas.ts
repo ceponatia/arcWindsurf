@@ -1,7 +1,15 @@
-// src/routes/personas.ts
 import type { Hono } from 'hono';
 import { PersonaProfileSchema, type PersonaProfile } from '@minimal-rpg/schemas';
-import { db } from '../../db/prismaClient.js';
+import {
+  listEntityProfiles,
+  getEntityProfile,
+  createEntityProfile,
+  updateEntityProfile,
+  deleteEntityProfile,
+  upsertActorState,
+  getActorState,
+  deleteActorState,
+} from '@minimal-rpg/db/node';
 import { getSession } from '../../db/sessionsClient.js';
 import type { ApiError } from '../../types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
@@ -37,14 +45,14 @@ function mapPersonaSummary(
 export function registerPersonaRoutes(app: Hono): void {
   // GET /personas - list all personas
   app.get('/personas', async (c) => {
-    const userId = c.req.query('user_id'); // Optional user_id filter for multi-user support
+    const ownerEmail = getOwnerEmail(c);
 
-    const personas = await db.persona.findMany(userId ? { where: { userId } } : undefined);
+    const personas = await listEntityProfiles(ownerEmail, 'persona');
 
     const summaries: PersonaSummary[] = personas
       .map((p) => {
         try {
-          const profile = PersonaProfileSchema.parse(JSON.parse(p.profileJson));
+          const profile = PersonaProfileSchema.parse(p.profileJson);
           return mapPersonaSummary(profile, p.createdAt, p.updatedAt);
         } catch {
           // Skip invalid rows
@@ -60,16 +68,14 @@ export function registerPersonaRoutes(app: Hono): void {
   app.get('/personas/:id', async (c) => {
     const id = c.req.param('id');
 
-    const persona = await db.persona.findUnique({
-      where: { id },
-    });
+    const persona = await getEntityProfile(id as any);
 
-    if (!persona) {
+    if (!persona || persona.entityType !== 'persona') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
     try {
-      const profile = PersonaProfileSchema.parse(JSON.parse(persona.profileJson));
+      const profile = PersonaProfileSchema.parse(persona.profileJson);
       return c.json(profile, 200);
     } catch {
       return c.json({ ok: false, error: 'invalid persona data' } satisfies ApiError, 500);
@@ -78,6 +84,7 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // POST /personas - create or update persona (upsert)
   app.post('/personas', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     let body: unknown;
     try {
       body = await c.req.json();
@@ -91,21 +98,18 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     const profile = parsed.data;
-    // user_id is optional - defaults to 'default' for single-user scenarios
-    const userId = c.req.query('user_id') ?? 'default';
 
     // Check if persona with this ID already exists
-    const existing = await db.persona.findUnique({
-      where: { id: profile.id },
-    });
+    const existing = await getEntityProfile(profile.id as any);
 
     if (existing) {
-      // Update existing persona instead of erroring
-      const updated = await db.persona.update({
-        where: { id: profile.id },
-        data: {
-          profileJson: JSON.stringify(profile),
-        },
+      if (existing.ownerEmail !== ownerEmail && existing.ownerEmail !== 'public') {
+        return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
+      }
+      // Update existing persona
+      const updated = await updateEntityProfile(profile.id as any, {
+        name: profile.name,
+        profileJson: profile,
       });
       if (!updated) {
         return c.json(
@@ -117,12 +121,12 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: true, persona: summary }, 200);
     }
 
-    const created = await db.persona.create({
-      data: {
-        id: profile.id,
-        userId,
-        profileJson: JSON.stringify(profile),
-      },
+    const created = await createEntityProfile({
+      id: profile.id as any,
+      ownerEmail,
+      entityType: 'persona',
+      name: profile.name,
+      profileJson: profile,
     });
 
     const summary = mapPersonaSummary(profile, created.createdAt, created.updatedAt);
@@ -132,6 +136,7 @@ export function registerPersonaRoutes(app: Hono): void {
   // PUT /personas/:id - update existing persona
   app.put('/personas/:id', async (c) => {
     const id = c.req.param('id');
+    const ownerEmail = getOwnerEmail(c);
 
     let body: unknown;
     try {
@@ -152,19 +157,19 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'id mismatch' } satisfies ApiError, 400);
     }
 
-    const existing = await db.persona.findUnique({
-      where: { id },
-    });
+    const existing = await getEntityProfile(id as any);
 
     if (!existing) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
-    const updated = await db.persona.update({
-      where: { id },
-      data: {
-        profileJson: JSON.stringify(profile),
-      },
+    if (existing.ownerEmail !== ownerEmail && existing.ownerEmail !== 'public') {
+      return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
+    }
+
+    const updated = await updateEntityProfile(id as any, {
+      name: profile.name,
+      profileJson: profile,
     });
 
     if (!updated) {
@@ -178,16 +183,19 @@ export function registerPersonaRoutes(app: Hono): void {
   // DELETE /personas/:id - delete persona
   app.delete('/personas/:id', async (c) => {
     const id = c.req.param('id');
+    const ownerEmail = getOwnerEmail(c);
 
-    const existing = await db.persona.findUnique({
-      where: { id },
-    });
+    const existing = await getEntityProfile(id as any);
 
     if (!existing) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
-    await db.persona.delete({ where: { id } });
+    if (existing.ownerEmail !== ownerEmail) {
+      return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
+    }
+
+    await deleteEntityProfile(id as any);
     return c.body(null, 204);
   });
 
@@ -208,54 +216,38 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     // Check if session exists
-    const session = await getSession(ownerEmail, sessionId);
+    const session = await getSession(sessionId, ownerEmail);
     if (!session) {
       return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
     }
 
     // Check if persona exists
-    const persona = await db.persona.findUnique({
-      where: { id: body.personaId },
-    });
+    const persona = await getEntityProfile(body.personaId as any);
 
-    if (!persona) {
+    if (!persona || persona.entityType !== 'persona') {
       return c.json({ ok: false, error: 'persona not found' } satisfies ApiError, 404);
     }
 
     // Parse persona profile
     let profile: PersonaProfile;
     try {
-      profile = PersonaProfileSchema.parse(JSON.parse(persona.profileJson));
+      profile = PersonaProfileSchema.parse(persona.profileJson);
     } catch {
       return c.json({ ok: false, error: 'invalid persona data' } satisfies ApiError, 500);
     }
 
-    // Check if session already has a persona
-    const existing = await db.sessionPersona.findUnique({
-      where: { sessionId },
+    // Upsert actor state for player
+    await upsertActorState({
+      sessionId: sessionId as any,
+      actorType: 'player',
+      actorId: 'player',
+      entityProfileId: persona.id as any,
+      state: {
+        profile,
+        status: 'active',
+      },
+      lastEventSeq: 0n, // Or get from session
     });
-
-    if (existing) {
-      // Update existing
-      await db.sessionPersona.update({
-        where: { sessionId },
-        data: {
-          profileJson: JSON.stringify(profile),
-          overridesJson: '{}',
-        },
-      });
-    } else {
-      // Create new
-      await db.sessionPersona.create({
-        data: {
-          sessionId,
-          personaId: body.personaId,
-          profileJson: JSON.stringify(profile),
-          overridesJson: '{}',
-          ownerEmail,
-        },
-      });
-    }
 
     return c.json({ ok: true, persona: profile }, 200);
   });
@@ -264,25 +256,21 @@ export function registerPersonaRoutes(app: Hono): void {
   app.get('/sessions/:sessionId/persona', async (c) => {
     const sessionId = c.req.param('sessionId');
 
-    const sessionPersona = await db.sessionPersona.findUnique({
-      where: { sessionId },
-    });
+    const playerState = await getActorState(sessionId as any, 'player');
 
-    if (!sessionPersona) {
+    if (!playerState) {
       return c.json({ ok: false, error: 'no persona attached to session' } satisfies ApiError, 404);
     }
 
     try {
-      const profile = PersonaProfileSchema.parse(JSON.parse(sessionPersona.profileJson));
-      const overrides: Record<string, unknown> = sessionPersona.overridesJson
-        ? (JSON.parse(sessionPersona.overridesJson) as Record<string, unknown>)
-        : {};
+      const state = playerState.state as Record<string, any>;
+      const profile = PersonaProfileSchema.parse(state.profile || state);
 
       return c.json(
         {
           ok: true,
           persona: profile,
-          overrides,
+          overrides: {}, // We no longer support legacy overrides here
         },
         200
       );
@@ -291,63 +279,17 @@ export function registerPersonaRoutes(app: Hono): void {
     }
   });
 
-  // PUT /sessions/:sessionId/persona/overrides - update session persona overrides
-  // @deprecated Use POST /sessions/:id/turns with tool-based state patches instead.
-  // This endpoint bypasses the state manager turn lifecycle. Retained for debugging/admin use.
-  app.put('/sessions/:sessionId/persona/overrides', async (c) => {
-    console.warn('[DEPRECATED] PUT /sessions/:sessionId/persona/overrides bypasses state manager');
-    const sessionId = c.req.param('sessionId');
-
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const sessionPersona = await db.sessionPersona.findUnique({
-      where: { sessionId },
-    });
-
-    if (!sessionPersona) {
-      return c.json({ ok: false, error: 'no persona attached to session' } satisfies ApiError, 404);
-    }
-
-    // Validate that overrides is an object
-    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-      return c.json({ ok: false, error: 'overrides must be an object' } satisfies ApiError, 400);
-    }
-
-    const updated = await db.sessionPersona.update({
-      where: { sessionId },
-      data: {
-        overridesJson: JSON.stringify(body),
-      },
-    });
-
-    if (!updated?.overridesJson) {
-      return c.json({ ok: false, error: 'Failed to update persona overrides' }, 500);
-    }
-
-    return c.json(
-      { ok: true, overrides: JSON.parse(updated.overridesJson) as Record<string, unknown> },
-      200
-    );
-  });
-
   // DELETE /sessions/:sessionId/persona - detach persona from session
   app.delete('/sessions/:sessionId/persona', async (c) => {
     const sessionId = c.req.param('sessionId');
 
-    const existing = await db.sessionPersona.findUnique({
-      where: { sessionId },
-    });
+    const existing = await getActorState(sessionId as any, 'player');
 
     if (!existing) {
       return c.json({ ok: false, error: 'no persona attached to session' } satisfies ApiError, 404);
     }
 
-    await db.sessionPersona.delete({ where: { sessionId } });
+    await deleteActorState(sessionId as any, 'player');
     return c.body(null, 204);
   });
 }

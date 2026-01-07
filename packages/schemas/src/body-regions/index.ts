@@ -18,7 +18,7 @@ export * from './arms/index.js';
 export * from './groin/index.js';
 export * from './legs/index.js';
 export * from './feet/index.js';
-export * from './hygiene-registry.js';
+export * from './hygiene-data.js';
 export * from './hierarchy.js';
 export * from './utils.js';
 

@@ -14,8 +14,16 @@ import type {
   QueryNpcListResult,
   GetNpcTranscriptResult,
 } from './types.js';
-import { getNpcMessages, getSessionTagsWithDefinitions } from '../../db/sessionsClient.js';
-import { db } from '../../db/prismaClient.js';
+import {
+  getSessionTagsWithDefinitions,
+  drizzle,
+  actorStates,
+  events,
+  eq,
+  and,
+  desc,
+  getEntityProfile,
+} from '@minimal-rpg/db/node';
 import { safeParseJson } from '@minimal-rpg/utils';
 
 // =============================================================================
@@ -135,11 +143,16 @@ export class SessionToolHandler {
    */
   private async executeGetSessionPersona(): Promise<GetSessionPersonaResult | ToolResult> {
     try {
-      const sessionPersona = await db.sessionPersona.findUnique({
-        where: { sessionId: this.sessionId },
-      });
+      // In the new schema, persona is stored as an actor_state with actorType 'player'
+      const [playerState] = await drizzle
+        .select()
+        .from(actorStates)
+        .where(
+          and(eq(actorStates.sessionId, this.sessionId as any), eq(actorStates.actorType, 'player'))
+        )
+        .limit(1);
 
-      if (!sessionPersona) {
+      if (!playerState) {
         return {
           success: true,
           persona: null,
@@ -147,29 +160,16 @@ export class SessionToolHandler {
         };
       }
 
-      // Get the persona details
-      const persona = await db.persona.findUnique({
-        where: { id: sessionPersona.personaId },
-      });
-
-      if (!persona) {
-        return {
-          success: true,
-          persona: null,
-          has_persona: false,
-        };
-      }
-
-      // Parse profileJson for name and attributes
-      const profile = safeParseJson<Record<string, unknown>>(persona.profileJson, {});
-      const name = typeof profile['name'] === 'string' ? profile['name'] : persona.id;
+      const state = playerState.state as Record<string, any>;
+      const profile = state.profile || state;
+      const name = typeof profile['name'] === 'string' ? profile['name'] : playerState.actorId;
       const description =
         typeof profile['description'] === 'string' ? profile['description'] : undefined;
 
       return {
         success: true,
         persona: {
-          id: persona.id,
+          id: playerState.actorId,
           name,
           description,
           attributes: profile,
@@ -192,29 +192,24 @@ export class SessionToolHandler {
     args: QueryNpcListArgs
   ): Promise<QueryNpcListResult | ToolResult> {
     try {
-      // Use characterInstance table (NPCs are stored there with role='npc')
-      const instances = await db.characterInstance.findMany({
-        where: { sessionId: this.sessionId },
-        orderBy: { createdAt: 'asc' },
-      });
+      // Query actorStates for this session
+      const instances = await drizzle
+        .select()
+        .from(actorStates)
+        .where(
+          and(eq(actorStates.sessionId, this.sessionId as any), eq(actorStates.actorType, 'npc'))
+        )
+        .orderBy(desc(actorStates.createdAt));
 
-      // Filter to only NPC roles if active_only is set
-      // (In this context, "active" means role != 'primary')
-      let filtered = instances;
-      if (args.active_only) {
-        filtered = instances.filter((i) => i.role === 'npc');
-      }
-
-      const npcs = filtered.map((instance) => {
-        // Try to get name from profileJson
-        const profile = safeParseJson<{ name?: string }>(instance.profileJson, {});
-        const name = profile.name ?? instance.templateId;
+      const npcs = instances.map((instance) => {
+        const state = instance.state as Record<string, any>;
+        const name = state.name || instance.actorId;
 
         return {
-          id: instance.id,
+          id: instance.actorId,
           name,
-          template_id: instance.templateId,
-          is_active: instance.role === 'npc',
+          template_id: instance.entityProfileId || instance.actorId,
+          is_active: state.status === 'active',
         };
       });
 
@@ -241,29 +236,41 @@ export class SessionToolHandler {
     try {
       const limit = args.limit ?? 20;
 
-      const rows = await getNpcMessages(this.ownerEmail, this.sessionId, args.npc_id, { limit });
+      // Query SPOKE events for this session related to the NPC
+      // Note: We might want events where actorId is NPC OR where targetActorId is NPC
+      const rows = await drizzle
+        .select()
+        .from(events)
+        .where(and(eq(events.sessionId, this.sessionId as any), eq(events.type, 'SPOKE')))
+        .orderBy(desc(events.sequence))
+        .limit(limit);
 
       // Map speaker field to role (player -> user, npc/narrator -> assistant)
-      const messages = rows.map((row) => ({
-        role: row.speaker === 'player' ? 'user' : 'assistant',
-        content: row.content,
-        timestamp: row.createdAt,
-      }));
-
-      // Try to get NPC name from character instance
-      let npcName: string | undefined;
-      const instances = await db.characterInstance.findMany({
-        where: { sessionId: this.sessionId },
+      const messages = rows.reverse().map((row) => {
+        const payload = row.payload as Record<string, any>;
+        return {
+          role: row.actorId === 'player' ? 'user' : 'assistant',
+          content: payload.content || '',
+          timestamp: row.timestamp.toISOString(),
+        };
       });
 
-      // Find matching instance by id or templateId
-      const matchingInstance = instances.find(
-        (i) => i.id === args.npc_id || i.templateId === args.npc_id
-      );
+      // Try to get NPC name from actor states
+      let npcName: string | undefined;
+      const [actorState] = await drizzle
+        .select()
+        .from(actorStates)
+        .where(
+          and(
+            eq(actorStates.sessionId, this.sessionId as any),
+            eq(actorStates.actorId, args.npc_id)
+          )
+        )
+        .limit(1);
 
-      if (matchingInstance) {
-        const profile = safeParseJson<{ name?: string }>(matchingInstance.profileJson, {});
-        npcName = profile.name;
+      if (actorState) {
+        const state = actorState.state as Record<string, any>;
+        npcName = state.name;
       }
 
       return {

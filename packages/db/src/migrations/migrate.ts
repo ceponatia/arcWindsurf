@@ -11,7 +11,7 @@ import type { MigrationPool } from './types.js';
 // Source of truth: repo root `.env` (shared across the monorepo).
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 // Create a plain pool without pgvector registration (since extension may not exist yet)
 const env: Record<string, string | undefined> =
@@ -48,12 +48,19 @@ async function run() {
   const Path = path as unknown as PathLike;
   const FS = fs as unknown as FsPromisesLike;
 
-  const sqlDir = Path.resolve(Path.dirname(new URL(import.meta.url).pathname), '../../sql');
+  // Support SQL_DIR env var for fresh migrations (sql-fresh vs sql)
+  const sqlDirName = env.SQL_DIR || 'sql';
+  const sqlDir = Path.resolve(
+    Path.dirname(new URL(import.meta.url).pathname),
+    `../../${sqlDirName}`
+  );
   try {
     await FS.mkdir(sqlDir, { recursive: true });
   } catch {
     // Directory may already exist; ignore
   }
+
+  console.log(`[db] Using SQL directory: ${sqlDirName}`);
 
   // Only apply real, ordered migrations (e.g. 001_init.sql).
   // Ignore generated helpers like supabase_bootstrap.sql.

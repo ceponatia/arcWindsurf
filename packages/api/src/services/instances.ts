@@ -5,17 +5,13 @@ import {
   type SettingProfile,
 } from '@minimal-rpg/schemas';
 import type { OverridesObject, OverridesAudit } from './types.js';
-import { db } from '../db/prismaClient.js';
+import {
+  getActorState,
+  upsertActorState,
+  getProjection,
+  upsertProjection,
+} from '@minimal-rpg/db/node';
 import { deepMergeReplaceArrays } from '@minimal-rpg/utils';
-
-function parseJson<T>(text: string | null | undefined, fallback: T): T {
-  if (!text) return fallback;
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 export async function upsertCharacterOverrides(params: {
   sessionId: string;
@@ -23,25 +19,32 @@ export async function upsertCharacterOverrides(params: {
   baseline: CharacterProfile;
   overrides: OverridesObject;
 }): Promise<OverridesAudit> {
-  const { sessionId, baseline, overrides } = params;
-  const instance = await db.characterInstance.findUnique({ where: { sessionId } });
-  if (!instance) {
-    throw new Error(`character instance not found for session ${sessionId}`);
+  const { sessionId, characterId, baseline, overrides } = params;
+
+  // Use characterId as the actorId for the player
+  const actorState = await getActorState(sessionId as any, characterId);
+  if (!actorState) {
+    throw new Error(`actor state not found for session ${sessionId} character ${characterId}`);
   }
 
-  const baselineObj = parseJson<Record<string, unknown>>(instance.templateSnapshot, {});
-  const currentProfile = parseJson<CharacterProfile>(instance.profileJson, baseline);
+  const currentProfile = (actorState.state as CharacterProfile) || baseline;
   const previous = { ...(currentProfile as unknown as Record<string, unknown>) };
   const nextProfile = deepMergeReplaceArrays<CharacterProfile>(currentProfile, overrides);
   const parsedNext = CharacterProfileSchema.safeParse(nextProfile);
 
-  await db.characterInstance.update({
-    where: { id: instance.id },
-    data: { profileJson: JSON.stringify(parsedNext.success ? parsedNext.data : nextProfile) },
+  const finalProfile = parsedNext.success ? parsedNext.data : nextProfile;
+
+  await upsertActorState({
+    sessionId: sessionId as any,
+    actorId: characterId,
+    actorType: 'player',
+    entityProfileId: actorState.entityProfileId as any,
+    state: finalProfile as any,
+    lastEventSeq: actorState.lastEventSeq,
   });
 
   return {
-    baseline: baselineObj,
+    baseline: baseline as any,
     overrides,
     previous,
   };
@@ -54,24 +57,25 @@ export async function upsertSettingOverrides(params: {
   overrides: OverridesObject;
 }): Promise<OverridesAudit> {
   const { sessionId, baseline, overrides } = params;
-  const instance = await db.settingInstance.findUnique({ where: { sessionId } });
-  if (!instance) {
-    throw new Error(`setting instance not found for session ${sessionId}`);
+
+  const projection = await getProjection(sessionId as any);
+  if (!projection) {
+    throw new Error(`projection not found for session ${sessionId}`);
   }
 
-  const baselineObj = parseJson<Record<string, unknown>>(instance.templateSnapshot, {});
-  const currentProfile = parseJson<SettingProfile>(instance.profileJson, baseline);
+  const currentProfile = (projection.worldState as SettingProfile) || baseline;
   const previous = { ...(currentProfile as unknown as Record<string, unknown>) };
   const nextProfile = deepMergeReplaceArrays<SettingProfile>(currentProfile, overrides);
   const parsedNext = SettingProfileSchema.safeParse(nextProfile);
 
-  await db.settingInstance.update({
-    where: { id: instance.id },
-    data: { profileJson: JSON.stringify(parsedNext.success ? parsedNext.data : nextProfile) },
+  const finalProfile = parsedNext.success ? parsedNext.data : nextProfile;
+
+  await upsertProjection(sessionId as any, {
+    worldState: finalProfile as any,
   });
 
   return {
-    baseline: baselineObj,
+    baseline: baseline as any,
     overrides,
     previous,
   };
@@ -81,10 +85,10 @@ export async function getEffectiveCharacter(
   sessionId: string,
   character: CharacterProfile
 ): Promise<CharacterProfile> {
-  const instance = await db.characterInstance.findUnique({ where: { sessionId } });
-  if (!instance) return character;
-  const parsed = parseJson<CharacterProfile>(instance.profileJson, character);
-  const refined = CharacterProfileSchema.safeParse(parsed);
+  const actorState = await getActorState(sessionId as any, character.id);
+  if (!actorState) return character;
+
+  const refined = CharacterProfileSchema.safeParse(actorState.state);
   return refined.success ? refined.data : character;
 }
 
@@ -92,10 +96,10 @@ export async function getEffectiveSetting(
   sessionId: string,
   setting: SettingProfile
 ): Promise<SettingProfile> {
-  const instance = await db.settingInstance.findUnique({ where: { sessionId } });
-  if (!instance) return setting;
-  const parsed = parseJson<SettingProfile>(instance.profileJson, setting);
-  const refined = SettingProfileSchema.safeParse(parsed);
+  const projection = await getProjection(sessionId as any);
+  if (!projection) return setting;
+
+  const refined = SettingProfileSchema.safeParse(projection.worldState);
   return refined.success ? refined.data : setting;
 }
 

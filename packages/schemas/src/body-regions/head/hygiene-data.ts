@@ -89,19 +89,49 @@ export const HEAD_HYGIENE_CONFIG = {
 
 export const HEAD_HYGIENE_MODIFIERS = flattenHygieneData(HEAD_HYGIENE_CONFIG, [...HEAD_REGIONS]);
 
+/**
+ * Grouped defaults for head regions.
+ */
+export const HEAD_SCENT_DATA = {
+  main: {
+    head: { ...NEUTRAL, intensity: 0.2 },
+    face: CLEAN_SKIN,
+    forehead: CLEAN_SKIN,
+  },
+  eyes: {
+    leftEye: CLEAN_SKIN,
+    rightEye: CLEAN_SKIN,
+  },
+  nose: {
+    nose: CLEAN_SKIN,
+  },
+  cheeks: {
+    leftCheek: CLEAN_SKIN,
+    rightCheek: CLEAN_SKIN,
+  },
+  chin: {
+    chin: CLEAN_SKIN,
+  },
+  mouth: {
+    mouth: { primary: 'neutral', intensity: 0.15 },
+  },
+  hair: {
+    hair: { primary: 'clean hair', notes: ['shampoo'], intensity: 0.3 },
+  },
+  ears: {
+    ears: { ...CLEAN_SKIN, intensity: 0.15 },
+    leftEar: { ...CLEAN_SKIN, intensity: 0.15 },
+    rightEar: { ...CLEAN_SKIN, intensity: 0.15 },
+  },
+};
+
 export const HEAD_DEFAULT_SCENTS: Partial<Record<HeadRegion, RegionScent>> = {
-  head: { ...NEUTRAL, intensity: 0.2 },
-  face: CLEAN_SKIN,
-  forehead: CLEAN_SKIN,
-  leftEye: CLEAN_SKIN,
-  rightEye: CLEAN_SKIN,
-  nose: CLEAN_SKIN,
-  leftCheek: CLEAN_SKIN,
-  rightCheek: CLEAN_SKIN,
-  chin: CLEAN_SKIN,
-  mouth: { primary: 'neutral', intensity: 0.15 },
-  hair: { primary: 'clean hair', notes: ['shampoo'], intensity: 0.3 },
-  ears: { ...CLEAN_SKIN, intensity: 0.15 },
-  leftEar: { ...CLEAN_SKIN, intensity: 0.15 },
-  rightEar: { ...CLEAN_SKIN, intensity: 0.15 },
+  ...HEAD_SCENT_DATA.main,
+  ...HEAD_SCENT_DATA.eyes,
+  ...HEAD_SCENT_DATA.nose,
+  ...HEAD_SCENT_DATA.cheeks,
+  ...HEAD_SCENT_DATA.chin,
+  ...HEAD_SCENT_DATA.mouth,
+  ...HEAD_SCENT_DATA.hair,
+  ...HEAD_SCENT_DATA.ears,
 };

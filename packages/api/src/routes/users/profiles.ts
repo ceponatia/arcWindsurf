@@ -6,10 +6,17 @@ import {
   type SettingProfile,
 } from '@minimal-rpg/schemas';
 import { deleteCharacterFile } from '../../loaders/loader.js';
-import { db } from '../../db/prismaClient.js';
+import {
+  listEntityProfiles,
+  getEntityProfile,
+  createEntityProfile,
+  updateEntityProfile,
+  deleteEntityProfile,
+} from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
 import type { LoadedDataGetter, CharacterSummary, SettingSummary } from '../../loaders/types.js';
 import { mapCharacterSummary, mapSettingSummary } from '../../mappers/profile-mappers.js';
+import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 interface ProfilesRouteDeps {
   getLoaded: LoadedDataGetter;
@@ -18,6 +25,7 @@ interface ProfilesRouteDeps {
 export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void {
   // GET /characters - summarized character profiles
   app.get('/characters', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     const loaded = deps.getLoaded();
     if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
 
@@ -26,12 +34,17 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     );
 
     // DB dynamic characters
-    const dbRows = await db.characterTemplate.findMany();
+    const dbRows = await listEntityProfiles({
+      entityType: 'character',
+      ownerEmail,
+      visibility: 'public',
+    });
+
     const dbProfiles: CharacterProfile[] = [];
     for (const t of dbRows) {
       try {
-        const json = t.profileJson;
-        const parsed = CharacterProfileSchema.parse(JSON.parse(json));
+        const profile = t.profileJson as any;
+        const parsed = CharacterProfileSchema.parse(profile);
         dbProfiles.push(parsed);
       } catch {
         // skip invalid rows silently; could log
@@ -54,13 +67,11 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     // Check DB
-    const dbChar = await db.characterTemplate.findUnique({
-      where: { id },
-    });
-    if (dbChar) {
+    const dbChar = await getEntityProfile(id as any);
+    if (dbChar && dbChar.entityType === 'character') {
       try {
-        const json = dbChar.profileJson;
-        const parsed = CharacterProfileSchema.parse(JSON.parse(json));
+        const profile = dbChar.profileJson as any;
+        const parsed = CharacterProfileSchema.parse(profile);
         return c.json(parsed, 200);
       } catch {
         return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
@@ -72,6 +83,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
 
   // POST /characters - create a new dynamic character template
   app.post('/characters', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     let body: unknown;
     try {
       body = await c.req.json();
@@ -83,7 +95,8 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
     const profile = parsed.data;
-    // Use provided id or reject if duplicate (unless updating DB char)
+
+    // Check if it's a filesystem character (cannot edit)
     const existingFs = deps.getLoaded()?.characters.find((c) => c.id === profile.id);
     if (existingFs) {
       return c.json(
@@ -92,33 +105,38 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       );
     }
 
-    const existingDb = await db.characterTemplate.findUnique({
-      where: { id: profile.id },
-    });
+    const existingDb = await getEntityProfile(profile.id as any);
 
     if (existingDb) {
-      await db.characterTemplate.update({
-        where: { id: profile.id },
-        data: {
-          profileJson: JSON.stringify(profile),
-        },
+      if (existingDb.ownerEmail !== ownerEmail && existingDb.visibility !== 'public') {
+        return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
+      }
+
+      await updateEntityProfile(profile.id as any, {
+        name: profile.name,
+        profileJson: profile as any,
+        tags: profile.tags,
       });
       const summary: CharacterSummary = mapCharacterSummary(profile, 'db');
       return c.json({ ok: true, character: summary }, 200);
     }
 
-    await db.characterTemplate.create({
-      data: {
-        id: profile.id,
-        profileJson: JSON.stringify(profile),
-      },
+    await createEntityProfile({
+      entityType: 'character',
+      name: profile.name,
+      ownerEmail,
+      profileJson: profile as any,
+      tags: profile.tags,
+      visibility: 'private', // Default to private for new templates
     });
+
     const summary: CharacterSummary = mapCharacterSummary(profile, 'db');
     return c.json({ ok: true, character: summary }, 201);
   });
 
   // DELETE /characters/:id — delete a dynamic character template from DB or filesystem
   app.delete('/characters/:id', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     const id = c.req.param('id');
     const loaded = deps.getLoaded();
 
@@ -136,27 +154,38 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       );
     }
 
-    const existing = await db.characterTemplate.findUnique({
-      where: { id },
-    });
-    if (!existing) return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
-    await db.characterTemplate.delete({ where: { id } });
+    const existing = await getEntityProfile(id as any);
+    if (!existing || existing.entityType !== 'character') {
+      return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
+    }
+
+    if (existing.ownerEmail !== ownerEmail) {
+      return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
+    }
+
+    await deleteEntityProfile(id as any);
     return c.body(null, 204);
   });
 
   // GET /settings - summarized setting profiles
   app.get('/settings', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     const loaded = deps.getLoaded();
     if (!loaded) return c.json({ ok: false, error: 'data not loaded' } satisfies ApiError, 500);
     const fsMapped: SettingSummary[] = loaded.settings.map((s) => mapSettingSummary(s, 'fs'));
 
     // Include dynamic settings from DB if present
-    const dbRows = await db.settingTemplate.findMany();
+    const dbRows = await listEntityProfiles({
+      entityType: 'setting',
+      ownerEmail,
+      visibility: 'public',
+    });
+
     const dbProfiles: SettingProfile[] = [];
     for (const t of dbRows) {
       try {
-        const json = t.profileJson;
-        const parsed = SettingProfileSchema.parse(JSON.parse(json));
+        const profile = t.profileJson as any;
+        const parsed = SettingProfileSchema.parse(profile);
         dbProfiles.push(parsed);
       } catch {
         // skip invalid rows
@@ -179,13 +208,11 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     // Check DB
-    const dbSet = await db.settingTemplate.findUnique({
-      where: { id },
-    });
-    if (dbSet) {
+    const dbSet = await getEntityProfile(id as any);
+    if (dbSet && dbSet.entityType === 'setting') {
       try {
-        const json = dbSet.profileJson;
-        const parsed = SettingProfileSchema.parse(JSON.parse(json));
+        const profile = dbSet.profileJson as any;
+        const parsed = SettingProfileSchema.parse(profile);
         return c.json(parsed, 200);
       } catch {
         return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
@@ -197,6 +224,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
 
   // POST /settings - create or update a dynamic setting template
   app.post('/settings', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     let body: unknown;
     try {
       body = await c.req.json();
@@ -215,39 +243,47 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json({ ok: false, error: 'cannot edit filesystem setting' } satisfies ApiError, 409);
     }
 
-    const existingDb = await db.settingTemplate.findUnique({
-      where: { id: profile.id },
-    });
+    const existingDb = await getEntityProfile(profile.id as any);
 
     if (existingDb) {
-      await db.settingTemplate.update({
-        where: { id: profile.id },
-        data: {
-          profileJson: JSON.stringify(profile),
-        },
+      if (existingDb.ownerEmail !== ownerEmail && existingDb.visibility !== 'public') {
+        return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
+      }
+
+      await updateEntityProfile(profile.id as any, {
+        name: profile.name,
+        profileJson: profile as any,
       });
       const summary: SettingSummary = mapSettingSummary(profile, 'db');
       return c.json({ ok: true, setting: summary }, 200);
     }
 
-    await db.settingTemplate.create({
-      data: {
-        id: profile.id,
-        profileJson: JSON.stringify(profile),
-      },
+    await createEntityProfile({
+      entityType: 'setting',
+      name: profile.name,
+      ownerEmail,
+      profileJson: profile as any,
+      visibility: 'private',
     });
+
     const summary: SettingSummary = mapSettingSummary(profile, 'db');
     return c.json({ ok: true, setting: summary }, 201);
   });
 
   // DELETE /settings/:id — delete a setting template from DB
   app.delete('/settings/:id', async (c) => {
+    const ownerEmail = getOwnerEmail(c);
     const id = c.req.param('id');
-    const existing = await db.settingTemplate.findUnique({
-      where: { id },
-    });
-    if (!existing) return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
-    await db.settingTemplate.delete({ where: { id } });
+    const existing = await getEntityProfile(id as any);
+    if (!existing || existing.entityType !== 'setting') {
+      return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
+    }
+
+    if (existing.ownerEmail !== ownerEmail) {
+      return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
+    }
+
+    await deleteEntityProfile(id as any);
     return c.body(null, 204);
   });
 }

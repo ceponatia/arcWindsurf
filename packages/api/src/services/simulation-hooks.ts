@@ -11,20 +11,6 @@
  *
  * @see dev-docs/31-npc-simulation-and-performance.md
  */
-import type {
-  GameTime,
-  NpcLocationState,
-  TieredSimulationConfig,
-  TimeSkipSimulation,
-  DayPeriod,
-  LocationOccupancy,
-  PresentNpc,
-  CrowdLevel,
-  NpcTier as NpcTierNS,
-} from '@minimal-rpg/schemas';
-
-/** NPC tier type (aliased to avoid namespace collision) */
-type NpcTier = NpcTierNS.NpcTier;
 import {
   DEFAULT_TIERED_SIMULATION_CONFIG,
   createEmptyOccupancy,
@@ -33,53 +19,11 @@ import {
 import type { SimulationNpcInfo } from './simulation-service.js';
 import { runSimulationTick, runTimeSkipSimulation } from './simulation-service.js';
 import type { NpcScheduleData } from './schedule-service.js';
-import {
-  getAllNpcSimulationCaches,
-  bulkUpsertNpcSimulationCaches,
-  invalidateStaleSimulationCaches,
-} from '../db/sessionsClient.js';
+import { listActorStatesForSession, bulkUpsertActorStates } from '@minimal-rpg/db/node';
 
 // =============================================================================
-// Types
+// Helper Functions
 // =============================================================================
-
-/**
- * Cache update data for simulation hooks.
- * Matches the structure expected by bulkUpsertNpcSimulationCaches.
- */
-interface SimulationCacheUpdate {
-  lastComputedAtJson?: Record<string, unknown>;
-  currentStateJson?: Record<string, unknown>;
-  dayDecisionsJson?: Record<string, unknown>;
-}
-
-/**
- * Converts a Map of cache updates to an array format expected by bulkUpsertNpcSimulationCaches.
- */
-function mapToDbCacheArray(cachesToUpdate: Map<string, SimulationCacheUpdate>): {
-  npcId: string;
-  lastComputedAtJson: Record<string, unknown>;
-  currentStateJson: Record<string, unknown>;
-  dayDecisionsJson?: Record<string, unknown>;
-}[] {
-  return Array.from(cachesToUpdate.entries()).map(([npcId, cache]) => {
-    const result: {
-      npcId: string;
-      lastComputedAtJson: Record<string, unknown>;
-      currentStateJson: Record<string, unknown>;
-      dayDecisionsJson?: Record<string, unknown>;
-    } = {
-      npcId,
-      lastComputedAtJson: cache.lastComputedAtJson ?? {},
-      currentStateJson: cache.currentStateJson ?? {},
-    };
-    // Only include dayDecisionsJson if it's defined (not undefined)
-    if (cache.dayDecisionsJson !== undefined) {
-      result.dayDecisionsJson = cache.dayDecisionsJson;
-    }
-    return result;
-  });
-}
 
 /**
  * NPC info for hooks (combines schedule and tier info).
@@ -90,6 +34,15 @@ export interface HookNpcInfo {
   scheduleData: NpcScheduleData;
   lastInteractionTurn?: number | undefined;
   distanceFromPlayer?: number | undefined;
+}
+
+/**
+ * Simulation states extracted from actor states.
+ */
+interface SimulationContext {
+  lastComputedAt?: any;
+  dayDecisions?: any;
+  currentState?: NpcLocationState;
 }
 
 /**
@@ -216,7 +169,6 @@ export interface TimeSkipHookResult {
  */
 export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResult> {
   const {
-    ownerEmail,
     sessionId,
     currentTime,
     playerLocationId,
@@ -234,18 +186,24 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
     distanceFromPlayer: npc.distanceFromPlayer,
   }));
 
-  // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
+  // Get current NPC states
+  const actorStates = await listActorStatesForSession(sessionId as any);
+  const npcStatesByActorId = new Map(
+    actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
+  );
+
   const previousLocationStates = new Map<string, NpcLocationState>();
 
-  for (const [npcId, cache] of caches.entries()) {
-    const currentState = cache.currentStateJson as NpcLocationState | undefined;
-    if (currentState) {
-      const npc = simulationNpcs.find((n) => n.npcId === npcId);
-      if (npc) {
-        npc.currentState = currentState;
+  for (const npcInfo of simulationNpcs) {
+    const actorState = npcStatesByActorId.get(npcInfo.npcId);
+    if (actorState) {
+      const stateObj = actorState.state as any;
+      const simData = stateObj.simulation || {};
+
+      npcInfo.currentState = simData.currentState || stateObj.locationState;
+      if (npcInfo.currentState) {
+        previousLocationStates.set(npcInfo.npcId, npcInfo.currentState);
       }
-      previousLocationStates.set(npcId, currentState);
     }
   }
 
@@ -267,22 +225,39 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
 
   // Build updated location states
   const locationStates = new Map<string, NpcLocationState>();
-  const cachesToUpdate = new Map<string, SimulationCacheUpdate>();
+  const updates: any[] = [];
 
   for (const simResult of result.results) {
     locationStates.set(simResult.npcId, simResult.newState);
 
     if (simResult.stateChanged) {
-      cachesToUpdate.set(simResult.npcId, {
-        currentStateJson: simResult.newState as unknown as Record<string, unknown>,
-        lastComputedAtJson: currentTime as unknown as Record<string, unknown>,
-      });
+      const actorState = npcStatesByActorId.get(simResult.npcId);
+      if (actorState) {
+        const stateObj = actorState.state as any;
+        const newState = {
+          ...stateObj,
+          simulation: {
+            ...(stateObj.simulation || {}),
+            currentState: simResult.newState,
+            lastComputedAt: currentTime,
+          },
+        };
+
+        updates.push({
+          sessionId: sessionId as any,
+          actorId: simResult.npcId,
+          actorType: 'npc',
+          entityProfileId: actorState.entityProfileId,
+          state: newState,
+          lastEventSeq: actorState.lastEventSeq,
+        });
+      }
     }
   }
 
-  // Bulk update caches
-  if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
+  // Bulk update
+  if (updates.length > 0) {
+    await bulkUpsertActorStates(updates);
   }
 
   // Check for location changes
@@ -319,7 +294,6 @@ export async function onPeriodChange(
   input: PeriodChangeHookInput
 ): Promise<PeriodChangeHookResult> {
   const {
-    ownerEmail,
     sessionId,
     currentTime,
     playerLocationId,
@@ -334,17 +308,23 @@ export async function onPeriodChange(
     scheduleData: npc.scheduleData,
   }));
 
-  // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
+  // Get current NPC states
+  const actorStates = await listActorStatesForSession(sessionId as any);
+  const npcStatesByActorId = new Map(
+    actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
+  );
+
   const previousOccupancy = new Set<string>();
 
-  for (const [npcId, cache] of caches.entries()) {
-    const npc = simulationNpcs.find((n) => n.npcId === npcId);
-    const currentState = cache.currentStateJson as NpcLocationState | undefined;
-    if (npc && currentState) {
-      npc.currentState = currentState;
-      if (currentState.locationId === playerLocationId) {
-        previousOccupancy.add(npcId);
+  for (const npcInfo of simulationNpcs) {
+    const actorState = npcStatesByActorId.get(npcInfo.npcId);
+    if (actorState) {
+      const stateObj = actorState.state as any;
+      const simData = stateObj.simulation || {};
+
+      npcInfo.currentState = simData.currentState || stateObj.locationState;
+      if (npcInfo.currentState?.locationId === playerLocationId) {
+        previousOccupancy.add(npcInfo.npcId);
       }
     }
   }
@@ -359,7 +339,7 @@ export async function onPeriodChange(
 
   // Build updated location states
   const locationStates = new Map<string, NpcLocationState>();
-  const cachesToUpdate = new Map<string, SimulationCacheUpdate>();
+  const updates: any[] = [];
   const newOccupancy = new Set<string>();
 
   for (const simResult of result.results) {
@@ -370,16 +350,33 @@ export async function onPeriodChange(
     }
 
     if (simResult.stateChanged) {
-      cachesToUpdate.set(simResult.npcId, {
-        currentStateJson: simResult.newState as unknown as Record<string, unknown>,
-        lastComputedAtJson: currentTime as unknown as Record<string, unknown>,
-      });
+      const actorState = npcStatesByActorId.get(simResult.npcId);
+      if (actorState) {
+        const stateObj = actorState.state as any;
+        const newState = {
+          ...stateObj,
+          simulation: {
+            ...(stateObj.simulation || {}),
+            currentState: simResult.newState,
+            lastComputedAt: currentTime,
+          },
+        };
+
+        updates.push({
+          sessionId: sessionId as any,
+          actorId: simResult.npcId,
+          actorType: 'npc',
+          entityProfileId: actorState.entityProfileId,
+          state: newState,
+          lastEventSeq: actorState.lastEventSeq,
+        });
+      }
     }
   }
 
-  // Bulk update caches
-  if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
+  // Bulk update
+  if (updates.length > 0) {
+    await bulkUpsertActorStates(updates);
   }
 
   // Check if occupancy changed
@@ -405,7 +402,6 @@ export async function onLocationChange(
   input: LocationChangeHookInput
 ): Promise<LocationChangeHookResult> {
   const {
-    ownerEmail,
     sessionId,
     currentTime,
     newLocationId,
@@ -420,14 +416,18 @@ export async function onLocationChange(
     scheduleData: npc.scheduleData,
   }));
 
-  // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
+  // Get current NPC states
+  const actorStates = await listActorStatesForSession(sessionId as any);
+  const npcStatesByActorId = new Map(
+    actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
+  );
 
-  for (const [npcId, cache] of caches.entries()) {
-    const npc = simulationNpcs.find((n) => n.npcId === npcId);
-    const currentState = cache.currentStateJson as NpcLocationState | undefined;
-    if (npc && currentState) {
-      npc.currentState = currentState;
+  for (const npcInfo of simulationNpcs) {
+    const actorState = npcStatesByActorId.get(npcInfo.npcId);
+    if (actorState) {
+      const stateObj = actorState.state as any;
+      const simData = stateObj.simulation || {};
+      npcInfo.currentState = simData.currentState || stateObj.locationState;
     }
   }
 
@@ -439,8 +439,8 @@ export async function onLocationChange(
     config,
   });
 
-  // Build location states and update caches
-  const cachesToUpdate = new Map<string, SimulationCacheUpdate>();
+  // Build location states and update
+  const updates: any[] = [];
   const npcsPresent: string[] = [];
 
   for (const simResult of result.results) {
@@ -449,16 +449,33 @@ export async function onLocationChange(
     }
 
     if (simResult.stateChanged) {
-      cachesToUpdate.set(simResult.npcId, {
-        currentStateJson: simResult.newState as unknown as Record<string, unknown>,
-        lastComputedAtJson: currentTime as unknown as Record<string, unknown>,
-      });
+      const actorState = npcStatesByActorId.get(simResult.npcId);
+      if (actorState) {
+        const stateObj = actorState.state as any;
+        const newState = {
+          ...stateObj,
+          simulation: {
+            ...(stateObj.simulation || {}),
+            currentState: simResult.newState,
+            lastComputedAt: currentTime,
+          },
+        };
+
+        updates.push({
+          sessionId: sessionId as any,
+          actorId: simResult.npcId,
+          actorType: 'npc',
+          entityProfileId: actorState.entityProfileId,
+          state: newState,
+          lastEventSeq: actorState.lastEventSeq,
+        });
+      }
     }
   }
 
-  // Bulk update caches
-  if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
+  // Bulk update
+  if (updates.length > 0) {
+    await bulkUpsertActorStates(updates);
   }
 
   // Build occupancy using the factory function
@@ -508,7 +525,6 @@ export async function onLocationChange(
  */
 export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHookResult> {
   const {
-    ownerEmail,
     sessionId,
     fromTime,
     toTime,
@@ -524,14 +540,18 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
     scheduleData: npc.scheduleData,
   }));
 
-  // Get current location states from cache
-  const caches = await getAllNpcSimulationCaches(ownerEmail, sessionId);
+  // Get current NPC states
+  const actorStates = await listActorStatesForSession(sessionId as any);
+  const npcStatesByActorId = new Map(
+    actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
+  );
 
-  for (const [npcId, cache] of caches.entries()) {
-    const npc = simulationNpcs.find((n) => n.npcId === npcId);
-    const currentState = cache.currentStateJson as NpcLocationState | undefined;
-    if (npc && currentState) {
-      npc.currentState = currentState;
+  for (const npcInfo of simulationNpcs) {
+    const actorState = npcStatesByActorId.get(npcInfo.npcId);
+    if (actorState) {
+      const stateObj = actorState.state as any;
+      const simData = stateObj.simulation || {};
+      npcInfo.currentState = simData.currentState || stateObj.locationState;
     }
   }
 
@@ -541,9 +561,9 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
     config,
   });
 
-  // Build final location states and update caches
+  // Build final location states and update
   const finalLocationStates = new Map<string, NpcLocationState>();
-  const cachesToUpdate = new Map<string, SimulationCacheUpdate>();
+  const updates: any[] = [];
   const npcsAtLocation: string[] = [];
 
   for (const change of simulation.stateChanges) {
@@ -553,22 +573,32 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
       npcsAtLocation.push(change.npcId);
     }
 
-    cachesToUpdate.set(change.npcId, {
-      currentStateJson: change.newState as unknown as Record<string, unknown>,
-      lastComputedAtJson: toTime as unknown as Record<string, unknown>,
-    });
+    const actorState = npcStatesByActorId.get(change.npcId);
+    if (actorState) {
+      const stateObj = actorState.state as any;
+      const newState = {
+        ...stateObj,
+        simulation: {
+          ...(stateObj.simulation || {}),
+          currentState: change.newState,
+          lastComputedAt: toTime,
+        },
+      };
+
+      updates.push({
+        sessionId: sessionId as any,
+        actorId: change.npcId,
+        actorType: 'npc',
+        entityProfileId: actorState.entityProfileId,
+        state: newState,
+        lastEventSeq: actorState.lastEventSeq,
+      });
+    }
   }
 
-  // Invalidate stale caches (those not updated by time skip)
-  await invalidateStaleSimulationCaches(
-    ownerEmail,
-    sessionId,
-    fromTime as unknown as Record<string, unknown>
-  );
-
-  // Bulk update caches
-  if (cachesToUpdate.size > 0) {
-    await bulkUpsertNpcSimulationCaches(ownerEmail, sessionId, mapToDbCacheArray(cachesToUpdate));
+  // Bulk update
+  if (updates.length > 0) {
+    await bulkUpsertActorStates(updates);
   }
 
   // Build occupancy using the factory function
@@ -605,6 +635,57 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
     occupancy: finalOccupancy,
     summary,
   };
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Generate a narrative description of location occupancy.
+ */
+function generateOccupancyDescription(npcCount: number, crowdLevel: CrowdLevel): string {
+  if (npcCount === 0) {
+    return 'The area is deserted.';
+  }
+
+  if (npcCount === 1) {
+    return 'Someone is here.';
+  }
+
+  switch (crowdLevel) {
+    case 'empty':
+      return 'The area is nearly empty.';
+    case 'sparse':
+      return 'A few people are around.';
+    case 'moderate':
+      return 'There is a moderate crowd here.';
+    case 'crowded':
+      return 'The area is crowded with people.';
+    case 'packed':
+      return 'The area is packed wall to wall.';
+    default:
+      return `There are ${npcCount} people here.`;
+  }
+}
+
+/**
+ * Generate a summary of what happened during a time skip.
+ */
+function generateTimeSkipSummary(simulation: TimeSkipSimulation): string {
+  const changedCount = simulation.stateChanges.filter(
+    (c) => c.previousState.locationId !== c.newState.locationId
+  ).length;
+
+  if (changedCount === 0) {
+    return 'Time passes quietly. Everyone remains where they were.';
+  }
+
+  if (changedCount === 1) {
+    return 'During this time, someone moved to a different location.';
+  }
+
+  return `During this time, ${changedCount} people moved to different locations.`;
 }
 
 // =============================================================================

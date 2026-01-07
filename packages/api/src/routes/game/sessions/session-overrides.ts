@@ -7,7 +7,7 @@
  * These endpoints bypass the state manager turn lifecycle. Retained for debugging/admin use.
  */
 import type { Context } from 'hono';
-import { getSession } from '../../../db/sessionsClient.js';
+import { getSession } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import type { OverridesAudit } from '../../../services/types.js';
@@ -31,10 +31,10 @@ export async function handlePutCharacterOverrides(
 
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(ownerEmail, id);
+  const session = await getSession(id as any, ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const character = await findCharacter(loaded, session.characterTemplateId);
+  const character = await findCharacter(loaded, session.playerCharacterId || '');
   if (!character) {
     return serverError(c, 'character not found for session');
   }
@@ -74,10 +74,10 @@ export async function handlePutSettingOverrides(
 
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(ownerEmail, id);
+  const session = await getSession(id as any, ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const setting = await findSetting(loaded, session.settingTemplateId);
+  const setting = await findSetting(loaded, session.settingId || '');
   if (!setting) {
     return serverError(c, 'setting not found for session');
   }

@@ -71,18 +71,42 @@ const TOE_DEFAULTS = TOE_REGIONS.reduce(
   {} as Record<string, RegionScent>
 );
 
+/**
+ * Grouped defaults for feet regions.
+ */
+export const FEET_SCENT_DATA = {
+  ankles: {
+    leftAnkle: CLEAN_SKIN,
+    rightAnkle: CLEAN_SKIN,
+  },
+  feet: {
+    feet: NEUTRAL_FAINT,
+    leftFoot: NEUTRAL_FAINT,
+    rightFoot: NEUTRAL_FAINT,
+  },
+  heels: {
+    leftHeel: NEUTRAL_FAINT,
+    rightHeel: NEUTRAL_FAINT,
+  },
+  soles: {
+    leftSole: NEUTRAL_FAINT,
+    rightSole: NEUTRAL_FAINT,
+  },
+  arches: {
+    leftArch: NEUTRAL_FAINT,
+    rightArch: NEUTRAL_FAINT,
+  },
+  toes: {
+    toes: NEUTRAL_FAINT,
+    ...TOE_DEFAULTS,
+  },
+};
+
 export const FEET_DEFAULT_SCENTS: Partial<Record<FeetRegion, RegionScent>> = {
-  leftAnkle: CLEAN_SKIN,
-  rightAnkle: CLEAN_SKIN,
-  feet: NEUTRAL_FAINT,
-  leftFoot: NEUTRAL_FAINT,
-  rightFoot: NEUTRAL_FAINT,
-  leftHeel: NEUTRAL_FAINT,
-  rightHeel: NEUTRAL_FAINT,
-  leftSole: NEUTRAL_FAINT,
-  rightSole: NEUTRAL_FAINT,
-  leftArch: NEUTRAL_FAINT,
-  rightArch: NEUTRAL_FAINT,
-  toes: NEUTRAL_FAINT,
-  ...TOE_DEFAULTS,
+  ...FEET_SCENT_DATA.ankles,
+  ...FEET_SCENT_DATA.feet,
+  ...FEET_SCENT_DATA.heels,
+  ...FEET_SCENT_DATA.soles,
+  ...FEET_SCENT_DATA.arches,
+  ...FEET_SCENT_DATA.toes,
 };

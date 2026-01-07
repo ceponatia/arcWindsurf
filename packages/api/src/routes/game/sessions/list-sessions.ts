@@ -1,84 +1,36 @@
-/**
- * Session list handler
- * GET /sessions
- */
 import type { Context } from 'hono';
-import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
-import { listSessions } from '../../../db/sessionsClient.js';
-import { db } from '../../../db/prismaClient.js';
-import type { LoadedDataGetter } from '../../../loaders/types.js';
-import type { SessionListItem } from '../../../services/types.js';
-import { mapSessionListItem } from '../../../mappers/session-mappers.js';
+import { listSessions, getEntityProfile } from '@minimal-rpg/db/node';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 
-export async function handleListSessions(
-  c: Context,
-  getLoaded: LoadedDataGetter
-): Promise<Response> {
+export async function handleListSessions(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
   const sessions = await listSessions(ownerEmail);
-  const loaded = getLoaded();
-  if (!loaded) return c.json(sessions, 200);
 
-  const dbChars = await db.characterProfile.findMany();
-  const dbSettings = await db.settingProfile.findMany();
-
-  const decorated: SessionListItem[] = await Promise.all(
+  const decorated = await Promise.all(
     sessions.map(async (sess) => {
       let characterName: string | undefined;
       let settingName: string | undefined;
 
-      const fsCharacter = loaded.characters.find((ch) => ch.id === sess.characterTemplateId);
-      if (fsCharacter) {
-        characterName = fsCharacter.name;
-      } else {
-        const t = dbChars.find((t) => t.id === sess.characterTemplateId);
-        if (t) {
-          try {
-            characterName = CharacterProfileSchema.parse(JSON.parse(t.profileJson)).name;
-          } catch {
-            // ignore invalid profile
-          }
-        } else if (sess.characterInstanceId) {
-          const instance = await db.characterInstance.findUnique({
-            where: { sessionId: sess.id },
-          });
-          if (instance) {
-            try {
-              const parsed = CharacterProfileSchema.parse(JSON.parse(instance.profileJson));
-              characterName = parsed.name;
-            } catch {
-              // ignore invalid profile
-            }
-          }
-        }
+      if (sess.playerCharacterId) {
+        const char = await getEntityProfile(sess.playerCharacterId);
+        characterName = char?.name;
+      }
+      if (sess.settingId) {
+        const setting = await getEntityProfile(sess.settingId);
+        settingName = setting?.name;
       }
 
-      const fsSetting = loaded.settings.find((s) => s.id === sess.settingTemplateId);
-      if (fsSetting) {
-        settingName = fsSetting.name;
-      } else {
-        const t = dbSettings.find((t) => t.id === sess.settingTemplateId);
-        if (t) {
-          try {
-            settingName = SettingProfileSchema.parse(JSON.parse(t.profileJson)).name;
-          } catch {
-            // ignore invalid profile
-          }
-        } else if (sess.settingInstanceId) {
-          const instance = await db.settingInstance.findUnique({ where: { sessionId: sess.id } });
-          if (instance) {
-            try {
-              const parsed = SettingProfileSchema.parse(JSON.parse(instance.profileJson));
-              settingName = parsed.name;
-            } catch {
-              // ignore invalid profile
-            }
-          }
-        }
-      }
-
-      return mapSessionListItem(sess, characterName, settingName);
+      return {
+        id: sess.id,
+        name: sess.name,
+        playerCharacterId: sess.playerCharacterId,
+        settingId: sess.settingId,
+        characterName: characterName || 'Unknown Hero',
+        settingName: settingName || 'Unknown World',
+        status: sess.status,
+        createdAt: sess.createdAt,
+        updatedAt: sess.updatedAt,
+      };
     })
   );
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PersonaProfileSchema, type PersonaProfile } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields } from '@minimal-rpg/utils';
+import { EntityUsagePanel } from '@minimal-rpg/ui';
+import { useEntityUsage } from '../../hooks/useEntityUsage.js';
 import { persistPersona, removePersona, loadPersona } from './api.js';
 import { usePersonaBuilderForm, buildProfileFromForm } from './hooks/usePersonaBuilderForm.js';
 import type { FormKey, FormFieldErrors } from './types.js';
@@ -169,7 +171,9 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="text"
                   value={formState.id}
-                  onChange={(e) => { updateField('id', e.target.value); }}
+                  onChange={(e) => {
+                    updateField('id', e.target.value);
+                  }}
                   disabled={!!existingPersona}
                   placeholder="unique-persona-id"
                   className={inputClasses}
@@ -180,7 +184,9 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="text"
                   value={formState.name}
-                  onChange={(e) => { updateField('name', e.target.value); }}
+                  onChange={(e) => {
+                    updateField('name', e.target.value);
+                  }}
                   placeholder="Character name"
                   className={inputClasses}
                 />
@@ -190,7 +196,9 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="number"
                   value={formState.age}
-                  onChange={(e) => { updateField('age', parseInt(e.target.value, 10)); }}
+                  onChange={(e) => {
+                    updateField('age', parseInt(e.target.value, 10));
+                  }}
                   placeholder="25"
                   min={0}
                   max={999}
@@ -202,7 +210,9 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 <input
                   type="text"
                   value={formState.gender}
-                  onChange={(e) => { updateField('gender', e.target.value); }}
+                  onChange={(e) => {
+                    updateField('gender', e.target.value);
+                  }}
                   placeholder="e.g., female, male, non-binary"
                   className={inputClasses}
                 />
@@ -220,7 +230,9 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
             >
               <textarea
                 value={formState.summary}
-                onChange={(e) => { updateField('summary', e.target.value); }}
+                onChange={(e) => {
+                  updateField('summary', e.target.value);
+                }}
                 maxLength={500}
                 rows={4}
                 placeholder="A brief description of your persona's background and personality..."
@@ -234,7 +246,9 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
             <Field label="Physical Appearance" error={errors.appearance}>
               <textarea
                 value={formState.appearance}
-                onChange={(e) => { updateField('appearance', e.target.value); }}
+                onChange={(e) => {
+                  updateField('appearance', e.target.value);
+                }}
                 rows={6}
                 placeholder="Describe your character's physical appearance, including height, build, hair, eyes, distinguishing features..."
                 className={textareaClasses}
@@ -321,9 +335,31 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
                 </div>
               </div>
             )}
+
+            {/* Usage Tracking */}
+            {id && (
+              <div className="pt-4 border-t border-slate-700">
+                <UsageTracker entityId={id} />
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function UsageTracker({ entityId }: { entityId: string }) {
+  const { usage, loading, error } = useEntityUsage(entityId, 'persona');
+
+  return (
+    <EntityUsagePanel
+      entityType="persona"
+      sessions={usage?.sessions ?? []}
+      totalCount={usage?.totalCount ?? 0}
+      loading={loading}
+      error={error}
+      maxDisplay={3}
+    />
   );
 }

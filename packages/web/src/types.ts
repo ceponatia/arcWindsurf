@@ -51,18 +51,21 @@ export interface Message {
   role: MessageRole;
   content: string;
   createdAt: string; // ISO timestamp
-  idx?: number;
+  idx?: number; // Legacy/Display index OR Sequence for back-compat
+  sequence?: number; // World Bus event sequence
   turnMetadata?: TurnMetadata;
   speaker?: Speaker;
 }
 
 export interface Session {
   id: string;
-  characterTemplateId: string;
-  characterInstanceId: string | null;
-  settingTemplateId: string;
-  settingInstanceId: string | null;
+  name?: string | null;
+  playerCharacterId: string;
+  settingId: string;
+  worldId?: string | null;
+  status: string;
   createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
   messages: Message[];
 }
 
@@ -216,13 +219,14 @@ export interface TurnDebugSlice {
 
 export interface SessionSummary {
   id: string;
-  characterTemplateId: string;
-  characterInstanceId: string | null;
-  settingTemplateId: string;
-  settingInstanceId: string | null;
-  createdAt: string;
-  characterName?: string | null;
-  settingName?: string | null;
+  name?: string | null;
+  playerCharacterId: string | null;
+  settingId: string | null;
+  characterName: string;
+  settingName: string;
+  status: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 export type ViewMode =
@@ -285,7 +289,7 @@ export interface AppControllerActions {
   refreshCharacters: () => void;
   refreshSettings: () => void;
   refreshPersonas: () => void;
-  onStartSession: () => Promise<void>;
+  onStartSession: (characterId?: string, settingId?: string, tagIds?: string[]) => Promise<void>;
   onCreateSessionFull: (config: CreateFullSessionRequest) => Promise<string>;
   onSessionCreated: (sessionId: string) => void;
   handleDeleteSession: (sessionId: string) => Promise<void>;

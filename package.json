@@ -5,6 +5,8 @@
   "scripts": {
     "build": "turbo run build",
     "build:watch": "turbo run build --watch",
+    "db:migrate": "pnpm --filter @minimal-rpg/db run db:migrate",
+    "db:migrate:fresh": "bash scripts/fresh-migration.sh",
     "dev": "turbo run dev",
     "dev:kill": "node scripts/kill-ports.mjs 3001 5173",
     "lint": "turbo run lint",

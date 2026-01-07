@@ -1,7 +1,13 @@
 import type { Hono } from 'hono';
-import { db } from '../../db/prismaClient.js';
+import {
+  drizzle as db,
+  sessions as sessionsTable,
+  actorStates,
+  eq,
+  desc,
+  and,
+} from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
-import type { CharacterInstanceRow, SettingInstanceRow } from '../../db/types.js';
 
 /**
  * Entity usage summary returned from usage endpoints.
@@ -44,26 +50,24 @@ export function registerEntityUsageRoutes(app: Hono): void {
     }
 
     try {
-      // Find all character instances referencing this template
-      const instances = await db.characterInstance.findMany({
-        where: { templateId: characterId },
-        orderBy: { createdAt: 'desc' },
-      });
+      // Find all sessions referencing this character as the primary player character
+      const sessions = await db
+        .select()
+        .from(sessionsTable)
+        .where(eq(sessionsTable.playerCharacterId, characterId as any))
+        .orderBy(desc(sessionsTable.createdAt));
 
-      const sessions: SessionUsageInfo[] = instances.map((inst: CharacterInstanceRow) => ({
-        sessionId: inst.sessionId,
-        createdAt: inst.createdAt?.toString() ?? new Date().toISOString(),
-        role: inst.role,
+      const usageInfo: SessionUsageInfo[] = sessions.map((s) => ({
+        sessionId: s.id,
+        createdAt: s.createdAt.toISOString(),
+        role: 'player',
       }));
-
-      // Deduplicate by sessionId (in case of multiple instances per session)
-      const uniqueSessions = Array.from(new Map(sessions.map((s) => [s.sessionId, s])).values());
 
       const result: EntityUsageSummary = {
         entityId: characterId,
         entityType: 'character',
-        sessions: uniqueSessions,
-        totalCount: uniqueSessions.length,
+        sessions: usageInfo,
+        totalCount: usageInfo.length,
       };
 
       return c.json(result, 200);
@@ -88,22 +92,23 @@ export function registerEntityUsageRoutes(app: Hono): void {
     }
 
     try {
-      // Find all setting instances referencing this template
-      const instances = await db.settingInstance.findMany({
-        where: { templateId: settingId },
-        orderBy: { createdAt: 'desc' },
-      });
+      // Find all sessions referencing this setting
+      const sessions = await db
+        .select()
+        .from(sessionsTable)
+        .where(eq(sessionsTable.settingId, settingId as any))
+        .orderBy(desc(sessionsTable.createdAt));
 
-      const sessions: SessionUsageInfo[] = instances.map((inst: SettingInstanceRow) => ({
-        sessionId: inst.sessionId,
-        createdAt: inst.createdAt?.toString() ?? new Date().toISOString(),
+      const usageInfo: SessionUsageInfo[] = sessions.map((s) => ({
+        sessionId: s.id,
+        createdAt: s.createdAt.toISOString(),
       }));
 
       const result: EntityUsageSummary = {
         entityId: settingId,
         entityType: 'setting',
-        sessions,
-        totalCount: sessions.length,
+        sessions: usageInfo,
+        totalCount: usageInfo.length,
       };
 
       return c.json(result, 200);
@@ -125,22 +130,24 @@ export function registerEntityUsageRoutes(app: Hono): void {
     }
 
     try {
-      // Find all session-persona bindings for this persona
-      const bindings = await db.sessionPersona.findMany({
-        where: { personaId },
-        orderBy: { createdAt: 'desc' },
-      });
+      // Find all actor states referencing this persona profile
+      const states = await db
+        .select()
+        .from(actorStates)
+        .where(eq(actorStates.entityProfileId, personaId as any))
+        .orderBy(desc(actorStates.createdAt));
 
-      const sessions: SessionUsageInfo[] = bindings.map((binding) => ({
-        sessionId: binding.sessionId,
-        createdAt: binding.createdAt?.toString() ?? new Date().toISOString(),
+      const usageInfo: SessionUsageInfo[] = states.map((s) => ({
+        sessionId: s.sessionId,
+        createdAt: s.createdAt.toISOString(),
+        role: s.actorType,
       }));
 
       const result: EntityUsageSummary = {
         entityId: personaId,
         entityType: 'persona',
-        sessions,
-        totalCount: sessions.length,
+        sessions: usageInfo,
+        totalCount: usageInfo.length,
       };
 
       return c.json(result, 200);

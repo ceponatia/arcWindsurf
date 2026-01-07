@@ -1,9 +1,3 @@
-/**
- * Session CRUD operations
- * GET /sessions/:id
- * POST /sessions
- * DELETE /sessions/:id
- */
 import type { Context } from 'hono';
 import {
   createSession,
@@ -11,28 +5,55 @@ import {
   deleteSession,
   getPromptTag,
   createSessionTagBinding,
-} from '../../../db/sessionsClient.js';
-import { db } from '../../../db/prismaClient.js';
+  upsertActorState,
+  getSessionProjection,
+  getEventsForSession,
+  getEntityProfile,
+} from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import type { CreateSessionResponse } from '../../../services/types.js';
 import { notFound, badRequest, serverError } from '../../../utils/responses.js';
-import { generateId, generateInstanceId } from '@minimal-rpg/utils';
+import { generateId } from '@minimal-rpg/utils';
 import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 
 export async function handleGetSession(c: Context): Promise<Response> {
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(ownerEmail, id);
+  // getSession(id, ownerEmail) is from @minimal-rpg/db/node (sessions repository)
+  const session = await getSession(id as any, ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  // ensure chronological order by createdAt (ISO strings compare lexicographically)
-  const sorted = {
-    ...session,
-    messages: [...session.messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-  };
+  const projection = await getSessionProjection(id as any);
 
-  return c.json(sorted, 200);
+  // Fetch messages from events
+  const allEvents = await getEventsForSession(id as any);
+  const spokeEvents = allEvents.filter((e) => e.type === 'SPOKE');
+  const messages = await Promise.all(
+    spokeEvents.map(async (e) => {
+      const payload = e.payload as any;
+      let speaker;
+      if (e.actorId && e.actorId !== 'player') {
+        const profile = await getEntityProfile(payload.entityProfileId || e.actorId);
+        if (profile) {
+          speaker = {
+            id: e.actorId,
+            name: profile.name,
+          };
+        }
+      }
+
+      return {
+        role: e.actorId === 'player' ? 'user' : 'assistant',
+        content: payload.content || '',
+        createdAt: e.createdAt.toISOString(),
+        idx: Number(e.sequence),
+        speaker,
+      };
+    })
+  );
+
+  return c.json({ ...session, projection, messages }, 200);
 }
 
 export async function handleCreateSession(
@@ -63,50 +84,35 @@ export async function handleCreateSession(
   }
 
   const sessionId = generateId();
-  const characterInstanceId = generateInstanceId(character.id);
-  const settingInstanceId = generateInstanceId(setting.id);
 
   console.log('[API] Creating session:', sessionId);
-  const sessionRecord = await createSession(ownerEmail, sessionId, character.id, setting.id);
+  const sessionRecord = await createSession({
+    id: sessionId,
+    ownerEmail,
+    characterTemplateId: character.id,
+    settingTemplateId: setting.id,
+  });
 
   try {
-    console.log('[API] Creating character instance:', characterInstanceId);
-    await db.characterInstance.create({
-      data: {
-        id: characterInstanceId,
-        sessionId: sessionRecord.id,
-        templateId: character.id,
-        templateSnapshot: JSON.stringify(character),
-        profileJson: JSON.stringify(character),
-        overridesJson: JSON.stringify({}),
-        role: 'primary',
-        ownerEmail,
-      },
-    });
-
-    console.log('[API] Creating setting instance:', settingInstanceId);
-    await db.settingInstance.create({
-      data: {
-        id: settingInstanceId,
-        sessionId: sessionRecord.id,
-        templateId: setting.id,
-        templateSnapshot: JSON.stringify(setting),
-        profileJson: JSON.stringify(setting),
-        ownerEmail,
-      },
+    // Replaced legacy instance creation with primary actor state
+    await upsertActorState({
+      sessionId: sessionRecord.id,
+      actorType: 'player',
+      actorId: 'player',
+      entityProfileId: character.id,
+      state: { status: 'active' },
+      lastEventSeq: 0n,
     });
 
     if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
       console.log('[API] Creating tag bindings:', tagIds.length);
       for (const tid of tagIds) {
         if (typeof tid === 'string') {
-          // Verify tag exists before creating binding
-          const t = await getPromptTag(tid, 'admin');
+          const t = await getPromptTag(tid);
           if (t) {
-            await createSessionTagBinding(ownerEmail, {
+            await createSessionTagBinding({
               sessionId: sessionRecord.id,
               tagId: tid,
-              targetType: 'session',
               enabled: true,
             });
           }
@@ -114,19 +120,18 @@ export async function handleCreateSession(
       }
     }
   } catch (err) {
-    console.error('[API] Failed to create session instances, rolling back session', err);
-    await deleteSession(ownerEmail, sessionRecord.id).catch(() => undefined);
+    console.error('[API] Failed to prepare session state, rolling back session', err);
+    await deleteSession(sessionRecord.id, ownerEmail).catch(() => undefined);
     return serverError(c, 'failed to create session instances');
   }
 
-  const response: CreateSessionResponse = {
+  const response = {
     id: sessionRecord.id,
-    characterTemplateId: sessionRecord.characterTemplateId,
-    characterInstanceId,
-    settingTemplateId: sessionRecord.settingTemplateId,
-    settingInstanceId,
-    createdAt: sessionRecord.createdAt,
+    playerCharacterId: sessionRecord.playerCharacterId ?? character.id,
+    settingId: sessionRecord.settingId ?? setting.id,
+    createdAt: sessionRecord.createdAt.toISOString(),
   };
+
   console.log('[API] Session created successfully');
   return c.json(response, 201);
 }
@@ -134,9 +139,6 @@ export async function handleCreateSession(
 export async function handleDeleteSession(c: Context): Promise<Response> {
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(ownerEmail, id);
-  if (!session) return notFound(c, 'session not found');
-
-  await deleteSession(ownerEmail, id);
+  await deleteSession(id, ownerEmail);
   return c.body(null, 204);
 }

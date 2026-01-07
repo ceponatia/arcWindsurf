@@ -9,7 +9,7 @@ import {
 } from '@minimal-rpg/schemas';
 import type { LoadedData } from '../../../loaders/types.js';
 import type { CreateSessionRequest, MessageRequest } from '../../../services/types.js';
-import { db } from '../../../db/prismaClient.js';
+import { getEntityProfile } from '@minimal-rpg/db/node';
 import { extractJsonField } from '@minimal-rpg/utils';
 
 // Type guards for request validation
@@ -64,12 +64,10 @@ export async function findCharacter(
   const fsChar = loaded.characters.find((c) => c.id === id);
   if (fsChar) return fsChar;
 
-  const dbChar = await db.characterProfile.findUnique({
-    where: { id },
-  });
-  if (dbChar) {
+  const dbChar = await getEntityProfile(id as any);
+  if (dbChar && dbChar.entityType === 'character') {
     try {
-      return CharacterProfileSchema.parse(JSON.parse(dbChar.profileJson));
+      return CharacterProfileSchema.parse(dbChar.profileJson);
     } catch {
       return null;
     }
@@ -84,12 +82,10 @@ export async function findSetting(loaded: LoadedData, id: string): Promise<Setti
   const fsSet = loaded.settings.find((s) => s.id === id);
   if (fsSet) return fsSet;
 
-  const dbSet = await db.settingProfile.findUnique({
-    where: { id },
-  });
-  if (dbSet) {
+  const dbSet = await getEntityProfile(id as any);
+  if (dbSet && dbSet.entityType === 'setting') {
     try {
-      return SettingProfileSchema.parse(JSON.parse(dbSet.profileJson));
+      return SettingProfileSchema.parse(dbSet.profileJson);
     } catch {
       return null;
     }

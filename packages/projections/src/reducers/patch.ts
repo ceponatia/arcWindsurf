@@ -1,4 +1,9 @@
-import { applyPatch, type Operation } from 'fast-json-patch';
+import * as jsonpatch from 'fast-json-patch';
+import type { Operation } from 'fast-json-patch';
+
+// Handling CJS/ESM interop for fast-json-patch
+// @ts-ignore
+const applyPatch = jsonpatch.default?.applyPatch || jsonpatch.applyPatch;
 
 /**
  * A generic reducer that applies JSON patches.
@@ -76,7 +81,7 @@ export const patchReducer = <S extends object>(state: S, event: unknown): S => {
   // Handle multiple patches
   if (isOperationArray(payloadCandidate['patches'])) {
     try {
-      const result = applyPatch(state, payloadCandidate['patches'], true, false);
+      const result = applyPatch(state, [...payloadCandidate['patches']], true, false);
       return result.newDocument;
     } catch (err) {
       console.warn('[PatchReducer] Failed to apply multi-patch:', err, payloadCandidate['patches']);

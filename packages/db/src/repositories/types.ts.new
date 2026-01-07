@@ -1,0 +1,56 @@
+import { sessions, events, actorStates, entityProfiles, locations } from '../schema/index.js';
+import type { InferSelectModel } from 'drizzle-orm';
+
+export type Session = InferSelectModel<typeof sessions>;
+export type Event = InferSelectModel<typeof events>;
+export type ActorState = InferSelectModel<typeof actorStates>;
+export type EntityProfile = InferSelectModel<typeof entityProfiles>;
+export type Location = InferSelectModel<typeof locations>;
+
+export interface SessionSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateEventInput {
+  sessionId: string;
+  sequence: bigint;
+  type: string;
+  payload: Record<string, any>;
+  actorId?: string | null;
+  causedByEventId?: string | null;
+}
+
+export interface CreateEntityProfileInput {
+  entityType: string;
+  name: string;
+  ownerEmail?: string;
+  visibility?: string;
+  tier?: string;
+  profileJson?: Record<string, any>;
+  tags?: string[];
+}
+
+export interface CreateLocationInput {
+  name: string;
+  ownerEmail?: string;
+  settingId?: string | null;
+  type?: string;
+  description?: string;
+  isTemplate?: boolean;
+  tags?: string[];
+  properties?: Record<string, any>;
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  displayName: string | null;
+  roles: string[] | null;
+  createdAt: Date;
+  updatedAt: Date;
+}

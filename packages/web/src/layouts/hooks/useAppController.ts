@@ -201,8 +201,8 @@ export function useAppController(): AppControllerValue {
   const canStart = !!(selectedCharacterId && selectedSettingId);
 
   const activeSession = sessions.find((s) => s.id === currentSessionId) ?? null;
-  const activeCharacterId = activeSession?.characterTemplateId ?? selectedCharacterId;
-  const activeSettingId = activeSession?.settingTemplateId ?? selectedSettingId;
+  const activeCharacterId = activeSession?.playerCharacterId ?? selectedCharacterId;
+  const activeSettingId = activeSession?.settingId ?? selectedSettingId;
 
   useEffect(() => {
     const onHashChange = () => {
@@ -312,8 +312,12 @@ export function useAppController(): AppControllerValue {
     window.location.hash = '#/chat';
   };
 
-  const onStartSession = async () => {
-    if (!canStart || !selectedCharacterId || !selectedSettingId) return;
+  const onStartSession = async (charId?: string, setSelectionId?: string, tags?: string[]) => {
+    const finalCharacterId = charId || selectedCharacterId;
+    const finalSettingId = setSelectionId || selectedSettingId;
+    const finalTagIds = tags || selectedTagIds;
+
+    if (!finalCharacterId || !finalSettingId) return;
     setCreating(true);
     setCreateError(null);
     createAbortRef.current?.abort();
@@ -321,9 +325,9 @@ export function useAppController(): AppControllerValue {
     createAbortRef.current = ctrl;
     try {
       const newSession = await createSession(
-        selectedCharacterId,
-        selectedSettingId,
-        selectedTagIds,
+        finalCharacterId,
+        finalSettingId,
+        finalTagIds,
         ctrl.signal
       );
       setCurrentSessionId(newSession.id);

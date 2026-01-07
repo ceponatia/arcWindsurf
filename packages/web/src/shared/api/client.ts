@@ -30,7 +30,7 @@ interface TurnEndpointResponse {
   events: unknown[];
   stateChanges?: unknown;
   metadata?: TurnMetadata;
-  speaker?: Speaker;
+  speaker?: { actorId: string; name?: string };
   success: boolean;
 }
 
@@ -226,33 +226,20 @@ export async function getSessionNpcs(
   return res.npcs ?? [];
 }
 
+export interface CreateSessionResponseShort {
+  id: string;
+  playerCharacterId: string;
+  settingId: string;
+  createdAt: string;
+}
+
 export async function createSession(
   characterId: string,
   settingId: string,
   tagIds?: string[],
   signal?: AbortSignal
-): Promise<
-  Pick<
-    Session,
-    | 'id'
-    | 'characterTemplateId'
-    | 'characterInstanceId'
-    | 'settingTemplateId'
-    | 'settingInstanceId'
-    | 'createdAt'
-  >
-> {
-  return http<
-    Pick<
-      Session,
-      | 'id'
-      | 'characterTemplateId'
-      | 'characterInstanceId'
-      | 'settingTemplateId'
-      | 'settingInstanceId'
-      | 'createdAt'
-    >
-  >('/sessions', {
+): Promise<CreateSessionResponseShort> {
+  return http<CreateSessionResponseShort>('/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ characterId, settingId, tagIds }),
@@ -304,8 +291,8 @@ export interface CreateFullSessionRequest {
  */
 export interface CreateFullSessionResponse {
   id: string;
-  settingTemplateId: string;
-  settingInstanceId: string;
+  settingId: string;
+  playerCharacterId: string;
   personaId: string | null;
   startLocationId: string | null;
   secondsPerTurn: number;
@@ -492,7 +479,14 @@ export async function sendMessage(
     content: result.message,
     createdAt: new Date().toISOString(),
     ...(result.metadata ? { turnMetadata: result.metadata } : {}),
-    ...(result.speaker ? { speaker: result.speaker } : {}),
+    ...(result.speaker
+      ? {
+          speaker: {
+            id: result.speaker.actorId,
+            name: result.speaker.name || result.speaker.actorId,
+          },
+        }
+      : {}),
   };
 
   return {
@@ -504,11 +498,11 @@ export async function sendMessage(
 
 export async function updateMessage(
   sessionId: string,
-  idx: number,
+  sequence: number,
   content: string,
   signal?: AbortSignal
 ): Promise<void> {
-  await http<void>(`/sessions/${encodeURIComponent(sessionId)}/messages/${idx}`, {
+  await http<void>(`/sessions/${encodeURIComponent(sessionId)}/messages/${sequence}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
@@ -518,10 +512,10 @@ export async function updateMessage(
 
 export async function deleteMessage(
   sessionId: string,
-  idx: number,
+  sequence: number,
   signal?: AbortSignal
 ): Promise<void> {
-  await http<void>(`/sessions/${encodeURIComponent(sessionId)}/messages/${idx}`, {
+  await http<void>(`/sessions/${encodeURIComponent(sessionId)}/messages/${sequence}`, {
     method: 'DELETE',
     ...(signal && { signal }),
   });

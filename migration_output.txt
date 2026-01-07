@@ -1,0 +1,34 @@
+
+> @minimal-rpg/db@0.0.0 db:migrate /home/brian/projects/arcWindsurf/packages/db
+> tsx src/migrations/migrate.ts
+
+[dotenv@17.2.3] injecting env (22) from ../../.env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[db] Running migrations against postgresql://postgres.pkfgqoqtzwxorzdgeljv:***@aws-1-us-east-2.pooler.supabase.com:5432/postgres (source=DATABASE_URL)
+[db] Failed to connect to Postgres: Connection terminated due to connection timeout
+[db] Common fixes:
+[db] - If your network has no IPv6 route (common), force IPv4: NODE_OPTIONS='--dns-result-order=ipv4first'
+[db] - If your network blocks outbound Postgres (common on some WiFi/ISP), use a different network or VPN
+[db] - Prefer Supabase Session/Transaction Pooler connection strings for IPv4-only networks
+[db] - Verify the host/port and that SSL is required (Supabase uses SSL)
+[db] Migration failed: Connection terminated due to connection timeout
+/home/brian/projects/arcWindsurf/node_modules/.pnpm/pg-pool@3.10.1_pg@8.16.3/node_modules/pg-pool/index.js:45
+    Error.captureStackTrace(err)
+          ^
+
+Error: Connection terminated due to connection timeout
+    at /home/brian/projects/arcWindsurf/node_modules/.pnpm/pg-pool@3.10.1_pg@8.16.3/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async run (/home/brian/projects/arcWindsurf/packages/db/src/migrations/migrate.ts:93:5) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (/home/brian/projects/arcWindsurf/node_modules/.pnpm/pg@8.16.3/node_modules/pg/lib/client.js:136:73)
+      at Object.onceWrapper (node:events:632:28)
+      at Connection.emit (node:events:518:28)
+      at Socket.<anonymous> (/home/brian/projects/arcWindsurf/node_modules/.pnpm/pg@8.16.3/node_modules/pg/lib/connection.js:62:12)
+      at Socket.emit (node:events:518:28)
+      at TCP.<anonymous> (node:net:346:12)
+}
+
+Node.js v22.17.1
+/home/brian/projects/arcWindsurf/packages/db:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @minimal-rpg/db@0.0.0 db:migrate: `tsx src/migrations/migrate.ts`
+Exit status 1

@@ -1,22 +1,16 @@
-# Database Clients
+# Database Layer
 
-Re-exports Prisma database clients and session-related database operations.
+This directory contains the API's interface to the database. It leverages the central database package (`@minimal-rpg/db`) and provides API-specific helpers and types.
 
-## Overview
+## Files
 
-- **prismaClient.ts** — Exports the shared Prisma client instance from `@minimal-rpg/db`
-- **sessionsClient.ts** — Exports session CRUD operations, message handling, state slice helpers, and prompt tag functions
+- **sessionsClient.ts** — Re-exports session-related repository functions from `@minimal-rpg/db`
+- **types.ts** — Common database-related types used across the API layer
 
-## Key Exports
+## Usage
 
-### From `prismaClient.ts`
+Avoid direct database queries in route handlers; use the repository functions exported from this directory or `@minimal-rpg/db/node`.
 
-- `db` — The Prisma client for direct database access
-
-### From `sessionsClient.ts`
-
-- Session management: `createSession`, `getSession`, `listSessions`, `deleteSession`
-- Messages: `appendMessage`, `appendNpcMessage`, `getNpcMessages`
-- State slices: `getLocationState`, `upsertLocationState`, `getInventoryState`, `upsertInventoryState`, `getTimeState`, `upsertTimeState`
-- Prompt tags: `listPromptTags`, `getPromptTag`, `createPromptTag`, `updatePromptTag`, `deletePromptTag`
-- Tag instances: `createSessionTagInstances`, `getSessionTagInstances`
+```typescript
+import { getSession } from '../db/sessionsClient.js';
+```

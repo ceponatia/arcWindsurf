@@ -214,23 +214,28 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     const text = editDraft.trim();
     if (!text) return;
 
+    const message = session?.messages[idx];
+    const sequence = message?.idx;
+
+    if (sequence === undefined) {
+      console.warn('[ChatPanel] Cannot edit message without index/sequence');
+      return;
+    }
+
     // Optimistic update
     setSession((prev) => {
       if (!prev) return prev;
       const newMessages = [...prev.messages];
-      if (newMessages[idx]) {
-        newMessages[idx] = { ...newMessages[idx], content: text };
+      const targetIndex = Number(idx);
+      if (targetIndex >= 0 && targetIndex < newMessages.length && newMessages[targetIndex]) {
+        newMessages[targetIndex] = { ...newMessages[targetIndex], content: text };
       }
       return { ...prev, messages: newMessages };
     });
     setEditingIdx(null);
 
-    const message = session?.messages[idx];
-    const dbIdx = message?.idx ?? idx + 1;
-
     try {
-      // Backend uses 1-based index for messages
-      await updateMessage(effectiveSessionId, dbIdx, text);
+      await updateMessage(effectiveSessionId, sequence, text);
     } catch (e) {
       const msg = getErrorMessage(e, 'Failed to update message');
       setError(msg);
@@ -241,21 +246,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const onDeleteMessage = async (idx: number) => {
     if (!effectiveSessionId) return;
     const message = session?.messages[idx];
-    const dbIdx = message?.idx ?? idx + 1;
+    const sequence = message?.idx;
+
+    if (sequence === undefined) {
+      console.warn('[ChatPanel] Cannot delete message without index/sequence');
+      return;
+    }
 
     const confirmed = window.confirm('Delete this message? This cannot be undone.');
     if (!confirmed) return;
 
     try {
-      await deleteMessage(effectiveSessionId, dbIdx);
+      await deleteMessage(effectiveSessionId, sequence);
       // Exit edit mode and remove from local state after successful delete
       setEditingIdx(null);
       setEditDraft('');
       setSession((prev) => {
         if (!prev) return prev;
-        const newMessages = prev.messages.filter((m) =>
-          m.idx !== undefined ? m.idx !== dbIdx : true
-        );
+        const newMessages = prev.messages.filter((m) => m.idx !== sequence);
         return { ...prev, messages: newMessages };
       });
     } catch (e) {
@@ -269,39 +277,47 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     if (!effectiveSessionId || sending) return;
 
     const messages = session?.messages;
-    const userMessage = messages?.[idx];
-    if (userMessage?.role !== 'user') return;
+    const targetIdx = Number(idx);
+    const userMessage =
+      messages && targetIdx >= 0 && targetIdx < messages.length ? messages[targetIdx] : null;
+
+    if (!userMessage || userMessage.role !== 'user') return;
 
     const userContent = userMessage.content;
-    const userDbIdx = userMessage.idx ?? idx + 1;
+    const userSequence = userMessage.idx;
+
+    if (userSequence === undefined) {
+      console.warn('[ChatPanel] Cannot redo message without sequence');
+      return;
+    }
 
     // Find the assistant message that follows this user message (if any)
     const nextMessage = messages?.[idx + 1];
     const hasAssistantResponse = nextMessage?.role === 'assistant';
-    const assistantDbIdx = hasAssistantResponse ? (nextMessage.idx ?? idx + 2) : null;
+    const assistantSequence = hasAssistantResponse ? nextMessage.idx : null;
 
     setSending(true);
     setError(null);
 
     try {
       // Delete the assistant response first (if exists), then the user message
-      if (assistantDbIdx !== null) {
-        await deleteMessage(effectiveSessionId, assistantDbIdx);
+      if (assistantSequence !== null && assistantSequence !== undefined) {
+        await deleteMessage(effectiveSessionId, assistantSequence);
       }
-      await deleteMessage(effectiveSessionId, userDbIdx);
+      await deleteMessage(effectiveSessionId, userSequence);
 
       // Update local state to remove both messages
       setSession((prev) => {
         if (!prev) return prev;
-        const newMessages = prev.messages.filter((_, i) => {
-          if (i === idx) return false; // Remove user message
-          if (hasAssistantResponse && i === idx + 1) return false; // Remove assistant message
+        const newMessages = prev.messages.filter((m) => {
+          if (m.idx === userSequence) return false;
+          if (assistantSequence !== null && m.idx === assistantSequence) return false;
           return true;
         });
         return { ...prev, messages: newMessages };
       });
 
-      // Add back user message optimistically
+      // Add back user message optimistically (temporary, will be replaced by refresh or next send)
       const userMsg: Message = {
         role: 'user',
         content: userContent,
@@ -313,6 +329,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       const res = await sendMessage(effectiveSessionId, userContent, undefined, {
         npcId: selectedNpcId ?? null,
       });
+
+      // Instead of manual appending, we should probably refresh the session to get the guaranteed order
+      // But for UX, we append the response. Note: the sequence will be missing until refresh.
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
 
@@ -383,7 +402,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
         >
           <option value="">Auto (primary/default)</option>
           {npcs.map((npc) => {
-            const label = npc.label ?? npc.name ?? npc.role ?? 'NPC';
+            const label = npc.label ?? npc.name ?? npc.role;
             return <option key={npc.id} value={npc.id}>{`${label} - ${npc.role}`}</option>;
           })}
         </select>

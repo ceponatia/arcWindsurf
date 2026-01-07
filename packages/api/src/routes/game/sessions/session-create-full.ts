@@ -7,7 +7,15 @@
  */
 import type { Context } from 'hono';
 import { z } from 'zod';
-import { pool } from '@minimal-rpg/db/node';
+import {
+  drizzle,
+  sessions,
+  sessionProjections,
+  actorStates,
+  sessionTags,
+  promptTags,
+  inArray,
+} from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import { badRequest, serverError, notFound } from '../../../utils/responses.js';
 import { generateId, generateInstanceId } from '@minimal-rpg/utils';
@@ -104,8 +112,8 @@ export type CreateFullSessionRequest = z.infer<typeof CreateFullSessionRequestSc
  */
 export interface CreateFullSessionResponse {
   id: string;
-  settingTemplateId: string;
-  settingInstanceId: string;
+  settingId: string;
+  playerCharacterId: string;
   personaId: string | null;
   startLocationId: string | null;
   secondsPerTurn: number;
@@ -187,34 +195,28 @@ export async function handleCreateFullSession(
   }
 
   // Validate persona exists if provided
-  let personaProfile: unknown = null;
+  let personaProfile: any = null;
   if (request.personaId) {
-    const personaResult = await pool.query(
-      'SELECT profile_json FROM personas WHERE id = $1 LIMIT 1',
-      [request.personaId]
-    );
-    if (personaResult.rows.length === 0) {
-      // Also check persona_profiles table (alternate location)
-      const profileResult = await pool.query(
-        'SELECT profile_json FROM persona_profiles WHERE id = $1 LIMIT 1',
-        [request.personaId]
-      );
-      if (profileResult.rows.length === 0) {
-        return notFound(c, `persona not found: ${request.personaId}`);
-      }
-      const row = profileResult.rows[0] as { profile_json: unknown };
-      personaProfile = row.profile_json;
-    } else {
-      const row = personaResult.rows[0] as { profile_json: unknown };
-      personaProfile = row.profile_json;
+    const personaResult = await drizzle
+      .select()
+      .from(actorStates)
+      .where(inArray(actorStates.actorId, [request.personaId]))
+      .limit(1);
+
+    if (personaResult.length === 0) {
+      return notFound(c, `persona not found: ${request.personaId}`);
     }
+    personaProfile = (personaResult[0].state as any).profile || personaResult[0].state;
   }
 
   // Validate tags exist if provided
   if (request.tags && request.tags.length > 0) {
     const tagIds = request.tags.map((t) => t.tagId);
-    const tagResult = await pool.query('SELECT id FROM prompt_tags WHERE id = ANY($1)', [tagIds]);
-    const foundTagIds = new Set((tagResult.rows as { id: string }[]).map((r) => r.id));
+    const tagResult = await drizzle
+      .select()
+      .from(promptTags)
+      .where(inArray(promptTags.id, tagIds as any));
+    const foundTagIds = new Set(tagResult.map((r) => r.id as string));
     const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
     if (missingTags.length > 0) {
       return notFound(c, `tags not found: ${missingTags.join(', ')}`);
@@ -236,256 +238,209 @@ export async function handleCreateFullSession(
     tier: string;
     label: string | null;
     startLocationId: string | null;
-  }[] = request.npcs.map((npc) => ({
-    id: generateInstanceId(npc.characterId),
-    characterId: npc.characterId,
-    character: npcCharacters.get(npc.characterId)!,
-    role: npc.role,
-    tier: npc.tier,
-    label: npc.label ?? null,
-    startLocationId: npc.startLocationId ?? null,
-  }));
+  }[] = [];
+
+  for (const npc of request.npcs) {
+    const character = npcCharacters.get(npc.characterId);
+    if (character) {
+      npcInstances.push({
+        id: generateInstanceId(npc.characterId),
+        characterId: npc.characterId,
+        character,
+        role: npc.role,
+        tier: npc.tier,
+        label: npc.label ?? null,
+        startLocationId: npc.startLocationId ?? null,
+      });
+    }
+  }
 
   // Determine primary NPC (first one with role 'primary', or first NPC)
   const primaryNpc = npcInstances.find((n) => n.role === 'primary') ?? npcInstances[0];
 
-  // Start transaction
-  const client = await pool.connect();
-
   try {
-    await client.query('BEGIN');
-
-    // 1. Create user session
-    console.log('[API] Creating session:', sessionId);
-    await client.query(
-      `INSERT INTO user_sessions (id, character_template_id, setting_template_id, owner_email)
-       VALUES ($1, $2, $3, $4)`,
-      [sessionId, primaryNpc?.characterId ?? '', request.settingId, ownerEmail]
-    );
-
-    // 2. Create setting instance
-    console.log('[API] Creating setting instance:', settingInstanceId);
-    await client.query(
-      `INSERT INTO setting_instances (id, session_id, template_id, template_snapshot, profile_json, owner_email)
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)`,
-      [
-        settingInstanceId,
-        sessionId,
-        setting.id,
-        JSON.stringify(setting),
-        JSON.stringify(setting),
+    const responseData = await drizzle.transaction(async (tx) => {
+      // 1. Create session
+      console.log('[API] Creating session:', sessionId);
+      await tx.insert(sessions).values({
+        id: sessionId as any,
         ownerEmail,
-      ]
-    );
+        name: `Session ${sessionId.substring(0, 8)}`,
+        playerCharacterId: (primaryNpc?.characterId || '') as any,
+        settingId: request.settingId as any,
+        status: 'active',
+      });
 
-    // 3. Create NPC character instances
-    for (const npc of npcInstances) {
-      console.log('[API] Creating character instance:', npc.id);
-      await client.query(
-        `INSERT INTO character_instances 
-         (id, session_id, template_id, template_snapshot, profile_json, overrides_json, role, label, owner_email)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, '{}'::jsonb, $6, $7, $8)`,
-        [
-          npc.id,
-          sessionId,
-          npc.characterId,
-          JSON.stringify(npc.character),
-          JSON.stringify(npc.character),
-          npc.role,
-          npc.label,
-          ownerEmail,
-        ]
-      );
+      // 2. Create session projection
+      await tx.insert(sessionProjections).values({
+        sessionId: sessionId as any,
+        location: request.startLocationId ? { currentLocationId: request.startLocationId } : {},
+        inventory: {},
+        time: request.startTime
+          ? {
+              current: {
+                year: request.startTime.year ?? 1,
+                month: request.startTime.month ?? 1,
+                day: request.startTime.day ?? 1,
+                hour: request.startTime.hour,
+                minute: request.startTime.minute,
+              },
+              secondsPerTurn,
+            }
+          : {},
+        worldState: {},
+        lastEventSeq: 0n,
+      });
 
-      // If NPC has a starting location, create initial location state
-      if (npc.startLocationId) {
-        await client.query(
-          `INSERT INTO session_npc_location_state 
-           (id, session_id, npc_id, location_id, activity_json, arrived_at_json, interruptible, owner_email)
-           VALUES ($1, $2, $3, $4, '{"type": "idle"}'::jsonb, '{}'::jsonb, TRUE, $5)`,
-          [generateId(), sessionId, npc.id, npc.startLocationId, ownerEmail]
-        );
-      }
-    }
-
-    // 4. Attach persona to session if provided
-    if (request.personaId && personaProfile) {
-      console.log('[API] Attaching persona:', request.personaId);
-      await client.query(
-        `INSERT INTO session_personas (session_id, persona_id, profile_json, overrides_json, owner_email)
-         VALUES ($1, $2, $3::jsonb, '{}'::jsonb, $4)`,
-        [
-          sessionId,
-          request.personaId,
-          typeof personaProfile === 'string' ? personaProfile : JSON.stringify(personaProfile),
-          ownerEmail,
-        ]
-      );
-    }
-
-    // 5. Create tag bindings
-    const tagBindings: {
-      id: string;
-      tagId: string;
-      targetType: string;
-      targetEntityId: string | null;
-    }[] = [];
-
-    if (request.tags) {
-      for (const tag of request.tags) {
-        const bindingId = generateId();
-        const normalized = (
-          'scope' in tag
-            ? {
-                tagId: tag.tagId,
-                targetType: tag.scope,
-                targetEntityId: tag.targetId ?? null,
-              }
-            : {
-                tagId: tag.tagId,
-                targetType: tag.targetType,
-                targetEntityId: tag.targetEntityId ?? null,
-              }
-        ) as { tagId: string; targetType: string; targetEntityId: string | null };
-
-        let targetEntityId: string | null = normalized.targetEntityId;
-
-        // If binding targets a character/NPC by template ID, resolve to the instance ID created in this session.
-        if (
-          (normalized.targetType === 'npc' || normalized.targetType === 'character') &&
-          targetEntityId
-        ) {
-          const npcInstance = npcInstances.find((n) => n.characterId === targetEntityId);
-          targetEntityId = npcInstance?.id ?? targetEntityId;
-        }
-
-        await client.query(
-          `INSERT INTO session_tag_bindings (id, session_id, tag_id, target_type, target_entity_id, enabled, owner_email)
-           VALUES ($1, $2, $3, $4, $5, TRUE, $6)`,
-          [
-            bindingId,
-            sessionId,
-            normalized.tagId,
-            normalized.targetType,
-            targetEntityId,
-            ownerEmail,
-          ]
-        );
-
-        tagBindings.push({
-          id: bindingId,
-          tagId: normalized.tagId,
-          targetType: normalized.targetType,
-          targetEntityId,
-        });
-      }
-    }
-
-    // 6. Create initial relationship states
-    const relationshipResults: {
-      fromActorId: string;
-      toActorId: string;
-      relationshipType: string;
-    }[] = [];
-
-    // Helper to resolve actor ID (template ID or 'player') to instance ID or 'player'
-    const resolveActorId = (actorId: string): string | null => {
-      if (actorId === 'player') return 'player';
-      const instance = npcInstances.find((n) => n.characterId === actorId);
-      return instance ? instance.id : null;
-    };
-
-    if (request.relationships) {
-      for (const rel of request.relationships) {
-        const fromInstanceId = resolveActorId(rel.fromActorId);
-        const toInstanceId = resolveActorId(rel.toActorId);
-
-        // Skip if either actor cannot be resolved (e.g. NPC not in session)
-        if (!fromInstanceId || !toInstanceId) {
-          console.warn(
-            `[API] Skipping relationship: could not resolve actor IDs. From: ${rel.fromActorId} -> ${fromInstanceId}, To: ${rel.toActorId} -> ${toInstanceId}`
-          );
-          continue;
-        }
-
-        const defaultAffinity = {
-          trust: rel.affinitySeed?.trust ?? 0.5,
-          fondness: rel.affinitySeed?.fondness ?? 0.5,
-          fear: rel.affinitySeed?.fear ?? 0.0,
-        };
-
-        const state = {
-          relationshipType: rel.relationshipType,
-          affinity: defaultAffinity,
-          createdAt,
-        };
-
-        // Create affinity state for the 'to' actor perspective (how 'to' feels about 'from')
-        await client.query(
-          `INSERT INTO session_affinity_state (id, session_id, npc_id, state_json, owner_email)
-           VALUES ($1, $2, $3, $4::jsonb, $5)
-           ON CONFLICT (session_id, npc_id) DO UPDATE SET
-             state_json = session_affinity_state.state_json || $4::jsonb,
-             updated_at = now()`,
-          [
-            generateId(),
-            sessionId,
-            toInstanceId,
-            JSON.stringify({ [fromInstanceId]: state }),
-            ownerEmail,
-          ]
-        );
-
-        relationshipResults.push({
-          fromActorId: rel.fromActorId,
-          toActorId: rel.toActorId,
-          relationshipType: rel.relationshipType,
-        });
-      }
-    }
-
-    // 7. Initialize time state if start time provided
-    if (request.startTime) {
-      const timeState = {
-        current: {
-          year: request.startTime.year ?? 1,
-          month: request.startTime.month ?? 1,
-          day: request.startTime.day ?? 1,
-          hour: request.startTime.hour,
-          minute: request.startTime.minute,
-        },
-        secondsPerTurn,
+      // Helper to resolve actor ID (template ID or 'player') to instance ID or 'player'
+      const resolveActorId = (actorId: string): string | null => {
+        if (actorId === 'player') return 'player';
+        const instance = npcInstances.find((n) => n.characterId === actorId);
+        return instance ? instance.id : null;
       };
 
-      await client.query(
-        `INSERT INTO session_time_state (id, session_id, state_json, owner_email)
-         VALUES ($1, $2, $3::jsonb, $4)`,
-        [generateId(), sessionId, JSON.stringify(timeState), ownerEmail]
-      );
-    }
+      // 3. Create NPC actor states
+      for (const npc of npcInstances) {
+        console.log('[API] Creating character instance:', npc.id);
 
-    // 8. Initialize player location state if provided
-    if (request.startLocationId) {
-      await client.query(
-        `INSERT INTO session_location_state (id, session_id, state_json, owner_email)
-         VALUES ($1, $2, $3::jsonb, $4)`,
-        [
-          generateId(),
-          sessionId,
-          JSON.stringify({ currentLocationId: request.startLocationId }),
-          ownerEmail,
-        ]
-      );
-    }
+        const affinity: Record<string, any> = {};
+        if (request.relationships) {
+          for (const rel of request.relationships) {
+            const fromInstanceId = resolveActorId(rel.fromActorId);
+            const toInstanceId = resolveActorId(rel.toActorId);
 
-    await client.query('COMMIT');
+            if (toInstanceId === npc.id && fromInstanceId) {
+              affinity[fromInstanceId] = {
+                relationshipType: rel.relationshipType,
+                affinity: {
+                  trust: rel.affinitySeed?.trust ?? 0.5,
+                  fondness: rel.affinitySeed?.fondness ?? 0.5,
+                  fear: rel.affinitySeed?.fear ?? 0.0,
+                },
+                createdAt,
+              };
+            }
+          }
+        }
+
+        await tx.insert(actorStates).values({
+          id: generateId() as any,
+          sessionId: sessionId as any,
+          actorType: 'npc',
+          actorId: npc.id,
+          entityProfileId: npc.characterId as any,
+          state: {
+            role: npc.role,
+            tier: npc.tier,
+            label: npc.label,
+            name: npc.character.name,
+            profileJson: JSON.stringify(npc.character),
+            location: npc.startLocationId ? { currentLocationId: npc.startLocationId } : undefined,
+            affinity,
+            status: 'active',
+          },
+          lastEventSeq: 0n,
+        });
+      }
+
+      // 4. Attach persona to session if provided
+      if (request.personaId && personaProfile) {
+        console.log('[API] Attaching persona:', request.personaId);
+        await tx.insert(actorStates).values({
+          id: generateId() as any,
+          sessionId: sessionId as any,
+          actorType: 'player',
+          actorId: 'player',
+          entityProfileId: request.personaId as any,
+          state: {
+            profile: personaProfile,
+            status: 'active',
+          },
+          lastEventSeq: 0n,
+        });
+      }
+
+      // 5. Create tag bindings
+      const tagBindings: {
+        id: string;
+        tagId: string;
+        targetType: string;
+        targetEntityId: string | null;
+      }[] = [];
+
+      if (request.tags) {
+        for (const tag of request.tags) {
+          const bindingId = generateId();
+          const normalized = (
+            'scope' in tag
+              ? {
+                  tagId: tag.tagId,
+                  targetType: tag.scope,
+                  targetEntityId: tag.targetId ?? null,
+                }
+              : {
+                  tagId: tag.tagId,
+                  targetType: tag.targetType,
+                  targetEntityId: tag.targetEntityId ?? null,
+                }
+          ) as { tagId: string; targetType: string; targetEntityId: string | null };
+
+          let targetEntityId: string | null = normalized.targetEntityId;
+
+          // If binding targets a character/NPC by template ID, resolve to the instance ID created in this session.
+          if (
+            (normalized.targetType === 'npc' || normalized.targetType === 'character') &&
+            targetEntityId
+          ) {
+            const npcInstance = npcInstances.find((n) => n.characterId === targetEntityId);
+            targetEntityId = npcInstance?.id ?? targetEntityId;
+          }
+
+          await tx.insert(sessionTags).values({
+            id: bindingId as any,
+            sessionId: sessionId as any,
+            tagId: normalized.tagId as any,
+            enabled: true,
+          });
+
+          tagBindings.push({
+            id: bindingId,
+            tagId: normalized.tagId,
+            targetType: normalized.targetType,
+            targetEntityId,
+          });
+        }
+      }
+
+      // 6. Relationship Results
+      const relationshipResults: {
+        fromActorId: string;
+        toActorId: string;
+        relationshipType: string;
+      }[] = [];
+      if (request.relationships) {
+        for (const rel of request.relationships) {
+          relationshipResults.push({
+            fromActorId: rel.fromActorId,
+            toActorId: rel.toActorId,
+            relationshipType: rel.relationshipType,
+          });
+        }
+      }
+
+      return {
+        tagBindings,
+        relationshipResults,
+      };
+    });
+
     console.log('[API] Session created successfully:', sessionId);
 
     // Build response
     const response: CreateFullSessionResponse = {
       id: sessionId,
-      settingTemplateId: request.settingId,
-      settingInstanceId,
+      settingId: request.settingId,
+      playerCharacterId: primaryNpc?.characterId || '',
       personaId: request.personaId ?? null,
       startLocationId: request.startLocationId ?? null,
       secondsPerTurn,
@@ -498,16 +453,13 @@ export async function handleCreateFullSession(
         label: npc.label,
         startLocationId: npc.startLocationId,
       })),
-      tagBindings,
-      relationships: relationshipResults,
+      tagBindings: responseData.tagBindings,
+      relationships: responseData.relationshipResults,
     };
 
     return c.json(response, 201);
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('[API] Failed to create full session, rolled back:', err);
+    console.error('[API] Failed to create full session:', err);
     return serverError(c, `failed to create session: ${(err as Error).message}`);
-  } finally {
-    client.release();
   }
 }

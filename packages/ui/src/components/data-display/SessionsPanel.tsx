@@ -56,9 +56,17 @@ export const SessionsPanel: React.FC<SessionsPanelProps> = ({
             {sessions.map((s) => {
               const isActive = s.id === activeId;
               const characterLabel =
-                s.characterName ?? s.characterTemplateId ?? s.characterInstanceId ?? 'Character';
+                s.characterName ??
+                s.playerCharacterId ??
+                s.characterTemplateId ??
+                s.characterInstanceId ??
+                'Character';
               const settingLabel =
-                s.settingName ?? s.settingTemplateId ?? s.settingInstanceId ?? 'Setting';
+                s.settingName ??
+                s.settingId ??
+                s.settingTemplateId ??
+                s.settingInstanceId ??
+                'Setting';
               return (
                 <li
                   key={s.id}

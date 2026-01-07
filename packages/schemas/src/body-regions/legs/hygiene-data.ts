@@ -47,20 +47,44 @@ export const LEGS_HYGIENE_CONFIG = {
 
 export const LEGS_HYGIENE_MODIFIERS = flattenHygieneData(LEGS_HYGIENE_CONFIG, [...LEG_REGIONS]);
 
+/**
+ * Grouped defaults for legs regions.
+ */
+export const LEGS_SCENT_DATA = {
+  main: {
+    legs: CLEAN_SKIN,
+    leftLeg: CLEAN_SKIN,
+    rightLeg: CLEAN_SKIN,
+  },
+  thighs: {
+    thighs: CLEAN_SKIN,
+    leftThigh: CLEAN_SKIN,
+    rightThigh: CLEAN_SKIN,
+  },
+  knees: {
+    knees: CLEAN_SKIN,
+    leftKnee: CLEAN_SKIN,
+    rightKnee: CLEAN_SKIN,
+  },
+  calves: {
+    calves: CLEAN_SKIN,
+    leftCalf: CLEAN_SKIN,
+    rightCalf: CLEAN_SKIN,
+  },
+  shins: {
+    leftShin: CLEAN_SKIN,
+    rightShin: CLEAN_SKIN,
+  },
+  ankles: {
+    ankles: CLEAN_SKIN,
+  },
+};
+
 export const LEGS_DEFAULT_SCENTS: Partial<Record<LegsRegion, RegionScent>> = {
-  legs: CLEAN_SKIN,
-  leftLeg: CLEAN_SKIN,
-  rightLeg: CLEAN_SKIN,
-  thighs: CLEAN_SKIN,
-  leftThigh: CLEAN_SKIN,
-  rightThigh: CLEAN_SKIN,
-  knees: CLEAN_SKIN,
-  leftKnee: CLEAN_SKIN,
-  rightKnee: CLEAN_SKIN,
-  calves: CLEAN_SKIN,
-  leftCalf: CLEAN_SKIN,
-  rightCalf: CLEAN_SKIN,
-  leftShin: CLEAN_SKIN,
-  rightShin: CLEAN_SKIN,
-  ankles: CLEAN_SKIN,
+  ...LEGS_SCENT_DATA.main,
+  ...LEGS_SCENT_DATA.thighs,
+  ...LEGS_SCENT_DATA.knees,
+  ...LEGS_SCENT_DATA.calves,
+  ...LEGS_SCENT_DATA.shins,
+  ...LEGS_SCENT_DATA.ankles,
 };

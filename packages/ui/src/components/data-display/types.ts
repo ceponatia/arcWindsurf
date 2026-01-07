@@ -18,13 +18,15 @@ export interface CharactersPanelProps {
 
 export interface SessionsPanelSessionSummary {
   id: string;
-  characterTemplateId: string;
-  characterInstanceId: string | null;
-  settingTemplateId: string;
-  settingInstanceId: string | null;
+  playerCharacterId?: string | null;
+  settingId?: string | null;
+  characterTemplateId?: string; // Legacy
+  characterInstanceId?: string | null; // Legacy
+  settingTemplateId?: string; // Legacy
+  settingInstanceId?: string | null; // Legacy
   characterName?: string | null;
   settingName?: string | null;
-  createdAt: string;
+  createdAt: string | Date;
 }
 
 export interface SessionsPanelProps {

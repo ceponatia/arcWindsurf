@@ -3,7 +3,7 @@
  * GET /sessions/:id/effective - merged character + setting profiles
  */
 import type { Context } from 'hono';
-import { getSession } from '../../../db/sessionsClient.js';
+import { getSession } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import type { EffectiveProfilesResponse } from '../../../services/types.js';
 import { getEffectiveProfiles } from '../../../services/index.js';
@@ -20,11 +20,12 @@ export async function handleGetEffective(
 
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(ownerEmail, id);
+  // getSession(id, ownerEmail) from @minimal-rpg/db/node
+  const session = await getSession(id as any, ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const character = await findCharacter(loaded, session.characterTemplateId);
-  const setting = await findSetting(loaded, session.settingTemplateId);
+  const character = await findCharacter(loaded, session.playerCharacterId || '');
+  const setting = await findSetting(loaded, session.settingId || '');
   if (!character || !setting) {
     return serverError(c, 'character or setting not found for session');
   }

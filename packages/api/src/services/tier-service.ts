@@ -16,6 +16,7 @@ import type {
 
 /** NPC tier type alias */
 type NpcTierType = 'major' | 'minor' | 'background' | 'transient';
+
 import {
   updateInterestScore,
   checkPromotion,
@@ -23,56 +24,7 @@ import {
   DEFAULT_INTEREST_CONFIG,
   createInitialInterestScore,
 } from '@minimal-rpg/schemas';
-import {
-  getPlayerInterestScore,
-  getAllPlayerInterestScores,
-  getNpcsAboveInterestThreshold,
-  upsertPlayerInterestScore,
-  updateNpcTier,
-} from '../db/sessionsClient.js';
-
-// Define local interface to fix lint errors with imported type
-interface LocalPlayerInterestRecord {
-  npcId: string;
-  score: number;
-  totalInteractions: number;
-  turnsSinceInteraction: number;
-  peakScore: number;
-  currentTier: string;
-}
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * Result of processing interest for a turn.
- */
-export interface TurnInterestResult {
-  /** NPCs whose interest scores were updated */
-  updated: { npcId: string; oldScore: number; newScore: number }[];
-  /** NPCs that should be promoted */
-  promotions: PromotionCheck[];
-}
-
-/**
- * Options for processing turn interest.
- */
-export interface ProcessInterestOptions {
-  /** Owner key for tenancy scoping */
-  ownerEmail: string;
-
-  /** Session ID */
-  sessionId: string;
-  /** NPC IDs that were interacted with this turn */
-  interactedNpcIds: string[];
-  /** All NPC IDs in the session (for bleed calculation) */
-  allNpcIds: string[];
-  /** Details about each interaction */
-  interactions?: Map<string, Partial<Omit<InteractionEvent, 'meaningful'>>>;
-  /** Interest config (defaults to DEFAULT_INTEREST_CONFIG) */
-  config?: InterestConfig;
-}
+import { getActorState, listActorStatesForSession, upsertActorState } from '@minimal-rpg/db/node';
 
 // =============================================================================
 // Service Functions
@@ -83,31 +35,36 @@ export interface ProcessInterestOptions {
  * Returns null if no interest record exists.
  */
 export async function getInterestScore(
-  ownerEmail: string,
+  _ownerEmail: string,
   sessionId: string,
   npcId: string
 ): Promise<PlayerInterestScore | null> {
-  const record = await getPlayerInterestScore(ownerEmail, sessionId, npcId);
-  if (!record) return null;
+  const actorState = await getActorState(sessionId as any, npcId);
+  if (!actorState) return null;
 
-  return recordToInterestScore(record);
+  const state = actorState.state as any;
+  if (!state.interest) return null;
+
+  return state.interest as PlayerInterestScore;
 }
 
 /**
  * Get all player interest scores for a session.
  */
 export async function getAllInterestScores(
-  ownerEmail: string,
+  _ownerEmail: string,
   sessionId: string
 ): Promise<Map<string, PlayerInterestScore>> {
-  const records = (await getAllPlayerInterestScores(ownerEmail, sessionId)) as unknown as Map<
-    string,
-    LocalPlayerInterestRecord
-  >;
+  const states = await listActorStatesForSession(sessionId as any);
   const result = new Map<string, PlayerInterestScore>();
 
-  for (const [npcId, record] of records) {
-    result.set(npcId, recordToInterestScore(record));
+  for (const s of states) {
+    if (s.actorType === 'npc') {
+      const state = s.state as any;
+      if (state.interest) {
+        result.set(s.actorId, state.interest as PlayerInterestScore);
+      }
+    }
   }
 
   return result;
@@ -124,7 +81,6 @@ export async function processTurnInterest(
   options: ProcessInterestOptions
 ): Promise<TurnInterestResult> {
   const {
-    ownerEmail,
     sessionId,
     interactedNpcIds,
     allNpcIds,
@@ -135,17 +91,21 @@ export async function processTurnInterest(
   const updated: TurnInterestResult['updated'] = [];
   const promotions: PromotionCheck[] = [];
 
-  // Get existing interest scores
-  const existingScores = (await getAllPlayerInterestScores(
-    ownerEmail,
-    sessionId
-  )) as unknown as Map<string, LocalPlayerInterestRecord>;
+  // Get current NPC states
+  const npcStates = (await listActorStatesForSession(sessionId as any)).filter(
+    (s) => s.actorType === 'npc'
+  );
+
+  const statesByNpcId = new Map(npcStates.map((s) => [s.actorId, s]));
 
   // Process each NPC
   for (const npcId of allNpcIds) {
-    const existing = existingScores.get(npcId);
-    const currentScore = existing
-      ? recordToInterestScore(existing)
+    const actorState = statesByNpcId.get(npcId);
+    if (!actorState) continue;
+
+    const stateBlob = actorState.state as any;
+    const currentScore: PlayerInterestScore = stateBlob.interest
+      ? (stateBlob.interest as PlayerInterestScore)
       : createInitialInterestScore(npcId);
 
     const oldScore = currentScore.score;
@@ -176,18 +136,22 @@ export async function processTurnInterest(
       continue;
     }
 
+    const currentTier = (stateBlob.tier || 'background') as NpcTierType;
+
     // Persist updated score
-    const tier = (existing?.currentTier ?? 'background') as NpcTierType;
-    await upsertPlayerInterestScore(
-      ownerEmail,
-      sessionId,
-      npcId,
-      newScore.score,
-      newScore.totalInteractions,
-      newScore.turnsSinceInteraction,
-      newScore.peakScore,
-      tier
-    );
+    const newState = {
+      ...stateBlob,
+      interest: newScore,
+    };
+
+    await upsertActorState({
+      sessionId: sessionId as any,
+      actorType: actorState.actorType,
+      actorId: npcId,
+      entityProfileId: actorState.entityProfileId as any,
+      state: newState,
+      lastEventSeq: actorState.lastEventSeq,
+    });
 
     updated.push({
       npcId,
@@ -196,7 +160,7 @@ export async function processTurnInterest(
     });
 
     // Check for promotion
-    const promotionCheck = checkPromotion(npcId, tier, newScore, config);
+    const promotionCheck = checkPromotion(npcId, currentTier, newScore, config);
     if (promotionCheck.shouldPromote) {
       promotions.push(promotionCheck);
     }
@@ -214,12 +178,27 @@ export async function processTurnInterest(
  * @param newTier - Target tier
  */
 export async function executePromotion(
-  ownerEmail: string,
+  _ownerEmail: string,
   sessionId: string,
   npcId: string,
   newTier: NpcTierType
 ): Promise<void> {
-  await updateNpcTier(ownerEmail, sessionId, npcId, newTier);
+  const actorState = await getActorState(sessionId as any, npcId);
+  if (!actorState) return;
+
+  const newState = {
+    ...(actorState.state as any),
+    tier: newTier,
+  };
+
+  await upsertActorState({
+    sessionId: sessionId as any,
+    actorType: actorState.actorType,
+    actorId: npcId,
+    entityProfileId: actorState.entityProfileId as any,
+    state: newState,
+    lastEventSeq: actorState.lastEventSeq,
+  });
 }
 
 /**
@@ -227,36 +206,25 @@ export async function executePromotion(
  * Useful for batch promotion checks.
  */
 export async function getNpcsReadyForPromotion(
-  ownerEmail: string,
+  _ownerEmail: string,
   sessionId: string,
   config: InterestConfig = DEFAULT_INTEREST_CONFIG
 ): Promise<PromotionCheck[]> {
   const promotions: PromotionCheck[] = [];
 
-  // Check each threshold tier
-  const thresholds = [
-    {
-      tier: 'transient' as NpcTierType,
-      threshold: config.promotionThresholds.transientToBackground,
-    },
-    { tier: 'background' as NpcTierType, threshold: config.promotionThresholds.backgroundToMinor },
-    { tier: 'minor' as NpcTierType, threshold: config.promotionThresholds.minorToMajor },
-  ];
+  const npcStates = (await listActorStatesForSession(sessionId as any)).filter(
+    (s) => s.actorType === 'npc'
+  );
 
-  for (const { tier, threshold } of thresholds) {
-    const records = (await getNpcsAboveInterestThreshold(
-      ownerEmail,
-      sessionId,
-      threshold
-    )) as unknown as LocalPlayerInterestRecord[];
+  for (const s of npcStates) {
+    const stateBlob = s.state as any;
+    const tier = (stateBlob.tier || 'background') as NpcTierType;
+    const score = stateBlob.interest as PlayerInterestScore;
 
-    for (const record of records) {
-      if (record.currentTier === tier) {
-        const score = recordToInterestScore(record);
-        const check = checkPromotion(record.npcId, tier, score, config);
-        if (check.shouldPromote) {
-          promotions.push(check);
-        }
+    if (score) {
+      const check = checkPromotion(s.actorId, tier, score, config);
+      if (check.shouldPromote) {
+        promotions.push(check);
       }
     }
   }
@@ -265,19 +233,34 @@ export async function getNpcsReadyForPromotion(
 }
 
 // =============================================================================
-// Helpers
+// Types (Local for Fix)
 // =============================================================================
 
 /**
- * Convert a database record to a PlayerInterestScore.
+ * Result of processing interest for a turn.
  */
-function recordToInterestScore(record: unknown): PlayerInterestScore {
-  const r = record as LocalPlayerInterestRecord;
-  return {
-    npcId: r.npcId,
-    score: r.score,
-    totalInteractions: r.totalInteractions,
-    turnsSinceInteraction: r.turnsSinceInteraction,
-    peakScore: r.peakScore,
-  };
+export interface TurnInterestResult {
+  /** NPCs whose interest scores were updated */
+  updated: { npcId: string; oldScore: number; newScore: number }[];
+  /** NPCs that should be promoted */
+  promotions: PromotionCheck[];
+}
+
+/**
+ * Options for processing turn interest.
+ */
+export interface ProcessInterestOptions {
+  /** Owner key for tenancy scoping */
+  ownerEmail: string;
+
+  /** Session ID */
+  sessionId: string;
+  /** NPC IDs that were interacted with this turn */
+  interactedNpcIds: string[];
+  /** All NPC IDs in the session (for bleed calculation) */
+  allNpcIds: string[];
+  /** Details about each interaction */
+  interactions?: Map<string, Partial<Omit<InteractionEvent, 'meaningful'>>>;
+  /** Interest config (defaults to DEFAULT_INTEREST_CONFIG) */
+  config?: InterestConfig;
 }

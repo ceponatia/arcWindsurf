@@ -92,12 +92,27 @@ export const GROIN_HYGIENE_CONFIG = {
 
 export const GROIN_HYGIENE_MODIFIERS = flattenHygieneData(GROIN_HYGIENE_CONFIG, [...GROIN_REGIONS]);
 
+/**
+ * Grouped defaults for groin regions.
+ */
+export const GROIN_SCENT_DATA = {
+  main: {
+    groin: NEUTRAL_FAINT,
+  },
+  buttocks: {
+    buttocks: NEUTRAL_FAINT,
+    leftButtock: NEUTRAL_FAINT,
+    rightButtock: NEUTRAL_FAINT,
+    anus: NEUTRAL_FAINT,
+  },
+  genitals: {
+    penis: NEUTRAL_FAINT,
+    vagina: NEUTRAL_FAINT,
+  },
+};
+
 export const GROIN_DEFAULT_SCENTS: Partial<Record<GroinRegion, RegionScent>> = {
-  groin: NEUTRAL_FAINT,
-  buttocks: NEUTRAL_FAINT,
-  leftButtock: NEUTRAL_FAINT,
-  rightButtock: NEUTRAL_FAINT,
-  anus: NEUTRAL_FAINT,
-  penis: NEUTRAL_FAINT,
-  vagina: NEUTRAL_FAINT,
+  ...GROIN_SCENT_DATA.main,
+  ...GROIN_SCENT_DATA.buttocks,
+  ...GROIN_SCENT_DATA.genitals,
 };

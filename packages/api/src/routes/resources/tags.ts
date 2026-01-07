@@ -20,61 +20,45 @@ import {
 } from '@minimal-rpg/schemas';
 import type { ApiError } from '../../types.js';
 
-// DB row types for tag responses
+// DB row types for tag responses (aligned with Drizzle schema)
 interface PromptTagRow {
   id: string;
-  owner: string;
-  visibility: 'private' | 'public' | 'unlisted';
   name: string;
-  short_description: string | null;
-  category: 'style' | 'mechanic' | 'content' | 'world' | 'behavior' | 'trigger' | 'meta';
-  prompt_text: string;
-  activation_mode: 'always' | 'conditional';
-  target_type: 'session' | 'character' | 'npc' | 'player' | 'location' | 'setting';
-  triggers: unknown;
-  priority: 'override' | 'high' | 'normal' | 'low' | 'fallback';
-  composition_mode: 'append' | 'prepend' | 'replace' | 'merge';
-  conflicts_with: string[] | null;
-  requires: string[] | null;
-  version: string;
-  changelog: string | null;
-  is_built_in: boolean;
-  created_at?: Date;
-  updated_at?: Date;
+  category: string | null;
+  promptText: string;
+  description: string | null;
+  isActive: boolean | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface SessionTagBindingRow {
   id: string;
-  session_id: string;
-  tag_id: string;
-  target_type: 'session' | 'character' | 'npc' | 'player' | 'location' | 'setting';
-  target_entity_id: string | null;
-  enabled: boolean;
-  created_at?: Date;
+  sessionId: string;
+  tagId: string;
+  enabled: boolean | null;
+  createdAt: Date;
 }
 
-// Transform DB row to API response format (camelCase)
+// Transform DB row to API response format (camelCase, fulfilling schema expectations with defaults)
 function toTagResponse(row: PromptTagRow) {
   return {
     id: row.id,
-    owner: row.owner,
-    visibility: row.visibility,
+    owner: 'admin', // Global for now
+    visibility: 'public' as const,
     name: row.name,
-    shortDescription: row.short_description ?? undefined,
-    category: row.category,
-    promptText: row.prompt_text,
-    activationMode: row.activation_mode,
-    targetType: row.target_type,
-    triggers: row.triggers,
-    priority: row.priority,
-    compositionMode: row.composition_mode,
-    conflictsWith: row.conflicts_with ?? undefined,
-    requires: row.requires ?? undefined,
-    version: row.version,
-    changelog: row.changelog ?? undefined,
-    isBuiltIn: row.is_built_in,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    shortDescription: row.description ?? undefined,
+    category: (row.category as any) ?? 'style',
+    promptText: row.promptText,
+    activationMode: 'always' as const, // Simplified
+    targetType: 'session' as const, // Simplified
+    triggers: [],
+    priority: 'normal' as const,
+    compositionMode: 'append' as const,
+    version: '1.0.0',
+    isBuiltIn: row.isActive ?? true,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -82,12 +66,12 @@ function toTagResponse(row: PromptTagRow) {
 function toBindingResponse(row: SessionTagBindingRow) {
   return {
     id: row.id,
-    sessionId: row.session_id,
-    tagId: row.tag_id,
-    targetType: row.target_type,
-    targetEntityId: row.target_entity_id,
-    enabled: row.enabled,
-    createdAt: row.created_at,
+    sessionId: row.sessionId,
+    tagId: row.tagId,
+    targetType: 'session' as const,
+    targetEntityId: null,
+    enabled: row.enabled ?? true,
+    createdAt: row.createdAt,
   };
 }
 
@@ -104,21 +88,17 @@ export function registerTagRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'Invalid query parameters' } satisfies ApiError, 400);
     }
 
-    const { category, activationMode, visibility, isBuiltIn } = queryResult.data;
+    const { category, activationMode, isBuiltIn } = queryResult.data;
     const tags = await listPromptTags({
-      owner: 'admin', // TODO: get from auth context
-      ...(category ? { category } : {}),
-      ...(activationMode ? { activationMode } : {}),
-      ...(isBuiltIn !== undefined ? { isBuiltIn } : {}),
+      category,
+      activationMode: activationMode as any,
+      isBuiltIn,
     });
-
-    // Filter by visibility if specified (listPromptTags already handles access control)
-    const filteredTags = visibility ? tags.filter((t) => t.visibility === visibility) : tags;
 
     return c.json(
       {
-        tags: filteredTags.map(toTagResponse),
-        total: filteredTags.length,
+        tags: (tags as any[]).map(toTagResponse),
+        total: tags.length,
       },
       200
     );
@@ -128,11 +108,11 @@ export function registerTagRoutes(app: Hono): void {
   app.get('/tags/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const tag = await getPromptTag(id, 'admin');
+      const tag = await getPromptTag(id as any);
       if (!tag) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
-      return c.json(toTagResponse(tag), 200);
+      return c.json(toTagResponse(tag as any), 200);
     } catch (err) {
       console.error('[API] Failed to get tag:', err);
       return c.json({ ok: false, error: 'Failed to get tag' } satisfies ApiError, 500);
@@ -156,21 +136,12 @@ export function registerTagRoutes(app: Hono): void {
 
     try {
       const tag = await createPromptTag({
-        owner: 'admin', // TODO: get from auth context
         name: result.data.name,
         promptText: result.data.promptText,
-        ...(result.data.shortDescription ? { shortDescription: result.data.shortDescription } : {}),
-        ...(result.data.category ? { category: result.data.category } : {}),
-        ...(result.data.activationMode ? { activationMode: result.data.activationMode } : {}),
-        ...(result.data.targetType ? { targetType: result.data.targetType } : {}),
-        ...(result.data.triggers ? { triggers: result.data.triggers } : {}),
-        ...(result.data.priority ? { priority: result.data.priority } : {}),
-        ...(result.data.compositionMode ? { compositionMode: result.data.compositionMode } : {}),
-        ...(result.data.conflictsWith ? { conflictsWith: result.data.conflictsWith } : {}),
-        ...(result.data.requires ? { requires: result.data.requires } : {}),
-        ...(result.data.visibility ? { visibility: result.data.visibility } : {}),
+        shortDescription: result.data.shortDescription,
+        category: result.data.category,
       });
-      return c.json(toTagResponse(tag), 201);
+      return c.json(toTagResponse(tag as any), 201);
     } catch (err) {
       console.error('[API] Failed to create tag:', err);
       return c.json({ ok: false, error: 'Failed to create tag' } satisfies ApiError, 500);
@@ -194,33 +165,16 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     try {
-      const updated = await updatePromptTag(id, 'admin', {
-        ...(result.data.name !== undefined && { name: result.data.name }),
-        ...(result.data.shortDescription !== undefined && {
-          shortDescription: result.data.shortDescription,
-        }),
-        ...(result.data.category !== undefined && { category: result.data.category }),
-        ...(result.data.promptText !== undefined && { promptText: result.data.promptText }),
-        ...(result.data.activationMode !== undefined && {
-          activationMode: result.data.activationMode,
-        }),
-        ...(result.data.targetType !== undefined && { targetType: result.data.targetType }),
-        ...(result.data.triggers !== undefined && { triggers: result.data.triggers }),
-        ...(result.data.priority !== undefined && { priority: result.data.priority }),
-        ...(result.data.compositionMode !== undefined && {
-          compositionMode: result.data.compositionMode,
-        }),
-        ...(result.data.conflictsWith !== undefined && {
-          conflictsWith: result.data.conflictsWith,
-        }),
-        ...(result.data.requires !== undefined && { requires: result.data.requires }),
-        ...(result.data.visibility !== undefined && { visibility: result.data.visibility }),
-        ...(result.data.changelog !== undefined && { changelog: result.data.changelog }),
+      const updated = await updatePromptTag(id as any, 'admin', {
+        name: result.data.name,
+        promptText: result.data.promptText,
+        category: result.data.category,
+        shortDescription: result.data.shortDescription,
       });
       if (!updated) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
-      return c.json(toTagResponse(updated), 200);
+      return c.json(toTagResponse(updated as any), 200);
     } catch (err) {
       console.error('[API] Failed to update tag:', err);
       return c.json({ ok: false, error: 'Failed to update tag' } satisfies ApiError, 500);
@@ -231,9 +185,9 @@ export function registerTagRoutes(app: Hono): void {
   app.delete('/tags/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const deleted = await deletePromptTag(id, 'admin');
+      const deleted = await deletePromptTag(id as any, 'admin');
       if (!deleted) {
-        return c.json({ ok: false, error: 'Tag not found or is built-in' } satisfies ApiError, 404);
+        return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
       return c.body(null, 204);
     } catch (err) {

@@ -1,0 +1,64 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: minirpg
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: pnpm -F @minimal-rpg/api dev
+    environment:
+      - DB_TARGET=local
+      - DATABASE_URL_LOCAL=postgres://postgres:password@db:5432/minirpg
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "${API_PORT:-3001}:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: pnpm -F @minimal-rpg/web dev
+    environment:
+      - VITE_API_BASE_URL=http://localhost:${API_PORT:-3001}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+
+volumes:
+  pgdata:

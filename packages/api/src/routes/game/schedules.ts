@@ -1,18 +1,16 @@
-/**
- * Schedule Template API Routes
- *
- * Provides CRUD operations for schedule templates and NPC schedules.
- * Templates are reusable patterns for NPC daily routines.
- *
- * @see dev-docs/27-npc-schedules-and-routines.md
- * @see dev-docs/planning/opus-refactor.md Phase 6
- */
 import type { Hono } from 'hono';
 import { z } from 'zod';
 import { ScheduleTemplateSchema, NpcScheduleSchema } from '@minimal-rpg/schemas';
-import { db } from '../../db/prismaClient.js';
+import {
+  drizzle as db,
+  scheduleTemplates,
+  actorStates,
+  eq,
+  and,
+  getActorState,
+  upsertActorState,
+} from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
-import type { ScheduleTemplateRow, NpcScheduleRow } from '../../db/types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
 // =============================================================================
@@ -61,29 +59,18 @@ export function registerScheduleRoutes(app: Hono): void {
   /**
    * GET /schedule-templates
    * List all schedule templates.
-   * Query params:
-   *   - isSystem: boolean - Filter by system templates only
    */
   app.get('/schedule-templates', async (c) => {
-    const isSystemParam = c.req.query('isSystem');
-    const isSystem =
-      isSystemParam === 'true' ? true : isSystemParam === 'false' ? false : undefined;
-
     try {
-      const templates =
-        isSystem !== undefined
-          ? await db.scheduleTemplate.findMany({ where: { isSystem } })
-          : await db.scheduleTemplate.findMany();
+      const templates = await db.select().from(scheduleTemplates);
 
       return c.json({
         ok: true,
-        templates: templates.map((t: ScheduleTemplateRow) => ({
+        templates: templates.map((t) => ({
           id: t.id,
           name: t.name,
           description: t.description,
-          templateData: t.templateData,
-          requiredPlaceholders: t.requiredPlaceholders,
-          isSystem: t.isSystem,
+          templateData: t.scheduleJson,
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
         })),
@@ -105,7 +92,11 @@ export function registerScheduleRoutes(app: Hono): void {
     const { id } = c.req.param();
 
     try {
-      const template = await db.scheduleTemplate.findUnique({ where: { id } });
+      const [template] = await db
+        .select()
+        .from(scheduleTemplates)
+        .where(eq(scheduleTemplates.id, id as any))
+        .limit(1);
 
       if (!template) {
         return c.json({ ok: false, error: 'Schedule template not found' } satisfies ApiError, 404);
@@ -117,9 +108,7 @@ export function registerScheduleRoutes(app: Hono): void {
           id: template.id,
           name: template.name,
           description: template.description,
-          templateData: template.templateData,
-          requiredPlaceholders: template.requiredPlaceholders,
-          isSystem: template.isSystem,
+          templateData: template.scheduleJson,
           createdAt: template.createdAt,
           updatedAt: template.updatedAt,
         },
@@ -158,7 +147,7 @@ export function registerScheduleRoutes(app: Hono): void {
         );
       }
 
-      const { name, description, templateData, requiredPlaceholders } = parsed.data;
+      const { name, description, templateData } = parsed.data;
 
       // Validate template data against schema
       const templateValidation = ScheduleTemplateSchema.safeParse(templateData);
@@ -173,26 +162,14 @@ export function registerScheduleRoutes(app: Hono): void {
         );
       }
 
-      // Build data object, only including defined values for optional fields
-      const createData: {
-        name: string;
-        description?: string;
-        templateData: unknown;
-        requiredPlaceholders: string[];
-        isSystem: boolean;
-      } = {
-        name,
-        templateData,
-        requiredPlaceholders,
-        isSystem: false, // User-created templates are never system templates
-      };
-      if (description !== undefined) {
-        createData.description = description;
-      }
-
-      const template = await db.scheduleTemplate.create({
-        data: createData,
-      });
+      const [template] = await db
+        .insert(scheduleTemplates)
+        .values({
+          name,
+          description: description || null,
+          scheduleJson: templateData as any,
+        })
+        .returning();
 
       return c.json(
         {
@@ -201,9 +178,7 @@ export function registerScheduleRoutes(app: Hono): void {
             id: template.id,
             name: template.name,
             description: template.description,
-            templateData: template.templateData,
-            requiredPlaceholders: template.requiredPlaceholders,
-            isSystem: template.isSystem,
+            templateData: template.scheduleJson,
             createdAt: template.createdAt,
             updatedAt: template.updatedAt,
           },
@@ -222,24 +197,11 @@ export function registerScheduleRoutes(app: Hono): void {
   /**
    * PUT /schedule-templates/:id
    * Update an existing schedule template.
-   * Cannot update system templates.
    */
   app.put('/schedule-templates/:id', async (c) => {
     const { id } = c.req.param();
 
     try {
-      // Check if template exists and is not a system template
-      const existing = await db.scheduleTemplate.findUnique({ where: { id } });
-      if (!existing) {
-        return c.json({ ok: false, error: 'Schedule template not found' } satisfies ApiError, 404);
-      }
-      if (existing.isSystem) {
-        return c.json(
-          { ok: false, error: 'Cannot modify system templates' } satisfies ApiError,
-          403
-        );
-      }
-
       let body: unknown;
       try {
         body = await c.req.json();
@@ -259,7 +221,7 @@ export function registerScheduleRoutes(app: Hono): void {
         );
       }
 
-      const { name, description, templateData, requiredPlaceholders } = parsed.data;
+      const { name, description, templateData } = parsed.data;
 
       // Validate template data if provided
       if (templateData !== undefined) {
@@ -276,23 +238,20 @@ export function registerScheduleRoutes(app: Hono): void {
         }
       }
 
-      // Build update data, only including defined values
-      const updateData: {
-        name?: string;
-        description?: string;
-        templateData?: unknown;
-        requiredPlaceholders?: string[];
-      } = {};
-      if (name !== undefined) updateData.name = name;
-      if (description !== undefined) updateData.description = description;
-      if (templateData !== undefined) updateData.templateData = templateData;
-      if (requiredPlaceholders !== undefined)
-        updateData.requiredPlaceholders = requiredPlaceholders;
+      const [template] = await db
+        .update(scheduleTemplates)
+        .set({
+          name: name || undefined,
+          description: description || undefined,
+          scheduleJson: (templateData as any) || undefined,
+          updatedAt: new Date(),
+        })
+        .where(eq(scheduleTemplates.id, id as any))
+        .returning();
 
-      const template = await db.scheduleTemplate.update({
-        where: { id },
-        data: updateData,
-      });
+      if (!template) {
+        return c.json({ ok: false, error: 'not found' }, 404);
+      }
 
       return c.json({
         ok: true,
@@ -300,9 +259,7 @@ export function registerScheduleRoutes(app: Hono): void {
           id: template.id,
           name: template.name,
           description: template.description,
-          templateData: template.templateData,
-          requiredPlaceholders: template.requiredPlaceholders,
-          isSystem: template.isSystem,
+          templateData: template.scheduleJson,
           createdAt: template.createdAt,
           updatedAt: template.updatedAt,
         },
@@ -319,24 +276,12 @@ export function registerScheduleRoutes(app: Hono): void {
   /**
    * DELETE /schedule-templates/:id
    * Delete a schedule template.
-   * Cannot delete system templates.
    */
   app.delete('/schedule-templates/:id', async (c) => {
     const { id } = c.req.param();
 
     try {
-      const existing = await db.scheduleTemplate.findUnique({ where: { id } });
-      if (!existing) {
-        return c.json({ ok: false, error: 'Schedule template not found' } satisfies ApiError, 404);
-      }
-      if (existing.isSystem) {
-        return c.json(
-          { ok: false, error: 'Cannot delete system templates' } satisfies ApiError,
-          403
-        );
-      }
-
-      await db.scheduleTemplate.delete({ where: { id } });
+      await db.delete(scheduleTemplates).where(eq(scheduleTemplates.id, id as any));
       return c.json({ ok: true });
     } catch (error) {
       console.error('Error deleting schedule template:', error);
@@ -348,7 +293,7 @@ export function registerScheduleRoutes(app: Hono): void {
   });
 
   // =========================================================================
-  // NPC Schedule Routes
+  // NPC Schedule Routes (In Actor State)
   // =========================================================================
 
   /**
@@ -359,22 +304,26 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId } = c.req.param();
 
     try {
-      const schedules = await db.npcSchedule.findMany({
-        where: { sessionId },
-      });
+      const npcStates = await db
+        .select()
+        .from(actorStates)
+        .where(and(eq(actorStates.sessionId, sessionId as any), eq(actorStates.actorType, 'npc')));
+
+      const schedules = npcStates
+        .filter((s) => (s.state as any).schedule)
+        .map((s) => {
+          const state = s.state as any;
+          return {
+            npcId: s.actorId,
+            scheduleData: state.schedule.scheduleData,
+            templateId: state.schedule.templateId,
+            placeholderMappings: state.schedule.placeholderMappings,
+          };
+        });
 
       return c.json({
         ok: true,
-        schedules: schedules.map((s: NpcScheduleRow) => ({
-          id: s.id,
-          sessionId: s.sessionId,
-          npcId: s.npcId,
-          templateId: s.templateId,
-          scheduleData: s.scheduleData,
-          placeholderMappings: s.placeholderMappings,
-          createdAt: s.createdAt,
-          updatedAt: s.updatedAt,
-        })),
+        schedules,
       });
     } catch (error) {
       console.error('Error listing NPC schedules:', error);
@@ -390,25 +339,19 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId, npcId } = c.req.param();
 
     try {
-      const schedule = await db.npcSchedule.findUnique({
-        where: { sessionId_npcId: { sessionId, npcId } },
-      });
+      const actorState = await getActorState(sessionId as any, npcId);
 
-      if (!schedule) {
+      if (!actorState || !(actorState.state as any).schedule) {
         return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
+
+      const schedule = (actorState.state as any).schedule;
 
       return c.json({
         ok: true,
         schedule: {
-          id: schedule.id,
-          sessionId: schedule.sessionId,
-          npcId: schedule.npcId,
-          templateId: schedule.templateId,
-          scheduleData: schedule.scheduleData,
-          placeholderMappings: schedule.placeholderMappings,
-          createdAt: schedule.createdAt,
-          updatedAt: schedule.updatedAt,
+          npcId,
+          ...schedule,
         },
       });
     } catch (error) {
@@ -445,7 +388,6 @@ export function registerScheduleRoutes(app: Hono): void {
       }
 
       const { npcId, templateId, scheduleData, placeholderMappings } = parsed.data;
-      const ownerEmail = getOwnerEmail(c);
 
       // Validate schedule data against schema
       const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
@@ -460,50 +402,37 @@ export function registerScheduleRoutes(app: Hono): void {
         );
       }
 
-      // Build create data, only including defined values
-      const createData: {
-        sessionId: string;
-        npcId: string;
-        templateId?: string;
-        scheduleData: unknown;
-        placeholderMappings?: unknown;
-        ownerEmail: string;
-      } = {
-        sessionId,
-        npcId,
-        scheduleData,
-        ownerEmail,
+      const actorState = await getActorState(sessionId as any, npcId);
+      if (!actorState) {
+        return c.json({ ok: false, error: 'NPC not found in session' }, 404);
+      }
+
+      const newState = {
+        ...(actorState.state as object),
+        schedule: {
+          templateId,
+          scheduleData,
+          placeholderMappings,
+        },
       };
-      if (templateId !== undefined) createData.templateId = templateId;
-      if (placeholderMappings !== undefined) createData.placeholderMappings = placeholderMappings;
 
-      // Build update data
-      const updateData: {
-        templateId?: string;
-        scheduleData?: unknown;
-        placeholderMappings?: unknown;
-      } = { scheduleData };
-      if (templateId !== undefined) updateData.templateId = templateId;
-      if (placeholderMappings !== undefined) updateData.placeholderMappings = placeholderMappings;
-
-      const schedule = await db.npcSchedule.upsert({
-        where: { sessionId_npcId: { sessionId, npcId } },
-        create: createData,
-        update: updateData,
+      await upsertActorState({
+        sessionId: sessionId as any,
+        actorType: actorState.actorType,
+        actorId: npcId,
+        entityProfileId: actorState.entityProfileId as any,
+        state: newState,
+        lastEventSeq: actorState.lastEventSeq,
       });
 
       return c.json(
         {
           ok: true,
           schedule: {
-            id: schedule.id,
-            sessionId: schedule.sessionId,
-            npcId: schedule.npcId,
-            templateId: schedule.templateId,
-            scheduleData: schedule.scheduleData,
-            placeholderMappings: schedule.placeholderMappings,
-            createdAt: schedule.createdAt,
-            updatedAt: schedule.updatedAt,
+            npcId,
+            templateId,
+            scheduleData,
+            placeholderMappings,
           },
         },
         201
@@ -522,11 +451,9 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId, npcId } = c.req.param();
 
     try {
-      const existing = await db.npcSchedule.findUnique({
-        where: { sessionId_npcId: { sessionId, npcId } },
-      });
-      if (!existing) {
-        return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
+      const actorState = await getActorState(sessionId as any, npcId);
+      if (!actorState) {
+        return c.json({ ok: false, error: 'not found' }, 404);
       }
 
       let body: unknown;
@@ -549,7 +476,6 @@ export function registerScheduleRoutes(app: Hono): void {
       }
 
       const { templateId, scheduleData, placeholderMappings } = parsed.data;
-      const ownerEmail = getOwnerEmail(c);
 
       // Validate schedule data if provided
       if (scheduleData !== undefined) {
@@ -566,60 +492,30 @@ export function registerScheduleRoutes(app: Hono): void {
         }
       }
 
-      // Build create data for upsert, using existing values as fallbacks
-      const createData: {
-        sessionId: string;
-        npcId: string;
-        templateId?: string;
-        scheduleData: unknown;
-        placeholderMappings?: unknown;
-        ownerEmail: string;
-      } = {
-        sessionId,
-        npcId,
-        scheduleData: scheduleData ?? existing.scheduleData,
-        ownerEmail,
+      const existingSchedule = (actorState.state as any).schedule || {};
+
+      const newState = {
+        ...(actorState.state as object),
+        schedule: {
+          ...existingSchedule,
+          ...(templateId !== undefined ? { templateId } : {}),
+          ...(scheduleData !== undefined ? { scheduleData } : {}),
+          ...(placeholderMappings !== undefined ? { placeholderMappings } : {}),
+        },
       };
-      const existingTemplateId = existing.templateId;
-      if (templateId !== undefined) {
-        createData.templateId = templateId;
-      } else if (existingTemplateId !== null) {
-        createData.templateId = existingTemplateId;
-      }
-      if (placeholderMappings !== undefined) {
-        createData.placeholderMappings = placeholderMappings;
-      } else if (existing.placeholderMappings !== null) {
-        createData.placeholderMappings = existing.placeholderMappings;
-      }
 
-      // Build update data, only including defined values
-      const updateData: {
-        templateId?: string;
-        scheduleData?: unknown;
-        placeholderMappings?: unknown;
-      } = {};
-      if (templateId !== undefined) updateData.templateId = templateId;
-      if (scheduleData !== undefined) updateData.scheduleData = scheduleData;
-      if (placeholderMappings !== undefined) updateData.placeholderMappings = placeholderMappings;
-
-      const schedule = await db.npcSchedule.upsert({
-        where: { sessionId_npcId: { sessionId, npcId } },
-        create: createData,
-        update: updateData,
+      await upsertActorState({
+        sessionId: sessionId as any,
+        actorType: actorState.actorType,
+        actorId: npcId,
+        entityProfileId: actorState.entityProfileId as any,
+        state: newState,
+        lastEventSeq: actorState.lastEventSeq,
       });
 
       return c.json({
         ok: true,
-        schedule: {
-          id: schedule.id,
-          sessionId: schedule.sessionId,
-          npcId: schedule.npcId,
-          templateId: schedule.templateId,
-          scheduleData: schedule.scheduleData,
-          placeholderMappings: schedule.placeholderMappings,
-          createdAt: schedule.createdAt,
-          updatedAt: schedule.updatedAt,
-        },
+        schedule: newState.schedule,
       });
     } catch (error) {
       console.error('Error updating NPC schedule:', error);
@@ -635,16 +531,22 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId, npcId } = c.req.param();
 
     try {
-      const existing = await db.npcSchedule.findUnique({
-        where: { sessionId_npcId: { sessionId, npcId } },
-      });
-      if (!existing) {
+      const actorState = await getActorState(sessionId as any, npcId);
+      if (!actorState) {
         return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
-      await db.npcSchedule.delete({
-        where: { sessionId_npcId: { sessionId, npcId } },
+      const { schedule, ...remainingState } = actorState.state as any;
+
+      await upsertActorState({
+        sessionId: sessionId as any,
+        actorType: actorState.actorType,
+        actorId: npcId,
+        entityProfileId: actorState.entityProfileId as any,
+        state: remainingState,
+        lastEventSeq: actorState.lastEventSeq,
       });
+
       return c.json({ ok: true });
     } catch (error) {
       console.error('Error deleting NPC schedule:', error);

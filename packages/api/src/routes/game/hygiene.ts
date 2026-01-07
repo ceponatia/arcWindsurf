@@ -20,7 +20,14 @@ import {
   type HygieneUpdateInput,
   type HygieneLevel,
 } from '@minimal-rpg/schemas';
-import { db } from '../../db/prismaClient.js';
+import {
+  getActorState,
+  upsertActorState,
+  drizzle,
+  actorStates,
+  eq,
+  and,
+} from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
 import {
   loadSensoryModifiers,
@@ -40,29 +47,51 @@ async function getSensoryModifiers(): Promise<LoadedSensoryModifiers> {
 }
 
 /**
- * Get hygiene state for all body parts of an NPC.
+ * Get hygiene state for all body parts of an NPC from actor_states.
  */
 async function getNpcHygieneState(sessionId: string, npcId: string): Promise<NpcHygieneState> {
-  const rows = await db.npcHygieneState.findMany({
-    where: {
-      sessionId,
-      npcId,
-    },
-  });
+  const actorState = await getActorState(sessionId as any, npcId);
 
-  const bodyParts: Record<string, BodyPartHygieneState> = {};
-  for (const row of rows) {
-    bodyParts[row.bodyPart] = {
-      points: row.points,
-      level: row.level as HygieneLevel,
-      lastUpdatedAt: row.lastUpdatedAt?.toISOString(),
-    };
+  if (!actorState || !actorState.state) {
+    return { npcId, bodyParts: {} };
   }
+
+  const state = actorState.state as Record<string, any>;
+  const hygiene = state.hygiene || {};
 
   return {
     npcId,
-    bodyParts,
+    bodyParts: hygiene,
   };
+}
+
+/**
+ * Save hygiene state to actor_states.
+ */
+async function saveNpcHygieneState(
+  sessionId: string,
+  npcId: string,
+  hygiene: Record<string, BodyPartHygieneState>
+): Promise<void> {
+  const actorState = await getActorState(sessionId as any, npcId);
+
+  if (!actorState) {
+    throw new Error(`Actor state not found for NPC ${npcId} in session ${sessionId}`);
+  }
+
+  const newState = {
+    ...(actorState.state as object),
+    hygiene,
+  };
+
+  await upsertActorState({
+    sessionId: sessionId as any,
+    actorType: actorState.actorType,
+    actorId: npcId,
+    entityProfileId: actorState.entityProfileId as any,
+    state: newState,
+    lastEventSeq: actorState.lastEventSeq,
+  });
 }
 
 /**
@@ -76,34 +105,16 @@ async function initializeHygieneState(
   const now = new Date();
   const bodyParts: Record<string, BodyPartHygieneState> = {};
 
-  // Create records for all body regions
+  // Initialize all regions
   for (const region of BODY_REGIONS) {
-    await db.npcHygieneState.upsert({
-      where: {
-        sessionId_npcId_bodyPart: {
-          sessionId,
-          npcId,
-          bodyPart: region,
-        },
-      },
-      update: {},
-      create: {
-        sessionId,
-        npcId,
-        bodyPart: region,
-        points: 0,
-        level: 0,
-        lastUpdatedAt: now,
-        ownerEmail,
-      },
-    });
-
     bodyParts[region] = {
       points: 0,
       level: 0,
       lastUpdatedAt: now.toISOString(),
     };
   }
+
+  await saveNpcHygieneState(sessionId, npcId, bodyParts);
 
   return {
     npcId,
@@ -131,25 +142,13 @@ async function updateHygieneState(
   // Handle cleaning action first
   if (input.cleanedParts && input.cleanedParts.length > 0) {
     for (const part of input.cleanedParts) {
-      await db.npcHygieneState.update({
-        where: {
-          sessionId_npcId_bodyPart: {
-            sessionId,
-            npcId: input.npcId,
-            bodyPart: part,
-          },
-        },
-        data: {
+      if (currentState.bodyParts[part]) {
+        currentState.bodyParts[part] = {
           points: 0,
           level: 0,
-          lastUpdatedAt: now,
-        },
-      });
-      currentState.bodyParts[part] = {
-        points: 0,
-        level: 0,
-        lastUpdatedAt: now.toISOString(),
-      };
+          lastUpdatedAt: now.toISOString(),
+        };
+      }
     }
   }
 
@@ -182,31 +181,6 @@ async function updateHygieneState(
     const newPoints = currentPart.points + decayPoints;
     const newLevel = calculateHygieneLevel(newPoints, config.thresholds);
 
-    // Update database
-    await db.npcHygieneState.upsert({
-      where: {
-        sessionId_npcId_bodyPart: {
-          sessionId,
-          npcId: input.npcId,
-          bodyPart: region,
-        },
-      },
-      update: {
-        points: newPoints,
-        level: newLevel,
-        lastUpdatedAt: now,
-      },
-      create: {
-        sessionId,
-        npcId: input.npcId,
-        bodyPart: region,
-        points: newPoints,
-        level: newLevel,
-        lastUpdatedAt: now,
-        ownerEmail,
-      },
-    });
-
     currentState.bodyParts[region] = {
       points: newPoints,
       level: newLevel,
@@ -214,6 +188,7 @@ async function updateHygieneState(
     };
   }
 
+  await saveNpcHygieneState(sessionId, input.npcId, currentState.bodyParts);
   return currentState;
 }
 
@@ -235,37 +210,7 @@ async function applyHygieneEventToNpc(
   }
 
   const nextState = applyHygieneEvent(currentState, event, modifiers.decayRates, now);
-
-  for (const [bodyPart, nextPart] of Object.entries(nextState.bodyParts)) {
-    const prev = currentState.bodyParts[bodyPart];
-    if (prev && prev.points === nextPart.points && prev.level === nextPart.level) {
-      continue;
-    }
-
-    await db.npcHygieneState.upsert({
-      where: {
-        sessionId_npcId_bodyPart: {
-          sessionId,
-          npcId,
-          bodyPart,
-        },
-      },
-      update: {
-        points: nextPart.points,
-        level: nextPart.level,
-        lastUpdatedAt: now,
-      },
-      create: {
-        sessionId,
-        npcId,
-        bodyPart,
-        points: nextPart.points,
-        level: nextPart.level,
-        lastUpdatedAt: now,
-        ownerEmail,
-      },
-    });
-  }
+  await saveNpcHygieneState(sessionId, npcId, nextState.bodyParts);
 
   return nextState;
 }
@@ -361,34 +306,20 @@ export function registerHygieneRoutes(app: Hono): void {
     const ownerEmail = getOwnerEmail(c);
 
     try {
+      const state = await getNpcHygieneState(sessionId, npcId);
+
       // Reset specified body parts
       for (const part of parsed.data.bodyParts) {
-        await db.npcHygieneState.upsert({
-          where: {
-            sessionId_npcId_bodyPart: {
-              sessionId,
-              npcId,
-              bodyPart: part,
-            },
-          },
-          update: {
+        if (BODY_REGIONS.includes(part as any)) {
+          state.bodyParts[part] = {
             points: 0,
             level: 0,
-            lastUpdatedAt: now,
-          },
-          create: {
-            sessionId,
-            npcId,
-            bodyPart: part,
-            points: 0,
-            level: 0,
-            lastUpdatedAt: now,
-            ownerEmail,
-          },
-        });
+            lastUpdatedAt: now.toISOString(),
+          };
+        }
       }
 
-      const state = await getNpcHygieneState(sessionId, npcId);
+      await saveNpcHygieneState(sessionId, npcId, state.bodyParts);
       return c.json(state, 200);
     } catch (error) {
       console.error('Error cleaning body parts:', error);

@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
-import { getSession, appendMessage } from '../../db/sessionsClient.js';
+import { getSession } from '../../db/sessionsClient.js';
 import { notFound, serverError } from '../../utils/responses.js';
 import { worldProjectionService } from '../../services/projection-service.js';
 import { worldBus } from '@minimal-rpg/bus';
@@ -120,10 +120,6 @@ export function registerTurnRoutes(app: Hono): void {
           name: npcSpoke.actorId,
         }
       : undefined;
-
-    // Persist chat transcript
-    await appendMessage(ownerEmail, sessionId, 'user', input);
-    await appendMessage(ownerEmail, sessionId, 'assistant', message, npcSpeaker);
 
     const response: TurnResponseDto = {
       message,
