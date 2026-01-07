@@ -86,11 +86,6 @@ vi.mock('@minimal-rpg/db/node', () => ({
 vi.mock('../../src/utils/config.js');
 vi.mock('../../src/db/sessionsClient.js');
 vi.mock('@minimal-rpg/governor');
-vi.mock('@minimal-rpg/state-manager', () => ({
-  StateManager: vi.fn(),
-  DEFAULT_STATE_MANAGER_CONFIG: {},
-  ProximityService: vi.fn(),
-}));
 vi.mock('@minimal-rpg/agents', () => ({
   createDefaultRegistry: vi.fn(() => mockRegistry),
   NpcAgent: vi.fn(),

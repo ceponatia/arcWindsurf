@@ -12,5 +12,5 @@
   },
   "include": ["src"],
   "exclude": ["dist"],
-  "references": [{ "path": "../schemas" }, { "path": "../state-manager" }]
+  "references": [{ "path": "../schemas" }]
 }

@@ -843,15 +843,116 @@ CREATE TABLE session_projections (
 
 **Goal**: Event-sourced state with projections.
 
+**Overview**:
+In this phase, we transition from the legacy `state-manager` (JSON Patch) to a robust Event Sourcing model. "Projections" are the read-optimized views of the world derived from the stream of immutable events. Instead of mutating a global state object, we will have specific reducers that listen to events and update their specific domain state (Location, Inventory, NPC, etc.).
+
+**Package Structure (`packages/projections/`)**:
+
+```text
+packages/projections/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── index.ts              # Connects reducers to Drizzle/Cache
+    ├── types.ts              # Shared projection types
+    ├── projector.ts          # Main service orchestrating replay & updates
+    ├── reducers/             # Domain-specific logic
+    │   ├── index.ts
+    │   ├── session.ts        # Session status, turnkey info
+    │   ├── location.ts       # World map, connections, exits
+    │   ├── inventory.ts      # Item ownership, equipment
+    │   ├── npc.ts            # NPC positions, stats, status
+    │   ├── time.ts           # World clock state
+    │   └── affinity.ts       # Relationship graphs
+    └── snapshot/             # Snapshotting strategy (for performance)
+        ├── store.ts          # Drizzle snapshot persistence
+        └── manager.ts        # Snapshot creation/restoration logic
+```
+
+**Key Files & Logic**:
+
+1. **`src/types.ts`**:
+    Define the `Reducer` interface which is pure function: `(state: S, event: E) => S`.
+
+    ```typescript
+    import { WorldEvent } from '@minimal-rpg/bus';
+
+    export type Reducer<S> = (currentState: S, event: WorldEvent) => S;
+
+    export interface Projection<S> {
+        name: string;
+        initialState: S;
+        reducer: Reducer<S>;
+    }
+    ```
+
+2. **`src/projector.ts`**:
+    The engine that applies events to state. It handles "Replay" (startup) and "Live" (subscriptions).
+
+    ```typescript
+    export class Projector<S> {
+        constructor(
+            private projection: Projection<S>,
+            private eventStore: EventRepository,
+            private snapshotStore: SnapshotStore
+        ) {}
+
+        async getState(sessionId: string): Promise<S> {
+            // 1. Try to load snapshot
+            const snapshot = await this.snapshotStore.get(sessionId);
+            let state = snapshot ? snapshot.state : this.projection.initialState;
+            const fromSeq = snapshot ? snapshot.lastEventSeq + 1 : 0;
+
+            // 2. Replay newer events
+            const events = await this.eventStore.getEvents(sessionId, fromSeq);
+            for (const event of events) {
+                state = this.projection.reducer(state, event);
+            }
+
+            return state;
+        }
+    }
+    ```
+
+3. **`src/reducers/npc.ts`**:
+    Example of a domain reducer using existing Schemas.
+
+    ```typescript
+    import { NpcState } from '@minimal-rpg/schemas';
+    
+    export const npcReducer: Reducer<Record<string, NpcState>> = (state, event) => {
+        switch (event.type) {
+            case 'NPC_SPAWNED':
+                return { ...state, [event.actorId]: event.payload.initialState };
+            case 'NPC_MOVED':
+                return {
+                    ...state,
+                    [event.actorId]: {
+                        ...state[event.actorId],
+                        locationId: event.payload.destinationId
+                    }
+                };
+            default:
+                return state;
+        }
+    };
+    ```
+
+**Tasks**:
+
 | Task | Package | Files |
 |------|---------|-------|
 | Create `@minimal-rpg/projections` | projections/ | All new |
+| Implement `Projector` class | projections/ | `src/projector.ts` |
 | Implement session reducer | projections/ | `src/reducers/session.ts` |
-| Implement snapshot management | projections/ | `src/snapshot.ts` |
+| Implement location reducer | projections/ | `src/reducers/location.ts` |
+| Implement NPC reducer | projections/ | `src/reducers/npc.ts` |
+| Implement snapshot storage (Drizzle) | projections/ | `src/snapshot/store.ts` |
 | Delete `@minimal-rpg/state-manager` | state-manager/ | Remove package |
-| Migrate API to projections | api/ | Update services |
+| Migrate API to use Projector | api/ | `src/services/simulation.ts` |
 
-**Deliverable**: State derived from events, not patches.
+**Deliverable**: State derived from events, not patches. Projections are rebuildable from zero.
+
 
 ---
 
@@ -859,15 +960,89 @@ CREATE TABLE session_projections (
 
 **Goal**: Simulation ticks via BullMQ (builds on Redis from Phase 1).
 
+**Overview**:
+This phase introduces the **Workers** package, responsible for offloading heavy computations and recurring tasks from the main API/Bus loop. We use **BullMQ** (powered by Redis) to manage queues for simulation ticks, NPC cognition (LLM calls), and background memory maintenance (embedding generation). This ensures the "hot path" of the application remains responsive.
+
+**Package Structure (`packages/workers/`)**:
+
+```text
+packages/workers/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── index.ts              # Worker entry point
+    ├── config.ts             # Redis/BullMQ configuration
+    ├── queues/               # Queue definitions (Producers)
+    │   ├── index.ts
+    │   ├── tick.ts           # TickQueue
+    │   ├── cognition.ts      # CognitionQueue
+    │   └── embedding.ts      # EmbeddingQueue
+    ├── processors/           # Worker definitions (Consumers)
+    │   ├── index.ts
+    │   ├── tick.ts           # TickProcessor
+    │   ├── cognition.ts      # CognitionProcessor
+    │   └── embedding.ts      # EmbeddingProcessor
+    └── scheduler/            # Recurring jobs (Crons)
+        ├── index.ts          # Orchestrator
+        └── heartbeat.ts      # System liveliness check
+```
+
+**Key Files & Logic**:
+
+1. **`src/queues/cognition.ts`**:
+    Clean interface for producers to enqueue jobs.
+
+    ```typescript
+    import { Queue } from 'bullmq';
+    import { connection } from '../config';
+
+    export const cognitionQueue = new Queue('cognition', { connection });
+
+    export const enqueueCognition = (actorId: string, context: CognitionContext) => {
+        return cognitionQueue.add('think', { actorId, context }, {
+            priority: 1, // High priority for active NPCs
+            removeOnComplete: true
+        });
+    };
+    ```
+
+2. **`src/processors/cognition.ts`**:
+    The consumer that performs the heavy LLM work.
+
+    ```typescript
+    import { Worker } from 'bullmq';
+    import { WorldBus } from '@minimal-rpg/bus';
+    import { LLMService } from '@minimal-rpg/llm';
+
+    export const createCognitionWorker = (bus: WorldBus, llm: LLMService) => 
+        new Worker('cognition', async (job) => {
+            const { actorId, context } = job.data;
+            
+            // 1. Perform heavy LLM generation
+            const intent = await llm.decide(context);
+            
+            // 2. Emit result back to WorldBus
+            await bus.emit({ 
+                type: 'INTENT', 
+                actorId, 
+                intent 
+            });
+        }, { connection: redisConfig });
+    ```
+
+**Tasks**:
+
 | Task | Package | Files |
 |------|---------|-------|
 | Create `@minimal-rpg/workers` | workers/ | All new |
-| Add BullMQ queues (Redis already available) | workers/ | `src/queues/` |
-| Implement tick processor | workers/ | `src/processors/tick-processor.ts` |
-| Implement cognition queue | workers/ | `src/processors/cognition-processor.ts` |
-| Schedule NPC heartbeat | workers/ | `src/scheduler.ts` |
+| Implement `CognitionQueue` & `TickQueue` | workers/ | `src/queues/` |
+| Implement `CognitionProcessor` | workers/ | `src/processors/cognition.ts` |
+| Implement `TickProcessor` | workers/ | `src/processors/tick.ts` |
+| Implement `EmbeddingProcessor` | workers/ | `src/processors/embedding.ts` |
+| Create `Scheduler` service | workers/ | `src/scheduler/` |
+| Add worker startup script | workers/ | `src/index.ts` |
 
-**Deliverable**: NPCs think and act without player input.
+**Deliverable**: NPCs think and act asynchronously; simulation ticks are stable.
 
 **Note**: Redis infrastructure from Phase 1 makes this phase faster—only queue definitions and processors needed.
 
@@ -877,31 +1052,136 @@ CREATE TABLE session_projections (
 
 **Goal**: Full real-time UI with signals (SSE endpoint already exists from Phase 1).
 
+**Overview**:
+In this phase, we replace the legacy polling/Zustand architecture with a **Reactive Signal** model. Using `@preact/signals-react`, the frontend becomes a direct projection of the World Bus event stream. This eliminates render-cycle overhead for high-frequency updates (like ticks or movement) and provides "fine-grained" reactivity where only the specific DOM node (e.g., an NPC's coordinate) updates, not the entire Map component.
+
+**Package Structure (`packages/web/`)**:
+
+```text
+packages/web/src/
+├── signals/              # Global State (Signals)
+│   ├── index.ts          # Root store aggregator
+│   ├── session.ts        # Session metadata & status
+│   ├── actors.ts         # Actor entities (NPCs, Players)
+│   ├── events.ts         # Event log buffer
+│   └── ui.ts             # Ephemeral UI state (modals, selection)
+├── hooks/
+│   ├── useWorldBus.ts    # SSE connection & event dispatcher
+│   ├── useComputed.ts    # Derived state helpers
+│   └── useSignalEffect.ts# Side effects from signals
+├── components/
+│   ├── Game/
+│   │   ├── WorldMap.tsx  # Signal-driven Map
+│   │   └── Terminal.tsx  # Signal-driven Event Log
+│   └── DevOverlay.tsx    # Real-time state inspector
+└── services/
+    └── stream.ts         # EventSource wrapper with backoff
+```
+
+**Key Files & Logic**:
+
+1. **`src/signals/actors.ts`**:
+    Direct signal mutation allows render-less updates.
+
+    ```typescript
+    import { signal, computed } from "@preact/signals-react";
+    import { NpcState } from "@minimal-rpg/schemas";
+
+    export const actorStates = signal<Record<string, NpcState>>({});
+
+    // Computed derivation - 0 cost until accessed
+    export const activeNpcs = computed(() => 
+        Object.values(actorStates.value).filter(n => n.status === 'active')
+    );
+
+    export const updateActor = (id: string, state: NpcState) => {
+        // Fine-grained update
+        const current = actorStates.value;
+        actorStates.value = { ...current, [id]: state };
+    }
+    ```
+
+2. **`src/hooks/useWorldBus.ts`**:
+    The main vein connecting the Frontend to the Bus.
+
+    ```typescript
+    import { useEffect } from 'react';
+    import { eventLog } from '../signals/events';
+    import { actorStates } from '../signals/actors';
+
+    export const useWorldBus = (sessionId: string) => {
+        useEffect(() => {
+            const source = new EventSource(`/api/stream/${sessionId}`);
+            
+            source.onmessage = (msg) => {
+                const event = JSON.parse(msg.data);
+                
+                // 1. Append to log signal
+                eventLog.value = [...eventLog.value, event];
+
+                // 2. Dispatch state updates based on event type
+                if (event.type === 'NPC_MOVED') {
+                    // Update specific actor signal
+                    // Components subscribing ONLY to this actor will re-render
+                }
+            };
+            return () => source.close();
+        }, [sessionId]);
+    };
+    ```
+
+**Tasks**:
+
 | Task | Package | Files |
 |------|---------|-------|
-| Replace Zustand with signals | web/ | `src/signals/` |
-| Implement useWorldBus hook | web/ | `src/hooks/useWorldBus.ts` |
-| Add dev overlay | web/ | `src/components/DevOverlay.tsx` |
-| Enhance SSE with reconnection/backpressure | api/ | `src/routes/stream.ts` |
+| Install `@preact/signals-react` | web/ | `package.json` |
+| Create `SignalStore` structure | web/ | `src/signals/` |
+| Implement `useWorldBus` (SSE) | web/ | `src/hooks/useWorldBus.ts` |
+| Refactor `WorldMap` to Signals | web/ | `src/components/Game/WorldMap.tsx` |
+| Refactor `EventLog` to Signals | web/ | `src/components/Game/Terminal.tsx` |
+| Create `DevOverlay` | web/ | `src/components/DevOverlay.tsx` |
+| Remove `zustand` stores | web/ | `src/stores/` (delete) |
 
-**Deliverable**: UI updates in real-time without polling.
+**Deliverable**: UI updates in real-time (sub-100ms) without polling. Components use Signals.
 
 **Note**: Basic SSE from Phase 1 is enhanced here with production-grade features.
 
 ---
 
-### Phase 8: Cleanup (Weeks 22-24)
+### Phase 8: Cleanup & Stabilization (Weeks 22-24)
 
-**Goal**: Remove legacy packages, stabilize.
+**Goal**: Remove legacy packages, stabilize system, and finalize documentation.
+
+**Overview**:
+Systematically dismantle the legacy `governor` and `agents` packages. By this phase, all functionality should have been ported to `actors`, `services`, or `workers`. This phase also involves a comprehensive "Grepping" of the codebase to ensure no legacy imports remain and that the build pipeline (`turbo.json`) is optimized for the new graph.
+
+**Key Actions**:
+
+1. **Legacy Removal**:
+    - Delete `packages/governor`.
+    - Delete `packages/agents`.
+    - Remove legacy paths from `tsconfig.base.json`.
+
+2. **Import Rectification**:
+    - Run strict checks to ensure no files import from removed packages.
+    - Update `package.json` dependencies in all workspaces.
+
+3. **Integration Testing**:
+    - Full end-to-end simulation run (Scene Init -> NPC Thought -> Action -> Effect).
+    - Verify replay system with new projections.
+
+**Tasks**:
 
 | Task | Package | Files |
 |------|---------|-------|
-| Delete `@minimal-rpg/governor` | governor/ | Remove entire package |
-| Delete `@minimal-rpg/agents` | agents/ | Remove entire package |
-| Update all imports | All | Barrel exports |
-| Final integration tests | All | Test coverage |
+| Delete `@minimal-rpg/governor` | governor/ | Remove directory |
+| Delete `@minimal-rpg/agents` | agents/ | Remove directory |
+| Remove legacy workspace refs | root | `pnpm-workspace.yaml`, `turbo.json` |
+| Fix broken imports | All | `src/**/*.ts` |
+| Create `legacy-check` script | scripts/ | `check-imports.mjs` |
+| Final E2E Simulation Test | tests/ | `e2e/simulation.test.ts` |
 
-**Deliverable**: Clean, event-driven architecture.
+**Deliverable**: A clean, "Green Field" architecture with no legacy technical debt.
 
 ---
 
@@ -943,3 +1223,74 @@ Packages are layered by dependency depth. A package may only import from layers 
 | Event log size | Partition by session + month; TTL for old sessions |
 | Real-time performance | Use Redis pub/sub; benchmark early |
 | LLM costs | Implement tiered cognition and token budgets first |
+
+---
+
+## Appendix: Code Re-Use Strategy (Phases 5 - 8)
+
+### 1. Existing Types & Utils to Reuse
+
+Leverage these existing definitions to avoid duplication and maintain compatibility.
+
+**From `@minimal-rpg/state-manager` (Migration Sources):**
+- `StateSnapshot`: Adapt for the new `SnapshotStore`.
+- `SceneAction`: Convert to `SystemEvent` or `LogEvent` for history.
+- `StateChangeSource`: Reuse for event metadata (monitor who caused the event).
+
+**From `@minimal-rpg/schemas` (Domain Models):**
+- `State.Hygiene`: Use in `hygieneReducer`.
+- `State.NpcLocation`: Use in `locationReducer` and `actorStates` signal.
+- `State.Inventory`: Use in `inventoryReducer`.
+- `Simulation.Tick`: Core payload for `TICK` events and TickQueue jobs.
+- `WorldEvent`: **Critical** shared type between Backend Bus and Frontend Signals.
+
+**From `@minimal-rpg/utils`:**
+- `deepMerge`: Essential for applying partial updates in reducers.
+- `clone`: Safe state copying before mutation in reducers.
+- `exponentialBackoff`: Reuse for Worker retry strategies.
+
+**From `@minimal-rpg/ui`:**
+- Shared UI components (Buttons, Cards, Inputs) remain compatible with Signals (pass signals as props or `.value`).
+
+### 2. Recommended New Types & Utils
+
+**New Core Types (`packages/projections/src/types.ts`):**
+- `SnapshotHeader`: Lightweight metadata (seq, timestamp) for listing snapshots without loading state.
+- `EventBatch`: Type for processing events in bulk for replay optimization.
+- `ReplayOptions`: Configuration for `Projector.replay()` (e.g., `untilSeq`, `fastForward`).
+
+**New Worker Types (`packages/workers/src/types.ts`):**
+- `JobData<T>`: Generic wrapper for BullMQ job payloads (e.g., `JobData<CognitionTask>`).
+- `WorkerConfig`: standardized configuration interface for all worker processes (concurrency, limits).
+- `JobResult`: Standardized return type for completed jobs to log metrics.
+
+**New Frontend Types (`packages/web/src/types.ts`):**
+- `SignalStore`: Interface defining the shape of the global signal state.
+- `StreamStatus`: Union type `'connecting' | 'connected' | 'disconnected' | 'error'` for UI badges.
+- `Signal<T>`: Wrapper ensuring components typically receive the signal object, not just the value.
+
+**New Utility Functions:**
+- `createReducer(initialState, handlers)`: Helper to reduce boilerplate in switch-case reducers.
+- `projectionWrapper(reducer)`: HOF that adds telemetry and error handling to any reducer.
+- `snapshotStrategy(eventCount)`: Logic to determine when to trigger a snapshot (e.g., every 100 events).
+- `createWorker(queueName, processor)`: HOF factory to ensure consistent error handling and logging stats for all queues.
+- `connectStream(url)`: Helper function to handle SSE connection lifecycle and auto-reconnect.
+
+### 3. Legacy Retirement Checklist (Phase 8)
+
+**Before Deletion:**
+- [ ] **Type Audit**: Ensure `Governor.TurnTypes` fully map to `EventTypes` (Schema).
+- [ ] **Logic Audit**: Verify `LocationGraph` traversal logic is fully replicated in `LocationService` (Services).
+- [ ] **Archive**: (Optional) Move legacy packages to a `_archive/` folder outside the implementation workspace for one sprint.
+
+**Cleanup Script Logic (`scripts/check-imports.mjs`):**
+
+```javascript
+// Pseudocode for safety check
+const FORBIDDEN_IMPORTS = ['@minimal-rpg/governor', '@minimal-rpg/agents', '@minimal-rpg/state-manager'];
+scanAllFiles().forEach(file => {
+  if (file.content.includes(FORBIDDEN_IMPORTS)) {
+    throw new Error(`Legacy import found in ${file.path}`);
+  }
+});
+```

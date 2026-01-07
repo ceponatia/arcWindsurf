@@ -8,7 +8,7 @@
  * This ensures state changes from tool execution are durably saved.
  */
 import type { TurnStateChanges, TurnStateContext } from '@minimal-rpg/governor';
-import type { DeepPartial } from '@minimal-rpg/state-manager';
+import type { DeepPartial } from '@minimal-rpg/utils';
 import type { ProximityState } from '@minimal-rpg/schemas';
 import { db } from '../db/prismaClient.js';
 import {

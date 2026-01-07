@@ -5,7 +5,7 @@ The Governor orchestrates player turns. The default path now routes directly thr
 ## Overview
 
 - Turn handling with `NpcTurnHandler` (direct NpcAgent execution, deterministic ordering)
-- State management via `StateManager` patch application
+- State management via injected `toolTurnHandler` patches
 
 ## Installation
 
@@ -17,10 +17,8 @@ pnpm add @minimal-rpg/governor
 
 ```typescript
 import { createGovernor, NpcTurnHandler } from '@minimal-rpg/governor';
-import { StateManager } from '@minimal-rpg/state-manager';
 import { NpcAgent } from '@minimal-rpg/agents';
 
-const stateManager = new StateManager();
 const npcAgent = new NpcAgent({ /* inject llmProvider + services as needed */ });
 
 const npcTurnHandler = new NpcTurnHandler({
@@ -30,7 +28,6 @@ const npcTurnHandler = new NpcTurnHandler({
 });
 
 const governor = createGovernor({
-  stateManager,
   toolTurnHandler: npcTurnHandler,
 });
 
@@ -61,6 +58,5 @@ interface TurnResult {
 
 ## Dependencies
 
-- `@minimal-rpg/state-manager` for patch application
 - `@minimal-rpg/agents` for agent implementations (NpcAgent, SensoryAgent, etc.)
 - `fast-json-patch` for JSON Patch operations

@@ -7,3 +7,4 @@ export * from './seeds/index.js';
 export * from './schema/index.js';
 export * from './cache/session-cache.js';
 export * from './types.js';
+export * from 'drizzle-orm';

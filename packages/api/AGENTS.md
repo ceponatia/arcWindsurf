@@ -34,6 +34,5 @@ The HTTP backend server for the Minimal RPG application. It exposes REST endpoin
 - **@minimal-rpg/governor**: Delegates complex turn processing logic.
 - **@minimal-rpg/db**: Direct database access for CRUD operations.
 - **@minimal-rpg/schemas**: Shared Zod schemas for request/response validation.
-- **@minimal-rpg/state-manager**: State aggregation and management.
 - **@minimal-rpg/agents**: Agent definitions and logic, particularly the npc agent which is responsible for non-player character behavior and decision-making within the game.
 - **@minimal-rpg/characters**: Character data structures and logic.

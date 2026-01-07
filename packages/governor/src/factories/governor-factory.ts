@@ -2,10 +2,8 @@ import { createGovernor, type Governor } from '../core/governor.js';
 import type { GovernorConfig } from '../core/types.js';
 import { NpcTurnHandler } from '../core/npc-turn-handler.js';
 import type { AgentRegistry, NpcAgent, AgentStateSlices } from '@minimal-rpg/agents';
-import type { StateManager } from '@minimal-rpg/state-manager';
 
 export interface GovernorFactoryConfig {
-  stateManager: StateManager;
   agentRegistry: AgentRegistry;
   npcTranscriptLoader: GovernorConfig['npcTranscriptLoader'];
   devMode?: boolean;
@@ -20,7 +18,7 @@ export class GovernorFactory {
     sessionId: string;
     stateSlices: AgentStateSlices;
   }): Governor {
-    const { stateManager, agentRegistry, npcTranscriptLoader, devMode, logging } = this.config;
+    const { agentRegistry, npcTranscriptLoader, devMode, logging } = this.config;
 
     const npcAgent = agentRegistry.get('npc') as NpcAgent | undefined;
     if (!npcAgent) {
@@ -34,7 +32,6 @@ export class GovernorFactory {
     });
 
     const governorConfig: GovernorConfig = {
-      stateManager,
       toolTurnHandler: npcTurnHandler,
       ...(npcTranscriptLoader ? { npcTranscriptLoader } : {}),
       options: {

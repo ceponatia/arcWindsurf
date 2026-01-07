@@ -7,7 +7,7 @@
 import type { Hono } from 'hono';
 import { getSession } from '../../db/sessionsClient.js';
 import { notFound, serverError } from '../../utils/responses.js';
-import { loadStateForTurn } from '../../services/state-loader.js';
+import { loadProjectedStateForTurn } from '../../services/state-loader.js';
 import { createGovernorForRequest } from '../../factories/composition.js';
 import type { AgentStateSlices } from '@minimal-rpg/agents';
 import { validateTurnRequest } from './turns/turn-request.js';
@@ -19,8 +19,10 @@ import {
   persistStateChanges,
   persistNpcTranscript,
   persistSessionHistory,
+  persistEvents,
 } from './turns/state-persistence.js';
 import { processTurnInterest, executePromotion } from '../../services/tier-service.js';
+import { worldProjectionService } from '../../services/projection-service.js';
 import type { TurnContext, TurnPersistenceData } from './turns/types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 
@@ -51,7 +53,7 @@ export function registerTurnRoutes(app: Hono): void {
     // 3. Load state (baseline + overrides + session state)
     let loadedState;
     try {
-      loadedState = await loadStateForTurn({
+      loadedState = await loadProjectedStateForTurn({
         ownerEmail,
         sessionId,
         ...(targetNpcId ? { targetNpcId } : {}),
@@ -136,6 +138,12 @@ export function registerTurnRoutes(app: Hono): void {
     };
 
     await persistStateChanges(ownerEmail, persistenceData, turnResult);
+
+    // 8.5 Persist events for future projections
+    await persistEvents(sessionId, turnResult);
+
+    // 8.6 Refresh and save projections
+    await worldProjectionService.refreshAndSave(sessionId);
 
     // 9. Persist NPC transcript
     await persistNpcTranscript(

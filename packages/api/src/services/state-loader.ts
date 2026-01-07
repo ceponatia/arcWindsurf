@@ -33,6 +33,7 @@ import {
 } from '../db/sessionsClient.js';
 import { sessionStateCache, type DialogueState } from './state-cache.js';
 import { checkNpcAvailability, type NpcScheduleData } from './schedule-service.js';
+import { worldProjectionService } from './projection-service.js';
 import type { CharacterInstanceRow, SettingInstanceRow } from '../db/types.js';
 
 // =============================================================================
@@ -224,6 +225,66 @@ function buildSettingState(profile: SettingProfile, instance: SettingInstanceRow
 // =============================================================================
 // State Loader
 // =============================================================================
+
+/**
+ * Load all state slices for a turn using the projection system.
+ */
+export async function loadProjectedStateForTurn(
+  options: LoadStateOptions
+): Promise<LoadedTurnState> {
+  const { sessionId } = options;
+
+  // Initialize projection manager (replays events)
+  const manager = await worldProjectionService.getManager(sessionId);
+  const projected = manager.getState();
+
+  // Load baseline/instances (we still need templates and DB record identity)
+  const legacyState = await loadStateForTurn(options);
+
+  // Apply projections on top of/instead of legacy state loading
+  // For MVP integration, we merge projected state into the legacy structure
+
+  // Update location from projection
+  if (legacyState.playerLocationId && projected.location[legacyState.playerLocationId]) {
+    legacyState.baseline.location = {
+      ...legacyState.baseline.location,
+      ...projected.location[legacyState.playerLocationId],
+    };
+  }
+
+  // Update inventory and time from projection
+  legacyState.baseline.inventory = {
+    ...legacyState.baseline.inventory,
+    ...projected.inventory,
+  };
+  legacyState.baseline.time = {
+    ...legacyState.baseline.time,
+    ...projected.time,
+  };
+
+  // Update NPC states (locations, health, etc.) from projection
+  for (const [id, npc] of Object.entries(projected.npcs)) {
+    // Update affinity if present in projection (future work)
+    // Update individual NPC location state
+    legacyState.npcLocationStates.set(id, npc.location as NpcLocationState);
+
+    // If this is the active NPC, update its mood/context
+    if (id === legacyState.instances.activeNpc.id) {
+      if (legacyState.npcContext) {
+        legacyState.npcContext.mood = {
+          primary:
+            npc.status === 'dead' ? 'dead' : (legacyState.npcContext.mood?.primary ?? 'neutral'),
+          intensity: npc.health.current / npc.health.max,
+        };
+      }
+    }
+  }
+
+  // Sync npcLocations back to baseline for governor
+  legacyState.baseline.npcLocations = Object.fromEntries(legacyState.npcLocationStates);
+
+  return legacyState;
+}
 
 /**
  * Load all state slices for a turn.

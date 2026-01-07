@@ -13,6 +13,7 @@ import {
   upsertTimeState,
 } from '../../../db/sessionsClient.js';
 import { db } from '../../../db/prismaClient.js';
+import { drizzle, events, sql, desc, eq } from '@minimal-rpg/db';
 import { persistSessionState } from '../../../services/index.js';
 import type { TurnResult } from '@minimal-rpg/governor';
 import type { ProximityState } from '@minimal-rpg/schemas';
@@ -58,6 +59,52 @@ export async function persistAssistantMessage(
     : undefined;
 
   await appendMessage(ownerEmail, sessionId, 'assistant', message, speakerForDb);
+}
+
+/**
+ * Persist events from turn result to the events table.
+ *
+ * @param sessionId - Session ID
+ * @param turnResult - Turn result containing events
+ */
+export async function persistEvents(sessionId: string, turnResult: TurnResult): Promise<void> {
+  const { events: turnEvents } = turnResult;
+  if (!turnEvents || turnEvents.length === 0) return;
+
+  try {
+    // Get current max sequence for this session
+    const lastEvent = await drizzle
+      .select({ sequence: events.sequence })
+      .from(events)
+      .where(eq(events.sessionId, sessionId))
+      .orderBy(desc(events.sequence))
+      .limit(1);
+
+    let nextSeq = (lastEvent[0]?.sequence ?? 0n) + 1n;
+
+    // Prepare events for insertion
+    const toInsert = turnEvents.map((evt) => {
+      const seq = nextSeq++;
+      return {
+        sessionId,
+        type: evt.type,
+        payload: {
+          ...evt.payload,
+          id: (evt as any).id || crypto.randomUUID(),
+          timestamp: evt.timestamp.toISOString(),
+          sessionId,
+          type: evt.type,
+        },
+        actorId: (evt.payload['actorId'] as string) || (evt.source as string) || null,
+        timestamp: evt.timestamp,
+        sequence: seq,
+      };
+    });
+
+    await drizzle.insert(events).values(toInsert);
+  } catch (err) {
+    console.warn('[turns] Failed to persist events:', (err as Error).message);
+  }
 }
 
 /**

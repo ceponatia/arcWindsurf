@@ -23,9 +23,6 @@
       "path": "../schemas"
     },
     {
-      "path": "../state-manager"
-    },
-    {
       "path": "../utils"
     }
   ]

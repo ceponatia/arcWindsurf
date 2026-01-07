@@ -7,17 +7,14 @@ import {
   type PreconditionResult,
   type StateChange,
 } from '@minimal-rpg/schemas';
-import { type StateManager } from '@minimal-rpg/state-manager';
-import { type Operation } from 'fast-json-patch';
+import { applyPatch, type Operation } from 'fast-json-patch';
+import { deepClone } from '@minimal-rpg/utils';
 import { type TurnStateContext } from './types.js';
 
 /**
  * Configuration for the ActionSequencer.
  */
 export interface ActionSequencerConfig {
-  /** State manager for applying state changes */
-  stateManager: StateManager;
-
   /**
    * Optional checker for action interrupts (NPC reactions, random events).
    * Called after each action's state changes are applied.
@@ -207,15 +204,11 @@ export class ActionSequencer {
       return currentState;
     }
 
-    // Apply patches through state manager
+    // Apply patches
     try {
-      const result = this.config.stateManager.applyPatches(
-        currentState,
-        {},
-        patches,
-        { computeMinimalDiff: false } // Get full effective state back
-      );
-      return result.newEffective;
+      const stateClone = deepClone(currentState);
+      const { newDocument } = applyPatch(stateClone, patches, false, false);
+      return newDocument as TurnStateContext;
     } catch (error) {
       console.error('Failed to apply state changes for action:', action.id, error);
       return currentState; // Return unchanged on error
@@ -285,30 +278,27 @@ export class ActionSequencer {
 /**
  * Create a default action sequencer with no interrupts or sensory collection.
  */
-export function createBasicActionSequencer(stateManager: StateManager): ActionSequencer {
-  return new ActionSequencer({ stateManager });
+export function createBasicActionSequencer(): ActionSequencer {
+  return new ActionSequencer({});
 }
 
 /**
  * Create an action sequencer with sensory collection.
  */
 export function createSensoryActionSequencer(
-  stateManager: StateManager,
   sensoryCollector: NonNullable<ActionSequencerConfig['sensoryCollector']>
 ): ActionSequencer {
-  return new ActionSequencer({ stateManager, sensoryCollector });
+  return new ActionSequencer({ sensoryCollector });
 }
 
 /**
  * Create an action sequencer with interrupt handling.
  */
 export function createInterruptibleActionSequencer(
-  stateManager: StateManager,
   interruptChecker: NonNullable<ActionSequencerConfig['interruptChecker']>,
   sensoryCollector?: NonNullable<ActionSequencerConfig['sensoryCollector']>
 ): ActionSequencer {
   const config: ActionSequencerConfig = {
-    stateManager,
     interruptChecker,
   };
   if (sensoryCollector) {

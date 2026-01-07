@@ -6,7 +6,7 @@ import {
   type ParsedAction,
   type ActionSequenceResult,
 } from '@minimal-rpg/schemas';
-import { type StateManager, type DeepPartial } from '@minimal-rpg/state-manager';
+import { type DeepPartial } from '@minimal-rpg/utils';
 import { type RetrievalResult } from '@minimal-rpg/retrieval';
 import {
   type AgentOutput,
@@ -16,16 +16,13 @@ import {
   type ConversationTurn as AgentConversationTurn,
 } from '@minimal-rpg/agents';
 import { type Operation } from 'fast-json-patch';
-import { type ActionSequencer } from './action-sequencer.js';
 
 // ============================================================================
 // Core Types
 // ============================================================================
 
 export interface GovernorConfig {
-  stateManager: StateManager;
   npcTranscriptLoader?: NpcTranscriptLoader;
-  actionSequencer?: ActionSequencer;
   /** Tool-based turn handler for LLM tool calling mode (required) */
   toolTurnHandler: ToolTurnHandler;
   logging?: {

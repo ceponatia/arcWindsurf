@@ -1,5 +1,11 @@
-import { type Operation } from 'fast-json-patch';
-import { type StateManager, type DeepPartial } from '@minimal-rpg/state-manager';
+import { type Operation, applyPatch, validate } from 'fast-json-patch';
+import type { DeepPartial } from '@minimal-rpg/utils';
+import {
+  deepClone,
+  deepDiff,
+  deepMergeReplaceArrays,
+  extractPathsFromPatches,
+} from '@minimal-rpg/utils';
 import {
   type GovernorConfig,
   type GovernorOptions,
@@ -27,7 +33,6 @@ import {
  * state management here while agent-specific logic lives in the agents package.
  */
 export class Governor {
-  private readonly stateManager: StateManager;
   private readonly options: Required<GovernorOptions>;
   private readonly logging: GovernorConfig['logging'];
   private readonly toolTurnHandler: ToolTurnHandler;
@@ -37,7 +42,6 @@ export class Governor {
       throw new Error('[Governor] toolTurnHandler is required - classic mode has been removed');
     }
 
-    this.stateManager = config.stateManager;
     this.logging = config.logging;
     this.toolTurnHandler = config.toolTurnHandler;
 
@@ -159,14 +163,29 @@ export class Governor {
     }
 
     try {
-      const result = this.stateManager.applyPatches<TurnStateContext>(baseline, overrides, patches);
+      // 1. Compute effective state (deep clone baseline and merge overrides)
+      const effective = deepMergeReplaceArrays(deepClone(baseline), overrides) as TurnStateContext;
+
+      // 2. Clone for mutation
+      const nextState = deepClone(effective);
+
+      // 3. Validate and apply patches
+      const patchErrors = validate(patches, nextState);
+      if (patchErrors) {
+        throw new Error(`Invalid patch operations: ${patchErrors.message}`);
+      }
+
+      applyPatch(nextState, patches, true, true);
+
+      // 4. Compute minimal new overrides
+      const diffResult = deepDiff(baseline, nextState);
 
       return {
-        patchCount: result.patchesApplied,
-        modifiedPaths: result.modifiedPaths,
+        patchCount: patches.length,
+        modifiedPaths: extractPathsFromPatches(patches),
         patches,
-        newEffectiveState: result.newEffective,
-        newOverrides: result.newOverrides,
+        newEffectiveState: nextState,
+        newOverrides: diffResult.diff,
       };
     } catch (error) {
       const errorCause = error instanceof Error ? error : undefined;

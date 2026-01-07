@@ -412,3 +412,29 @@ export interface MobileSidebarProps {
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
 }
+
+// Phase 7: Frontend Reactivity Types
+import { type Signal } from '@preact/signals-react';
+
+export type StreamStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+export interface SignalStore {
+  session: {
+    status: Signal<StreamStatus>;
+    id: Signal<string | null>;
+    turnKey: Signal<number>;
+  };
+  actors: {
+    states: Signal<Record<string, unknown>>; // Generic for now, refactor to NpcState later
+    activeIds: Signal<string[]>;
+  };
+  events: {
+    log: Signal<any[]>;
+    lastEvent: Signal<any | null>;
+  };
+  ui: {
+    viewMode: Signal<ViewMode>;
+    overlayOpen: Signal<boolean>;
+    selectedActorId: Signal<string | null>;
+  };
+}

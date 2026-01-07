@@ -1,5 +1,4 @@
 import { GovernorFactory, type Governor, type GovernorConfig } from '@minimal-rpg/governor';
-import { StateManager, DEFAULT_STATE_MANAGER_CONFIG } from '@minimal-rpg/state-manager';
 import { ProximityService } from '@minimal-rpg/services';
 import {
   createDefaultRegistry,
@@ -14,12 +13,6 @@ import {
 import { generateWithOpenRouter } from '@minimal-rpg/utils';
 import { getConfig } from '../utils/config.js';
 import { getNpcOwnHistory } from '../db/sessionsClient.js';
-
-const stateManager = new StateManager({
-  ...DEFAULT_STATE_MANAGER_CONFIG,
-  validateOnMerge: true,
-  computeMinimalDiff: true,
-});
 
 const agentRegistry = createDefaultRegistry();
 
@@ -155,7 +148,6 @@ export function createGovernorForRequest(options: GovernorFactoryOptions): Gover
   ensureAgentsRegistered();
 
   governorFactory ??= new GovernorFactory({
-    stateManager,
     agentRegistry,
     npcTranscriptLoader: async ({
       sessionId,

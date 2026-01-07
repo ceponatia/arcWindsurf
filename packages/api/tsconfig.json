@@ -8,18 +8,11 @@
     "rootDir": "src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.json"
-  ],
-  "exclude": [
-    "dist"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "exclude": ["dist"],
   "references": [
     {
       "path": "../agents"
@@ -37,6 +30,9 @@
       "path": "../governor"
     },
     {
+      "path": "../projections"
+    },
+    {
       "path": "../retrieval"
     },
     {
@@ -44,9 +40,6 @@
     },
     {
       "path": "../services"
-    },
-    {
-      "path": "../state-manager"
     },
     {
       "path": "../utils"
