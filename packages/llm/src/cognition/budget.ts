@@ -2,9 +2,9 @@ import { Effect } from 'effect';
 import type { TokenBudget } from '../types.js';
 
 export class TokenBudgetManager {
-  private budgets: Map<string, TokenBudget> = new Map();
+  private budgets = new Map<string, TokenBudget>();
 
-  constructor(private defaultLimit: number = 100000) {}
+  constructor(private defaultLimit = 100000) {}
 
   getBudget(sessionId: string): TokenBudget {
     let budget = this.budgets.get(sessionId);
@@ -29,7 +29,7 @@ export class TokenBudgetManager {
     });
   }
 
-  hasBudget(sessionId: string, estimatedTokens: number = 0): boolean {
+  hasBudget(sessionId: string, estimatedTokens = 0): boolean {
     const budget = this.getBudget(sessionId);
     return budget.remaining >= estimatedTokens;
   }

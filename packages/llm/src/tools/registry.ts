@@ -1,7 +1,7 @@
 import type { ToolDefinition } from './types.js';
 
 export class ToolRegistry {
-  private tools: Map<string, ToolDefinition> = new Map();
+  private tools = new Map<string, ToolDefinition>();
 
   register(tool: ToolDefinition): void {
     this.tools.set(tool.function.name, tool);

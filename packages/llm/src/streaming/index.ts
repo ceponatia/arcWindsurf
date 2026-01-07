@@ -1,18 +1,16 @@
 import { Effect } from 'effect';
+import type { LLMStreamChunk } from '../types.js';
 
 /**
  * Utility for handling LLM streams and converting them to SSE or other formats.
  */
-export const streamToLines = (stream: AsyncIterable<any>): AsyncIterable<string> => {
+export const streamToLines = (stream: AsyncIterable<LLMStreamChunk>): AsyncIterable<string> => {
   return {
     async *[Symbol.asyncIterator]() {
       for await (const chunk of stream) {
-        if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta) {
-          const content = chunk.choices[0].delta.content;
-          if (content) {
-            yield content;
-          }
-        }
+        const firstChoice = chunk.choices[0];
+        const content = firstChoice?.delta?.content;
+        if (typeof content === 'string' && content.length > 0) yield content;
       }
     },
   };
@@ -27,6 +25,6 @@ export const consumeStream = (stream: AsyncIterable<string>): Effect.Effect<stri
       }
       return fullContent;
     },
-    catch: (error) => error as Error,
+    catch: (error) => (error instanceof Error ? error : new Error(String(error))),
   });
 };

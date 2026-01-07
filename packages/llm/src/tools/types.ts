@@ -6,6 +6,7 @@
  * JSON Schema for tool parameters.
  */
 export interface ToolParameterSchema {
+  [key: string]: unknown;
   type: 'object';
   properties: Record<
     string,

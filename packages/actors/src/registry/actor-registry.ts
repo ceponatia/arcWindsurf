@@ -46,9 +46,11 @@ export class ActorRegistry {
     // Emit ACTOR_SPAWN event
     const spawnEvent: WorldEvent = {
       type: 'ACTOR_SPAWN',
+      sessionId: config.sessionId,
       actorId: config.id,
       actorType: config.type,
       locationId: config.locationId,
+      timestamp: new Date(),
     };
     void worldBus.emit(spawnEvent);
 
@@ -79,7 +81,9 @@ export class ActorRegistry {
     // Emit ACTOR_DESPAWN event
     const despawnEvent: WorldEvent = {
       type: 'ACTOR_DESPAWN',
+      sessionId: actor.sessionId,
       actorId,
+      timestamp: new Date(),
     };
     void worldBus.emit(despawnEvent);
   }

@@ -51,13 +51,13 @@ export function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export type DeepDiffResult = {
+export interface DeepDiffResult {
   diff: unknown;
   addedPaths: string[];
   removedPaths: string[];
   modifiedPaths: string[];
   isIdentical: boolean;
-};
+}
 
 /**
  * Compare two objects and compute the minimal diff.
@@ -117,12 +117,12 @@ export function deepDiff<T>(original: T, modified: T): DeepDiffResult {
   };
 }
 
-export type JsonPatchOperation = {
+export interface JsonPatchOperation {
   op: string;
   path: string;
   from?: string;
   value?: unknown;
-};
+}
 
 /**
  * Extracts a unique list of paths from an array of JSON patches.
@@ -130,7 +130,7 @@ export type JsonPatchOperation = {
  * @param patches - Array of JSON patch operations
  * @returns Array of unique paths modified by the patches
  */
-export function extractPathsFromPatches(patches: ReadonlyArray<JsonPatchOperation>): string[] {
+export function extractPathsFromPatches(patches: readonly JsonPatchOperation[]): string[] {
   const paths = new Set<string>();
   for (const patch of patches) {
     if (typeof patch.path === 'string') {

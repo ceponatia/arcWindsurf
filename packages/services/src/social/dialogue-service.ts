@@ -17,6 +17,8 @@ export class DialogueService {
     const source = event as Record<string, unknown>;
     const actorId = typeof source['actorId'] === 'string' ? source['actorId'] : 'unknown';
     const sessionId = typeof source['sessionId'] === 'string' ? source['sessionId'] : undefined;
+    const content = typeof source['content'] === 'string' ? source['content'] : '';
+    const timestamp = source['timestamp'] instanceof Date ? source['timestamp'] : new Date();
 
     if (!sessionId) {
       // Speech without session context cannot be persisted or routed safely.
@@ -26,11 +28,11 @@ export class DialogueService {
     const spokeEvent: WorldEvent = {
       type: 'SPOKE',
       actorId,
-      content: String(source['content'] ?? ''),
+      content,
       targetActorId:
         typeof source['targetActorId'] === 'string' ? source['targetActorId'] : undefined,
       sessionId,
-      timestamp: source['timestamp'] instanceof Date ? (source['timestamp'] as Date) : new Date(),
+      timestamp,
     };
 
     await worldBus.emit(spokeEvent);

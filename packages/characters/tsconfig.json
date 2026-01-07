@@ -14,9 +14,6 @@
   "exclude": ["dist"],
   "references": [
     {
-      "path": "../agents"
-    },
-    {
       "path": "../retrieval"
     },
     {

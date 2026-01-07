@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import type { ToolDefinition } from './tools/types.js';
+import type { ToolCall, ToolDefinition } from './tools/types.js';
 
 /** LLM Message roles. */
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -10,7 +10,7 @@ export interface LLMMessage {
   content: string | null;
   name?: string;
   tool_call_id?: string;
-  tool_calls?: any[]; // Simplified for now, will refine
+  tool_calls?: ToolCall[];
 }
 
 /** Chat options. */
@@ -28,12 +28,20 @@ export interface ChatOptions {
 export interface LLMResponse {
   id: string;
   content: string | null;
-  tool_calls?: any[] | null;
+  tool_calls?: ToolCall[] | null;
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
   } | null;
+}
+
+export interface LLMStreamChunk {
+  choices: readonly {
+    delta?: {
+      content?: string | null;
+    };
+  }[];
 }
 
 /** LLM Provider interface. */
@@ -43,7 +51,10 @@ export interface LLMProvider {
   readonly supportsFunctions: boolean;
 
   chat(messages: LLMMessage[], options?: ChatOptions): Effect.Effect<LLMResponse, Error>;
-  stream(messages: LLMMessage[], options?: ChatOptions): Effect.Effect<AsyncIterable<any>, Error>;
+  stream(
+    messages: LLMMessage[],
+    options?: ChatOptions
+  ): Effect.Effect<AsyncIterable<LLMStreamChunk>, Error>;
 }
 
 /** Task types for tiered cognition. */
