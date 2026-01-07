@@ -1,3 +1,4 @@
+import { eq, and, gte, asc } from 'drizzle-orm';
 import { drizzle } from '../connection/drizzle.js';
 import { events } from '../schema/index.js';
 import { type WorldEvent } from '@minimal-rpg/schemas';
@@ -10,7 +11,7 @@ export class EventRepository {
     await drizzle.insert(events).values({
       sessionId,
       type: event.type,
-      payload: event as any,
+      payload: event,
       sequence,
       timestamp: new Date(),
     });
@@ -21,11 +22,8 @@ export class EventRepository {
    */
   async getEventsForSession(sessionId: string, fromSequence = 0n) {
     return await drizzle.query.events.findMany({
-      where: (table: any, { eq, and, gte }: any) => and(
-        eq(table.sessionId, sessionId),
-        gte(table.sequence, fromSequence)
-      ),
-      orderBy: (table: any, { asc }: any) => [asc(table.sequence)],
+      where: and(eq(events.sessionId, sessionId), gte(events.sequence, fromSequence)),
+      orderBy: [asc(events.sequence)],
     });
   }
 }

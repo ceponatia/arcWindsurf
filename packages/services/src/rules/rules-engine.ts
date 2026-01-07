@@ -9,8 +9,10 @@ import { type WorldEvent } from '@minimal-rpg/schemas';
 export class RulesEngine {
   private started = false;
 
-  private handler = async (_event: WorldEvent): Promise<void> => {
-    // Basic rule validation placeholder
+  private handler = async (event: WorldEvent): Promise<void> => {
+    // TODO: Implement rule validation based on event.type
+    // For now, log and acknowledge all events
+    console.debug(`[RulesEngine] Received event: ${event.type}`);
     await Promise.resolve();
   };
 

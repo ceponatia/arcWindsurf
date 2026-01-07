@@ -1,4 +1,4 @@
-import { LocationService } from './location-service';
+import { LocationService } from './location-service.js';
 import type { LocationMap } from '@minimal-rpg/schemas';
 
 /**

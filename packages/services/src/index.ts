@@ -2,6 +2,7 @@
 export * from './physics/physics-engine.js';
 export * from './physics/spatial-index.js';
 export * from './physics/pathfinding.js';
+export * from './physics/proximity-service.js';
 
 // Social
 export * from './social/social-engine.js';

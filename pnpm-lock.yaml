@@ -173,6 +173,9 @@ importers:
       '@minimal-rpg/schemas':
         specifier: workspace:*
         version: link:../schemas
+      '@minimal-rpg/services':
+        specifier: workspace:*
+        version: link:../services
       '@minimal-rpg/state-manager':
         specifier: workspace:*
         version: link:../state-manager
@@ -322,6 +325,9 @@ importers:
       '@minimal-rpg/schemas':
         specifier: workspace:*
         version: link:../schemas
+      '@minimal-rpg/services':
+        specifier: workspace:*
+        version: link:../services
       '@minimal-rpg/state-manager':
         specifier: workspace:*
         version: link:../state-manager
@@ -351,9 +357,6 @@ importers:
 
   packages/schemas:
     dependencies:
-      '@minimal-rpg/utils':
-        specifier: workspace:*
-        version: link:../utils
       zod:
         specifier: ^4.1.12
         version: 4.1.12

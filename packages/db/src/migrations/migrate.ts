@@ -4,7 +4,7 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
-import type { FsPromisesLike, PathLike, SqlFile, SqlText } from '../types.js';
+import type { FsPromisesLike, PathLike, SqlText } from '../types.js';
 import type { MigrationPool } from './types.js';
 
 // Load env vars for local/dev usage.

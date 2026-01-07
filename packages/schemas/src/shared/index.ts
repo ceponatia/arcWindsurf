@@ -2,6 +2,17 @@
  * Shared schemas - common types used across character and persona schemas
  */
 
+// Type-safe record access helpers
+export {
+  getRecord,
+  getRecordOptional,
+  getPartialRecord,
+  setRecord,
+  setPartialRecord,
+  getArraySafe,
+  getTuple,
+} from './record-helpers.js';
+
 // Core identity fields
 export { GENDERS, CoreIdentitySchema, type CoreIdentity, type Gender } from './basics.js';
 

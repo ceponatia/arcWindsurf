@@ -1,9 +1,9 @@
 import { worldBus } from '@minimal-rpg/bus';
-import { type Events } from '@minimal-rpg/schemas';
+import type { WorldEvent } from '@minimal-rpg/schemas';
 
 /**
  * Time Service
- * 
+ *
  * Manages the world clock and emits TICK events.
  */
 export class TimeService {
@@ -16,10 +16,10 @@ export class TimeService {
    */
   start(intervalMs = 1000): void {
     if (this.tickInterval) return;
-    
+
     this.intervalMs = intervalMs;
     this.tickInterval = setInterval(() => {
-      this.emitTick();
+      void this.emitTick();
     }, this.intervalMs);
   }
 
@@ -38,8 +38,8 @@ export class TimeService {
    */
   async emitTick(): Promise<void> {
     this.currentTick++;
-    
-    const event: any = {
+
+    const event: WorldEvent = {
       type: 'TICK',
       tick: this.currentTick,
       timestamp: new Date(),

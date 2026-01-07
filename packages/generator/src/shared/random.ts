@@ -42,7 +42,11 @@ export function pickWeighted<T>(items: readonly WeightedValue<T>[]): T {
   }
 
   // Fallback to last item (shouldn't happen with valid weights)
-  return items[items.length - 1]?.value;
+  const lastItem = items[items.length - 1];
+  if (!lastItem) {
+    throw new Error('Unexpected: weighted pool became empty');
+  }
+  return lastItem.value;
 }
 
 /**
@@ -79,15 +83,21 @@ export function pickMultipleFromPool<T>(pool: ValuePool<T>, count: number): T[] 
 
     let pickedIndex = available.length - 1;
     for (let idx = 0; idx < available.length; idx++) {
-      random -= available[idx]?.weight;
-      if (random <= 0) {
-        pickedIndex = idx;
-        break;
+      const item = available[idx];
+      if (item) {
+        random -= item.weight;
+        if (random <= 0) {
+          pickedIndex = idx;
+          break;
+        }
       }
     }
 
-    result.push(available[pickedIndex]?.value);
-    available.splice(pickedIndex, 1);
+    const pickedItem = available[pickedIndex];
+    if (pickedItem) {
+      result.push(pickedItem.value);
+      available.splice(pickedIndex, 1);
+    }
   }
 
   return result;

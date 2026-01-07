@@ -16,7 +16,7 @@
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm exec tsc -b --noEmit"
   },
   "dependencies": {
     "@minimal-rpg/schemas": "workspace:*"

@@ -19,7 +19,7 @@
  */
 
 import { z } from 'zod';
-import { getRecord } from '@minimal-rpg/utils';
+import { getRecord } from '../shared/record-helpers.js';
 import { BODY_REGIONS } from '../character/regions.js';
 
 /**

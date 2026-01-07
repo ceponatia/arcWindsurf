@@ -8,6 +8,8 @@ import { LEG_REGIONS } from './legs/regions.js';
 import { FEET_REGIONS } from './feet/regions.js';
 
 export * from './types.js';
+export * from './sensory-types.js';
+export * from './constants.js';
 export * from './head/index.js';
 export * from './neck/index.js';
 export * from './upper-body/index.js';

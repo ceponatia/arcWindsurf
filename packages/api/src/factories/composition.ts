@@ -1,9 +1,6 @@
 import { GovernorFactory, type Governor, type GovernorConfig } from '@minimal-rpg/governor';
-import {
-  StateManager,
-  DEFAULT_STATE_MANAGER_CONFIG,
-  ProximityService,
-} from '@minimal-rpg/state-manager';
+import { StateManager, DEFAULT_STATE_MANAGER_CONFIG } from '@minimal-rpg/state-manager';
+import { ProximityService } from '@minimal-rpg/services';
 import {
   createDefaultRegistry,
   NpcAgent,

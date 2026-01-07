@@ -9,11 +9,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json --outDir dist",
+    "build": "pnpm exec tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm exec tsc -b --noEmit"
   },
   "dependencies": {
     "@minimal-rpg/bus": "workspace:*",

@@ -8,14 +8,24 @@
     "rootDir": "src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
-  "include": ["src/**/*.ts", "src/**/*.json"],
-  "exclude": ["dist"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json"
+  ],
+  "exclude": [
+    "dist"
+  ],
   "references": [
     {
       "path": "../agents"
+    },
+    {
+      "path": "../bus"
     },
     {
       "path": "../characters"
@@ -31,6 +41,9 @@
     },
     {
       "path": "../schemas"
+    },
+    {
+      "path": "../services"
     },
     {
       "path": "../state-manager"

@@ -12,11 +12,11 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm exec tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm exec tsc -b --noEmit"
   },
   "dependencies": {
     "@minimal-rpg/db": "workspace:*",

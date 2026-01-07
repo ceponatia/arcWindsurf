@@ -23,13 +23,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "pnpm exec tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
-    "typecheck": "tsc -b --pretty false --noEmit"
+    "typecheck": "pnpm exec tsc -b --pretty false --noEmit"
   },
   "dependencies": {
-    "@minimal-rpg/utils": "workspace:*",
     "zod": "^4.1.12"
   },
   "devDependencies": {

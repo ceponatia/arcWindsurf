@@ -5,7 +5,7 @@
  *
  * @see dev-docs/28-affinity-and-relationship-dynamics.md
  */
-import { getRecord, setRecord } from '@minimal-rpg/utils';
+import { getRecord, setRecord } from '../shared/record-helpers.js';
 import type {
   RelationshipScores,
   Disposition,

@@ -1,11 +1,6 @@
 /**
  * Location domain types.
+ * Re-exports from @minimal-rpg/services for backwards compatibility.
  */
 
-import { type LocationGraphService } from './location-graph.js';
-
-// export interface LocationConfig {
-//   // Add configuration types here
-// }
-
-export type { LocationGraphService };
+export type { LocationService as LocationGraphService } from '@minimal-rpg/services';

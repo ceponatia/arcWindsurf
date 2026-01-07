@@ -10,8 +10,12 @@
     "moduleResolution": "NodeNext",
     "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
   },
-  "include": ["src"],
-  "exclude": ["dist"],
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "dist"
+  ],
   "references": [
     {
       "path": "../agents"
@@ -24,6 +28,9 @@
     },
     {
       "path": "../schemas"
+    },
+    {
+      "path": "../services"
     },
     {
       "path": "../state-manager"

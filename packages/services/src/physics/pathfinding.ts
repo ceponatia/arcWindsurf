@@ -1,4 +1,4 @@
-import { LocationService } from '../location/location-service';
+import { LocationService } from '../location/location-service.js';
 import type { LocationMap } from '@minimal-rpg/schemas';
 
 /**
@@ -21,10 +21,10 @@ export class PathfindingService {
   static getReachableLocations(map: LocationMap, fromId: string, maxTravelMinutes: number) {
     const nodeIndex = LocationService.buildNodeIndex(map);
     const adjacency = LocationService.buildAdjacencyList(map);
-    
+
     const reachable = new Map<string, number>();
     const queue: { id: string; time: number }[] = [{ id: fromId, time: 0 }];
-    
+
     reachable.set(fromId, 0);
 
     while (queue.length > 0) {
@@ -49,7 +49,7 @@ export class PathfindingService {
     return Array.from(reachable.entries()).map(([id, time]) => ({
       id,
       name: nodeIndex.get(id)?.name ?? id,
-      travelMinutes: time
+      travelMinutes: time,
     }));
   }
 }

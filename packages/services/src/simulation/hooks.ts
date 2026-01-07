@@ -12,10 +12,26 @@ import type {
   DayPeriod,
   LocationOccupancy,
   NpcTier as NpcTierNS,
+  NpcSchedule,
+  NpcScheduleRef,
 } from '@minimal-rpg/schemas';
 
 /** NPC tier type (aliased to avoid namespace collision) */
 type NpcTier = NpcTierNS.NpcTier;
+
+/**
+ * Schedule data for an NPC - either a direct schedule or a template reference.
+ */
+export interface NpcScheduleInfo {
+  /** Direct schedule definition (if provided) */
+  schedule?: NpcSchedule;
+  /** Schedule template reference (if using templates) */
+  scheduleRef?: NpcScheduleRef;
+  /** Home location fallback */
+  homeLocationId?: string;
+  /** Work location fallback */
+  workLocationId?: string;
+}
 
 /**
  * NPC info for hooks.
@@ -23,7 +39,7 @@ type NpcTier = NpcTierNS.NpcTier;
 export interface HookNpcInfo {
   npcId: string;
   tier: NpcTier;
-  scheduleData: any; // Placeholder for NpcScheduleData
+  scheduleData: NpcScheduleInfo;
   lastInteractionTurn?: number | undefined;
   distanceFromPlayer?: number | undefined;
 }
