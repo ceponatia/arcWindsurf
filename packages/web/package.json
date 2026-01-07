@@ -9,7 +9,7 @@
     "dev": "vite",
     "lint": "eslint src --ext .ts,.tsx --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "pnpm exec tsc -b --noEmit"
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",

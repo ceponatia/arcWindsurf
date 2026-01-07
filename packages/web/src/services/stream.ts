@@ -27,7 +27,8 @@ export function connectStream(url: string, handlers: StreamHandlers) {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const raw = typeof event.data === 'string' ? event.data : String(event.data);
+        const data: unknown = JSON.parse(raw);
         handlers.onMessage(data);
       } catch (err) {
         console.error('[Stream] Failed to parse message:', err);

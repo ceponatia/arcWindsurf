@@ -1,8 +1,8 @@
 import { type Queue } from 'bullmq';
-import { type JobData, type TickTask } from '../types.js';
+import { type JobData, type TickTask, type JobResult } from '../types.js';
 
 export class Scheduler {
-  constructor(private tickQueue: Queue<JobData<TickTask>>) {}
+  constructor(private tickQueue: Queue<JobData<TickTask>, JobResult>) {}
 
   /**
    * Start the recurring world tick job.

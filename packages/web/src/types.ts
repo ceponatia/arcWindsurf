@@ -418,6 +418,17 @@ import { type Signal } from '@preact/signals-react';
 
 export type StreamStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
+export interface StreamEvent {
+  readonly type: string;
+  readonly timestamp?: string | number | Date;
+  readonly [key: string]: unknown;
+}
+
+export interface ActorDebugState {
+  readonly locationId?: string | undefined;
+  readonly hpPercent?: number | undefined;
+}
+
 export interface SignalStore {
   session: {
     status: Signal<StreamStatus>;
@@ -425,12 +436,12 @@ export interface SignalStore {
     turnKey: Signal<number>;
   };
   actors: {
-    states: Signal<Record<string, unknown>>; // Generic for now, refactor to NpcState later
+    states: Signal<Record<string, ActorDebugState>>;
     activeIds: Signal<string[]>;
   };
   events: {
-    log: Signal<any[]>;
-    lastEvent: Signal<any | null>;
+    log: Signal<StreamEvent[]>;
+    lastEvent: Signal<StreamEvent | null>;
   };
   ui: {
     viewMode: Signal<ViewMode>;

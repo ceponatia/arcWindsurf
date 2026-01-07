@@ -1,10 +1,10 @@
 import { drizzle as db, events, sessionProjections, eq, gt, and, asc } from '@minimal-rpg/db';
-import type { WorldEvent } from '@minimal-rpg/bus';
-import type { Reducer, Projection, ReplayOptions } from './types.js';
+import { WorldEventSchema, type WorldEvent } from '@minimal-rpg/schemas';
+import type { Projection, ReplayOptions } from './types.js';
 
 export class Projector<S> {
   private currentState: S;
-  private lastSequence: bigint = -1n;
+  private lastSequence = -1n;
 
   constructor(
     public readonly projection: Projection<S>,
@@ -69,7 +69,7 @@ export class Projector<S> {
           break;
         }
 
-        const event = row.payload as WorldEvent;
+        const event = WorldEventSchema.parse(row.payload);
         this.currentState = this.projection.reducer(this.currentState, event);
         this.lastSequence = row.sequence;
         currentSeq = row.sequence;

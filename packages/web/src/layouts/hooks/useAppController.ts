@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { getErrorMessage } from '@minimal-rpg/utils';
 import { useSignals } from '@preact/signals-react/runtime';
 import {
@@ -151,8 +151,9 @@ export function useAppController(): AppControllerValue {
 
   // Bridge local state with signal
   const currentSessionId = currentSessionIdSignal.value;
-  const setCurrentSessionId = (id: string | null) => {
-    currentSessionIdSignal.value = id;
+  const setCurrentSessionId: Dispatch<SetStateAction<string | null>> = (value) => {
+    const nextValue = typeof value === 'function' ? value(currentSessionIdSignal.value) : value;
+    currentSessionIdSignal.value = nextValue;
   };
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => parseHashRoute().viewMode);

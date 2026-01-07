@@ -1,7 +1,12 @@
 import { type Processor, type Job } from 'bullmq';
 import { Effect } from 'effect';
 import { WorldBus } from '@minimal-rpg/bus';
-import { TieredCognitionRouter, type CognitionTask as LLMCognitionTask } from '@minimal-rpg/llm';
+import {
+  TieredCognitionRouter,
+  type CognitionTask as LLMCognitionTask,
+  type LLMMessage,
+} from '@minimal-rpg/llm';
+import type { WorldEvent } from '@minimal-rpg/schemas';
 import type { JobData, CognitionTask, JobResult } from '../types.js';
 
 /**
@@ -24,8 +29,8 @@ export const createCognitionProcessor = (
             role: 'system',
             content: `You are NPC ${actorId}. Context: ${context.memoryContext ?? 'No memory'}.`,
           },
-          ...context.lastEvents.map((event) => ({
-            role: 'user' as const,
+          ...context.lastEvents.map<LLMMessage>((event) => ({
+            role: 'user',
             content: JSON.stringify(event),
           })),
         ],
@@ -40,12 +45,14 @@ export const createCognitionProcessor = (
       }
 
       // 3. Emit intent back to WorldBus
-      await bus.emit({
+      const speakIntent: Extract<WorldEvent, { type: 'SPEAK_INTENT' }> = {
         type: 'SPEAK_INTENT',
         actorId,
         content: response.content,
         sessionId,
-      } as any);
+      };
+
+      await bus.emit(speakIntent);
 
       return {
         success: true,

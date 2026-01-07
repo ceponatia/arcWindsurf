@@ -1,13 +1,16 @@
 import { signal, computed } from '@preact/signals-react';
+import type { ActorDebugState } from '../types.js';
 
-// Using unknown for now, refactor to proper NpcState from @minimal-rpg/schemas later
-export const actorStates = signal<Record<string, any>>({});
+export const actorStates = signal<Record<string, ActorDebugState>>({});
 export const activeActorIds = signal<string[]>([]);
 
-export const updateActorState = (id: string, state: any) => {
+export const updateActorState = (id: string, patch: Partial<ActorDebugState>) => {
   actorStates.value = {
     ...actorStates.value,
-    [id]: state,
+    [id]: {
+      ...actorStates.value[id],
+      ...patch,
+    },
   };
 
   if (!activeActorIds.value.includes(id)) {
@@ -16,7 +19,7 @@ export const updateActorState = (id: string, state: any) => {
 };
 
 export const activeActors = computed(() => {
-  return activeActorIds.value.map((id) => actorStates.value[id]).filter(Boolean);
+  return activeActorIds.value;
 });
 
 export const resetActors = () => {

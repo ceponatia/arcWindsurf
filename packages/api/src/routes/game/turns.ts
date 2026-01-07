@@ -14,6 +14,8 @@ import {
 } from '@minimal-rpg/services';
 import type { WorldEvent } from '@minimal-rpg/schemas';
 
+type SpokeEvent = Extract<WorldEvent, { type: 'SPOKE' }>;
+
 interface TurnResponseDto {
   message: string;
   speaker?: { actorId: string };
@@ -107,27 +109,27 @@ export function registerTurnRoutes(app: Hono): void {
 
     // Derive NPC response (first non-player SPOKE)
     const npcSpoke = collected.find(
-      (evt) => evt.type === 'SPOKE' && (evt as Record<string, unknown>)['actorId'] !== playerActorId
+      (evt): evt is SpokeEvent => evt.type === 'SPOKE' && evt.actorId !== playerActorId
     );
 
-    const message =
-      npcSpoke && 'content' in npcSpoke ? String((npcSpoke as any).content) : 'The world is quiet.';
+    const message = npcSpoke?.content ?? 'The world is quiet.';
+
+    const npcSpeaker = npcSpoke
+      ? {
+          id: npcSpoke.actorId,
+          name: npcSpoke.actorId,
+        }
+      : undefined;
 
     // Persist chat transcript
     await appendMessage(ownerEmail, sessionId, 'user', input);
-    await appendMessage(
-      ownerEmail,
-      sessionId,
-      'assistant',
-      message,
-      npcSpoke ? { id: (npcSpoke as any).actorId } : undefined
-    );
+    await appendMessage(ownerEmail, sessionId, 'assistant', message, npcSpeaker);
 
     const response: TurnResponseDto = {
       message,
-      speaker: npcSpoke ? { actorId: (npcSpoke as any).actorId } : undefined,
       events: collected,
       success: true,
+      ...(npcSpoke ? { speaker: { actorId: npcSpoke.actorId } } : {}),
     };
 
     return c.json(response, 200);

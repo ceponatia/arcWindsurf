@@ -1,15 +1,43 @@
-import { Redis } from 'ioredis';
-import { Worker, type Processor, type WorkerOptions, type Job } from 'bullmq';
+import {
+  Worker,
+  type ConnectionOptions,
+  type Processor,
+  type WorkerOptions,
+  type Job,
+} from 'bullmq';
 import type { JobResult } from './types.js';
 
 const REDIS_URL = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
 
+const getBullMqConnectionOptions = (redisUrl: string): ConnectionOptions => {
+  const url = new URL(redisUrl);
+
+  if (url.protocol !== 'redis:' && url.protocol !== 'rediss:') {
+    throw new Error(`Unsupported REDIS_URL protocol: ${url.protocol}`);
+  }
+
+  const port = url.port.length > 0 ? Number(url.port) : 6379;
+  if (Number.isNaN(port)) {
+    throw new Error(`Invalid REDIS_URL port: ${url.port}`);
+  }
+
+  const username = url.username.length > 0 ? decodeURIComponent(url.username) : undefined;
+  const password = url.password.length > 0 ? decodeURIComponent(url.password) : undefined;
+
+  return {
+    host: url.hostname,
+    port,
+    ...(username ? { username } : {}),
+    ...(password ? { password } : {}),
+    ...(url.protocol === 'rediss:' ? { tls: {} } : {}),
+    maxRetriesPerRequest: null,
+  };
+};
+
 /**
- * Standard Redis connection for BullMQ
+ * Standard Redis connection options for BullMQ.
  */
-export const connection = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: null,
-});
+export const connection: ConnectionOptions = getBullMqConnectionOptions(REDIS_URL);
 
 /**
  * HOF factory to ensure consistent error handling and logging stats for all queues.
@@ -54,7 +82,7 @@ export function createWorker<T, R extends JobResult = JobResult>(
       }
     },
     {
-      connection: connection as any,
+      connection,
       ...options,
     }
   );

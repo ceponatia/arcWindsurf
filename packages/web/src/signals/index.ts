@@ -4,7 +4,7 @@ import * as actors from './actors.js';
 import * as events from './events.js';
 import * as ui from './ui.js';
 
-export const signals: SignalStore = {
+export const signals = {
   session: {
     status: session.sessionStatus,
     id: session.currentSessionId,
@@ -23,7 +23,7 @@ export const signals: SignalStore = {
     overlayOpen: ui.overlayOpen,
     selectedActorId: ui.selectedActorId,
   },
-};
+} satisfies SignalStore;
 
 export * from './session.js';
 export * from './actors.js';

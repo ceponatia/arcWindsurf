@@ -10,7 +10,9 @@ export const createEmbeddingProcessor = (): Processor<JobData<EmbeddingTask>, Jo
     const { nodeId, text } = payload;
 
     try {
-      console.log(`[EmbeddingProcessor] Generating embedding for node ${nodeId}`);
+      console.log(
+        `[EmbeddingProcessor] Generating embedding for node ${nodeId} (chars=${text.length})`
+      );
       // In a real implementation, this would call an embedding service (e.g. OpenAI)
       // and update the knowledge_nodes table in Postgres.
 

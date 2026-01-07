@@ -35,7 +35,7 @@ export const WorldMap: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            {actors.map((actorId: string) => {
+            {actors.map((actorId) => {
               const state = states[actorId];
               return (
                 <div
@@ -52,18 +52,18 @@ export const WorldMap: React.FC = () => {
                     <div className="text-[10px] space-y-1">
                       <div className="flex justify-between">
                         <span className="text-slate-500">Location:</span>
-                        <span className="text-slate-300">{state.locationId || 'Unknown'}</span>
+                        <span className="text-slate-300">{state.locationId ?? 'Unknown'}</span>
                       </div>
-                      {state.hp !== undefined && (
+                      {state.hpPercent !== undefined && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-[9px]">
                             <span className="text-slate-500">Health</span>
-                            <span className="text-slate-400">{state.hp}%</span>
+                            <span className="text-slate-400">{state.hpPercent}%</span>
                           </div>
                           <div className="h-1 bg-slate-900 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-red-500/80 transition-all duration-500"
-                              style={{ width: `${state.hp}%` }}
+                              style={{ width: `${state.hpPercent}%` }}
                             />
                           </div>
                         </div>

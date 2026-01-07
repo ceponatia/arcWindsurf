@@ -1,5 +1,5 @@
 import { worldBus } from '@minimal-rpg/bus';
-import { TieredCognitionRouter } from '@minimal-rpg/llm';
+import { TieredCognitionRouter, OpenAIProvider } from '@minimal-rpg/llm';
 import { createWorker } from './config.js';
 import { createCognitionProcessor } from './processors/cognition.js';
 import { createTickProcessor } from './processors/tick.js';
@@ -10,14 +10,29 @@ import { Scheduler } from './scheduler/index.js';
 /**
  * Main Worker Entry Point
  */
-async function main(): Promise<{ scheduler: Scheduler }> {
+function main(): { scheduler: Scheduler } {
   console.log('Starting Minimal RPG Background Workers...');
 
   // 1. Initialize dependencies
+  const apiKey = process.env['OPENAI_API_KEY'];
+  if (!apiKey) {
+    throw new Error('Missing OPENAI_API_KEY for workers LLM router');
+  }
+
+  const model = process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini';
+  const baseURL = process.env['OPENAI_BASE_URL'];
+
+  const provider = new OpenAIProvider({
+    id: 'openai',
+    apiKey,
+    model,
+    ...(baseURL ? { baseURL } : {}),
+  });
+
   const llmRouter = new TieredCognitionRouter({
-    fast: null as any,
-    deep: null as any,
-    reasoning: null as any,
+    fast: provider,
+    deep: provider,
+    reasoning: provider,
   });
 
   // 2. Initialize Workers
@@ -60,10 +75,12 @@ async function main(): Promise<{ scheduler: Scheduler }> {
 
 // Start if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
+  try {
+    main();
+  } catch (err) {
     console.error('Failed to start workers:', err);
     process.exit(1);
-  });
+  }
 }
 
 export * from './types.js';

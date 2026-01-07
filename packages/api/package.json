@@ -15,10 +15,11 @@
     "dev": "tsx watch src/server.ts",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "pnpm exec tsc -b --noEmit"
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
+    "@minimal-rpg/actors": "workspace:*",
     "@minimal-rpg/bus": "workspace:*",
     "@minimal-rpg/characters": "workspace:*",
     "@minimal-rpg/db": "workspace:*",

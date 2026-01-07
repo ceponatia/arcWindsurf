@@ -1,4 +1,3 @@
-import type { WorldEvent } from '@minimal-rpg/bus';
 import type { Reducer, Projection } from '../types.js';
 
 export interface SessionState {
@@ -33,7 +32,7 @@ export const sessionReducer: Reducer<SessionState> = (state, event) => {
     case 'TICK':
       return {
         ...state,
-        currentTick: (event as any).tick,
+        currentTick: event.tick,
       };
 
     default:

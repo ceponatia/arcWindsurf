@@ -1,26 +1,26 @@
 import { Queue } from 'bullmq';
 import { connection } from '../config.js';
-import type { JobData, CognitionTask, TickTask, EmbeddingTask } from '../types.js';
+import type { JobData, CognitionTask, TickTask, EmbeddingTask, JobResult } from '../types.js';
 
 /**
  * Queue for NPC cognition tasks (LLM processing)
  */
-export const cognitionQueue = new Queue<JobData<CognitionTask>, any, string>('cognition', {
-  connection: connection as any,
+export const cognitionQueue = new Queue<JobData<CognitionTask>, JobResult>('cognition', {
+  connection,
 });
 
 /**
  * Queue for simulation ticks
  */
-export const tickQueue = new Queue<JobData<TickTask>, any, string>('tick', {
-  connection: connection as any,
+export const tickQueue = new Queue<JobData<TickTask>, JobResult>('tick', {
+  connection,
 });
 
 /**
  * Queue for embedding generation
  */
-export const embeddingQueue = new Queue<JobData<EmbeddingTask>, any, string>('embedding', {
-  connection: connection as any,
+export const embeddingQueue = new Queue<JobData<EmbeddingTask>, JobResult>('embedding', {
+  connection,
 });
 
 /**

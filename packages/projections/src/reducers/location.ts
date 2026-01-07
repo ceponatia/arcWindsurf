@@ -1,4 +1,3 @@
-import type { WorldEvent } from '@minimal-rpg/bus';
 import type { Reducer, Projection } from '../types.js';
 
 export interface LocationState {
@@ -12,48 +11,43 @@ export type LocationsState = Record<string, LocationState>;
 export const initialLocationsState: LocationsState = {};
 
 export const locationReducer: Reducer<LocationsState> = (state, event) => {
-  const payload = event as any;
-
   switch (event.type) {
     case 'ACTOR_SPAWN': {
-      const locId = payload.locationId;
-      if (!locId) return state;
-      const current = state[locId] || { id: locId, actors: [], items: [] };
+      const locId = event.locationId;
+      const current = state[locId] ?? { id: locId, actors: [], items: [] };
       return {
         ...state,
         [locId]: {
           ...current,
-          actors: [...new Set([...current.actors, payload.actorId])],
+          actors: [...new Set([...current.actors, event.actorId])],
         },
       };
     }
 
     case 'ACTOR_DESPAWN': {
-      const actorId = payload.actorId;
+      const actorId = event.actorId;
       const newState = { ...state };
-      for (const id in newState) {
-        if (newState[id]) {
-          newState[id] = {
-            ...newState[id],
-            actors: newState[id].actors.filter((aId) => aId !== actorId),
-          };
-        }
+      for (const [id, location] of Object.entries(newState)) {
+        newState[id] = {
+          ...location,
+          actors: location.actors.filter((aId) => aId !== actorId),
+        };
       }
       return newState;
     }
 
     case 'MOVED': {
       const newState = { ...state };
-      const { actorId, fromLocationId, toLocationId } = payload;
+      const { actorId, fromLocationId, toLocationId } = event;
 
-      if (fromLocationId && newState[fromLocationId]) {
+      if (newState[fromLocationId]) {
         newState[fromLocationId] = {
           ...newState[fromLocationId],
           actors: newState[fromLocationId].actors.filter((id) => id !== actorId),
         };
       }
 
-      const toLoc = newState[toLocationId] || { id: toLocationId, actors: [], items: [] };
+      const toLoc = newState[toLocationId] ?? { id: toLocationId, actors: [], items: [] };
       newState[toLocationId] = {
         ...toLoc,
         actors: [...new Set([...toLoc.actors, actorId])],
@@ -65,26 +59,30 @@ export const locationReducer: Reducer<LocationsState> = (state, event) => {
     case 'ITEM_ACQUIRED': {
       // Scan all locations to remove the item
       const newState = { ...state };
-      for (const id in newState) {
-        if (newState[id]) {
-          newState[id] = {
-            ...newState[id],
-            items: newState[id].items.filter((iId) => iId !== payload.itemId),
-          };
-        }
+      for (const [id, location] of Object.entries(newState)) {
+        newState[id] = {
+          ...location,
+          items: location.items.filter((iId) => iId !== event.itemId),
+        };
       }
       return newState;
     }
 
     case 'ITEM_DROPPED': {
-      const locId = payload.locationId;
-      if (!locId) return state;
-      const current = state[locId] || { id: locId, actors: [], items: [] };
+      const locId = Object.values(state).find((location) =>
+        location.actors.includes(event.actorId)
+      )?.id;
+
+      if (!locId) {
+        return state;
+      }
+
+      const current = state[locId] ?? { id: locId, actors: [], items: [] };
       return {
         ...state,
         [locId]: {
           ...current,
-          items: [...new Set([...current.items, payload.itemId])],
+          items: [...new Set([...current.items, event.itemId])],
         },
       };
     }

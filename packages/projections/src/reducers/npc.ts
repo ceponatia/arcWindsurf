@@ -1,5 +1,5 @@
-import type { WorldEvent } from '@minimal-rpg/bus';
 import type { Reducer, Projection } from '../types.js';
+import { DEFAULT_START_TIME, createDefaultNpcLocationState } from '@minimal-rpg/schemas';
 import type { NpcLocationState } from '@minimal-rpg/schemas';
 
 export interface NpcState {
@@ -18,20 +18,14 @@ export type NpcsState = Record<string, NpcState>;
 export const initialNpcsState: NpcsState = {};
 
 export const npcReducer: Reducer<NpcsState> = (state, event) => {
-  const payload = event as any;
-
   switch (event.type) {
     case 'ACTOR_SPAWN':
-      if (payload.actorType !== 'npc') return state;
+      if (event.actorType !== 'npc') return state;
       return {
         ...state,
-        [payload.actorId]: {
-          id: payload.actorId,
-          location: {
-            locationId: payload.locationId,
-            arrivedAt: new Date(),
-            position: { x: 0, y: 0, z: 0 },
-          },
+        [event.actorId]: {
+          id: event.actorId,
+          location: createDefaultNpcLocationState(event.locationId, DEFAULT_START_TIME),
           health: { current: 100, max: 100 },
           status: 'alive',
           inventory: [],
@@ -39,87 +33,93 @@ export const npcReducer: Reducer<NpcsState> = (state, event) => {
       };
 
     case 'ACTOR_DESPAWN': {
-      const actorId = payload.actorId;
+      const actorId = event.actorId;
       const newState = { ...state };
       delete newState[actorId];
       return newState;
     }
 
     case 'MOVED': {
-      const npc = state[payload.actorId];
+      const npc = state[event.actorId];
       if (!npc) return state;
       return {
         ...state,
-        [payload.actorId]: {
+        [event.actorId]: {
           ...npc,
           location: {
             ...npc.location,
-            locationId: payload.toLocationId,
-            arrivedAt: (event as any).timestamp || new Date(),
+            locationId: event.toLocationId,
           },
         },
       };
     }
 
-    case 'DAMAGED':
-      if (!state[payload.actorId]) return state;
+    case 'DAMAGED': {
+      const npc = state[event.actorId];
+      if (!npc) return state;
       return {
         ...state,
-        [payload.actorId]: {
-          ...state[payload.actorId]!,
+        [event.actorId]: {
+          ...npc,
           health: {
-            ...state[payload.actorId]!.health,
-            current: Math.max(0, state[payload.actorId]!.health.current - payload.amount),
+            ...npc.health,
+            current: Math.max(0, npc.health.current - event.amount),
           },
         },
       };
+    }
 
-    case 'HEALED':
-      if (!state[payload.actorId]) return state;
+    case 'HEALED': {
+      const npc = state[event.actorId];
+      if (!npc) return state;
       return {
         ...state,
-        [payload.actorId]: {
-          ...state[payload.actorId]!,
+        [event.actorId]: {
+          ...npc,
           health: {
-            ...state[payload.actorId]!.health,
-            current: Math.min(
-              state[payload.actorId]!.health.max,
-              state[payload.actorId]!.health.current + payload.amount
-            ),
+            ...npc.health,
+            current: Math.min(npc.health.max, npc.health.current + event.amount),
           },
         },
       };
+    }
 
-    case 'DIED':
-      if (!state[payload.actorId]) return state;
+    case 'DIED': {
+      const npc = state[event.actorId];
+      if (!npc) return state;
       return {
         ...state,
-        [payload.actorId]: {
-          ...state[payload.actorId]!,
+        [event.actorId]: {
+          ...npc,
           status: 'dead',
-          health: { ...state[payload.actorId]!.health, current: 0 },
+          health: { ...npc.health, current: 0 },
         },
       };
+    }
 
-    case 'ITEM_ACQUIRED':
-      if (!state[payload.actorId]) return state;
+    case 'ITEM_ACQUIRED': {
+      const npc = state[event.actorId];
+      if (!npc) return state;
       return {
         ...state,
-        [payload.actorId]: {
-          ...state[payload.actorId]!,
-          inventory: [...state[payload.actorId]!.inventory, payload.itemId],
+        [event.actorId]: {
+          ...npc,
+          inventory: [...npc.inventory, event.itemId],
         },
       };
+    }
 
-    case 'ITEM_DROPPED':
-      if (!state[payload.actorId]) return state;
+    case 'ITEM_DROPPED': {
+      const npc = state[event.actorId];
+      if (!npc) return state;
       return {
         ...state,
-        [payload.actorId]: {
-          ...state[payload.actorId]!,
-          inventory: state[payload.actorId]!.inventory.filter((id) => id !== payload.itemId),
+        [event.actorId]: {
+          ...npc,
+          inventory: npc.inventory.filter((id) => id !== event.itemId),
         },
       };
+    }
 
     default:
       return state;

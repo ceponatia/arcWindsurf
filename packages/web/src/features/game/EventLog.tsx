@@ -1,6 +1,13 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { eventLog } from '../../signals/events.js';
+import type { StreamEvent } from '../../types.js';
+
+function toDate(value: StreamEvent['timestamp']): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') return new Date(value);
+  return null;
+}
 
 export const EventLog: React.FC = () => {
   useSignals();
@@ -20,16 +27,26 @@ export const EventLog: React.FC = () => {
           events.map((event, idx) => (
             <div key={idx} className="flex gap-2 py-0.5 border-b border-white/5 last:border-0">
               <span className="text-slate-500 flex-shrink-0">
-                {new Date(event.timestamp).toLocaleTimeString([], {
-                  hour12: false,
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })}
+                {(() => {
+                  const date = toDate(event.timestamp);
+                  if (!date) return '--:--:--';
+                  return date.toLocaleTimeString([], {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  });
+                })()}
               </span>
               <span className="text-violet-400 flex-shrink-0">[{event.type}]</span>
               <span className="text-slate-300 break-all">
-                {typeof event.payload === 'string' ? event.payload : JSON.stringify(event.payload)}
+                {(() => {
+                  const { type, timestamp, ...rest } = event;
+                  void type;
+                  void timestamp;
+                  const text = JSON.stringify(rest);
+                  return text === '{}' ? '' : text;
+                })()}
               </span>
             </div>
           ))

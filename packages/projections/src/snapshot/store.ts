@@ -1,10 +1,11 @@
 import { drizzle as db, sessionProjections } from '@minimal-rpg/db';
-import { eq } from 'drizzle-orm';
+
+type ProjectionColumnName = 'location' | 'inventory' | 'time' | 'npcs';
 
 export interface SnapshotUpdate {
   sessionId: string;
   name: string;
-  state: any;
+  state: unknown;
   lastEventSeq: bigint;
 }
 
@@ -15,8 +16,8 @@ export async function saveProjectionState(update: SnapshotUpdate): Promise<void>
   const { sessionId, name, state, lastEventSeq } = update;
 
   // Since sessionProjections has fixed columns, we map the name to the column.
-  const columnMap: Record<string, string> = {
-    session: 'location', // Map to location for now if session doesn't exist, but it should
+  const columnMap: Record<string, ProjectionColumnName> = {
+    session: 'location',
     location: 'location',
     inventory: 'inventory',
     time: 'time',
@@ -28,19 +29,20 @@ export async function saveProjectionState(update: SnapshotUpdate): Promise<void>
     throw new Error(`Unknown projection name: ${name}`);
   }
 
+  const baseValues = {
+    sessionId,
+    lastEventSeq,
+    updatedAt: new Date(),
+    location: {},
+    inventory: {},
+    time: {},
+    npcs: {},
+    [columnName]: state,
+  };
+
   await db
     .insert(sessionProjections)
-    .values({
-      sessionId,
-      [columnName]: state,
-      lastEventSeq,
-      updatedAt: new Date(),
-      // Fill defaults for others to satisfy NOT NULL constraints if it's the first insert
-      location: columnName === 'location' ? state : {},
-      inventory: columnName === 'inventory' ? state : {},
-      time: columnName === 'time' ? state : {},
-      npcs: columnName === 'npcs' ? state : {},
-    })
+    .values(baseValues)
     .onConflictDoUpdate({
       target: sessionProjections.sessionId,
       set: {
