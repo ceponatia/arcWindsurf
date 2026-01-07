@@ -2,6 +2,11 @@
 -- Migration: 006_world_bus_events.sql
 -- Description: World Bus event sourcing tables for Phase 1 & 2
 
+-- NOTE: This is a PostgreSQL migration. Some SQL Server-oriented linters expect the
+-- following directive near the top of the file; keep it commented to avoid breaking
+-- execution on PostgreSQL.
+-- SET QUOTED_IDENTIFIER ON
+
 -- Sessions table for World Bus (simplified session management)
 -- This is separate from user_sessions for the new event-driven architecture
 CREATE TABLE IF NOT EXISTS sessions (
