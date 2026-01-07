@@ -23,14 +23,14 @@ export const TickEventSchema = z.object({
 
 export const SessionStartEventSchema = z.object({
   type: z.literal('SESSION_START'),
-  sessionId: z.string(),
   ...baseSystemFields,
+  sessionId: z.string(),
 });
 
 export const SystemEventSchema = z.discriminatedUnion('type', [
   TickEventSchema,
   SessionStartEventSchema,
-  z.object({ type: z.literal('SESSION_END'), sessionId: z.string(), ...baseSystemFields }),
+  z.object({ type: z.literal('SESSION_END'), ...baseSystemFields, sessionId: z.string() }),
   z.object({
     type: z.literal('ACTOR_SPAWN'),
     actorId: z.string(),

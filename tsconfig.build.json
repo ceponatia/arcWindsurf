@@ -1,17 +1,20 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/governor" },
-    { "path": "packages/state-manager" },
-    { "path": "packages/agents" },
-    { "path": "packages/retrieval" },
-    { "path": "packages/db" },
-    { "path": "packages/schemas" },
     { "path": "packages/utils" },
-    { "path": "packages/api" },
+    { "path": "packages/schemas" },
+    { "path": "packages/bus" },
+    { "path": "packages/retrieval" },
     { "path": "packages/characters" },
+    { "path": "packages/actors" },
+    { "path": "packages/services" },
+    { "path": "packages/projections" },
+    { "path": "packages/db" },
     { "path": "packages/generator" },
+    { "path": "packages/llm" },
+    { "path": "packages/api" },
     { "path": "packages/ui" },
-    { "path": "packages/web" }
+    { "path": "packages/web" },
+    { "path": "packages/workers" }
   ]
 }

@@ -6,14 +6,21 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Optionally, copy just the package manifests we care about
+COPY packages/actors/package.json ./packages/actors/package.json
 COPY packages/api/package.json ./packages/api/package.json
+COPY packages/bus/package.json ./packages/bus/package.json
+COPY packages/characters/package.json ./packages/characters/package.json
 COPY packages/web/package.json ./packages/web/package.json
 COPY packages/db/package.json ./packages/db/package.json
+COPY packages/generator/package.json ./packages/generator/package.json
+COPY packages/llm/package.json ./packages/llm/package.json
+COPY packages/projections/package.json ./packages/projections/package.json
+COPY packages/retrieval/package.json ./packages/retrieval/package.json
 COPY packages/schemas/package.json ./packages/schemas/package.json
+COPY packages/services/package.json ./packages/services/package.json
 COPY packages/ui/package.json ./packages/ui/package.json
 COPY packages/utils/package.json ./packages/utils/package.json
-COPY packages/governor/package.json ./packages/governor/package.json
-COPY packages/state-manager/package.json ./packages/state-manager/package.json
+COPY packages/workers/package.json ./packages/workers/package.json
 
 # 2. Install dependencies at build time, non-interactive
 RUN corepack enable \

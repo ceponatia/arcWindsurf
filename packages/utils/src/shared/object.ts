@@ -51,19 +51,18 @@ export function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-/**
- * Compare two objects and compute the minimal diff.
- */
-export function deepDiff<T>(
-  original: T,
-  modified: T
-): {
-  diff: any;
+export type DeepDiffResult = {
+  diff: unknown;
   addedPaths: string[];
   removedPaths: string[];
   modifiedPaths: string[];
   isIdentical: boolean;
-} {
+};
+
+/**
+ * Compare two objects and compute the minimal diff.
+ */
+export function deepDiff<T>(original: T, modified: T): DeepDiffResult {
   const addedPaths: string[] = [];
   const removedPaths: string[] = [];
   const modifiedPaths: string[] = [];
@@ -118,16 +117,23 @@ export function deepDiff<T>(
   };
 }
 
+export type JsonPatchOperation = {
+  op: string;
+  path: string;
+  from?: string;
+  value?: unknown;
+};
+
 /**
  * Extracts a unique list of paths from an array of JSON patches.
  *
  * @param patches - Array of JSON patch operations
  * @returns Array of unique paths modified by the patches
  */
-export function extractPathsFromPatches(patches: any[]): string[] {
+export function extractPathsFromPatches(patches: ReadonlyArray<JsonPatchOperation>): string[] {
   const paths = new Set<string>();
   for (const patch of patches) {
-    if (patch.path) {
+    if (typeof patch.path === 'string') {
       // Remove leading slash and convert to dot notation for consistency if needed,
       // but usually we just want the segments.
       const normalized = patch.path.startsWith('/') ? patch.path.slice(1) : patch.path;

@@ -58,7 +58,8 @@ export interface WorldBus {
 | **Extensibility** | New handler = new code path | New consumer = new subscription |
 
 **Current Governor Flow** (from `governor.ts:71-140`):
-```
+
+```text
 handleTurn(input) → toolTurnHandler.handleTurn(input) → applyStateChanges(patches) → return TurnResult
 ```
 
@@ -79,6 +80,7 @@ The Governor is a thin orchestrator that:
 ### 3.3 Agent Execution Deep Comparison
 
 **Current NpcTurnHandler execution model** (`npc-turn-handler.ts:99-240`):
+
 ```ts
 // Batch execution - all NPCs run in parallel for one turn
 const results = await Promise.all(
@@ -101,14 +103,16 @@ Characteristics:
 ### 3.4 State Management Flow
 
 **Current flow** (`StateManager.applyPatches` from `manager.ts:161-257`):
-```
+
+```text
 baseline + overrides → effectiveState → apply patches → diff against baseline → minimal newOverrides
 ```
 
 This is a **command-sourced** model: patches are the "commands" applied to state.
 
 **World Bus + Event Sourcing** would invert this:
-```
+
+```text
 event stream → projector/reducer → patches → StateManager.applyPatches (for API compat)
 ```
 
@@ -157,6 +161,7 @@ bus.subscribe(e => e.type.endsWith('changed') || e.type === 'state.patch', evt =
 ### 5.1 Execution Model Deep Dive
 
 **Current NpcAgent architecture** (`npc-agent.ts`):
+
 ```ts
 class NpcAgent extends BaseAgent {
   async execute(input: AgentInput): Promise<NpcAgentOutput> {
@@ -177,6 +182,7 @@ Key characteristics:
 - **LLM call is blocking**: Single `llmProvider.generate()` per execution (lines 181-232)
 
 **Actor Model equivalent**:
+
 ```ts
 class NpcActor {
   private state: NpcActorState;  // Persistent FSM state
@@ -216,6 +222,7 @@ These would become **subscriptions** in the actor model—the actor receives sen
 ### 5.3 Priority & Scheduling
 
 **Current priority computation** (`npc-agent.ts:163-176`):
+
 ```ts
 private computeNpcPriority(input: NpcAgentInput): number {
   const base = input.isDirectlyAddressed ? 3 : 1;
@@ -229,6 +236,7 @@ private computeNpcPriority(input: NpcAgentInput): number {
 This is **post-hoc ordering**—all NPCs execute, then results are sorted.
 
 **Actor model scheduling** would be **pre-execution**:
+
 ```ts
 class ActorScheduler {
   selectActors(tick: number): NpcActor[] {
@@ -478,24 +486,29 @@ This approach allows **rollback at any point** without data migration or schema 
 ### 11.2 Event-Driven LLM Call Patterns
 
 **Current (turn-scoped)**:
-```
+
+```text
 Player input → All NPCs execute in parallel → All LLM calls fire simultaneously
 ```
+
 - **Burst pattern**: 3-10 LLM calls per turn
 - **Latency**: Bounded by slowest NPC (~800-1500ms typical)
 - **Cost**: Predictable per turn
 
 **World Bus (continuous)**:
-```
+
+```text
 Event stream → Actors filter relevance → Selective LLM calls → Staggered responses
 ```
+
 - **Spread pattern**: LLM calls distributed over time
 - **Latency**: Per-actor, not per-turn
 - **Cost**: Higher total but better UX
 
 ### 11.3 Efficiency Strategies
 
-**A) Tiered Model Routing**
+#### A) Tiered Model Routing
+
 ```ts
 function selectModel(actor: NpcActor, event: WorldEvent): LLMConfig {
   // Utility-based selection
@@ -506,19 +519,21 @@ function selectModel(actor: NpcActor, event: WorldEvent): LLMConfig {
 }
 ```
 
-**B) Response Caching & Templating**
+#### B) Response Caching & Templating
+
 - Cache common responses: greetings, farewells, idle observations
 - Use templates for low-stakes interactions
 - LLM only for novel situations or high-engagement moments
 
-**C) Batch Inference Windows**
+#### C) Batch Inference Windows
+
 - Collect events over 100-200ms window
 - Batch multiple actor prompts to same model endpoint
 - Reduces API overhead, enables better rate limit management
 
 ### 11.4 Cost Projections
 
-**Scenario: 10 active NPCs, 5-minute play session**
+#### Scenario: 10 active NPCs, 5-minute play session
 
 | Mode | LLM Calls | Avg Tokens | Est. Cost (GPT-4o-mini) | Est. Cost (GPT-4o) |
 |------|-----------|------------|------------------------|--------------------|
@@ -687,6 +702,7 @@ Goal: Let players “jump in” with chosen NPCs while the world remains live, w
   - This preserves a living world while keeping the player’s view uncluttered.
 
 Type sketch for intents and visibility:
+
 ```ts
 type Audience = 'direct' | 'vicinity' | 'global';
 
@@ -894,7 +910,8 @@ export class TickService {
 
 ### 14.5 Architecture Decision: Event Store
 
-**Option A: PostgreSQL table (Recommended for MVP)**
+#### Option A: PostgreSQL table (Recommended for MVP)
+
 ```sql
 CREATE TABLE world_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -907,19 +924,21 @@ CREATE TABLE world_events (
 );
 ```
 
-**Option B: EventStoreDB (Future consideration)**
+#### Option B: EventStoreDB (Future consideration)
+
 - Purpose-built for event sourcing
 - Built-in projections, subscriptions
 - Overkill for MVP, consider at scale
 
-**Option C: Redis Streams (Good middle ground)**
+#### Option C: Redis Streams (Good middle ground)
+
 - Fast, supports consumer groups
 - Good for multi-instance deployment
 - Consider when horizontal scaling needed
 
 ### 14.6 Recommended Tech Stack Evolution
 
-```
+```text
 Phase 1-2 (MVP):          Phase 3-4 (Growth):        Phase 5+ (Scale):
 ─────────────────         ──────────────────         ────────────────
 In-memory WorldBus   →    Redis Streams         →   EventStoreDB/Kafka
