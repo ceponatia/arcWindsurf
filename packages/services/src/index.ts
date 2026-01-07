@@ -6,7 +6,7 @@ export * from './physics/proximity-service.js';
 
 // Social
 export * from './social/social-engine.js';
-export * from './social/dialogue.js';
+export * from './social/dialogue-service.js';
 export * from './social/faction.js';
 
 // Time

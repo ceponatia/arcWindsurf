@@ -21,12 +21,15 @@ export class PhysicsService {
     const actorId = typeof raw['actorId'] === 'string' ? raw['actorId'] : 'unknown';
     const fromLocationId =
       typeof raw['fromLocationId'] === 'string' ? raw['fromLocationId'] : 'unknown';
+    const sessionId = typeof raw['sessionId'] === 'string' ? raw['sessionId'] : undefined;
 
     const effect: MovedEffect = {
       type: 'MOVED',
       actorId,
       fromLocationId,
       toLocationId: move.destinationId,
+      sessionId: sessionId ?? 'unknown',
+      timestamp: new Date(),
     };
 
     await worldBus.emit(effect);

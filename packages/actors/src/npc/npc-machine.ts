@@ -110,7 +110,13 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
         }),
         emitIntent: ({ context }) => {
           if (context.pendingIntent) {
-            void worldBus.emit(context.pendingIntent);
+            const enriched = {
+              sessionId: context.sessionId,
+              actorId: context.actorId ?? context.npcId,
+              timestamp: new Date(),
+              ...context.pendingIntent,
+            };
+            void worldBus.emit(enriched as WorldEvent);
           }
         },
         clearEvents: assign({

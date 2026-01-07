@@ -13,7 +13,7 @@ Each file registers routes on the Hono app instance.
 - **personas.ts** — Player character (persona) management and session attachment
 - **items.ts** — Item management endpoints
 - **tags.ts** — Prompt tag CRUD operations
-- **turns.ts** — Governor-based turn processing (experimental)
+- **turns.ts** — World Bus turn processing (actors + services)
 - **config.ts** — Runtime configuration endpoints
 - **adminDb.ts** — Database administration endpoints (reset, health checks)
 

@@ -1,23 +1,14 @@
 # Session Services
 
-Session-scoped state management, persistence, and caching for the RPG engine.
+Session-scoped utilities for the RPG engine.
 
 ## Overview
 
-This module provides the full lifecycle for session state:
-
-1. **Instances** — Per-session profile copies with override support
-2. **State Cache** — In-memory session-only state (proximity, dialogue)
-3. **State Loader** — Turn-start state assembly from DB + cache
-4. **State Persister** — Turn-end state saving to DB + cache
-
-## Key Concepts
-
-- **Template** — The original character/setting profile (read-only reference)
-- **Instance** — A session-specific copy that can have overrides applied
-- **Overrides** — Partial updates merged onto the instance using deep merge
-- **Session State** — Ephemeral state that lives only in memory during a session
-- **Persisted State** — Durable state saved to the database between turns
+- Instance management for per-session overrides
+- Schedule resolution helpers for NPC availability
+- Simulation hooks/services for time and turn changes
+- Tier scoring for NPC interest and promotions
+- Encounter narration helpers
 
 ## Exports
 
@@ -30,34 +21,34 @@ This module provides the full lifecycle for session state:
 - `upsertSettingOverrides(params)` — Applies overrides to a setting instance
 - `deepMergeReplaceArrays(base, override)` — Deep merge utility
 
-### Session State Cache (`state-cache.ts`)
+### Schedule Service (`schedule-service.ts`)
 
-- `sessionStateCache` — Singleton cache instance
-- `SessionStateCache` — Class with TTL, LRU eviction, periodic cleanup
-- Stores: `proximityState`, `dialogueState` per session
+- `resolveNpcScheduleAtTime(time, schedule)` — Resolve a schedule at a specific time
+- `resolveNpcSchedulesBatch(options)` — Resolve multiple schedules concurrently
+- `checkNpcAvailability(...)` — Determine if an NPC is available
+- `getNpcsAtLocationBySchedule(...)` — Find NPCs at a location based on schedules
 
-### State Loader (`state-loader.ts`)
+### Simulation Service (`simulation-service.ts`)
 
-- `loadStateForTurn({ sessionId, targetNpcId })` — Loads all state slices for a turn
-- Returns: baseline profiles, overrides, session state, instances, NPC context
+- `runSimulationTick(options)` — Advance NPC simulations by one tick
+- `runTimeSkipSimulation(options)` — Simulate a time skip
+- `getNpcsNeedingSimulation(sessionId)` — Identify NPCs requiring simulation
+- `buildSimulationPriorities(sessionId)` — Prioritize NPCs for simulation
 
-### State Persister (`state-persister.ts`)
+### Simulation Hooks (`simulation-hooks.ts`)
 
-- `persistTurnState({ sessionId, patches })` — Saves DB-backed state slices
-- `persistSessionState({ sessionId, proximity, dialogue })` — Saves cache state
-- `clearSessionState(sessionId)` — Clears session cache on disconnect
+- `onTurnComplete`, `onPeriodChange`, `onLocationChange`, `onTimeSkip`
+- Hook-specific input/result types for turn, period, location, and time skip events
 
-## State Flow
+### Tier Service (`tier-service.ts`)
 
-```text
-Turn Start:
-  DB → StateLoader → { baseline, overrides, sessionState }
-                          ↓
-  Governor receives AgentStateSlices
+- `getInterestScore(sessionId, npcId)` — Compute interest score for a single NPC
+- `getAllInterestScores(sessionId)` — Compute interest scores for all NPCs
+- `processTurnInterest(...)` — Update interest after a turn
+- `executePromotion(...)` — Promote NPCs based on thresholds
 
-Turn End:
-  Governor returns patches
-                          ↓
-  StatePersister → DB (character, setting, location, inventory, time)
-                 → Cache (proximity, dialogue)
-```
+### Encounter Service (`encounter-service.ts`)
+
+- `generateEncounterNarration(options)` — Build encounter narration
+- `generateNpcEntranceNarration(options)` — Narrative for NPC entrance
+- `generateNpcExitNarration(options)` — Narrative for NPC exit

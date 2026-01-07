@@ -15,9 +15,6 @@
   "exclude": ["dist"],
   "references": [
     {
-      "path": "../agents"
-    },
-    {
       "path": "../bus"
     },
     {
@@ -25,9 +22,6 @@
     },
     {
       "path": "../db"
-    },
-    {
-      "path": "../governor"
     },
     {
       "path": "../projections"

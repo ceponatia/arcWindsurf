@@ -1,10 +1,10 @@
 /**
  * API-specific tool types.
  *
- * Re-exports shared types from governor and defines API-specific extensions.
+ * Re-exports shared tool types from utils and defines API-specific extensions.
  */
 
-// Re-export shared tool types from governor (canonical source)
+// Re-export shared tool types from utils (canonical source)
 export type {
   ToolDefinition,
   ToolParameterSchema,

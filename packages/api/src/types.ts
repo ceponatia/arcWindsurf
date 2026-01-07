@@ -17,7 +17,6 @@ export interface RuntimeConfigPublic {
   temperature: number;
   topP: number;
   openrouterModel: string;
-  governorDevMode: boolean;
 }
 
 // Full internal runtime configuration (includes secrets / private values)
@@ -28,7 +27,6 @@ export interface RuntimeConfig {
   topP: number;
   openrouterApiKey: string;
   openrouterModel: string;
-  governorDevMode: boolean;
   debugLlm: boolean;
 }
 

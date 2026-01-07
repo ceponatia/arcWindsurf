@@ -30,6 +30,9 @@ export class CognitionLayer {
           type: 'SPEAK_INTENT',
           content: `[NPC ${state.npcId} responding to speech]`,
           targetActorId: speakerActorId,
+          actorId: state.id,
+          sessionId: state.sessionId,
+          timestamp: new Date(),
         };
 
         return { intent, delayMs: 500 };
@@ -47,6 +50,9 @@ export class CognitionLayer {
         const intent: WorldEvent = {
           type: 'SPEAK_INTENT',
           content: `[NPC ${state.npcId} notices someone arrived]`,
+          actorId: state.id,
+          sessionId: state.sessionId,
+          timestamp: new Date(),
         };
 
         return { intent, delayMs: 1000 };

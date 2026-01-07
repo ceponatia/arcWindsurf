@@ -16,12 +16,12 @@ import { registerUserRoutes } from './routes/users/index.js';
 import { registerResourceRoutes } from './routes/resources/index.js';
 import streamRouter from './routes/stream.js';
 import { attachAuthUser, requireAuthIfEnabled } from './auth/middleware.js';
-import { 
-  worldBus, 
-  telemetryMiddleware, 
-  persistenceMiddleware, 
+import {
+  worldBus,
+  telemetryMiddleware,
+  persistenceMiddleware,
   registerPersistenceHandler,
-  type WorldEvent
+  type WorldEvent,
 } from '@minimal-rpg/bus';
 import { eventRepository, drizzle, sessions } from '@minimal-rpg/db';
 import { eq, sql } from 'drizzle-orm';
@@ -36,21 +36,23 @@ worldBus.use(persistenceMiddleware);
 registerPersistenceHandler(async (event: WorldEvent) => {
   const rawEvent = event as Record<string, unknown>;
   const payload = rawEvent['payload'] as Record<string, unknown> | undefined;
-  const sessionId = (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
+  const sessionId =
+    (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
 
   if (sessionId) {
     try {
       // 1. Atomically increment event_seq in sessions table and get the new value
-      const updatedSessions = await drizzle.update(sessions)
-        .set({ 
+      const updatedSessions = await drizzle
+        .update(sessions)
+        .set({
           eventSeq: sql`${sessions.eventSeq} + 1`,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(sessions.id, sessionId))
         .returning({ eventSeq: sessions.eventSeq });
 
       const newSeq = updatedSessions[0]?.eventSeq;
-      
+
       if (newSeq !== undefined) {
         // 2. Save event with the new sequence
         await eventRepository.save(sessionId, event, BigInt(newSeq));
@@ -101,7 +103,6 @@ export async function startServer(): Promise<void> {
     topP: cfg.topP,
     openrouterModel: cfg.openrouterModel,
     openrouterApiKeySet: Boolean(cfg.openrouterApiKey),
-    governorDevMode: cfg.governorDevMode,
   });
 
   // Enable CORS for browser-based clients (Vite dev, etc.)
