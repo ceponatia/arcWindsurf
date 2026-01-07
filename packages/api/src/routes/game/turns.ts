@@ -1,197 +1,137 @@
-/**
- * Turns Route
- *
- * Thin orchestration layer for governor-backed turn handling.
- * Uses extracted modules for validation, state loading, and persistence.
- */
 import type { Hono } from 'hono';
-import { getSession } from '../../db/sessionsClient.js';
-import { notFound, serverError } from '../../utils/responses.js';
-import { loadStateForTurn } from '../../services/state-loader.js';
-import { createGovernorForRequest } from '../../factories/composition.js';
-import type { AgentStateSlices } from '@minimal-rpg/agents';
-import { validateTurnRequest } from './turns/turn-request.js';
-import { loadSessionSnapshot } from './turns/session-snapshot.js';
-import { mapTurnResultToDto } from './turns/turn-result-mapper.js';
-import {
-  persistPlayerInput,
-  persistAssistantMessage,
-  persistStateChanges,
-  persistNpcTranscript,
-  persistSessionHistory,
-} from './turns/state-persistence.js';
-import { processTurnInterest, executePromotion } from '../../services/tier-service.js';
-import type { TurnContext, TurnPersistenceData } from './turns/types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
+import { getSession, appendMessage } from '../../db/sessionsClient.js';
+import { notFound, serverError } from '../../utils/responses.js';
+import { worldProjectionService } from '../../services/projection-service.js';
+import { worldBus } from '@minimal-rpg/bus';
+import { actorRegistry } from '@minimal-rpg/actors';
+import {
+  dialogueService,
+  physicsService,
+  timeService,
+  socialEngine,
+  rulesEngine,
+} from '@minimal-rpg/services';
+import type { WorldEvent } from '@minimal-rpg/schemas';
+
+type SpokeEvent = Extract<WorldEvent, { type: 'SPOKE' }>;
+
+interface TurnResponseDto {
+  message: string;
+  speaker?: { actorId: string };
+  events: WorldEvent[];
+  success: boolean;
+}
+
+const RESPONSE_TIMEOUT_MS = 400;
 
 export function registerTurnRoutes(app: Hono): void {
   /**
    * POST /sessions/:id/turns
    *
-   * Execute a turn with governor-backed AI handling.
-   * Validates request, loads state, invokes governor, persists changes.
+   * Execute a turn using the World Bus + Actors pipeline.
    */
   app.post('/sessions/:id/turns', async (c) => {
     const sessionId = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    // 1. Validate session exists
     const session = await getSession(ownerEmail, sessionId);
     if (!session) {
       return notFound(c, 'session not found');
     }
 
-    // 2. Validate request body
-    const validationResult = await validateTurnRequest(c);
-    if (!validationResult.success) {
-      return validationResult.response;
+    const body: unknown = await c.req.json().catch(() => null);
+    if (
+      !body ||
+      typeof body !== 'object' ||
+      typeof (body as { input?: unknown }).input !== 'string'
+    ) {
+      return serverError(c, 'input is required');
     }
-    const { input, targetNpcId } = validationResult.data;
 
-    // 3. Load state (baseline + overrides + session state)
-    let loadedState;
-    try {
-      loadedState = await loadStateForTurn({
-        ownerEmail,
+    const input = (body as { input: string }).input.trim();
+    const requestedNpcId =
+      typeof (body as { npcId?: unknown }).npcId === 'string'
+        ? (body as { npcId: string }).npcId.trim()
+        : '';
+    const targetNpcId = requestedNpcId.length > 0 ? requestedNpcId : null;
+
+    // Ensure core services are running (idempotent starts)
+    dialogueService.start();
+    physicsService.start();
+    timeService.start();
+    socialEngine.start();
+    rulesEngine.start();
+
+    // Hydrate projections to discover active NPCs and locations
+    const projectionManager = await worldProjectionService.getManager(sessionId);
+    const npcProjection = projectionManager.npcs.getState();
+
+    // Spawn NPC actors for this session if missing
+    for (const [npcId, npcState] of Object.entries(npcProjection)) {
+      const actorId = npcId;
+      if (actorRegistry.has(actorId)) continue;
+
+      actorRegistry.spawn({
+        id: actorId,
+        type: 'npc',
+        npcId,
         sessionId,
-        ...(targetNpcId ? { targetNpcId } : {}),
+        locationId: npcState.location.locationId ?? 'unknown',
       });
-    } catch (err) {
-      console.error('[turns] Failed to load state:', err);
-      return serverError(c, 'failed to load session state');
     }
 
-    // 4. Persist player input
-    await persistPlayerInput(ownerEmail, sessionId, input);
-
-    // 5. Load complete session snapshot (messages, tags, persona, speaker)
-    let snapshot;
-    try {
-      snapshot = await loadSessionSnapshot(ownerEmail, sessionId, loadedState);
-    } catch (err) {
-      console.error('[turns] Failed to load snapshot:', err);
-      return serverError(c, 'failed to load session snapshot');
-    }
-
-    const turnIdx = snapshot.messages.at(-1)?.idx ?? 0;
-
-    // 6. Create governor and execute turn
-    const stateSlices: AgentStateSlices = {
-      character: loadedState.baseline.character as unknown as NonNullable<
-        AgentStateSlices['character']
-      >,
-      setting: loadedState.baseline.setting as unknown as NonNullable<AgentStateSlices['setting']>,
-      location: loadedState.baseline.location as unknown as NonNullable<
-        AgentStateSlices['location']
-      >,
-      inventory: loadedState.baseline.inventory as unknown as NonNullable<
-        AgentStateSlices['inventory']
-      >,
-      proximity: loadedState.sessionState.proximity as unknown as NonNullable<
-        AgentStateSlices['proximity']
-      >,
-      ...(loadedState.baseline.npc
-        ? { npc: loadedState.baseline.npc as unknown as NonNullable<AgentStateSlices['npc']> }
-        : {}),
+    // Collect events emitted during this turn
+    const collected: WorldEvent[] = [];
+    const handler = (event: WorldEvent): void => {
+      if ((event as Record<string, unknown>)['sessionId'] !== sessionId) return;
+      collected.push(event);
     };
 
-    const governor = createGovernorForRequest({
-      ownerEmail,
-      sessionId,
-      stateSlices,
-      ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
-    });
+    await worldBus.subscribe(handler);
 
-    // Include proximity in baseline so state patches can be applied
-    const baselineWithProximity = {
-      ...loadedState.baseline,
-      proximity: loadedState.sessionState.proximity,
+    const playerActorId = `player:${ownerEmail}`;
+    const playerSpoke: WorldEvent = {
+      type: 'SPOKE',
+      actorId: playerActorId,
+      content: input,
+      targetActorId: targetNpcId ?? undefined,
+      sessionId,
+      timestamp: new Date(),
     };
 
-    const turnContext: TurnContext = {
-      sessionId,
-      playerInput: input,
-      baseline: baselineWithProximity,
-      overrides: loadedState.overrides,
-      sessionTags: snapshot.sessionTags,
-      ...(snapshot.turnTagContext ? { turnTagContext: snapshot.turnTagContext } : {}),
-      ...(snapshot.persona ? { persona: snapshot.persona } : {}),
-    };
+    await worldBus.emit(playerSpoke);
 
-    const turnResult = await governor.handleTurn(turnContext);
+    // Wait briefly for NPC responses to propagate
+    await new Promise((resolve) => setTimeout(resolve, RESPONSE_TIMEOUT_MS));
 
-    // 7. Persist assistant response
-    await persistAssistantMessage(ownerEmail, sessionId, turnResult.message, snapshot.speaker);
+    worldBus.unsubscribe(handler);
 
-    // 8. Persist state changes to database and cache
-    const persistenceData: TurnPersistenceData = {
-      sessionId,
-      playerInput: input,
-      turnIdx,
-      loadedState,
-      sessionTags: snapshot.sessionTags,
-      baseline: loadedState.baseline,
-      overrides: loadedState.overrides,
-      ...(snapshot.persona ? { persona: snapshot.persona } : {}),
-    };
-
-    await persistStateChanges(ownerEmail, persistenceData, turnResult);
-
-    // 9. Persist NPC transcript
-    await persistNpcTranscript(
-      ownerEmail,
-      sessionId,
-      input,
-      turnResult,
-      loadedState.instances.activeNpc.id,
-      loadedState.instances.primaryCharacter.id
+    // Derive NPC response (first non-player SPOKE)
+    const npcSpoke = collected.find(
+      (evt): evt is SpokeEvent => evt.type === 'SPOKE' && evt.actorId !== playerActorId
     );
 
-    // 10. Persist session history with debug info
-    await persistSessionHistory(ownerEmail, persistenceData, turnResult);
+    const message = npcSpoke?.content ?? 'The world is quiet.';
 
-    // 11. Process player interest and tier promotions
-    // Track interest for the active NPC (dialogue interaction)
-    const allNpcIds = loadedState.instances.characterInstances
-      .filter((ci) => ci.role === 'npc')
-      .map((ci) => ci.id);
-
-    if (allNpcIds.length > 0) {
-      try {
-        const interestResult = await processTurnInterest({
-          ownerEmail,
-          sessionId,
-          interactedNpcIds: [loadedState.instances.activeNpc.id],
-          allNpcIds,
-          interactions: new Map([
-            [
-              loadedState.instances.activeNpc.id,
-              {
-                type: 'dialogue' as const,
-                namedNpc: true,
-                askedQuestions: input.includes('?'),
-              },
-            ],
-          ]),
-        });
-
-        // Execute any pending promotions
-        for (const promotion of interestResult.promotions) {
-          if (promotion.targetTier) {
-            await executePromotion(ownerEmail, sessionId, promotion.npcId, promotion.targetTier);
-            console.log(
-              `[turns] Promoted NPC ${promotion.npcId} from ${promotion.currentTier} to ${promotion.targetTier}`
-            );
-          }
+    const npcSpeaker = npcSpoke
+      ? {
+          id: npcSpoke.actorId,
+          name: npcSpoke.actorId,
         }
-      } catch (err) {
-        // Non-fatal - log but don't fail the turn
-        console.error('[turns] Failed to process interest/promotions:', err);
-      }
-    }
+      : undefined;
 
-    // 12. Build and return response DTO
-    const dto = mapTurnResultToDto(turnResult, snapshot.speaker);
-    return c.json(dto, 200);
+    // Persist chat transcript
+    await appendMessage(ownerEmail, sessionId, 'user', input);
+    await appendMessage(ownerEmail, sessionId, 'assistant', message, npcSpeaker);
+
+    const response: TurnResponseDto = {
+      message,
+      events: collected,
+      success: true,
+      ...(npcSpoke ? { speaker: { actorId: npcSpoke.actorId } } : {}),
+    };
+
+    return c.json(response, 200);
   });
 }

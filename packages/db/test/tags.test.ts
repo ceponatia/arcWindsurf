@@ -1,3 +1,4 @@
+import { describe, it, test, expect, vi, beforeEach } from 'vitest';
 vi.mock('../src/utils/client.js', () => {
   const query = vi.fn();
   const connect = vi.fn();

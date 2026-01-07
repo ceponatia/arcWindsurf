@@ -4,22 +4,28 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json --outDir dist",
+    "build": "pnpm exec tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@minimal-rpg/schemas": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "ioredis": "^5.4.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
-    "rimraf": "^6.1.2"
+    "@types/node": "^22.10.1",
+    "rimraf": "^6.1.2",
+    "typescript": "^5.6.3"
   }
 }

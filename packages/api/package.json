@@ -10,24 +10,26 @@
     }
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "pnpm exec tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "dev": "tsx watch src/server.ts",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc -b --pretty false"
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
-    "@minimal-rpg/agents": "workspace:*",
+    "@minimal-rpg/actors": "workspace:*",
+    "@minimal-rpg/bus": "workspace:*",
     "@minimal-rpg/characters": "workspace:*",
     "@minimal-rpg/db": "workspace:*",
-    "@minimal-rpg/governor": "workspace:*",
+    "@minimal-rpg/projections": "workspace:*",
     "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
-    "@minimal-rpg/state-manager": "workspace:*",
+    "@minimal-rpg/services": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
     "hono": "^4.10.6",
     "jose": "^6.1.0"
   },

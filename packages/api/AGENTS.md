@@ -31,9 +31,10 @@ The HTTP backend server for the Minimal RPG application. It exposes REST endpoin
 
 ## Package Connections
 
-- **@minimal-rpg/governor**: Delegates complex turn processing logic.
+- **@minimal-rpg/bus**: World Bus for emitting, persisting, and replaying domain events.
+- **@minimal-rpg/actors**: Runtime NPC/player actor registry used by turn handling.
+- **@minimal-rpg/services**: Domain services (physics, time, social, rules) used during turns.
+- **@minimal-rpg/projections**: Read models for NPC state, locations, and sessions.
 - **@minimal-rpg/db**: Direct database access for CRUD operations.
 - **@minimal-rpg/schemas**: Shared Zod schemas for request/response validation.
-- **@minimal-rpg/state-manager**: State aggregation and management.
-- **@minimal-rpg/agents**: Agent definitions and logic, particularly the npc agent which is responsible for non-player character behavior and decision-making within the game.
 - **@minimal-rpg/characters**: Character data structures and logic.

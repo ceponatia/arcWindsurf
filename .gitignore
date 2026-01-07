@@ -50,3 +50,7 @@ data/*
 
 #Ignore windsurf AI rules
 .windsurfrules
+
+
+#Ignore insiders AI rules
+.github/instructions/codacy.instructions.md

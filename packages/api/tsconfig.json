@@ -15,7 +15,7 @@
   "exclude": ["dist"],
   "references": [
     {
-      "path": "../agents"
+      "path": "../bus"
     },
     {
       "path": "../characters"
@@ -24,7 +24,7 @@
       "path": "../db"
     },
     {
-      "path": "../governor"
+      "path": "../projections"
     },
     {
       "path": "../retrieval"
@@ -33,7 +33,7 @@
       "path": "../schemas"
     },
     {
-      "path": "../state-manager"
+      "path": "../services"
     },
     {
       "path": "../utils"

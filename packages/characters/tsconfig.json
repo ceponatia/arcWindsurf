@@ -14,16 +14,10 @@
   "exclude": ["dist"],
   "references": [
     {
-      "path": "../agents"
-    },
-    {
       "path": "../retrieval"
     },
     {
       "path": "../schemas"
-    },
-    {
-      "path": "../state-manager"
     },
     {
       "path": "../utils"

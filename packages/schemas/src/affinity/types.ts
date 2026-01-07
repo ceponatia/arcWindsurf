@@ -33,8 +33,8 @@ export interface RelationshipScores {
   /** How comfortable the NPC is around the player (-100 to 100) */
   comfort: number;
 
-  /** How romantically/physically attracted the NPC is (0 to 100, optional) */
-  attraction?: number | undefined;
+  /** How romantically/physically attracted the NPC is (0 to 100) */
+  attraction: number;
 
   /** How afraid of the player the NPC is (0 to 100) */
   fear: number;

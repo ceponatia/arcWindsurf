@@ -11,6 +11,8 @@ import {
 } from '../../shared/api/client.js';
 import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
 import { DebugSidebar } from '../chat/components/index.js';
+import { WorldMap, EventLog } from '../game/index.js';
+import { useWorldBus } from '../../hooks/useWorldBus.js';
 import { GOVERNOR_DEV_MODE } from '../../config.js';
 import type { NpcInstanceSummary } from '../../types.js';
 
@@ -54,6 +56,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const [selectedNpcId, setSelectedNpcId] = useState<string | null>(null);
   const [npcError, setNpcError] = useState<string | null>(null);
   const [npcsLoading, setNpcsLoading] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<'debug' | 'game'>('game');
   const [lastTurnDebug, setLastTurnDebug] = useState<TurnDebugData>({
     metadata: null,
     events: [],
@@ -62,6 +65,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   const ctrlRef = useRef<AbortController | null>(null);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
+
+  // Connect to the World Bus SSE stream
+  useWorldBus(effectiveSessionId ?? null);
 
   const refresh = () => {
     if (!effectiveSessionId) return;
@@ -344,7 +350,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
                 className="flex-1 bg-slate-900 text-slate-200 placeholder:text-slate-500 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"
                 placeholder="Type a message..."
                 value={draft}
-                onChange={(e) => { setDraft(e.target.value); }}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                }}
                 disabled
               />
               <button
@@ -432,13 +440,54 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       <div className="flex h-full">
         {/* Chat takes remaining space and scrolls independently */}
         <div className="flex-1 min-w-0 overflow-hidden">{chatView}</div>
-        {/* Debug sidebar is fixed/sticky on the right */}
-        <div className="w-80 flex-shrink-0 hidden lg:block sticky top-0 h-screen overflow-hidden">
-          <DebugSidebar
-            metadata={lastTurnDebug.metadata}
-            events={lastTurnDebug.events}
-            stateChanges={lastTurnDebug.stateChanges}
-          />
+        {/* Sidebar area */}
+        <div className="w-80 flex-shrink-0 hidden lg:flex flex-col border-l border-slate-800 bg-slate-950 sticky top-0 h-screen overflow-hidden">
+          {/* Sidebar Toggle */}
+          <div className="flex border-b border-slate-800">
+            <button
+              onClick={() => {
+                setSidebarMode('game');
+              }}
+              className={`flex-1 py-2 text-[10px] uppercase tracking-wider font-semibold transition-colors ${
+                sidebarMode === 'game'
+                  ? 'bg-slate-900 text-violet-400'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              World
+            </button>
+            <button
+              onClick={() => {
+                setSidebarMode('debug');
+              }}
+              className={`flex-1 py-2 text-[10px] uppercase tracking-wider font-semibold transition-colors ${
+                sidebarMode === 'debug'
+                  ? 'bg-slate-900 text-amber-400'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Debug
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {sidebarMode === 'game' ? (
+              <div className="h-full flex flex-col p-3 gap-3 overflow-y-auto custom-scrollbar">
+                <div className="h-2/3 min-h-[300px]">
+                  <WorldMap />
+                </div>
+                <div className="h-1/3 min-h-[150px]">
+                  <EventLog />
+                </div>
+              </div>
+            ) : (
+              <DebugSidebar
+                metadata={lastTurnDebug.metadata}
+                events={lastTurnDebug.events}
+                stateChanges={lastTurnDebug.stateChanges}
+              />
+            )}
+          </div>
         </div>
       </div>
     );

@@ -51,12 +51,7 @@ export const RelationshipScoresSchema = z.object({
     .min(-100)
     .max(100)
     .describe('How comfortable the NPC is around the player (-100 to 100)'),
-  attraction: z
-    .number()
-    .min(0)
-    .max(100)
-    .optional()
-    .describe('Romantic/physical attraction (0-100, optional)'),
+  attraction: z.number().min(0).max(100).describe('Romantic/physical attraction (0-100)'),
   fear: z.number().min(0).max(100).describe('How afraid the NPC is (0-100)'),
 }) satisfies z.ZodType<RelationshipScores>;
 

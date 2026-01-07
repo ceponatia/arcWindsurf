@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { getErrorMessage } from '@minimal-rpg/utils';
+import { useSignals } from '@preact/signals-react/runtime';
 import {
   createSession,
   createSessionFull,
@@ -10,6 +11,7 @@ import { useSessions } from '../../shared/hooks/useSessions.js';
 import { useSettings } from '../../shared/hooks/useSettings.js';
 import { useCharacters } from '../../shared/hooks/useCharacters.js';
 import { usePersonas } from '../../shared/hooks/usePersonas.js';
+import { currentSessionId as currentSessionIdSignal } from '../../signals/session.js';
 import type { AppControllerValue, ViewMode } from '../../types.js';
 
 function parseHashRoute(): {
@@ -142,10 +144,17 @@ function parseHashRoute(): {
 }
 
 export function useAppController(): AppControllerValue {
+  useSignals();
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedSettingId, setSelectedSettingId] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  // Bridge local state with signal
+  const currentSessionId = currentSessionIdSignal.value;
+  const setCurrentSessionId: Dispatch<SetStateAction<string | null>> = (value) => {
+    const nextValue = typeof value === 'function' ? value(currentSessionIdSignal.value) : value;
+    currentSessionIdSignal.value = nextValue;
+  };
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => parseHashRoute().viewMode);
   const [builderId, setBuilderId] = useState<string | null>(() => parseHashRoute().builderId);

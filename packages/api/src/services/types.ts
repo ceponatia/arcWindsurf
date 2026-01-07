@@ -1,5 +1,4 @@
-import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
-import type { TurnResult } from '@minimal-rpg/governor';
+import type { CharacterProfile, SettingProfile, WorldEvent } from '@minimal-rpg/schemas';
 import type { ChatRole, Speaker } from '../types.js';
 import type { DbMessage, DbSessionSummary } from '../db/types.js';
 
@@ -60,14 +59,14 @@ export interface OverridesAudit {
   previous?: Record<string, unknown>;
 }
 
-// Governor-backed turn DTO (subset of TurnResult that is safe to expose)
+// World Bus turn DTO returned by the simplified pipeline
 export interface TurnResultDto {
   message: string;
   /** Speaker info for the responding NPC */
   speaker?: Speaker | undefined;
-  events: TurnResult['events'];
-  stateChanges?: TurnResult['stateChanges'];
-  metadata?: TurnResult['metadata'];
+  events: WorldEvent[];
+  stateChanges?: unknown;
+  metadata?: Record<string, unknown>;
   success: boolean;
 }
 

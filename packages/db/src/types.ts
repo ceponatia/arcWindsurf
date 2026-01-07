@@ -6,9 +6,15 @@ export interface PgPoolLike {
   end: () => Promise<void>;
 }
 
+/** Minimal Dirent interface for withFileTypes: true */
+export interface DirentLike {
+  name: string;
+  isDirectory: () => boolean;
+}
+
 export interface FsPromisesLike {
   mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
-  readdir: (path: string) => Promise<string[]>;
+  readdir: (path: string, options?: { withFileTypes: boolean }) => Promise<DirentLike[]>;
   readFile: (path: string, encoding: 'utf8') => Promise<string>;
 }
 
@@ -16,6 +22,8 @@ export interface PathLike {
   resolve: (...segments: string[]) => string;
   dirname: (p: string) => string;
   join: (...segments: string[]) => string;
+  basename: (p: string) => string;
+  relative: (from: string, to: string) => string;
 }
 
 export type SqlFile = string;

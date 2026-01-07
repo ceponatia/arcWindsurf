@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { getDefaultAttribute, getRegionAttributes } from '../src/character/index.js';
 import type { AppearanceRegion } from '../src/character/index.js';
 
@@ -6,7 +7,7 @@ describe('character/appearance', () => {
     const cases: { region: AppearanceRegion; expectedKeys: string[] }[] = [
       { region: 'overall', expectedKeys: ['height', 'build'] },
       { region: 'eyes', expectedKeys: ['color', 'shape'] },
-      { region: 'hands', expectedKeys: ['size', 'description'] },
+      { region: 'leftHand', expectedKeys: ['size', 'description'] },
     ];
 
     for (const { region, expectedKeys } of cases) {

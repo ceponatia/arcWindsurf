@@ -2,7 +2,7 @@
  * API-specific LLM tools.
  *
  * Session-focused tools for querying session state during LLM interactions.
- * These tools complement the game action tools in @minimal-rpg/governor.
+ * These tools complement the World Bus actor pipeline.
  */
 
 // Types

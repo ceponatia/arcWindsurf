@@ -28,16 +28,16 @@ export const DEFAULT_AFFINITY_SCORES: RelationshipScores = {
   trust: 0,
   respect: 0,
   comfort: 0,
-  attraction: undefined,
+  attraction: 0,
   fear: 0,
 };
 
 /**
  * Default affinity scores with attraction enabled.
+ * @deprecated Use DEFAULT_AFFINITY_SCORES instead (attraction is now always present)
  */
 export const DEFAULT_AFFINITY_SCORES_WITH_ATTRACTION: RelationshipScores = {
   ...DEFAULT_AFFINITY_SCORES,
-  attraction: 0,
 };
 
 // =============================================================================

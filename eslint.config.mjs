@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import security from 'eslint-plugin-security';
 
 export default tseslint.config(
   // Global ignores (flat config replaces .eslintignore)
@@ -31,20 +32,26 @@ export default tseslint.config(
   },
   // TypeScript + JS rules for source files across packages
   {
-    files: ['packages/*/src/**/*.{ts,tsx,js}'],
-    extends: [
-      js.configs.recommended,
-      ...tseslint.configs.recommendedTypeChecked,
-      ...tseslint.configs.stylisticTypeChecked,
-    ],
-    languageOptions: {
-      parserOptions: {
-        // Use TypeScript project service to pick up each package tsconfig
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
+  files: ['packages/*/src/**/*.{ts,tsx,js}'],
+  plugins: {
+    security,
+  },
+  extends: [
+    js.configs.recommended,
+    ...tseslint.configs.recommendedTypeChecked,
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  rules: {
+    // Match Codacy's "Detect Object Injection"
+    'security/detect-object-injection': 'warn',
+  },
+  languageOptions: {
+    parserOptions: {
+      projectService: true,
+      tsconfigRootDir: import.meta.dirname,
     },
   },
+},
   // Disable formatting rules to let Prettier handle formatting
   eslintConfigPrettier
 );

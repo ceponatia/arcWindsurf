@@ -12,18 +12,16 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm exec tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@minimal-rpg/agents": "workspace:*",
     "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
-    "@minimal-rpg/state-manager": "workspace:*",
     "@minimal-rpg/utils": "workspace:*",
     "fast-json-patch": "^3.1.1"
   },

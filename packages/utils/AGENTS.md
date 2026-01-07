@@ -17,3 +17,7 @@ Cross-package utility functions. Provides domain-agnostic helpers for parsing, f
 - **api**, **characters**, **governor**, **web**: Import utils for shared helper functions
 
 This package should remain domain-agnostic. Domain-specific logic belongs in the appropriate domain package.
+
+## Note on Record Helpers
+
+Type-safe record access helpers (`getRecord`, `setRecord`, etc.) have been moved to `@minimal-rpg/schemas` to avoid circular dependencies. Import them from `@minimal-rpg/schemas` instead of `@minimal-rpg/utils`.
