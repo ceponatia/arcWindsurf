@@ -332,6 +332,10 @@ export function extractIntensity(phrase: string): { intensity: number; cleaned: 
 
   for (const word of words) {
     // Check for explicit intensity like "intensity 0.6" or "0.6"
+    // Limit input length to prevent ReDoS attacks
+    if (word.length > 1000) {
+      continue; // Skip overly long inputs
+    }
     const numPattern = /^(\d*\.?\d+)$/;
     const numMatch = numPattern.exec(word);
     if (numMatch?.[1]) {

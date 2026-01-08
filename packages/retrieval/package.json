@@ -23,6 +23,7 @@
     "@minimal-rpg/schemas": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3.2.3"
+    "@vitest/coverage-v8": "^4.0.16",
+    "vitest": "^4.0.16"
   }
 }

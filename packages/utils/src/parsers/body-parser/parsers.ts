@@ -202,6 +202,7 @@ export function parseBodyEntry(input: string): ParsedBodyEntry | null {
   if (!trimmed) return null;
 
   // Normalize separators: convert " - " and " : " to ":"
+  // Use \s instead of [\s] to prevent ReDoS vulnerability
   const normalized = trimmed
     .replace(/\s*-\s*/g, ':')
     .replace(/\s*:\s*/g, ':')
