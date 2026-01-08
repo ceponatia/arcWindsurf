@@ -1,5 +1,11 @@
 # Minimal RPG — Comprehensive Refactor Proposal (No-Constraints Edition)
 
+**Author**: GPT 5.2 (Thinking)
+**Date**: January 2026
+**Status**: Vision Document
+
+---
+
 This document proposes an end-to-end refactor and modernization roadmap for Minimal RPG, prioritizing reliability, developer velocity, and long-term extensibility for LLM-driven role-playing games.
 
 ## Executive Summary

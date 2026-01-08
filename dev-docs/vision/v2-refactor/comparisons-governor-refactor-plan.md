@@ -1,6 +1,7 @@
 # ArcAgentic Vision Documents: Synthesis & Analysis
 
-**Created**: January 2026  
+**Author**: Opus 4.5
+**Created**: January 2026
 **Purpose**: Comprehensive comparison and synthesis of three refactoring vision documents
 
 ---
@@ -15,8 +16,8 @@ This analysis examines three refactoring vision documents created for the ArcAge
 
 A concise, simulation-centric vision (~70 lines) that proposes transforming the platform from a turn-based chat API into a **living simulation engine**. Key themes include event-driven architecture, the Actor model for NPCs, tiered LLM cognition (fast vs. deep), and hybrid persistence (relational + graph + vector). Notable for introducing **Utility AI** concepts (Hunger, Boredom, Ambition) to create emergent NPC behavior.
 
-**Tone**: Conceptual, systems-thinking, minimal implementation detail  
-**Scope**: Architecture & simulation mechanics  
+**Tone**: Conceptual, systems-thinking, minimal implementation detail
+**Scope**: Architecture & simulation mechanics
 **Timeline**: 4 phases, no specific week estimates
 
 ---
@@ -27,8 +28,8 @@ A concise, simulation-centric vision (~70 lines) that proposes transforming the 
 
 A comprehensive, production-focused proposal (~220 lines) emphasizing reliability, typed contracts, observability, and incremental delivery. Proposes Domain/Core/Infra layering, provider-agnostic LLM engine, typed API contracts (OpenAPI/ts-rest), SSE streaming, agent graphs, and extensive testing/ops infrastructure. Most pragmatic of the three with explicit risk mitigations.
 
-**Tone**: Pragmatic, enterprise-grade, implementation-ready  
-**Scope**: Full stack (API, Web, DB, LLM, testing, ops, security)  
+**Tone**: Pragmatic, enterprise-grade, implementation-ready
+**Scope**: Full stack (API, Web, DB, LLM, testing, ops, security)
 **Timeline**: 6 phases over 12 weeks with explicit milestones
 
 ---
@@ -39,8 +40,8 @@ A comprehensive, production-focused proposal (~220 lines) emphasizing reliabilit
 
 The most expansive vision (~680 lines) proposing a transformation into a full **platform** with plugin architecture, multiplayer sessions, mobile/desktop clients, and a knowledge graph. Includes detailed TypeScript code examples, file structure proposals, and a 20-week migration plan. Most ambitious scope including GM mode, streamer mode, and cross-platform sync.
 
-**Tone**: Visionary, platform-thinking, code-heavy examples  
-**Scope**: Platform ecosystem (plugins, multiplayer, mobile, desktop)  
+**Tone**: Visionary, platform-thinking, code-heavy examples
+**Scope**: Platform ecosystem (plugins, multiplayer, mobile, desktop)
 **Timeline**: 5 phases over 20 weeks
 
 ---
@@ -311,7 +312,8 @@ This matrix shows whether ideas from each document would work well together (✅
 This plan synthesizes the best ideas from all three documents into a logical, dependency-aware implementation order.
 
 ### Phase 1: Foundation (Weeks 1-3)
-*Source: Primarily GPT Proposal*
+
+*Sources: [Primarily GPT Proposal](gpt-refactor-proposal-minimal-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -322,7 +324,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Idempotency keys on write endpoints** | GPT | Prevents duplicate turns; essential for reliability |
 
 ### Phase 2: Streaming & Real-Time (Weeks 4-6)
-*Source: GPT Proposal + Opus/Cascade*
+
+*Sources: [GPT Proposal](gpt-refactor-proposal-minimal-rpg.md), [Gemini Flash Proposal](gemini-flash-refactor-vision-rpg.md), [Opus Proposal](opus-refactor-vision.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -333,7 +336,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Token budgets per session** | GPT | Cost control with graceful degradation |
 
 ### Phase 3: Agent Framework & Tools (Weeks 7-9)
-*Source: Opus/Cascade + GPT Proposal*
+
+*Sources: [Opus Proposal](opus-refactor-vision.md), [GPT Proposal](gpt-refactor-proposal-minimal-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -344,7 +348,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Policy-based routing** | GPT | Confidence thresholds, budget caps, fallbacks |
 
 ### Phase 4: Event Sourcing & State (Weeks 10-12)
-*Source: Opus/Cascade + Gemini Flash*
+
+*Sources: [Opus Proposal](opus-refactor-vision.md), [Gemini Flash Proposal](gemini-flash-refactor-vision-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -355,7 +360,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Drizzle ORM migration** | GPT + Opus | Type-safe queries; incremental adoption |
 
 ### Phase 5: Simulation & Autonomy (Weeks 13-15)
-*Source: Gemini Flash + GPT Proposal*
+
+*Sources: [Gemini Flash Proposal](gemini-flash-refactor-vision-rpg.md), [GPT Proposal](gpt-refactor-proposal-minimal-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -366,7 +372,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Hygiene/affinity decay** | Existing | Already in codebase; wire to simulation |
 
 ### Phase 6: Plugin Architecture (Weeks 16-18)
-*Source: Opus/Cascade*
+
+*Source: [Opus Proposal](opus-refactor-vision.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -377,7 +384,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Plugin documentation** | Opus | SDK guide for community developers |
 
 ### Phase 7: Knowledge & Memory (Weeks 19-21)
-*Source: Opus/Cascade + Gemini Flash*
+
+*Sources: [Opus Proposal](opus-refactor-vision.md), [Gemini Flash Proposal](gemini-flash-refactor-vision-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -388,7 +396,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Hybrid retrieval (BM25 + vector)** | GPT | Better relevance than vector-only |
 
 ### Phase 8: Multiplayer Foundation (Weeks 22-24)
-*Source: Opus/Cascade*
+
+*Sources: [Opus Proposal](opus-refactor-vision.md), [GPT Proposal](gpt-refactor-proposal-minimal-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -399,7 +408,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Rate limiting per user/session** | GPT | Abuse protection for multiplayer |
 
 ### Phase 9: Web Improvements (Weeks 25-27)
-*Source: GPT Proposal + Opus/Cascade*
+
+*Sources: [GPT Proposal](gpt-refactor-proposal-minimal-rpg.md), [Opus Proposal](opus-refactor-vision.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|
@@ -410,7 +420,8 @@ This plan synthesizes the best ideas from all three documents into a logical, de
 | **Accessibility improvements** | GPT | Keyboard-driven, mobile-first |
 
 ### Phase 10: Platform Expansion (Weeks 28+)
-*Source: Opus/Cascade*
+
+*Sources: [Opus Proposal](opus-refactor-vision.md), [GPT Proposal](gpt-refactor-proposal-minimal-rpg.md)*
 
 | Task | Source | Rationale |
 |------|--------|-----------|

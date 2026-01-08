@@ -1,7 +1,7 @@
 # Unconstrained Refactoring Vision for ArcAgentic
 
-**Author**: Cascade - Opus 4.5 (Thinking)  
-**Date**: January 2026  
+**Author**: Opus 4.5 (Thinking)
+**Date**: January 2026
 **Status**: Vision Document
 
 ---
@@ -15,6 +15,7 @@ This document presents an unconstrained refactoring vision for the ArcAgentic RP
 ## Current Architecture Assessment
 
 ### Strengths
+
 - **Clean monorepo structure** with well-defined package boundaries
 - **Rich domain modeling** via Zod schemas (characters, locations, inventory, time, affinity)
 - **Governor pattern** for turn orchestration with tool-based LLM integration
@@ -22,6 +23,7 @@ This document presents an unconstrained refactoring vision for the ArcAgentic RP
 - **Comprehensive NPC systems**: tiers, schedules, hygiene, proximity, affinity
 
 ### Areas for Improvement
+
 - **LLM coupling**: Tight binding to OpenRouter; no abstraction for model switching
 - **Synchronous turn processing**: No streaming or progressive response rendering
 - **Monolithic frontend**: Feature folders are large and could benefit from lazy loading
@@ -163,11 +165,11 @@ interface Agent {
   description: string;
   capabilities: AgentCapability[];
   tools: ToolDefinition[];
-  
+
   // Lifecycle hooks
   onActivate?(context: AgentContext): Promise<void>;
   onDeactivate?(context: AgentContext): Promise<void>;
-  
+
   // Core execution
   execute(input: AgentInput): AsyncGenerator<AgentOutput>;
 }
@@ -181,7 +183,7 @@ interface AgentCapability {
 // Agent composition
 class CompositeAgent implements Agent {
   constructor(private agents: Agent[]) {}
-  
+
   async *execute(input: AgentInput) {
     const relevantAgents = this.selectAgents(input);
     for (const agent of relevantAgents) {
@@ -217,7 +219,7 @@ const messages = signal<Message[]>([]);
 const npcs = signal<NpcInstance[]>([]);
 
 // Computed derivations
-const activeNpc = computed(() => 
+const activeNpc = computed(() =>
   npcs.value.find(n => n.role === 'primary')
 );
 
@@ -247,7 +249,7 @@ effect(() => {
 
 **Solution**: Atomic design with a proper component library.
 
-```
+```text
 packages/
 ├── ui/                          # Design system (rename from current)
 │   ├── atoms/                   # Button, Input, Text, Icon
@@ -288,11 +290,11 @@ interface SessionEvent {
 class SessionSocket {
   private ws: WebSocket;
   private handlers = new Map<string, Set<Handler>>();
-  
+
   join(sessionId: string, playerId: string): void;
   broadcast(event: SessionEvent): void;
   on(type: string, handler: Handler): () => void;
-  
+
   // Conflict resolution
   reconcile(local: GameState, remote: GameState): GameState;
 }
@@ -318,14 +320,14 @@ interface GamePlugin {
   id: string;
   name: string;
   version: string;
-  
+
   // Registration
   schemas?: ZodSchema[];         // Extend state schema
   tools?: ToolDefinition[];      // Add LLM tools
   agents?: Agent[];              // Register agents
   routes?: RouteConfig[];        // API endpoints
   ui?: UIExtension[];            // Frontend components
-  
+
   // Hooks
   onSessionCreate?(ctx: SessionContext): Promise<void>;
   onTurnStart?(ctx: TurnContext): Promise<void>;
@@ -337,11 +339,11 @@ const combatPlugin: GamePlugin = {
   id: 'combat',
   name: 'Tactical Combat System',
   version: '1.0.0',
-  
+
   schemas: [CombatStateSchema, InitiativeSchema],
   tools: [ATTACK_TOOL, DEFEND_TOOL, CAST_SPELL_TOOL],
   agents: [new CombatAgent()],
-  
+
   onTurnStart: async (ctx) => {
     if (ctx.state.combat?.active) {
       await ctx.agents.combat.processRound();
@@ -405,6 +407,7 @@ class KnowledgeGraph {
 ### 10. Developer Experience Improvements
 
 #### Testing Infrastructure
+
 ```typescript
 // packages/testing/src/fixtures.ts
 export const testSession = createSessionFixture({
@@ -427,6 +430,7 @@ test('NPC responds appropriately to greeting', async () => {
 ```
 
 #### Observability
+
 ```typescript
 // packages/observability/src/tracing.ts
 import { trace, context, SpanKind } from '@opentelemetry/api';
@@ -437,19 +441,20 @@ async function processTurn(input: TurnInput) {
   return tracer.startActiveSpan('turn.process', async (span) => {
     span.setAttribute('session.id', input.sessionId);
     span.setAttribute('input.length', input.content.length);
-    
+
     const result = await governor.execute(input);
-    
+
     span.setAttribute('tools.called', result.toolsCalled.length);
     span.setAttribute('tokens.used', result.tokenUsage.total);
     span.end();
-    
+
     return result;
   });
 }
 ```
 
 #### CLI Tooling
+
 ```bash
 # New CLI commands
 arcagentic session create --character "Marcus" --setting "Tavern"
@@ -506,7 +511,7 @@ const recentMessages = await db
 
 **Solution**: Shared core with platform-specific shells.
 
-```
+```text
 packages/
 ├── core/                        # Business logic (pure TypeScript)
 ├── web/                         # React SPA (current)
@@ -530,30 +535,35 @@ packages/
 ## Migration Strategy
 
 ### Phase 1: Foundation (Weeks 1-4)
+
 1. Add LLM abstraction layer
 2. Implement SSE streaming for turns
 3. Set up OpenTelemetry tracing
 4. Migrate to Drizzle ORM
 
 ### Phase 2: State & Events (Weeks 5-8)
+
 1. Implement event sourcing
 2. Add session replay capability
 3. Build knowledge graph foundation
 4. Enhance NPC memory system
 
 ### Phase 3: Real-time & Multi-user (Weeks 9-12)
+
 1. Add WebSocket infrastructure
 2. Implement multiplayer sessions
 3. Build conflict resolution
 4. Add GM mode
 
 ### Phase 4: Extensibility (Weeks 13-16)
+
 1. Design plugin architecture
 2. Extract core systems to plugins
 3. Build plugin marketplace UI
 4. Create plugin SDK & docs
 
 ### Phase 5: Platforms (Weeks 17-20)
+
 1. React Native mobile app
 2. Desktop app (Tauri)
 3. Offline mode with local models
@@ -577,7 +587,7 @@ packages/
 
 ## File Structure After Refactor
 
-```
+```text
 arcAgentic/
 ├── packages/
 │   ├── core/                    # Pure business logic
