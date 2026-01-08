@@ -8,6 +8,7 @@ import { useTags } from '../shared/hooks/useTags.js';
 import { useItems } from '../shared/hooks/useItems.js';
 import { useAuth } from '../shared/hooks/useAuth.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
+import type { CharacterStudioProps } from '../features/character-studio/index.js';
 
 const ChatPanel = React.lazy(async () => {
   const mod = await import('../features/chat-panel/index.js');
@@ -15,7 +16,9 @@ const ChatPanel = React.lazy(async () => {
 });
 
 const CharacterStudio = React.lazy(async () => {
-  const mod = await import('../features/character-studio/index.js');
+  const mod = (await import('../features/character-studio/index.js')) as {
+    CharacterStudio: React.ComponentType<CharacterStudioProps>;
+  };
   return { default: mod.CharacterStudio };
 });
 
@@ -415,7 +418,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                   refreshItems={refreshItems}
                   refreshPersonas={refreshPersonas}
                   handleDeleteSession={handleDeleteSession}
-                  navigateToCharacterBuilder={navigateToCharacterBuilder}
+                  navigateToCharacterStudio={navigateToCharacterStudio}
                   navigateToSettingBuilder={navigateToSettingBuilder}
                   navigateToTagBuilder={navigateToTagBuilder}
                   navigateToPersonaBuilder={navigateToPersonaBuilder}
@@ -659,7 +662,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               refreshItems={refreshItems}
               refreshPersonas={refreshPersonas}
               handleDeleteSession={handleDeleteSession}
-              navigateToCharacterBuilder={navigateToCharacterBuilder}
+              navigateToCharacterStudio={navigateToCharacterStudio}
               navigateToSettingBuilder={navigateToSettingBuilder}
               navigateToTagBuilder={navigateToTagBuilder}
               navigateToPersonaBuilder={controller.navigateToPersonaBuilder}
@@ -718,7 +721,7 @@ interface MainContentProps {
   refreshItems: () => void;
   refreshPersonas: () => void;
   handleDeleteSession: (id: string) => Promise<void>;
-  navigateToCharacterBuilder: (id: string | null) => void;
+  navigateToCharacterStudio: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
   navigateToPersonaBuilder: (id?: string | null) => void;
