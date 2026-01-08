@@ -1,3 +1,4 @@
+import { clamp } from '@minimal-rpg/utils';
 import {
   APPEARANCE_REGIONS,
   APPEARANCE_REGION_ATTRIBUTES,
@@ -12,11 +13,8 @@ import {
   SENSORY_TYPES,
 } from './types.js';
 
-/**
- * Clamp a number between min and max.
- */
-export const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+// Re-export for convenience
+export { clamp };
 
 /**
  * Get all used appearance region+attribute combinations.

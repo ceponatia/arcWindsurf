@@ -247,7 +247,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     refreshPersonas,
     refreshSessions,
     handleDeleteSession,
-    navigateToCharacterBuilder,
+    navigateToCharacterStudio,
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToPersonaBuilder,
@@ -470,7 +470,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     refreshPersonas,
     refreshSessions,
     handleDeleteSession,
-    navigateToCharacterBuilder,
+    navigateToCharacterStudio,
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToLocationLibrary,
@@ -771,7 +771,7 @@ const MainContent: React.FC<MainContentProps> = ({
   refreshItems,
   refreshPersonas,
   handleDeleteSession,
-  navigateToCharacterBuilder,
+  navigateToCharacterStudio,
   navigateToSettingBuilder,
   navigateToTagBuilder,
   navigateToPersonaBuilder,
@@ -799,7 +799,7 @@ const MainContent: React.FC<MainContentProps> = ({
               </p>
               <div className="flex flex-wrap justify-center lg:justify-start gap-3">
                 <button
-                  onClick={() => navigateToCharacterBuilder(null)}
+                  onClick={() => navigateToCharacterStudio(null)}
                   className="px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-500 transition-colors"
                 >
                   Create Character
@@ -837,8 +837,8 @@ const MainContent: React.FC<MainContentProps> = ({
           loading={charactersLoading}
           error={charactersError}
           onRefresh={refreshCharacters}
-          onEdit={navigateToCharacterBuilder}
-          onCreateNew={() => navigateToCharacterBuilder(null)}
+          onEdit={navigateToCharacterStudio}
+          onCreateNew={() => navigateToCharacterStudio(null)}
         />
       );
 
@@ -915,7 +915,7 @@ const MainContent: React.FC<MainContentProps> = ({
           onRefreshPersonas={refreshPersonas}
           onRefreshTags={refreshTags}
           onNavigateToSettingBuilder={() => navigateToSettingBuilder(null)}
-          onNavigateToCharacterBuilder={() => navigateToCharacterBuilder(null)}
+          onNavigateToCharacterBuilder={() => navigateToCharacterStudio(null)}
           onNavigateToPersonaBuilder={() => navigateToPersonaBuilder(null)}
           onCreateSession={onCreateSessionFull}
           onSessionCreated={onSessionCreated}

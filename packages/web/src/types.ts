@@ -293,7 +293,7 @@ export interface AppControllerActions {
   onCreateSessionFull: (config: CreateFullSessionRequest) => Promise<string>;
   onSessionCreated: (sessionId: string) => void;
   handleDeleteSession: (sessionId: string) => Promise<void>;
-  navigateToCharacterBuilder: (id: string | null) => void;
+  navigateToCharacterStudio: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
   navigateToItemBuilder: (id?: string | null) => void;

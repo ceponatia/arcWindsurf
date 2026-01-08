@@ -15,8 +15,8 @@ import {
   type PersonalityFormState,
   createPersonalityFormState,
   createInitialState,
-} from './types.js';
-import { clamp } from './utils.js';
+} from '@minimal-rpg/schemas';
+import { clamp } from '@minimal-rpg/utils';
 
 const parsePersonality = (value: string): string | string[] => {
   const parts = splitList(value);

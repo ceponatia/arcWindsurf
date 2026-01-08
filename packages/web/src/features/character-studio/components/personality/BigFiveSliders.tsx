@@ -2,7 +2,7 @@ import React from 'react';
 import { PERSONALITY_DIMENSIONS } from '@minimal-rpg/schemas';
 import type { PersonalityFormState } from '../../types.js';
 import { RadarChart } from '../RadarChart.js';
-import { Subsection, SliderInput } from './common.js';
+import { Subsection, SliderInput } from '../../../../shared/components/common.js';
 
 interface BigFiveSlidersProps {
   pm: PersonalityFormState;

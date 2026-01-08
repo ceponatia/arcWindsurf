@@ -1,8 +1,7 @@
 import React from 'react';
-import { FEAR_CATEGORIES, COPING_MECHANISMS } from '@minimal-rpg/schemas';
-import type { PersonalityFormState, FearEntry } from '../../types.js';
-import { createFearEntry } from '../../types.js';
-import { Subsection, SelectInput, SliderInput } from './common.js';
+import { FEAR_CATEGORIES, COPING_MECHANISMS, type FearEntry, createFearEntry } from '@minimal-rpg/schemas';
+import type { PersonalityFormState } from '@minimal-rpg/schemas';
+import { Subsection, SelectInput, SliderInput } from '../../../../shared/components/common.js';
 
 interface FearsListProps {
   pm: PersonalityFormState;

@@ -1,8 +1,8 @@
 import React from 'react';
 import { CORE_EMOTIONS, EMOTION_INTENSITIES } from '@minimal-rpg/schemas';
 import { HelpIcon } from '@minimal-rpg/ui';
-import type { PersonalityFormState } from '../../types.js';
-import { Subsection, SelectInput, SliderInput } from './common.js';
+import type { PersonalityFormState } from '@minimal-rpg/schemas';
+import { Subsection, SelectInput, SliderInput } from '../../../../shared/components/common.js';
 
 interface EmotionalBaselineFormProps {
   pm: PersonalityFormState;

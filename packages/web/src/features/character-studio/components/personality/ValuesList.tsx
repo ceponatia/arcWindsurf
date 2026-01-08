@@ -1,8 +1,7 @@
 import React from 'react';
-import { CORE_VALUES } from '@minimal-rpg/schemas';
-import type { PersonalityFormState, ValueEntry } from '../../types.js';
-import { createValueEntry } from '../../types.js';
-import { Subsection, SelectInput } from './common.js';
+import { CORE_VALUES, type ValueEntry, createValueEntry } from '@minimal-rpg/schemas';
+import type { PersonalityFormState } from '@minimal-rpg/schemas';
+import { Subsection, SelectInput } from '../../../../shared/components/common.js';
 
 interface ValuesListProps {
   pm: PersonalityFormState;

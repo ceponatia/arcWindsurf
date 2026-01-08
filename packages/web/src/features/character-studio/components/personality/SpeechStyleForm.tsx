@@ -9,8 +9,8 @@ import {
   DIRECTNESS_LEVELS,
   PACE_LEVELS,
 } from '@minimal-rpg/schemas';
-import type { PersonalityFormState } from '../../types.js';
-import { Subsection, SelectInput } from './common.js';
+import type { PersonalityFormState } from '@minimal-rpg/schemas';
+import { Subsection, SelectInput } from '../../../../shared/components/common.js';
 
 interface SpeechStyleFormProps {
   pm: PersonalityFormState;

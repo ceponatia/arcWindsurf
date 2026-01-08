@@ -254,7 +254,7 @@ export function useAppController(): AppControllerValue {
     window.location.hash = '#/session-builder';
   };
 
-  const navigateToCharacterBuilder = (id: string | null) => {
+  const navigateToCharacterStudio = (id: string | null) => {
     if (id) {
       window.location.hash = `#/character-studio?id=${id}`;
     } else {
@@ -430,7 +430,7 @@ export function useAppController(): AppControllerValue {
     handleDeleteSession,
     activeCharacterId,
     activeSettingId,
-    navigateToCharacterBuilder,
+    navigateToCharacterStudio,
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToItemBuilder,
