@@ -248,6 +248,7 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
 function extractSide(normalized: string): { side: BodySide | undefined; value: string } {
   const cleaned = normalized.replace(/[_-]+/g, ' ').trim();
 
+  // Use non-greedy quantifiers to prevent ReDoS vulnerability (polynomial backtracking)
   const prefix = /^(left|right)\s+(.+?)$/.exec(cleaned);
   if (prefix) {
     return { side: prefix[1] as BodySide, value: prefix[2] ?? '' };
