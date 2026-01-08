@@ -41,7 +41,7 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
 
     // Validate the module key is safe and exists as own property
     if (!Object.hasOwn(mdxModules, moduleKey)) {
-      console.error('Doc not found:', moduleKey, 'Available:', Object.keys(mdxModules));
+      console.error('Doc not found:', normalizedPathForKey, 'Available:', Object.keys(mdxModules));
       setError(`Documentation page "${normalizedPathForKey}" not found.`);
       setLoading(false);
       return;
@@ -52,7 +52,7 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
 
     // Additional safety check: ensure loader is a function
     if (typeof loader !== 'function') {
-      console.error('Invalid loader for:', moduleKey);
+      console.error('Invalid loader for:', normalizedPathForKey);
       setError(`Documentation page "${normalizedPathForKey}" not found.`);
       setLoading(false);
       return;
