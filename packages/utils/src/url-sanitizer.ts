@@ -29,7 +29,8 @@ export function sanitizeUrl(url: string): string {
   } catch (error) {
     // Fallback for malformed URLs - basic redaction
     if (error instanceof TypeError && error.message.includes('Invalid URL')) {
-      return url.replace(/:\/\/([^:]+):([^@]+)@/g, '://$1:***@');
+      // Safe regex with limited backtracking - matches username:password@ pattern
+      return url.replace(/:\/\/([^:@\s]{1,256}):([^@\s]{1,256})@/g, '://$1:***@');
     }
     throw error;
   }
@@ -68,6 +69,7 @@ export function redactUrlForLogging(url: string): string {
     return sanitizeUrl(url);
   } catch {
     // If sanitization fails, apply basic redaction
-    return url.replace(/:\/\/([^:]+):([^@]+)@/g, '://$1:***@');
+    // Safe regex with limited backtracking - matches username:password@ pattern
+    return url.replace(/:\/\/([^:@\s]{1,256}):([^@\s]{1,256})@/g, '://$1:***@');
   }
 }
