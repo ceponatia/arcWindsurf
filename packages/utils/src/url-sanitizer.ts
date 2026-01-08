@@ -3,6 +3,15 @@
  */
 
 /**
+ * Regex pattern for redacting credentials in URLs
+ * Safe against ReDoS with bounded quantifiers and restricted character classes
+ * Note: Creates a new regex each time to avoid global flag state issues
+ */
+function getCredentialRedactionPattern(): RegExp {
+  return /:\/\/([^:@\s]{1,256}):([^@\s]{1,256})@/g;
+}
+
+/**
  * Sanitizes a URL by removing sensitive information and validating its structure
  */
 export function sanitizeUrl(url: string): string {
@@ -30,7 +39,7 @@ export function sanitizeUrl(url: string): string {
     // Fallback for malformed URLs - basic redaction
     if (error instanceof TypeError && error.message.includes('Invalid URL')) {
       // Safe regex with limited backtracking - matches username:password@ pattern
-      return url.replace(/:\/\/([^:@\s]{1,256}):([^@\s]{1,256})@/g, '://$1:***@');
+      return url.replace(getCredentialRedactionPattern(), '://$1:***@');
     }
     throw error;
   }
@@ -70,6 +79,6 @@ export function redactUrlForLogging(url: string): string {
   } catch {
     // If sanitization fails, apply basic redaction
     // Safe regex with limited backtracking - matches username:password@ pattern
-    return url.replace(/:\/\/([^:@\s]{1,256}):([^@\s]{1,256})@/g, '://$1:***@');
+    return url.replace(getCredentialRedactionPattern(), '://$1:***@');
   }
 }
