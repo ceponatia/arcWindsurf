@@ -9,6 +9,7 @@ export * from './character/index.js';
 export * from './shared/id.js';
 export * from './shared/json.js';
 export * from './shared/object.js';
+export * from './url-sanitizer.js';
 
 // LLM
 export * from './llm/types.js';

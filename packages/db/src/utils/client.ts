@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { registerType } from '../vector/pgvector.js';
 import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
+import { isSupabaseUrl } from './url-validator.js';
 import type {
   CharacterInstanceRow,
   CharacterProfileRow,
@@ -37,10 +38,7 @@ function createPool(url: string): unknown {
     ssl?: { rejectUnauthorized: boolean };
   }) => unknown;
 
-  const isSupabase =
-    url.includes('supabase.co') ||
-    url.includes('supabase.com') ||
-    url.includes('pooler.supabase.com');
+  const isSupabase = isSupabaseUrl(url);
 
   return new Ctor({
     connectionString: url,
