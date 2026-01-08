@@ -4,6 +4,7 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
+import { isSupabaseUrl } from '../utils/url-validator.js';
 import type { FsPromisesLike, PathLike, SqlText } from '../types.js';
 import type { MigrationPool } from './types.js';
 
@@ -31,10 +32,7 @@ function redactDbUrl(url: string): string {
   }
 }
 
-const isSupabase =
-  resolvedDbUrl.includes('supabase.co') ||
-  resolvedDbUrl.includes('supabase.com') ||
-  resolvedDbUrl.includes('pooler.supabase.com');
+const isSupabase = isSupabaseUrl(resolvedDbUrl);
 
 const pool = new Pool({
   connectionString: resolvedDbUrl,
