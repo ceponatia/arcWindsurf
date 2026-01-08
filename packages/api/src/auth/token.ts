@@ -42,6 +42,10 @@ export function signAuthToken(payload: AuthTokenPayload, secret: string): string
   const payloadPart = base64UrlEncodeJson(payload);
   const data = `${headerPart}.${payloadPart}`;
 
+  // HMAC-SHA256 is used here for JWT signature (HS256 algorithm), NOT for password hashing.
+  // This is the standard and correct approach for JWT token signing.
+  // For password hashing, see packages/db/src/repositories/users.ts which uses scrypt.
+  // lgtm[js/insufficient-password-hash]
   const sig = crypto.createHmac('sha256', secret).update(data).digest();
   const sigPart = base64UrlEncode(sig);
   return `${data}.${sigPart}`;
