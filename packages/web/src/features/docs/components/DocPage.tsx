@@ -42,7 +42,7 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
     // Validate the module key is safe and exists as own property
     if (!Object.hasOwn(mdxModules, moduleKey)) {
       console.error('Doc not found:', moduleKey, 'Available:', Object.keys(mdxModules));
-      setError(`Documentation page "${normalizedPath}" not found.`);
+      setError(`Documentation page "${normalizedPathForKey}" not found.`);
       setLoading(false);
       return;
     }
@@ -53,7 +53,7 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
     // Additional safety check: ensure loader is a function
     if (typeof loader !== 'function') {
       console.error('Invalid loader for:', moduleKey);
-      setError(`Documentation page "${normalizedPath}" not found.`);
+      setError(`Documentation page "${normalizedPathForKey}" not found.`);
       setLoading(false);
       return;
     }
@@ -65,7 +65,7 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
       })
       .catch((err) => {
         console.error('Failed to load doc:', err);
-        setError(`Documentation page "${normalizedPath}" not found.`);
+        setError(`Documentation page "${normalizedPathForKey}" not found.`);
         setLoading(false);
       });
   }, [path]);
