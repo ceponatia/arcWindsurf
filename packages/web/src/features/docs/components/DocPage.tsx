@@ -36,11 +36,23 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
     const normalizedPath = path.replace(/^\/|\/$/g, '') || 'index';
 
     // Build the module key to match the glob pattern
-    const moduleKey = `../../../docs/${normalizedPath}.mdx`;
+    const normalizedPathForKey = normalizedPath.replace(/[^a-zA-Z0-9\-_/]/g, '');
+    const moduleKey = `../../../docs/${normalizedPathForKey}.mdx`;
+
+    // Validate the module key is safe and exists as own property
+    if (!Object.hasOwn(mdxModules, moduleKey)) {
+      console.error('Doc not found:', moduleKey, 'Available:', Object.keys(mdxModules));
+      setError(`Documentation page "${normalizedPath}" not found.`);
+      setLoading(false);
+      return;
+    }
+
+    // Get the loader safely using Object.hasOwn validated key
     const loader = mdxModules[moduleKey];
 
-    if (!loader) {
-      console.error('Doc not found:', moduleKey, 'Available:', Object.keys(mdxModules));
+    // Additional safety check: ensure loader is a function
+    if (typeof loader !== 'function') {
+      console.error('Invalid loader for:', moduleKey);
       setError(`Documentation page "${normalizedPath}" not found.`);
       setLoading(false);
       return;
