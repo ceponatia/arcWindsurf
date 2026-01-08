@@ -248,12 +248,12 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
 function extractSide(normalized: string): { side: BodySide | undefined; value: string } {
   const cleaned = normalized.replace(/[_-]+/g, ' ').trim();
 
-  const prefix = /^(left|right)[\s]+(.+)$/.exec(cleaned);
+  const prefix = /^(left|right)\s+(.+)$/.exec(cleaned);
   if (prefix) {
     return { side: prefix[1] as BodySide, value: prefix[2] ?? '' };
   }
 
-  const suffix = /^(.+)[\s]+(left|right)$/.exec(cleaned);
+  const suffix = /^(.+)\s+(left|right)$/.exec(cleaned);
   if (suffix) {
     return { side: suffix[2] as BodySide, value: suffix[1] ?? '' };
   }
