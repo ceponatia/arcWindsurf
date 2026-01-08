@@ -249,12 +249,12 @@ function extractSide(normalized: string): { side: BodySide | undefined; value: s
   const cleaned = normalized.replace(/[_-]+/g, ' ').trim();
 
   // Use non-greedy quantifiers to prevent ReDoS vulnerability (polynomial backtracking)
-  const prefix = /^(left|right)\s+(.+?)$/.exec(cleaned);
+  const prefix = /^(left|right)\s+(.+)$/.exec(cleaned);
   if (prefix) {
     return { side: prefix[1] as BodySide, value: prefix[2] ?? '' };
   }
 
-  const suffix = /^(.+?)\s+(left|right)$/.exec(cleaned);
+  const suffix = /^(.+)\s+(left|right)$/.exec(cleaned);
   if (suffix) {
     return { side: suffix[2] as BodySide, value: suffix[1] ?? '' };
   }
