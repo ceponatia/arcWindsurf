@@ -203,8 +203,8 @@ export function parseBodyEntry(input: string): ParsedBodyEntry | null {
 
   // Normalize separators: convert " - " and " : " to ":"
   const normalized = trimmed
-    .replace(/\s*-\s*/g, ':')
-    .replace(/\s*:\s*/g, ':')
+    .replace(/[\s]*-[\s]*/g, ':')
+    .replace(/[\s]*:[\s]*/g, ':')
     .toLowerCase();
 
   // Split by first colon to get region
