@@ -24,10 +24,10 @@ function parseHashRoute(): {
     return { viewMode: 'home', builderId: null, locationMapId: null, locationSettingId: null };
   const hash = window.location.hash;
 
-  if (hash.startsWith('#/character-builder')) {
+  if (hash.startsWith('#/character-studio')) {
     const query = hash.split('?')[1];
     return {
-      viewMode: 'character-builder',
+      viewMode: 'character-studio',
       builderId: new URLSearchParams(query).get('id'),
       locationMapId: null,
       locationSettingId: null,
@@ -254,11 +254,11 @@ export function useAppController(): AppControllerValue {
     window.location.hash = '#/session-builder';
   };
 
-  const navigateToCharacterBuilder = (id: string | null) => {
+  const navigateToCharacterStudio = (id: string | null) => {
     if (id) {
-      window.location.hash = `#/character-builder?id=${id}`;
+      window.location.hash = `#/character-studio?id=${id}`;
     } else {
-      window.location.hash = '#/character-builder';
+      window.location.hash = '#/character-studio';
     }
   };
 
@@ -430,7 +430,7 @@ export function useAppController(): AppControllerValue {
     handleDeleteSession,
     activeCharacterId,
     activeSettingId,
-    navigateToCharacterBuilder,
+    navigateToCharacterStudio,
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToItemBuilder,

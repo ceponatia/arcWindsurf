@@ -14,6 +14,7 @@ export * from './sensory.js';
 // Other character facets
 export * from './basics.js';
 export * from './details.js';
+export * from './form-types.js';
 export * from './characterProfile.js';
 
 // Personality system (Big Five + traits + prompts)

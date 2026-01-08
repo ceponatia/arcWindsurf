@@ -8,15 +8,18 @@ import { useTags } from '../shared/hooks/useTags.js';
 import { useItems } from '../shared/hooks/useItems.js';
 import { useAuth } from '../shared/hooks/useAuth.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
+import type { CharacterStudioProps } from '../features/character-studio/index.js';
 
 const ChatPanel = React.lazy(async () => {
   const mod = await import('../features/chat-panel/index.js');
   return { default: mod.ChatPanel };
 });
 
-const CharacterBuilder = React.lazy(async () => {
-  const mod = await import('../features/character-builder/index.js');
-  return { default: mod.CharacterBuilder };
+const CharacterStudio = React.lazy(async () => {
+  const mod = (await import('../features/character-studio/index.js')) as {
+    CharacterStudio: React.ComponentType<CharacterStudioProps>;
+  };
+  return { default: mod.CharacterStudio };
 });
 
 const SettingBuilder = React.lazy(async () => {
@@ -216,9 +219,8 @@ interface NavButtonProps {
 const NavButton: React.FC<NavButtonProps> = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-      active ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-    }`}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+      }`}
   >
     {icon}
     <span>{label}</span>
@@ -248,7 +250,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     refreshPersonas,
     refreshSessions,
     handleDeleteSession,
-    navigateToCharacterBuilder,
+    navigateToCharacterStudio,
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToPersonaBuilder,
@@ -310,7 +312,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             <NavButton
               icon={<UsersIcon className="w-5 h-5" />}
               label="Characters"
-              active={viewMode === 'character-library' || viewMode === 'character-builder'}
+              active={viewMode === 'character-library' || viewMode === 'character-studio'}
               onClick={navigateToCharacterLibrary}
             />
             <NavButton
@@ -382,9 +384,8 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
         {/* Main content area */}
         <main className="flex-1 flex flex-col overflow-hidden">
           <section
-            className={`flex-1 ${
-              viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'
-            }`}
+            className={`flex-1 ${viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'
+              }`}
           >
             <div className={viewMode === 'chat' ? 'h-full' : 'p-6'}>
               <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
@@ -417,7 +418,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
                   refreshItems={refreshItems}
                   refreshPersonas={refreshPersonas}
                   handleDeleteSession={handleDeleteSession}
-                  navigateToCharacterBuilder={navigateToCharacterBuilder}
+                  navigateToCharacterStudio={navigateToCharacterStudio}
                   navigateToSettingBuilder={navigateToSettingBuilder}
                   navigateToTagBuilder={navigateToTagBuilder}
                   navigateToPersonaBuilder={navigateToPersonaBuilder}
@@ -472,7 +473,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     refreshPersonas,
     refreshSessions,
     handleDeleteSession,
-    navigateToCharacterBuilder,
+    navigateToCharacterStudio,
     navigateToSettingBuilder,
     navigateToTagBuilder,
     navigateToLocationLibrary,
@@ -552,7 +553,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             <NavButton
               icon={<UsersIcon className="w-5 h-5" />}
               label="Characters"
-              active={viewMode === 'character-library' || viewMode === 'character-builder'}
+              active={viewMode === 'character-library' || viewMode === 'character-studio'}
               onClick={() => {
                 navigateToCharacterLibrary();
                 handleNavClose();
@@ -628,9 +629,8 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div
-          className={`flex-1 ${
-            viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-4'
-          }`}
+          className={`flex-1 ${viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-4'
+            }`}
         >
           <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
             <MainContent
@@ -662,7 +662,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
               refreshItems={refreshItems}
               refreshPersonas={refreshPersonas}
               handleDeleteSession={handleDeleteSession}
-              navigateToCharacterBuilder={navigateToCharacterBuilder}
+              navigateToCharacterStudio={navigateToCharacterStudio}
               navigateToSettingBuilder={navigateToSettingBuilder}
               navigateToTagBuilder={navigateToTagBuilder}
               navigateToPersonaBuilder={controller.navigateToPersonaBuilder}
@@ -721,7 +721,7 @@ interface MainContentProps {
   refreshItems: () => void;
   refreshPersonas: () => void;
   handleDeleteSession: (id: string) => Promise<void>;
-  navigateToCharacterBuilder: (id: string | null) => void;
+  navigateToCharacterStudio: (id: string | null) => void;
   navigateToSettingBuilder: (id: string | null) => void;
   navigateToTagBuilder: (id?: string | null) => void;
   navigateToPersonaBuilder: (id?: string | null) => void;
@@ -774,7 +774,7 @@ const MainContent: React.FC<MainContentProps> = ({
   refreshItems,
   refreshPersonas,
   handleDeleteSession,
-  navigateToCharacterBuilder,
+  navigateToCharacterStudio,
   navigateToSettingBuilder,
   navigateToTagBuilder,
   navigateToPersonaBuilder,
@@ -802,7 +802,7 @@ const MainContent: React.FC<MainContentProps> = ({
               </p>
               <div className="flex flex-wrap justify-center lg:justify-start gap-3">
                 <button
-                  onClick={() => navigateToCharacterBuilder(null)}
+                  onClick={() => navigateToCharacterStudio(null)}
                   className="px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-500 transition-colors"
                 >
                   Create Character
@@ -840,8 +840,8 @@ const MainContent: React.FC<MainContentProps> = ({
           loading={charactersLoading}
           error={charactersError}
           onRefresh={refreshCharacters}
-          onEdit={navigateToCharacterBuilder}
-          onCreateNew={() => navigateToCharacterBuilder(null)}
+          onEdit={navigateToCharacterStudio}
+          onCreateNew={() => navigateToCharacterStudio(null)}
         />
       );
 
@@ -918,16 +918,16 @@ const MainContent: React.FC<MainContentProps> = ({
           onRefreshPersonas={refreshPersonas}
           onRefreshTags={refreshTags}
           onNavigateToSettingBuilder={() => navigateToSettingBuilder(null)}
-          onNavigateToCharacterBuilder={() => navigateToCharacterBuilder(null)}
+          onNavigateToCharacterBuilder={() => navigateToCharacterStudio(null)}
           onNavigateToPersonaBuilder={() => navigateToPersonaBuilder(null)}
           onCreateSession={onCreateSessionFull}
           onSessionCreated={onSessionCreated}
         />
       );
 
-    case 'character-builder':
+    case 'character-studio':
       return (
-        <CharacterBuilder
+        <CharacterStudio
           id={builderId}
           onSave={refreshCharacters}
           onCancel={navigateToCharacterLibrary}

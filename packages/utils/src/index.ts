@@ -8,6 +8,7 @@ export * from './character/index.js';
 // Shared utilities
 export * from './shared/id.js';
 export * from './shared/json.js';
+export * from './shared/math.js';
 export * from './shared/object.js';
 export * from './url-sanitizer.js';
 
