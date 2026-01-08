@@ -14,9 +14,9 @@ const ChatPanel = React.lazy(async () => {
   return { default: mod.ChatPanel };
 });
 
-const CharacterBuilder = React.lazy(async () => {
-  const mod = await import('../features/character-builder/index.js');
-  return { default: mod.CharacterBuilder };
+const CharacterStudio = React.lazy(async () => {
+  const mod = await import('../features/character-studio/index.js');
+  return { default: mod.CharacterStudio };
 });
 
 const SettingBuilder = React.lazy(async () => {
@@ -216,9 +216,8 @@ interface NavButtonProps {
 const NavButton: React.FC<NavButtonProps> = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-      active ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-    }`}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+      }`}
   >
     {icon}
     <span>{label}</span>
@@ -310,7 +309,7 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             <NavButton
               icon={<UsersIcon className="w-5 h-5" />}
               label="Characters"
-              active={viewMode === 'character-library' || viewMode === 'character-builder'}
+              active={viewMode === 'character-library' || viewMode === 'character-studio'}
               onClick={navigateToCharacterLibrary}
             />
             <NavButton
@@ -382,9 +381,8 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
         {/* Main content area */}
         <main className="flex-1 flex flex-col overflow-hidden">
           <section
-            className={`flex-1 ${
-              viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'
-            }`}
+            className={`flex-1 ${viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'
+              }`}
           >
             <div className={viewMode === 'chat' ? 'h-full' : 'p-6'}>
               <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
@@ -552,7 +550,7 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
             <NavButton
               icon={<UsersIcon className="w-5 h-5" />}
               label="Characters"
-              active={viewMode === 'character-library' || viewMode === 'character-builder'}
+              active={viewMode === 'character-library' || viewMode === 'character-studio'}
               onClick={() => {
                 navigateToCharacterLibrary();
                 handleNavClose();
@@ -628,9 +626,8 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div
-          className={`flex-1 ${
-            viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-4'
-          }`}
+          className={`flex-1 ${viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-4'
+            }`}
         >
           <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
             <MainContent
@@ -925,9 +922,9 @@ const MainContent: React.FC<MainContentProps> = ({
         />
       );
 
-    case 'character-builder':
+    case 'character-studio':
       return (
-        <CharacterBuilder
+        <CharacterStudio
           id={builderId}
           onSave={refreshCharacters}
           onCancel={navigateToCharacterLibrary}

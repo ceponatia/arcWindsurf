@@ -14,6 +14,7 @@ import { registerAdminRoutes } from './routes/admin/index.js';
 import { registerGameRoutes } from './routes/game/index.js';
 import { registerUserRoutes } from './routes/users/index.js';
 import { registerResourceRoutes } from './routes/resources/index.js';
+import { registerStudioRoutes } from './routes/studio.js';
 import streamRouter from './routes/stream.js';
 import { attachAuthUser, requireAuthIfEnabled } from './auth/middleware.js';
 import {
@@ -132,6 +133,7 @@ export async function startServer(): Promise<void> {
   registerUserRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerGameRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerResourceRoutes(app);
+  registerStudioRoutes(app);
   app.route('/stream', streamRouter);
 
   const port = cfg.port;
