@@ -12,6 +12,7 @@ import type { ApiError } from '../../types.js';
 import type { ItemSummary } from '../../loaders/types.js';
 import { mapItemSummary } from '../../mappers/item-mappers.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
+import { toId } from '../../utils/uuid.js';
 
 export function registerItemRoutes(app: Hono): void {
   // GET /items - list all item definitions
@@ -28,12 +29,10 @@ export function registerItemRoutes(app: Hono): void {
     const items: ItemSummary[] = [];
     for (const profile of profiles) {
       try {
-        const data = profile.profileJson;
-        // Filter by category if requested (simplification: category is usually inside profileJson for items)
-        if (categoryParam && (data as any).category !== categoryParam) {
+        const parsed = ItemDefinitionSchema.parse(profile.profileJson);
+        if (categoryParam && parsed.category !== categoryParam) {
           continue;
         }
-        const parsed = ItemDefinitionSchema.parse(data);
         items.push(mapItemSummary(parsed));
       } catch {
         // skip invalid rows silently; could log
@@ -48,7 +47,7 @@ export function registerItemRoutes(app: Hono): void {
     const id = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    const profile = await getEntityProfile(id as any, ownerEmail);
+    const profile = await getEntityProfile(toId(id), ownerEmail);
 
     if (profile?.entityType !== 'item') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -79,23 +78,23 @@ export function registerItemRoutes(app: Hono): void {
 
     const definition = parsed.data;
 
-    const existing = await getEntityProfile(definition.id as any, ownerEmail);
+    const existing = await getEntityProfile(toId(definition.id), ownerEmail);
 
     if (existing) {
-      await updateEntityProfile(definition.id as any, ownerEmail, {
-        profileJson: definition as any,
+      await updateEntityProfile(toId(definition.id), ownerEmail, {
+        profileJson: definition,
       });
       const summary: ItemSummary = mapItemSummary(definition);
       return c.json({ ok: true, item: summary }, 200);
     }
 
     await createEntityProfile({
-      id: definition.id as any,
+      id: toId(definition.id),
       entityType: 'item',
       name: definition.name,
       ownerEmail,
       visibility: 'public',
-      profileJson: definition as any,
+      profileJson: definition,
     });
     const summary: ItemSummary = mapItemSummary(definition);
     return c.json({ ok: true, item: summary }, 201);
@@ -124,14 +123,14 @@ export function registerItemRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'id mismatch' } satisfies ApiError, 400);
     }
 
-    const existing = await getEntityProfile(id as any, ownerEmail);
+    const existing = await getEntityProfile(toId(id), ownerEmail);
 
     if (existing?.entityType !== 'item') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
-    await updateEntityProfile(id as any, ownerEmail, {
-      profileJson: definition as any,
+    await updateEntityProfile(toId(id), ownerEmail, {
+      profileJson: definition,
     });
     const summary: ItemSummary = mapItemSummary(definition);
     return c.json({ ok: true, item: summary }, 200);
@@ -142,7 +141,7 @@ export function registerItemRoutes(app: Hono): void {
     const id = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    const deleted = await deleteEntityProfile(id as any, ownerEmail);
+    const deleted = await deleteEntityProfile(toId(id), ownerEmail);
 
     if (!deleted) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);

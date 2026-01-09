@@ -25,6 +25,13 @@ import {
   getEntityProfile,
 } from '@minimal-rpg/db/node';
 import { safeParseJson } from '@minimal-rpg/utils';
+import { toSessionId } from '../../utils/uuid.js';
+
+interface ActorStatePayload {
+  profile?: Record<string, unknown>;
+  name?: string;
+  status?: 'active' | 'inactive';
+}
 
 // =============================================================================
 // Handler Configuration
@@ -148,7 +155,7 @@ export class SessionToolHandler {
         .select()
         .from(actorStates)
         .where(
-          and(eq(actorStates.sessionId, this.sessionId as any), eq(actorStates.actorType, 'player'))
+          and(eq(actorStates.sessionId, toSessionId(this.sessionId)), eq(actorStates.actorType, 'player'))
         )
         .limit(1);
 
@@ -160,7 +167,7 @@ export class SessionToolHandler {
         };
       }
 
-      const state = playerState.state as Record<string, any>;
+      const state = playerState.state as ActorStatePayload;
       const profile = state.profile || state;
       const name = typeof profile.name === 'string' ? profile.name : playerState.actorId;
       const description =
@@ -197,12 +204,12 @@ export class SessionToolHandler {
         .select()
         .from(actorStates)
         .where(
-          and(eq(actorStates.sessionId, this.sessionId as any), eq(actorStates.actorType, 'npc'))
+          and(eq(actorStates.sessionId, toSessionId(this.sessionId)), eq(actorStates.actorType, 'npc'))
         )
         .orderBy(desc(actorStates.createdAt));
 
       const npcs = instances.map((instance) => {
-        const state = instance.state as Record<string, any>;
+        const state = instance.state as ActorStatePayload;
         const name = state.name || instance.actorId;
 
         return {
@@ -241,13 +248,13 @@ export class SessionToolHandler {
       const rows = await drizzle
         .select()
         .from(events)
-        .where(and(eq(events.sessionId, this.sessionId as any), eq(events.type, 'SPOKE')))
+        .where(and(eq(events.sessionId, toSessionId(this.sessionId)), eq(events.type, 'SPOKE')))
         .orderBy(desc(events.sequence))
         .limit(limit);
 
       // Map speaker field to role (player -> user, npc/narrator -> assistant)
       const messages = rows.reverse().map((row) => {
-        const payload = row.payload as Record<string, any>;
+        const payload = row.payload as { content?: string };
         return {
           role: row.actorId === 'player' ? 'user' : 'assistant',
           content: payload.content || '',
@@ -262,14 +269,14 @@ export class SessionToolHandler {
         .from(actorStates)
         .where(
           and(
-            eq(actorStates.sessionId, this.sessionId as any),
+            eq(actorStates.sessionId, toSessionId(this.sessionId)),
             eq(actorStates.actorId, args.npc_id)
           )
         )
         .limit(1);
 
       if (actorState) {
-        const state = actorState.state as Record<string, any>;
+        const state = actorState.state as ActorStatePayload;
         npcName = state.name;
       }
 

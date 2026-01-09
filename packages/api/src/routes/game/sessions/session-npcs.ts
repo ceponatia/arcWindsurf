@@ -10,23 +10,31 @@ import { notFound, badRequest, serverError, conflict } from '../../../utils/resp
 import { generateId } from '@minimal-rpg/utils';
 import { findCharacter, isCreateNpcInstanceRequest, tryParseName } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
+import { toId, toSessionId } from '../../../utils/uuid.js';
+
+interface NpcActorState {
+  role?: string;
+  label?: string | null;
+  name?: string;
+  status?: 'active' | 'inactive';
+}
 
 export async function handleListNpcs(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
   const sessionId = c.req.param('id');
-  const session = await getSession(sessionId as any, ownerEmail);
+  const session = await getSession(toSessionId(sessionId), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const instances = await listActorStatesForSession(sessionId as any);
+  const instances = await listActorStatesForSession(toSessionId(sessionId));
 
   const npcs = instances
     .filter((ci) => ci.actorType === 'npc')
     .map((ci) => ({
       id: ci.actorId,
-      role: (ci.state as any).role || 'npc',
-      label: (ci.state as any).label || null,
+      role: (ci.state as NpcActorState).role || 'npc',
+      label: (ci.state as NpcActorState).label || null,
       templateId: ci.entityProfileId,
-      name: (ci.state as any).name || 'Unknown',
+      name: (ci.state as NpcActorState).name || 'Unknown',
       createdAt: ci.createdAt ?? undefined,
     }));
 
@@ -36,7 +44,7 @@ export async function handleListNpcs(c: Context): Promise<Response> {
 export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
   const sessionId = c.req.param('id');
-  const session = await getSession(sessionId as any, ownerEmail);
+  const session = await getSession(toSessionId(sessionId), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
   const loaded = getLoaded();
@@ -54,8 +62,8 @@ export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): 
 
   // Prevent multiple primary instances in a session.
   if (normalizedRole === 'primary') {
-    const existing = await listActorStatesForSession(session.id as any);
-    const existingPrimary = existing.find((a) => (a.state as any).role === 'primary');
+    const existing = await listActorStatesForSession(toSessionId(session.id));
+    const existingPrimary = existing.find((a) => (a.state as NpcActorState).role === 'primary');
     if (existingPrimary) {
       return conflict(c, 'primary character already exists for session');
     }
@@ -70,10 +78,10 @@ export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): 
 
   try {
     await upsertActorState({
-      sessionId: session.id as any,
+      sessionId: toSessionId(session.id),
       actorType: 'npc',
       actorId: npcInstanceId,
-      entityProfileId: templateId as any,
+      entityProfileId: toId(templateId),
       state: {
         role: normalizedRole,
         label: label.length > 0 ? label : null,

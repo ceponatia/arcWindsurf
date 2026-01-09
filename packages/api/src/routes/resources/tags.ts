@@ -19,6 +19,7 @@ import {
   UpdateTagBindingRequestSchema,
 } from '@minimal-rpg/schemas';
 import type { ApiError } from '../../types.js';
+import { toId, toSessionId } from '../../utils/uuid.js';
 
 // DB row types for tag responses (aligned with Drizzle schema)
 interface PromptTagRow {
@@ -48,7 +49,7 @@ function toTagResponse(row: PromptTagRow) {
     visibility: 'public' as const,
     name: row.name,
     shortDescription: row.description ?? undefined,
-    category: (row.category as any) ?? 'style',
+    category: row.category ?? 'style',
     promptText: row.promptText,
     activationMode: 'always' as const, // Simplified
     targetType: 'session' as const, // Simplified
@@ -91,13 +92,13 @@ export function registerTagRoutes(app: Hono): void {
     const { category, activationMode, isBuiltIn } = queryResult.data;
     const tags = await listPromptTags({
       category,
-      activationMode: activationMode as any,
+      activationMode,
       isBuiltIn,
     });
 
     return c.json(
       {
-        tags: (tags as any[]).map(toTagResponse),
+        tags: tags.map(toTagResponse),
         total: tags.length,
       },
       200
@@ -108,11 +109,11 @@ export function registerTagRoutes(app: Hono): void {
   app.get('/tags/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const tag = await getPromptTag(id as any);
+      const tag = await getPromptTag(toId(id));
       if (!tag) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
-      return c.json(toTagResponse(tag as any), 200);
+      return c.json(toTagResponse(tag), 200);
     } catch (err) {
       console.error('[API] Failed to get tag:', err);
       return c.json({ ok: false, error: 'Failed to get tag' } satisfies ApiError, 500);
@@ -141,7 +142,7 @@ export function registerTagRoutes(app: Hono): void {
         shortDescription: result.data.shortDescription,
         category: result.data.category,
       });
-      return c.json(toTagResponse(tag as any), 201);
+      return c.json(toTagResponse(tag), 201);
     } catch (err) {
       console.error('[API] Failed to create tag:', err);
       return c.json({ ok: false, error: 'Failed to create tag' } satisfies ApiError, 500);
@@ -165,7 +166,7 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     try {
-      const updated = await updatePromptTag(id as any, 'admin', {
+      const updated = await updatePromptTag(toId(id), 'admin', {
         name: result.data.name,
         promptText: result.data.promptText,
         category: result.data.category,
@@ -174,7 +175,7 @@ export function registerTagRoutes(app: Hono): void {
       if (!updated) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
-      return c.json(toTagResponse(updated as any), 200);
+      return c.json(toTagResponse(updated), 200);
     } catch (err) {
       console.error('[API] Failed to update tag:', err);
       return c.json({ ok: false, error: 'Failed to update tag' } satisfies ApiError, 500);
@@ -185,7 +186,7 @@ export function registerTagRoutes(app: Hono): void {
   app.delete('/tags/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const deleted = await deletePromptTag(id as any, 'admin');
+      const deleted = await deletePromptTag(toId(id), 'admin');
       if (!deleted) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
@@ -205,7 +206,7 @@ export function registerTagRoutes(app: Hono): void {
     const sessionId = c.req.param('sessionId');
     try {
       const ownerEmail = getOwnerEmail(c);
-      const bindings = await getSessionTagsWithDefinitions(ownerEmail, sessionId, {
+      const bindings = await getSessionTagsWithDefinitions(ownerEmail, toSessionId(sessionId), {
         enabledOnly: false,
       });
       return c.json(
@@ -236,11 +237,11 @@ export function registerTagRoutes(app: Hono): void {
     try {
       const ownerEmail = getOwnerEmail(c);
       const binding = await createSessionTagBinding(ownerEmail, {
-        sessionId,
-        tagId: result.data.tagId,
+        sessionId: toSessionId(sessionId),
+        tagId: toId(result.data.tagId),
         ...(result.data.targetType ? { targetType: result.data.targetType } : {}),
         ...(result.data.targetEntityId !== undefined
-          ? { targetEntityId: result.data.targetEntityId }
+          ? { targetEntityId: toId(result.data.targetEntityId) }
           : {}),
         ...(result.data.enabled !== undefined ? { enabled: result.data.enabled } : {}),
       });
@@ -262,7 +263,7 @@ export function registerTagRoutes(app: Hono): void {
 
     try {
       const ownerEmail = getOwnerEmail(c);
-      const updated = await toggleSessionTagBinding(ownerEmail, bindingId, result.data.enabled);
+      const updated = await toggleSessionTagBinding(ownerEmail, toId(bindingId), result.data.enabled);
       if (!updated) {
         return c.json({ ok: false, error: 'Binding not found' } satisfies ApiError, 404);
       }
@@ -278,7 +279,7 @@ export function registerTagRoutes(app: Hono): void {
     const bindingId = c.req.param('bindingId');
     try {
       const ownerEmail = getOwnerEmail(c);
-      const deleted = await deleteSessionTagBinding(ownerEmail, bindingId);
+      const deleted = await deleteSessionTagBinding(ownerEmail, toId(bindingId));
       if (!deleted) {
         return c.json({ ok: false, error: 'Binding not found' } satisfies ApiError, 404);
       }

@@ -10,8 +10,8 @@
 
 dev-docs
 
-docker-compose.yml
-Dockerfile.dev
+config/docker/docker-compose.yml
+config/docker/Dockerfile.dev
 
 *.log
 pnpm-debug.log*

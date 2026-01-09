@@ -34,7 +34,7 @@ Since this is a fork with no production data, we'll drop the existing database a
 
 ```bash
 # 1. Stop all services
-docker compose down
+docker compose -f config/docker/docker-compose.yml down
 
 # 2. Remove database volume
 docker volume rm arcwindsurf_pgdata 2>/dev/null || true
@@ -47,7 +47,7 @@ rm -rf packages/db/sql/core packages/db/sql/entities packages/db/sql/world \
 mkdir -p packages/db/sql/{001_foundation,002_world,003_actors}
 
 # 5. Start fresh database
-docker compose up -d db
+docker compose -f config/docker/docker-compose.yml up -d db
 
 # 6. Run new migrations
 pnpm --filter @minimal-rpg/db run db:migrate

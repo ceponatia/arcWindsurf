@@ -10,6 +10,7 @@ import { getEffectiveProfiles } from '../../../services/index.js';
 import { notFound, serverError } from '../../../utils/responses.js';
 import { findCharacter, findSetting } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
+import { toSessionId } from '../../../utils/uuid.js';
 
 export async function handleGetEffective(
   c: Context,
@@ -21,7 +22,7 @@ export async function handleGetEffective(
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
   // getSession(id, ownerEmail) from @minimal-rpg/db/node
-  const session = await getSession(id as any, ownerEmail);
+  const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
   const character = await findCharacter(loaded, session.playerCharacterId || '');
@@ -30,6 +31,6 @@ export async function handleGetEffective(
     return serverError(c, 'character or setting not found for session');
   }
 
-  const effective = await getEffectiveProfiles(session.id, character, setting);
+  const effective = await getEffectiveProfiles(toSessionId(session.id), character, setting);
   return c.json(effective satisfies EffectiveProfilesResponse, 200);
 }

@@ -8,30 +8,38 @@ Minimal roleplaying chat app powered by advanced language models.
 
 - Node.js 20+
 - pnpm (Corepack is fine)
-- OpenRouter account + API key
+- OpenRouter account + API key (if using OpenRouter locally)
 
-### Install + build
+### Install + env
+
+1. Copy `.env.example` to `.env` and set at least `OPENROUTER_API_KEY` (or point `DB_TARGET`/`DATABASE_URL_LOCAL` at your Postgres).
+2. Install and build:
 
 ```bash
 pnpm -w install
 pnpm -w build
 ```
 
-### Dev servers (manual)
+### Dev servers
+
+- Start both API + Web via Turbo (recommended):
 
 ```bash
-# Terminal A
-pnpm -F @minimal-rpg/api dev
+pnpm dev
+```
 
-# Terminal B
-pnpm -F @minimal-rpg/web dev
+- Or run individually if you prefer separate terminals:
+
+```bash
+pnpm -F @minimal-rpg/api dev   # http://localhost:3001
+pnpm -F @minimal-rpg/web dev   # http://localhost:5173
 ```
 
 - API: <http://localhost:3001>
 - Web: <http://localhost:5173>
+- Postgres: `localhost:${PG_PORT:-5432}` (set `PG_PORT` in `.env` if 5432 is taken)
+- `pnpm dev:kill` frees ports 3001/5173 if something is already running.
 - Web chat: when a session has NPC instances, use the selector beside the input to target an NPC; leave it on Auto to use the primary/default.
-
-Create a repo-root `.env` (see `.env.example`) and set at least `OPENROUTER_API_KEY`.
 
 ## 2. Quickstart (Docker)
 
@@ -40,10 +48,10 @@ Create a repo-root `.env` (see `.env.example`) and set at least `OPENROUTER_API_
 From the repo root:
 
 Create a repo-root `.env` (see `.env.example`) and set at least `OPENROUTER_API_KEY`.
-If port 5432 is already in use on your machine, set `PG_PORT=5433` in `.env`.
+If port 5432 is already in use on your machine, set `PG_PORT=5433` (or another free port) in `.env`.
 
 ```bash
-docker compose up --build
+docker compose -f config/docker/docker-compose.yml up --build
 ```
 
 This starts Postgres, the API, and the Web dev server on the same ports as the pnpm workflow:
@@ -54,18 +62,18 @@ This starts Postgres, the API, and the Web dev server on the same ports as the p
 Stop containers with `Ctrl+C`, or in another shell:
 
 ```bash
-docker compose down
+docker compose -f config/docker/docker-compose.yml down
 ```
 
 ### When do I need `--build`?
 
-The `Dockerfile.dev` bakes in the dependency install step, but the source code is mounted as a volume (`.:/app`), so most edits do not require a rebuild.
+The `config/docker/Dockerfile.dev` bakes in the dependency install step, but the source code is mounted as a volume (`.:/app`), so most edits do not require a rebuild.
 
-Use **`--build` (or `docker compose build`) when**:
+Use **`--build` (or `docker compose -f config/docker/docker-compose.yml build`) when**:
 
 - You change `package.json`, `pnpm-lock.yaml`, or `pnpm-workspace.yaml`
 - You add/remove packages or change their `package.json` files
-- You change Docker-related files (`Dockerfile.dev`, `docker-compose.yml`)
+- You change Docker-related files (`config/docker/Dockerfile.dev`, `config/docker/docker-compose.yml`)
 
 You **do not need to rebuild** when:
 
@@ -76,36 +84,24 @@ You **do not need to rebuild** when:
 For non-build changes, a simple restart is enough:
 
 ```bash
-docker compose down
-docker compose up
+docker compose -f config/docker/docker-compose.yml down
+docker compose -f config/docker/docker-compose.yml up
 ```
 
-## 3. Unified Dev Workflow
+## 3. Scripts
 
-Use the core script to prep the DB, start both servers, and verify health in one step:
+Core repo scripts (root `package.json`):
 
-```bash
-pnpm core
-```
-
-What it does:
-
-- Runs PostgreSQL migrations via `@minimal-rpg/db db:migrate`
-- Starts API + Web dev servers (detached)
-- Polls `/health`, `/config`, `/characters`, `/settings`
-- Verifies LLM configuration (provider, model, configured flag)
-
-Force a clean DB (drop + migrate + seed):
-
-```bash
-CORE_RESET_DB=true pnpm core
-```
-
-Stop all dev services and free ports 3001/5173:
-
-```bash
-pnpm core:quit
-```
+- `pnpm dev`: Run API + Web dev servers via Turbo.
+- `pnpm dev:kill`: Free ports 3001/5173 if something is blocking them.
+- `pnpm build`: Turbo build all packages.
+- `pnpm lint`: Lint the workspace.
+- `pnpm test`: Run vitest suites via Turbo.
+- `pnpm typecheck`: Type-check all packages.
+- `pnpm db:migrate`: Apply Postgres migrations.
+- `pnpm db:migrate:fresh`: Drop and re-apply migrations for a clean dev DB.
+- `pnpm refs:check`: Verify TypeScript project references are up to date.
+- `pnpm refs:sync`: Regenerate TypeScript project references.
 
 ### Test Scripts
 
@@ -135,21 +131,30 @@ pnpm test:trait -- --trait "quiet, introverted, empathetic"
 
 ---
 
-## 4. Database & Docker
+## 4. Database & Environment
 
 ### Database setup
 
-- Requires PostgreSQL with pgvector
-- Set `DATABASE_URL` in the repo-root `.env`
+- PostgreSQL 16+ with pgvector is required.
+- The repo-root `.env` is shared by API, scripts, and Vite (via `envDir`).
+- `DB_TARGET=local` uses `DATABASE_URL_LOCAL`; staging/prod can set `DB_TARGET=supabase` or use `DATABASE_URL` directly.
+- Default ports: Postgres `${PG_PORT:-5432}`, API `${API_PORT:-3001}`, Web `${WEB_PORT:-5173}`.
 
-Apply / update schema:
+Apply or update schema:
 
 ```bash
+pnpm db:migrate
+```
+
+Reset locally (drop + re-apply migrations):
+
+```bash
+pnpm db:migrate:fresh
+```
 
 ### Docker Compose (dev)
 
-
-Postgres data lives in the `pgdata` volume. Use `docker compose down -v` if you want a fresh DB.
+Postgres data lives in the `pgdata` volume. Use `docker compose -f config/docker/docker-compose.yml down -v` to wipe it.
 
 ---
 - [dev-docs/planning/gpt-refactor.md](dev-docs/planning/gpt-refactor.md) - Consolidated phased implementation plan for Session Workspace + builders + runtime NPC systems
@@ -263,12 +268,11 @@ Additional details live in `dev-docs/` (LLM recommendations, migration guide, we
   - Ensure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` are set in the repo-root `.env`
 - DB migration errors
   - Verify `DATABASE_URL` and Postgres reachability
-  - Re-run: `pnpm -F @minimal-rpg/db db:migrate`
-- `pnpm core` "hangs"
-  - It keeps dev servers running by design
-  - If the API exits, start it alone (`pnpm -F @minimal-rpg/api dev`) to see validation errors
+  - Re-run: `pnpm db:migrate`
+- Dev servers exit early
+  - Start packages individually (`pnpm -F @minimal-rpg/api dev`, `pnpm -F @minimal-rpg/web dev`) to surface errors
 
-Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data changes to catch issues early.
+Run `pnpm lint`, `pnpm typecheck`, and `node ./scripts/validate-data.js` after schema or data changes to catch issues early.
 
 ---
 
@@ -435,4 +439,3 @@ Run `pnpm check` and `node ./scripts/validate-data.js` after schema or data chan
 - **Tolerance Profiles**: Per-NPC tolerance for insults, prying, flattery based on affinity
 - **Milestone Events**: Permanent relationship shifts from significant events
 - **Prompt Context**: LLM-ready relationship insights and available actions
-```

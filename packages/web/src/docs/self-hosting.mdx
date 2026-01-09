@@ -58,7 +58,7 @@ If you are **not** comfortable with Git:
    - Windows (PowerShell): `cd "$HOME\Downloads\minimal-rpg"` (adjust for where you unzipped it)
    - macOS / Linux: `cd ~/Downloads/minimal-rpg` (or wherever you unzipped)
 
-From now on, all commands in this guide assume you are **inside** the project folder (the one that contains `docker-compose.yml`).
+From now on, all commands in this guide assume you are **inside** the project folder (the one that contains `config/docker/docker-compose.yml`).
 
 ---
 
@@ -99,10 +99,10 @@ OPENROUTER_API_KEY=sk-your-openrouter-key-here
 
 Docker Compose starts the database, API, and web app together.
 
-From the project folder (where `docker-compose.yml` lives), run:
+From the project folder (where `config/docker/docker-compose.yml` lives), run:
 
 ```bash
-docker compose up --build
+docker compose -f config/docker/docker-compose.yml up --build
 ```
 
 What this does:
@@ -123,15 +123,15 @@ You should see logs streaming in the terminal. When everything is ready, you wil
 - To fully clean up containers and the database volume:
 
 ```bash
-docker compose down -v
+docker compose -f config/docker/docker-compose.yml down -v
 ```
 
 If you only want to stop and later restart the app, you usually only need:
 
 ```bash
-docker compose down
+docker compose -f config/docker/docker-compose.yml down
 # later
-docker compose up
+docker compose -f config/docker/docker-compose.yml up
 ```
 
 ---
@@ -148,7 +148,7 @@ You should see the ArcAgentic interface.
 If the page does not load:
 
 - Check that Docker Desktop is running
-- Check that the `docker compose up` terminal is still running and does not show errors
+- Check that the `docker compose -f config/docker/docker-compose.yml up` terminal is still running and does not show errors
 - If you see API errors about OpenRouter, double-check your `OPENROUTER_API_KEY` in `.env`
 
 ---
@@ -218,7 +218,7 @@ For normal use, you can manage everything (characters, settings, sessions) throu
 **The web page does not load at all**
 
 - Make sure Docker Desktop is running
-- Make sure you ran `docker compose up --build` from the correct folder
+- Make sure you ran `docker compose -f config/docker/docker-compose.yml up --build` from the correct folder
 - Check that your browser is pointing to `http://localhost:5173`
 
 **I see errors about the API or OpenRouter**
@@ -228,8 +228,8 @@ For normal use, you can manage everything (characters, settings, sessions) throu
 - Restart Docker Compose:
 
 ```bash
-docker compose down
-docker compose up --build
+docker compose -f config/docker/docker-compose.yml down
+docker compose -f config/docker/docker-compose.yml up --build
 ```
 
 **I changed `.env` but it did not update**
@@ -237,8 +237,8 @@ docker compose up --build
 - Restart the containers so they pick up the new values:
 
 ```bash
-docker compose down
-docker compose up
+docker compose -f config/docker/docker-compose.yml down
+docker compose -f config/docker/docker-compose.yml up
 ```
 
 If you continue to have issues, check the project `README.md` and the developer docs under `dev-docs/` for deeper troubleshooting steps.

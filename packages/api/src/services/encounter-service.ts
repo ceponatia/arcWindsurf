@@ -126,7 +126,8 @@ export function generateNpcEntranceNarration(
   ];
 
   // Pick based on name hash for consistency
-  const phrase = entrancePhrases[hashString(name) % entrancePhrases.length]!;
+  const phraseIndex = hashString(name) % entrancePhrases.length;
+  const phrase = entrancePhrases[phraseIndex] ?? entrancePhrases[0];
 
   // Add activity context if not idle
   if (npc.activity.type !== 'idle') {
@@ -150,7 +151,8 @@ export function generateNpcExitNarration(npc: EncounterNpcInfo, exitDirection?: 
     `You watch ${name} leave${directionPhrase}.`,
   ];
 
-  return exitPhrases[hashString(name) % exitPhrases.length]!;
+  const phraseIndex = hashString(name) % exitPhrases.length;
+  return exitPhrases[phraseIndex] ?? exitPhrases[0];
 }
 
 // =============================================================================
@@ -180,26 +182,45 @@ function generateSceneDescription(
 /**
  * Get atmosphere phrase based on crowd and time.
  */
-function getAtmospherePhrase(crowdLevel: CrowdLevel, timeOfDay?: string): string {
-  const timePhrases: Record<string, string> = {
-    dawn: 'The early morning light filters in.',
-    morning: 'Morning activity fills the air.',
-    midday: 'The midday bustle is in full swing.',
-    afternoon: 'The afternoon wears on.',
-    evening: 'Evening shadows lengthen.',
-    night: 'Darkness has settled in.',
-  };
+function getAtmospherePhrase(
+  crowdLevel: CrowdLevel,
+  timeOfDay?: EncounterNarrationOptions['timeOfDay']
+): string {
+  const timePhrase = (() => {
+    switch (timeOfDay) {
+      case 'dawn':
+        return 'The early morning light filters in.';
+      case 'morning':
+        return 'Morning activity fills the air.';
+      case 'midday':
+        return 'The midday bustle is in full swing.';
+      case 'afternoon':
+        return 'The afternoon wears on.';
+      case 'evening':
+        return 'Evening shadows lengthen.';
+      case 'night':
+        return 'Darkness has settled in.';
+      default:
+        return '';
+    }
+  })();
 
-  const crowdPhrases: Record<CrowdLevel, string> = {
-    empty: 'The place is deserted.',
-    sparse: 'A few people are scattered about.',
-    moderate: 'There is a moderate crowd.',
-    crowded: 'The area bustles with activity.',
-    packed: 'People fill every available space.',
-  };
-
-  const timePhrase = timeOfDay ? (timePhrases[timeOfDay] ?? '') : '';
-  const crowdPhrase = crowdPhrases[crowdLevel];
+  const crowdPhrase = (() => {
+    switch (crowdLevel) {
+      case 'empty':
+        return 'The place is deserted.';
+      case 'sparse':
+        return 'A few people are scattered about.';
+      case 'moderate':
+        return 'There is a moderate crowd.';
+      case 'crowded':
+        return 'The area bustles with activity.';
+      case 'packed':
+        return 'People fill every available space.';
+      default:
+        return 'There is a moderate crowd.';
+    }
+  })();
 
   return [timePhrase, crowdPhrase].filter(Boolean).join(' ');
 }
@@ -218,7 +239,8 @@ function generateNpcIntroduction(npc: EncounterNpcInfo, playerEntering: boolean)
       `You notice ${name} ${activityDesc.toLowerCase()}`,
       `${name} can be seen ${activityDesc.toLowerCase()}`,
     ];
-    return presencePhrases[hashString(name) % presencePhrases.length]!;
+    const phraseIndex = hashString(name) % presencePhrases.length;
+    return presencePhrases[phraseIndex] ?? presencePhrases[0];
   } else {
     // NPC entering - use entrance narration
     return generateNpcEntranceNarration(npc);
@@ -258,8 +280,11 @@ function generateCrowdDescription(
   if (count === 0) return '';
 
   if (count === 1) {
-    const npc = backgroundNpcs[0]!;
-    return `A ${npc.appearance ?? 'person'} is nearby.`;
+    const [npc] = backgroundNpcs;
+    if (npc) {
+      return `A ${npc.appearance ?? 'person'} is nearby.`;
+    }
+    return 'A person is nearby.';
   }
 
   if (count <= 3) {
@@ -267,15 +292,24 @@ function generateCrowdDescription(
   }
 
   // Larger crowds - summarize
-  const crowdDescriptors: Record<CrowdLevel, string> = {
-    empty: 'a handful of',
-    sparse: 'several',
-    moderate: 'a group of',
-    crowded: 'many',
-    packed: 'a crowd of',
-  };
+  const crowdDescriptor = (() => {
+    switch (crowdLevel) {
+      case 'empty':
+        return 'a handful of';
+      case 'sparse':
+        return 'several';
+      case 'moderate':
+        return 'a group of';
+      case 'crowded':
+        return 'many';
+      case 'packed':
+        return 'a crowd of';
+      default:
+        return 'some';
+    }
+  })();
 
-  return `${crowdDescriptors[crowdLevel] ?? 'Some'} people go about their business.`;
+  return `${crowdDescriptor} people go about their business.`;
 }
 
 /**

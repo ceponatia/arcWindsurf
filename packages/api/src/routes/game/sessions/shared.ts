@@ -11,6 +11,7 @@ import type { LoadedData } from '../../../loaders/types.js';
 import type { CreateSessionRequest, MessageRequest } from '../../../services/types.js';
 import { getEntityProfile } from '@minimal-rpg/db/node';
 import { extractJsonField } from '@minimal-rpg/utils';
+import { toId } from '../../../utils/uuid.js';
 
 // Type guards for request validation
 export function isMessageRequest(body: unknown): body is MessageRequest {
@@ -64,7 +65,7 @@ export async function findCharacter(
   const fsChar = loaded.characters.find((c) => c.id === id);
   if (fsChar) return fsChar;
 
-  const dbChar = await getEntityProfile(id as any);
+  const dbChar = await getEntityProfile(toId(id));
   if (dbChar?.entityType === 'character') {
     try {
       return CharacterProfileSchema.parse(dbChar.profileJson);
@@ -82,7 +83,7 @@ export async function findSetting(loaded: LoadedData, id: string): Promise<Setti
   const fsSet = loaded.settings.find((s) => s.id === id);
   if (fsSet) return fsSet;
 
-  const dbSet = await getEntityProfile(id as any);
+  const dbSet = await getEntityProfile(toId(id));
   if (dbSet?.entityType === 'setting') {
     try {
       return SettingProfileSchema.parse(dbSet.profileJson);

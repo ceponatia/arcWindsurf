@@ -26,6 +26,7 @@ import {
 } from '@minimal-rpg/bus';
 import { eventRepository, drizzle, sessions } from '@minimal-rpg/db';
 import { eq, sql } from 'drizzle-orm';
+import { toSessionId } from './utils/uuid.js';
 
 const app = new Hono();
 
@@ -41,6 +42,7 @@ registerPersistenceHandler(async (event: WorldEvent) => {
     (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
 
   if (sessionId) {
+    const coercedSessionId = toSessionId(sessionId);
     try {
       // 1. Atomically increment event_seq in sessions table and get the new value
       const updatedSessions = await drizzle
@@ -49,14 +51,14 @@ registerPersistenceHandler(async (event: WorldEvent) => {
           eventSeq: sql`${sessions.eventSeq} + 1`,
           updatedAt: new Date(),
         })
-        .where(eq(sessions.id, sessionId))
+        .where(eq(sessions.id, coercedSessionId))
         .returning({ eventSeq: sessions.eventSeq });
 
       const newSeq = updatedSessions[0]?.eventSeq;
 
       if (newSeq !== undefined) {
         // 2. Save event with the new sequence
-        await eventRepository.save(sessionId, event, BigInt(newSeq));
+        await eventRepository.save(coercedSessionId, event, BigInt(newSeq));
       }
     } catch (err) {
       console.error('[bus] persistence error:', err);

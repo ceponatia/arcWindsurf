@@ -13,6 +13,7 @@ import {
   pruneOldWorkspaceDrafts,
 } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
+import { toId } from '../../utils/uuid.js';
 
 /**
  * Validation schema for workspace state
@@ -51,7 +52,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const limit = parseInt(c.req.query('limit') ?? '20', 10);
 
     try {
-      const drafts = await listWorkspaceDrafts(userId, { limit });
+      const drafts = await listWorkspaceDrafts(toId(userId), { limit });
       return c.json({ ok: true, drafts, total: drafts.length }, 200);
     } catch (err) {
       console.error('[API] Failed to list workspace drafts:', err);
@@ -64,7 +65,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const id = c.req.param('id');
 
     try {
-      const draft = await getWorkspaceDraft(id);
+      const draft = await getWorkspaceDraft(toId(id));
       if (!draft) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -95,7 +96,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
 
     try {
       // Build params object conditionally to satisfy exactOptionalPropertyTypes
-      const params: Parameters<typeof createWorkspaceDraft>[0] = { userId };
+      const params: Parameters<typeof createWorkspaceDraft>[0] = { userId: toId(userId) };
       if (name !== undefined) params.name = name;
       if (workspaceState !== undefined)
         params.workspaceState = workspaceState as Record<string, unknown>;
@@ -136,7 +137,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
       if (currentStep !== undefined) updates.currentStep = currentStep;
       if (validationState !== undefined) updates.validationState = validationState;
 
-      const draft = await updateWorkspaceDraft(id, updates);
+      const draft = await updateWorkspaceDraft(toId(id), updates);
       if (!draft) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -152,7 +153,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const id = c.req.param('id');
 
     try {
-      const deleted = await deleteWorkspaceDraft(id);
+      const deleted = await deleteWorkspaceDraft(toId(id));
       if (!deleted) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }

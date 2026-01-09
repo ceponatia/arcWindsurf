@@ -21,6 +21,8 @@ import { badRequest, serverError, notFound } from '../../../utils/responses.js';
 import { generateId, generateInstanceId } from '@minimal-rpg/utils';
 import { findCharacter, findSetting } from './shared.js';
 import { getAuthUser } from '../../../auth/middleware.js';
+import { toSessionId, toId, toIds } from '../../../utils/uuid.js';
+import type { CharacterProfile } from '@minimal-rpg/schemas';
 
 /**
  * Request schema for creating a full session
@@ -195,18 +197,20 @@ export async function handleCreateFullSession(
   }
 
   // Validate persona exists if provided
-  let personaProfile: any = null;
+  let personaProfile: CharacterProfile | Record<string, unknown> | null = null;
   if (request.personaId) {
     const personaResult = await drizzle
       .select()
       .from(actorStates)
-      .where(inArray(actorStates.actorId, [request.personaId]))
+      .where(inArray(actorStates.actorId, [request.personaId] as string[]))
       .limit(1);
 
-    if (personaResult.length === 0) {
+    if (personaResult.length === 0 || !personaResult[0]?.state) {
       return notFound(c, `persona not found: ${request.personaId}`);
     }
-    personaProfile = (personaResult[0].state as any).profile || personaResult[0].state;
+    const personaState = personaResult[0].state as Record<string, unknown>;
+    const profileFromState = (personaState['profile'] as CharacterProfile | Record<string, unknown> | undefined) ?? personaState;
+    personaProfile = profileFromState;
   }
 
   // Validate tags exist if provided
@@ -215,7 +219,7 @@ export async function handleCreateFullSession(
     const tagResult = await drizzle
       .select()
       .from(promptTags)
-      .where(inArray(promptTags.id, tagIds as any));
+      .where(inArray(promptTags.id, toIds(tagIds)));
     const foundTagIds = new Set(tagResult.map((r) => r.id));
     const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
     if (missingTags.length > 0) {
@@ -225,7 +229,6 @@ export async function handleCreateFullSession(
 
   // Generate IDs
   const sessionId = generateId();
-  const settingInstanceId = generateInstanceId(setting.id);
   const secondsPerTurn = request.secondsPerTurn ?? 60;
   const createdAt = new Date().toISOString();
 
@@ -263,30 +266,30 @@ export async function handleCreateFullSession(
       // 1. Create session
       console.log('[API] Creating session:', sessionId);
       await tx.insert(sessions).values({
-        id: sessionId as any,
+        id: toId(sessionId),
         ownerEmail,
         name: `Session ${sessionId.substring(0, 8)}`,
-        playerCharacterId: (primaryNpc?.characterId || '') as any,
-        settingId: request.settingId as any,
+        playerCharacterId: toId(primaryNpc?.characterId ?? ''),
+        settingId: toId(request.settingId),
         status: 'active',
       });
 
       // 2. Create session projection
       await tx.insert(sessionProjections).values({
-        sessionId: sessionId as any,
+        sessionId: toSessionId(sessionId),
         location: request.startLocationId ? { currentLocationId: request.startLocationId } : {},
         inventory: {},
         time: request.startTime
           ? {
-              current: {
-                year: request.startTime.year ?? 1,
-                month: request.startTime.month ?? 1,
-                day: request.startTime.day ?? 1,
-                hour: request.startTime.hour,
-                minute: request.startTime.minute,
-              },
-              secondsPerTurn,
-            }
+            current: {
+              year: request.startTime.year ?? 1,
+              month: request.startTime.month ?? 1,
+              day: request.startTime.day ?? 1,
+              hour: request.startTime.hour,
+              minute: request.startTime.minute,
+            },
+            secondsPerTurn,
+          }
           : {},
         worldState: {},
         lastEventSeq: 0n,
@@ -303,14 +306,24 @@ export async function handleCreateFullSession(
       for (const npc of npcInstances) {
         console.log('[API] Creating character instance:', npc.id);
 
-        const affinity: Record<string, any> = {};
+        interface AffinityState {
+          relationshipType: string;
+          affinity: {
+            trust: number;
+            fondness: number;
+            fear: number;
+          };
+          createdAt: string;
+        }
+
+        const affinity = new Map<string, AffinityState>();
         if (request.relationships) {
           for (const rel of request.relationships) {
             const fromInstanceId = resolveActorId(rel.fromActorId);
             const toInstanceId = resolveActorId(rel.toActorId);
 
             if (toInstanceId === npc.id && fromInstanceId) {
-              affinity[fromInstanceId] = {
+              affinity.set(fromInstanceId, {
                 relationshipType: rel.relationshipType,
                 affinity: {
                   trust: rel.affinitySeed?.trust ?? 0.5,
@@ -318,17 +331,19 @@ export async function handleCreateFullSession(
                   fear: rel.affinitySeed?.fear ?? 0.0,
                 },
                 createdAt,
-              };
+              });
             }
           }
         }
 
+        const affinityState = Object.fromEntries(affinity);
+
         await tx.insert(actorStates).values({
-          id: generateId() as any,
-          sessionId: sessionId as any,
+          id: toId(generateId()),
+          sessionId: toSessionId(sessionId),
           actorType: 'npc',
           actorId: npc.id,
-          entityProfileId: npc.characterId as any,
+          entityProfileId: toId(npc.characterId),
           state: {
             role: npc.role,
             tier: npc.tier,
@@ -336,7 +351,7 @@ export async function handleCreateFullSession(
             name: npc.character.name,
             profileJson: JSON.stringify(npc.character),
             location: npc.startLocationId ? { currentLocationId: npc.startLocationId } : undefined,
-            affinity,
+            affinity: affinityState,
             status: 'active',
           },
           lastEventSeq: 0n,
@@ -347,11 +362,11 @@ export async function handleCreateFullSession(
       if (request.personaId && personaProfile) {
         console.log('[API] Attaching persona:', request.personaId);
         await tx.insert(actorStates).values({
-          id: generateId() as any,
-          sessionId: sessionId as any,
+          id: toId(generateId()),
+          sessionId: toSessionId(sessionId),
           actorType: 'player',
           actorId: 'player',
-          entityProfileId: request.personaId as any,
+          entityProfileId: request.personaId ? toId(request.personaId) : undefined,
           state: {
             profile: personaProfile,
             status: 'active',
@@ -374,15 +389,15 @@ export async function handleCreateFullSession(
           const normalized = (
             'scope' in tag
               ? {
-                  tagId: tag.tagId,
-                  targetType: tag.scope,
-                  targetEntityId: tag.targetId ?? null,
-                }
+                tagId: tag.tagId,
+                targetType: tag.scope,
+                targetEntityId: tag.targetId ?? null,
+              }
               : {
-                  tagId: tag.tagId,
-                  targetType: tag.targetType,
-                  targetEntityId: tag.targetEntityId ?? null,
-                }
+                tagId: tag.tagId,
+                targetType: tag.targetType,
+                targetEntityId: tag.targetEntityId ?? null,
+              }
           ) as { tagId: string; targetType: string; targetEntityId: string | null };
 
           let targetEntityId: string | null = normalized.targetEntityId;
@@ -397,9 +412,9 @@ export async function handleCreateFullSession(
           }
 
           await tx.insert(sessionTags).values({
-            id: bindingId as any,
-            sessionId: sessionId as any,
-            tagId: normalized.tagId as any,
+            id: toId(bindingId),
+            sessionId: toSessionId(sessionId),
+            tagId: toId(normalized.tagId),
             enabled: true,
           });
 
@@ -440,7 +455,7 @@ export async function handleCreateFullSession(
     const response: CreateFullSessionResponse = {
       id: sessionId,
       settingId: request.settingId,
-      playerCharacterId: primaryNpc?.characterId || '',
+      playerCharacterId: primaryNpc?.characterId ?? '',
       personaId: request.personaId ?? null,
       startLocationId: request.startLocationId ?? null,
       secondsPerTurn,

@@ -17,6 +17,7 @@ import type { ApiError } from '../../types.js';
 import type { LoadedDataGetter, CharacterSummary, SettingSummary } from '../../loaders/types.js';
 import { mapCharacterSummary, mapSettingSummary } from '../../mappers/profile-mappers.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
+import { toId } from '../../utils/uuid.js';
 
 interface ProfilesRouteDeps {
   getLoaded: LoadedDataGetter;
@@ -43,8 +44,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     const dbProfiles: CharacterProfile[] = [];
     for (const t of dbRows) {
       try {
-        const profile = t.profileJson as any;
-        const parsed = CharacterProfileSchema.parse(profile);
+        const parsed = CharacterProfileSchema.parse(t.profileJson);
         dbProfiles.push(parsed);
       } catch {
         // skip invalid rows silently; could log
@@ -67,11 +67,10 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     // Check DB
-    const dbChar = await getEntityProfile(id as any);
+    const dbChar = await getEntityProfile(toId(id));
     if (dbChar?.entityType === 'character') {
       try {
-        const profile = dbChar.profileJson as any;
-        const parsed = CharacterProfileSchema.parse(profile);
+        const parsed = CharacterProfileSchema.parse(dbChar.profileJson);
         return c.json(parsed, 200);
       } catch {
         return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
@@ -105,16 +104,16 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       );
     }
 
-    const existingDb = await getEntityProfile(profile.id as any);
+    const existingDb = await getEntityProfile(toId(profile.id));
 
     if (existingDb) {
       if (existingDb.ownerEmail !== ownerEmail && existingDb.visibility !== 'public') {
         return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
       }
 
-      await updateEntityProfile(profile.id as any, {
+      await updateEntityProfile(toId(profile.id), {
         name: profile.name,
-        profileJson: profile as any,
+        profileJson: profile,
         tags: profile.tags,
       });
       const summary: CharacterSummary = mapCharacterSummary(profile, 'db');
@@ -125,7 +124,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       entityType: 'character',
       name: profile.name,
       ownerEmail,
-      profileJson: profile as any,
+      profileJson: profile,
       tags: profile.tags,
       visibility: 'private', // Default to private for new templates
     });
@@ -154,7 +153,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       );
     }
 
-    const existing = await getEntityProfile(id as any);
+    const existing = await getEntityProfile(toId(id));
     if (existing?.entityType !== 'character') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
@@ -163,7 +162,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
     }
 
-    await deleteEntityProfile(id as any);
+    await deleteEntityProfile(toId(id));
     return c.body(null, 204);
   });
 
@@ -184,8 +183,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     const dbProfiles: SettingProfile[] = [];
     for (const t of dbRows) {
       try {
-        const profile = t.profileJson as any;
-        const parsed = SettingProfileSchema.parse(profile);
+        const parsed = SettingProfileSchema.parse(t.profileJson);
         dbProfiles.push(parsed);
       } catch {
         // skip invalid rows
@@ -208,11 +206,10 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     // Check DB
-    const dbSet = await getEntityProfile(id as any);
+    const dbSet = await getEntityProfile(toId(id));
     if (dbSet?.entityType === 'setting') {
       try {
-        const profile = dbSet.profileJson as any;
-        const parsed = SettingProfileSchema.parse(profile);
+        const parsed = SettingProfileSchema.parse(dbSet.profileJson);
         return c.json(parsed, 200);
       } catch {
         return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
@@ -243,16 +240,16 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json({ ok: false, error: 'cannot edit filesystem setting' } satisfies ApiError, 409);
     }
 
-    const existingDb = await getEntityProfile(profile.id as any);
+    const existingDb = await getEntityProfile(toId(profile.id));
 
     if (existingDb) {
       if (existingDb.ownerEmail !== ownerEmail && existingDb.visibility !== 'public') {
         return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
       }
 
-      await updateEntityProfile(profile.id as any, {
+      await updateEntityProfile(toId(profile.id), {
         name: profile.name,
-        profileJson: profile as any,
+        profileJson: profile,
       });
       const summary: SettingSummary = mapSettingSummary(profile, 'db');
       return c.json({ ok: true, setting: summary }, 200);
@@ -262,7 +259,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       entityType: 'setting',
       name: profile.name,
       ownerEmail,
-      profileJson: profile as any,
+      profileJson: profile,
       visibility: 'private',
     });
 
@@ -274,7 +271,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
   app.delete('/settings/:id', async (c) => {
     const ownerEmail = getOwnerEmail(c);
     const id = c.req.param('id');
-    const existing = await getEntityProfile(id as any);
+    const existing = await getEntityProfile(toId(id));
     if (existing?.entityType !== 'setting') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
@@ -283,7 +280,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json({ ok: false, error: 'forbidden' } satisfies ApiError, 403);
     }
 
-    await deleteEntityProfile(id as any);
+    await deleteEntityProfile(toId(id));
     return c.body(null, 204);
   });
 }

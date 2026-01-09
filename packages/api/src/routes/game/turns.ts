@@ -13,6 +13,7 @@ import {
   rulesEngine,
 } from '@minimal-rpg/services';
 import type { WorldEvent } from '@minimal-rpg/schemas';
+import { toSessionId } from '../../utils/uuid.js';
 
 type SpokeEvent = Extract<WorldEvent, { type: 'SPOKE' }>;
 
@@ -33,9 +34,10 @@ export function registerTurnRoutes(app: Hono): void {
    */
   app.post('/sessions/:id/turns', async (c) => {
     const sessionId = c.req.param('id');
+    const sessionKey = toSessionId(sessionId);
     const ownerEmail = getOwnerEmail(c);
 
-    const session = await getSession(ownerEmail, sessionId);
+    const session = await getSession(sessionKey, ownerEmail);
     if (!session) {
       return notFound(c, 'session not found');
     }
@@ -64,7 +66,7 @@ export function registerTurnRoutes(app: Hono): void {
     rulesEngine.start();
 
     // Hydrate projections to discover active NPCs and locations
-    const projectionManager = await worldProjectionService.getManager(sessionId);
+    const projectionManager = await worldProjectionService.getManager(sessionKey);
     const npcProjection = projectionManager.npcs.getState();
 
     // Spawn NPC actors for this session if missing
@@ -76,7 +78,7 @@ export function registerTurnRoutes(app: Hono): void {
         id: actorId,
         type: 'npc',
         npcId,
-        sessionId,
+        sessionId: sessionKey,
         locationId: npcState.location.locationId ?? 'unknown',
       });
     }
@@ -84,7 +86,7 @@ export function registerTurnRoutes(app: Hono): void {
     // Collect events emitted during this turn
     const collected: WorldEvent[] = [];
     const handler = (event: WorldEvent): void => {
-      if ((event as Record<string, unknown>)['sessionId'] !== sessionId) return;
+      if ((event as Record<string, unknown>)['sessionId'] !== sessionKey) return;
       collected.push(event);
     };
 
@@ -96,7 +98,7 @@ export function registerTurnRoutes(app: Hono): void {
       actorId: playerActorId,
       content: input,
       targetActorId: targetNpcId ?? undefined,
-      sessionId,
+      sessionId: sessionKey,
       timestamp: new Date(),
     };
 
@@ -116,9 +118,9 @@ export function registerTurnRoutes(app: Hono): void {
 
     const npcSpeaker = npcSpoke
       ? {
-          id: npcSpoke.actorId,
-          name: npcSpoke.actorId,
-        }
+        id: npcSpoke.actorId,
+        name: npcSpoke.actorId,
+      }
       : undefined;
 
     const response: TurnResponseDto = {

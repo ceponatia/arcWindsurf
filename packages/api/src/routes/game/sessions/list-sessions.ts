@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { listSessions, getEntityProfile } from '@minimal-rpg/db/node';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
+import { toId } from '../../../utils/uuid.js';
 
 export async function handleListSessions(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
@@ -12,11 +13,11 @@ export async function handleListSessions(c: Context): Promise<Response> {
       let settingName: string | undefined;
 
       if (sess.playerCharacterId) {
-        const char = await getEntityProfile(sess.playerCharacterId);
+        const char = await getEntityProfile(toId(sess.playerCharacterId));
         characterName = char?.name;
       }
       if (sess.settingId) {
-        const setting = await getEntityProfile(sess.settingId);
+        const setting = await getEntityProfile(toId(sess.settingId));
         settingName = setting?.name;
       }
 

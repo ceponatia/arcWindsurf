@@ -13,6 +13,12 @@ import {
 import { getSession } from '../../db/sessionsClient.js';
 import type { ApiError } from '../../types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
+import { toId, toSessionId } from '../../utils/uuid.js';
+
+interface PersonaActorState {
+  profile?: PersonaProfile | Record<string, unknown>;
+  status?: 'active' | 'inactive';
+}
 
 interface PersonaSummary {
   id: string;
@@ -68,7 +74,7 @@ export function registerPersonaRoutes(app: Hono): void {
   app.get('/personas/:id', async (c) => {
     const id = c.req.param('id');
 
-    const persona = await getEntityProfile(id as any);
+    const persona = await getEntityProfile(toId(id));
 
     if (persona?.entityType !== 'persona') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -100,14 +106,14 @@ export function registerPersonaRoutes(app: Hono): void {
     const profile = parsed.data;
 
     // Check if persona with this ID already exists
-    const existing = await getEntityProfile(profile.id as any);
+    const existing = await getEntityProfile(toId(profile.id));
 
     if (existing) {
       if (existing.ownerEmail !== ownerEmail && existing.ownerEmail !== 'public') {
         return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
       }
       // Update existing persona
-      const updated = await updateEntityProfile(profile.id as any, {
+      const updated = await updateEntityProfile(toId(profile.id), {
         name: profile.name,
         profileJson: profile,
       });
@@ -122,7 +128,7 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     const created = await createEntityProfile({
-      id: profile.id as any,
+      id: toId(profile.id),
       ownerEmail,
       entityType: 'persona',
       name: profile.name,
@@ -157,7 +163,7 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'id mismatch' } satisfies ApiError, 400);
     }
 
-    const existing = await getEntityProfile(id as any);
+    const existing = await getEntityProfile(toId(id));
 
     if (!existing) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -167,7 +173,7 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
     }
 
-    const updated = await updateEntityProfile(id as any, {
+    const updated = await updateEntityProfile(toId(id), {
       name: profile.name,
       profileJson: profile,
     });
@@ -185,7 +191,7 @@ export function registerPersonaRoutes(app: Hono): void {
     const id = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    const existing = await getEntityProfile(id as any);
+    const existing = await getEntityProfile(toId(id));
 
     if (!existing) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -195,7 +201,7 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
     }
 
-    await deleteEntityProfile(id as any);
+    await deleteEntityProfile(toId(id));
     return c.body(null, 204);
   });
 
@@ -222,7 +228,7 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     // Check if persona exists
-    const persona = await getEntityProfile(body.personaId as any);
+    const persona = await getEntityProfile(toId(body.personaId));
 
     if (persona?.entityType !== 'persona') {
       return c.json({ ok: false, error: 'persona not found' } satisfies ApiError, 404);
@@ -238,10 +244,10 @@ export function registerPersonaRoutes(app: Hono): void {
 
     // Upsert actor state for player
     await upsertActorState({
-      sessionId: sessionId as any,
+      sessionId: toSessionId(sessionId),
       actorType: 'player',
       actorId: 'player',
-      entityProfileId: persona.id as any,
+      entityProfileId: toId(persona.id),
       state: {
         profile,
         status: 'active',
@@ -256,14 +262,14 @@ export function registerPersonaRoutes(app: Hono): void {
   app.get('/sessions/:sessionId/persona', async (c) => {
     const sessionId = c.req.param('sessionId');
 
-    const playerState = await getActorState(sessionId as any, 'player');
+    const playerState = await getActorState(toSessionId(sessionId), 'player');
 
     if (!playerState) {
       return c.json({ ok: false, error: 'no persona attached to session' } satisfies ApiError, 404);
     }
 
     try {
-      const state = playerState.state as Record<string, any>;
+      const state = playerState.state as PersonaActorState;
       const profile = PersonaProfileSchema.parse(state.profile || state);
 
       return c.json(
@@ -283,13 +289,13 @@ export function registerPersonaRoutes(app: Hono): void {
   app.delete('/sessions/:sessionId/persona', async (c) => {
     const sessionId = c.req.param('sessionId');
 
-    const existing = await getActorState(sessionId as any, 'player');
+    const existing = await getActorState(toSessionId(sessionId), 'player');
 
     if (!existing) {
       return c.json({ ok: false, error: 'no persona attached to session' } satisfies ApiError, 404);
     }
 
-    await deleteActorState(sessionId as any, 'player');
+    await deleteActorState(toSessionId(sessionId), 'player');
     return c.body(null, 204);
   });
 }

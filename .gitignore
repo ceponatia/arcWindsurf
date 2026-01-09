@@ -17,9 +17,9 @@ coverage
 .turbo
 *.tsbuildinfo
 .eslintcache
-.vite/
+.vite
 **/.vite
-.pnpm-store/
+.pnpm-store
 
 ## Env files (keep examples tracked)
 **/.env*

@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { getSessionHistoryAdmin } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
 import { requireAdmin } from '../../auth/middleware.js';
+import { toSessionId } from '../../utils/uuid.js';
 
 interface ToolingFailureEventDto {
   type: 'tooling-failure';
@@ -31,7 +32,7 @@ export function registerAdminSessionRoutes(app: Hono) {
     }
 
     try {
-      const history = await getSessionHistoryAdmin(sessionId, { limit });
+      const history = await getSessionHistoryAdmin(toSessionId(sessionId), { limit });
 
       const failures: ToolingFailureEntryDto[] = history
         .map((h) => {

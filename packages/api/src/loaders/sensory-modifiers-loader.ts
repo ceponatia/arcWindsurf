@@ -37,6 +37,25 @@ export interface LoadedSensoryModifiers {
   ) => string;
 }
 
+function safeGetModifier(
+  data: SensoryModifiersData,
+  bodyPart: string,
+  senseType: 'smell' | 'touch' | 'taste',
+  level: HygieneLevel
+): string {
+  if (!Object.prototype.hasOwnProperty.call(data.bodyParts, bodyPart)) {
+    return '';
+  }
+
+  const partModifiers = data.bodyParts[bodyPart];
+  if (!partModifiers || !Object.prototype.hasOwnProperty.call(partModifiers, senseType)) {
+    return '';
+  }
+
+  const senseModifiers = partModifiers[senseType];
+  return getSensoryModifierByLevel(senseModifiers, level);
+}
+
 /**
  * Load and validate sensory modifiers data.
  */
@@ -72,13 +91,7 @@ export async function loadSensoryModifiers(dataDir?: string): Promise<LoadedSens
     data,
     bodyParts: data.bodyParts,
     decayRates: data.decayRates,
-    getModifier: (bodyPart, senseType, level) => {
-      const partModifiers = data.bodyParts[bodyPart];
-      if (!partModifiers) return '';
-
-      const senseModifiers = partModifiers[senseType];
-      return getSensoryModifierByLevel(senseModifiers, level);
-    },
+    getModifier: (bodyPart, senseType, level) => safeGetModifier(data, bodyPart, senseType, level),
   };
 }
 
@@ -117,12 +130,6 @@ export function loadSensoryModifiersSync(dataDir?: string): LoadedSensoryModifie
     data,
     bodyParts: data.bodyParts,
     decayRates: data.decayRates,
-    getModifier: (bodyPart, senseType, level) => {
-      const partModifiers = data.bodyParts[bodyPart];
-      if (!partModifiers) return '';
-
-      const senseModifiers = partModifiers[senseType];
-      return getSensoryModifierByLevel(senseModifiers, level);
-    },
+    getModifier: (bodyPart, senseType, level) => safeGetModifier(data, bodyPart, senseType, level),
   };
 }

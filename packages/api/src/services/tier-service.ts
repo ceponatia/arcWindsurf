@@ -25,6 +25,8 @@ import {
   createInitialInterestScore,
 } from '@minimal-rpg/schemas';
 import { getActorState, listActorStatesForSession, upsertActorState } from '@minimal-rpg/db/node';
+import { toSessionId } from '../utils/uuid.js';
+import { asNpcState } from '../types/index.js';
 
 // =============================================================================
 // Service Functions
@@ -39,13 +41,13 @@ export async function getInterestScore(
   sessionId: string,
   npcId: string
 ): Promise<PlayerInterestScore | null> {
-  const actorState = await getActorState(sessionId as any, npcId);
+  const actorState = await getActorState(toSessionId(sessionId), npcId);
   if (!actorState) return null;
 
-  const state = actorState.state as any;
+  const state = asNpcState(actorState.state);
   if (!state.interest) return null;
 
-  return state.interest as PlayerInterestScore;
+  return state.interest;
 }
 
 /**
@@ -55,14 +57,14 @@ export async function getAllInterestScores(
   _ownerEmail: string,
   sessionId: string
 ): Promise<Map<string, PlayerInterestScore>> {
-  const states = await listActorStatesForSession(sessionId as any);
+  const states = await listActorStatesForSession(toSessionId(sessionId));
   const result = new Map<string, PlayerInterestScore>();
 
   for (const s of states) {
     if (s.actorType === 'npc') {
-      const state = s.state as any;
+      const state = asNpcState(s.state);
       if (state.interest) {
-        result.set(s.actorId, state.interest as PlayerInterestScore);
+        result.set(s.actorId, state.interest);
       }
     }
   }
@@ -92,7 +94,7 @@ export async function processTurnInterest(
   const promotions: PromotionCheck[] = [];
 
   // Get current NPC states
-  const npcStates = (await listActorStatesForSession(sessionId as any)).filter(
+  const npcStates = (await listActorStatesForSession(toSessionId(sessionId))).filter(
     (s) => s.actorType === 'npc'
   );
 
@@ -103,10 +105,8 @@ export async function processTurnInterest(
     const actorState = statesByNpcId.get(npcId);
     if (!actorState) continue;
 
-    const stateBlob = actorState.state as any;
-    const currentScore: PlayerInterestScore = stateBlob.interest
-      ? (stateBlob.interest as PlayerInterestScore)
-      : createInitialInterestScore(npcId);
+    const stateBlob = asNpcState(actorState.state);
+    const currentScore: PlayerInterestScore = stateBlob.interest ?? createInitialInterestScore(npcId);
 
     const oldScore = currentScore.score;
     const hadInteraction = interactedNpcIds.includes(npcId);
@@ -136,7 +136,7 @@ export async function processTurnInterest(
       continue;
     }
 
-    const currentTier = (stateBlob.tier || 'background') as NpcTierType;
+    const currentTier = (stateBlob.tier ?? 'background') as NpcTierType;
 
     // Persist updated score
     const newState = {
@@ -145,10 +145,10 @@ export async function processTurnInterest(
     };
 
     await upsertActorState({
-      sessionId: sessionId as any,
+      sessionId: toSessionId(sessionId),
       actorType: actorState.actorType,
       actorId: npcId,
-      entityProfileId: actorState.entityProfileId as any,
+      entityProfileId: actorState.entityProfileId ?? null,
       state: newState,
       lastEventSeq: actorState.lastEventSeq,
     });
@@ -183,19 +183,19 @@ export async function executePromotion(
   npcId: string,
   newTier: NpcTierType
 ): Promise<void> {
-  const actorState = await getActorState(sessionId as any, npcId);
+  const actorState = await getActorState(toSessionId(sessionId), npcId);
   if (!actorState) return;
 
   const newState = {
-    ...(actorState.state as any),
+    ...asNpcState(actorState.state),
     tier: newTier,
   };
 
   await upsertActorState({
-    sessionId: sessionId as any,
+    sessionId: toSessionId(sessionId),
     actorType: actorState.actorType,
     actorId: npcId,
-    entityProfileId: actorState.entityProfileId as any,
+    entityProfileId: actorState.entityProfileId ?? null,
     state: newState,
     lastEventSeq: actorState.lastEventSeq,
   });
@@ -212,14 +212,14 @@ export async function getNpcsReadyForPromotion(
 ): Promise<PromotionCheck[]> {
   const promotions: PromotionCheck[] = [];
 
-  const npcStates = (await listActorStatesForSession(sessionId as any)).filter(
+  const npcStates = (await listActorStatesForSession(toSessionId(sessionId))).filter(
     (s) => s.actorType === 'npc'
   );
 
   for (const s of npcStates) {
-    const stateBlob = s.state as any;
-    const tier = (stateBlob.tier || 'background') as NpcTierType;
-    const score = stateBlob.interest as PlayerInterestScore;
+    const stateBlob = asNpcState(s.state);
+    const tier = (stateBlob.tier ?? 'background') as NpcTierType;
+    const score = stateBlob.interest;
 
     if (score) {
       const check = checkPromotion(s.actorId, tier, score, config);

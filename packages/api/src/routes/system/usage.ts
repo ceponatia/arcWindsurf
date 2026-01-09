@@ -8,6 +8,7 @@ import {
   and,
 } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
+import { toId } from '../../utils/uuid.js';
 
 /**
  * Entity usage summary returned from usage endpoints.
@@ -54,7 +55,7 @@ export function registerEntityUsageRoutes(app: Hono): void {
       const sessions = await db
         .select()
         .from(sessionsTable)
-        .where(eq(sessionsTable.playerCharacterId, characterId as any))
+        .where(eq(sessionsTable.playerCharacterId, toId(characterId)))
         .orderBy(desc(sessionsTable.createdAt));
 
       const usageInfo: SessionUsageInfo[] = sessions.map((s) => ({
@@ -96,7 +97,7 @@ export function registerEntityUsageRoutes(app: Hono): void {
       const sessions = await db
         .select()
         .from(sessionsTable)
-        .where(eq(sessionsTable.settingId, settingId as any))
+        .where(eq(sessionsTable.settingId, toId(settingId)))
         .orderBy(desc(sessionsTable.createdAt));
 
       const usageInfo: SessionUsageInfo[] = sessions.map((s) => ({
@@ -134,7 +135,7 @@ export function registerEntityUsageRoutes(app: Hono): void {
       const states = await db
         .select()
         .from(actorStates)
-        .where(eq(actorStates.entityProfileId, personaId as any))
+        .where(eq(actorStates.entityProfileId, toId(personaId)))
         .orderBy(desc(actorStates.createdAt));
 
       const usageInfo: SessionUsageInfo[] = states.map((s) => ({

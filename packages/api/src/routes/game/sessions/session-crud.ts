@@ -16,25 +16,32 @@ import { notFound, badRequest, serverError } from '../../../utils/responses.js';
 import { generateId } from '@minimal-rpg/utils';
 import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
+import { toId, toSessionId } from '../../../utils/uuid.js';
+
+interface SpokePayload {
+  content?: string;
+  entityProfileId?: string;
+}
 
 export async function handleGetSession(c: Context): Promise<Response> {
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
   // getSession(id, ownerEmail) is from @minimal-rpg/db/node (sessions repository)
-  const session = await getSession(id as any, ownerEmail);
+  const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const projection = await getSessionProjection(id as any);
+  const projection = await getSessionProjection(toSessionId(id));
 
   // Fetch messages from events
-  const allEvents = await getEventsForSession(id as any);
+  const allEvents = await getEventsForSession(toSessionId(id));
   const spokeEvents = allEvents.filter((e) => e.type === 'SPOKE');
   const messages = await Promise.all(
     spokeEvents.map(async (e) => {
-      const payload = e.payload as any;
+      const payload = e.payload as SpokePayload;
       let speaker;
       if (e.actorId && e.actorId !== 'player') {
-        const profile = await getEntityProfile(payload.entityProfileId || e.actorId);
+        const profileId = payload.entityProfileId ?? e.actorId;
+        const profile = profileId ? await getEntityProfile(toId(profileId)) : null;
         if (profile) {
           speaker = {
             id: e.actorId,
@@ -45,7 +52,7 @@ export async function handleGetSession(c: Context): Promise<Response> {
 
       return {
         role: e.actorId === 'player' ? 'user' : 'assistant',
-        content: payload.content || '',
+        content: payload.content ?? '',
         createdAt: e.createdAt.toISOString(),
         idx: Number(e.sequence),
         speaker,
@@ -83,7 +90,7 @@ export async function handleCreateSession(
     return badRequest(c, 'characterId or settingId not found');
   }
 
-  const sessionId = generateId();
+  const sessionId = toSessionId(generateId());
 
   console.log('[API] Creating session:', sessionId);
   const sessionRecord = await createSession({
@@ -96,10 +103,10 @@ export async function handleCreateSession(
   try {
     // Replaced legacy instance creation with primary actor state
     await upsertActorState({
-      sessionId: sessionRecord.id,
+      sessionId: toSessionId(sessionRecord.id),
       actorType: 'player',
       actorId: 'player',
-      entityProfileId: character.id,
+      entityProfileId: toId(character.id),
       state: { status: 'active' },
       lastEventSeq: 0n,
     });
@@ -139,6 +146,6 @@ export async function handleCreateSession(
 export async function handleDeleteSession(c: Context): Promise<Response> {
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  await deleteSession(id, ownerEmail);
+  await deleteSession(toSessionId(id), ownerEmail);
   return c.body(null, 204);
 }

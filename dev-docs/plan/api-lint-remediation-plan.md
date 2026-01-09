@@ -185,7 +185,7 @@ export function parseCharacterProfile(json: unknown): CharacterProfile | null {
 
 ## 3. Legacy Code Candidates for Deletion
 
-Based on `WORLD_BUS_STATUS.md` and current architecture:
+Based on `status/WORLD_BUS_STATUS.md` and current architecture:
 
 ### 3.1 Files to Evaluate for Removal
 
@@ -512,5 +512,5 @@ turns.ts:1 errors
 
 - [API Lint Backlog](../api-lint-backlog.md) - Prior context
 - [API Linting Debt](../api-linting-debt.md) - Original debt documentation
-- [World Bus Status](../../WORLD_BUS_STATUS.md) - Current architecture
+- [World Bus Status](../status/WORLD_BUS_STATUS.md) - Current architecture
 - [Character Builder Vision](./vision/v2-refactor/VIS-3.1-character-builder-refactor.md) - Future state

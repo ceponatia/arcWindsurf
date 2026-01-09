@@ -12,6 +12,7 @@ import {
   upsertProjection,
 } from '@minimal-rpg/db/node';
 import { deepMergeReplaceArrays } from '@minimal-rpg/utils';
+import { toId, toSessionId } from '../utils/uuid.js';
 
 export async function upsertCharacterOverrides(params: {
   sessionId: string;
@@ -22,7 +23,7 @@ export async function upsertCharacterOverrides(params: {
   const { sessionId, characterId, baseline, overrides } = params;
 
   // Use characterId as the actorId for the player
-  const actorState = await getActorState(sessionId as any, characterId);
+  const actorState = await getActorState(toSessionId(sessionId), characterId);
   if (!actorState) {
     throw new Error(`actor state not found for session ${sessionId} character ${characterId}`);
   }
@@ -35,16 +36,16 @@ export async function upsertCharacterOverrides(params: {
   const finalProfile = parsedNext.success ? parsedNext.data : nextProfile;
 
   await upsertActorState({
-    sessionId: sessionId as any,
+    sessionId: toSessionId(sessionId),
     actorId: characterId,
     actorType: 'player',
-    entityProfileId: actorState.entityProfileId as any,
-    state: finalProfile as any,
+    entityProfileId: actorState.entityProfileId ? toId(actorState.entityProfileId) : undefined,
+    state: finalProfile,
     lastEventSeq: actorState.lastEventSeq,
   });
 
   return {
-    baseline: baseline as any,
+    baseline,
     overrides,
     previous,
   };
@@ -58,7 +59,7 @@ export async function upsertSettingOverrides(params: {
 }): Promise<OverridesAudit> {
   const { sessionId, baseline, overrides } = params;
 
-  const projection = await getProjection(sessionId as any);
+  const projection = await getProjection(toSessionId(sessionId));
   if (!projection) {
     throw new Error(`projection not found for session ${sessionId}`);
   }
@@ -70,12 +71,12 @@ export async function upsertSettingOverrides(params: {
 
   const finalProfile = parsedNext.success ? parsedNext.data : nextProfile;
 
-  await upsertProjection(sessionId as any, {
-    worldState: finalProfile as any,
+  await upsertProjection(toSessionId(sessionId), {
+    worldState: finalProfile,
   });
 
   return {
-    baseline: baseline as any,
+    baseline,
     overrides,
     previous,
   };
@@ -85,7 +86,7 @@ export async function getEffectiveCharacter(
   sessionId: string,
   character: CharacterProfile
 ): Promise<CharacterProfile> {
-  const actorState = await getActorState(sessionId as any, character.id);
+  const actorState = await getActorState(toSessionId(sessionId), character.id);
   if (!actorState) return character;
 
   const refined = CharacterProfileSchema.safeParse(actorState.state);
@@ -96,7 +97,7 @@ export async function getEffectiveSetting(
   sessionId: string,
   setting: SettingProfile
 ): Promise<SettingProfile> {
-  const projection = await getProjection(sessionId as any);
+  const projection = await getProjection(toSessionId(sessionId));
   if (!projection) return setting;
 
   const refined = SettingProfileSchema.safeParse(projection.worldState);

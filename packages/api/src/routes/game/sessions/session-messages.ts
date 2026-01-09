@@ -16,24 +16,31 @@ import {
 import { notFound, badRequest } from '../../../utils/responses.js';
 import { isMessageRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
+import { toId, toSessionId } from '../../../utils/uuid.js';
+
+interface SpokePayload {
+  content?: string;
+  entityProfileId?: string;
+}
 
 export async function handleListMessages(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
   const id = c.req.param('id');
 
-  const session = await getSession(id as any, ownerEmail);
+  const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const allEvents = await getEventsForSession(id as any);
+  const allEvents = await getEventsForSession(toSessionId(id));
   const spokeEvents = allEvents.filter((e) => e.type === 'SPOKE');
 
   const messages = await Promise.all(
     spokeEvents.map(async (e) => {
-      const payload = e.payload as any;
+      const payload = e.payload as SpokePayload;
       let speaker;
       if (e.actorId && e.actorId !== 'player') {
         // Try to find actor profile
-        const profile = await getEntityProfile(payload.entityProfileId || e.actorId);
+        const profileId = payload.entityProfileId ?? e.actorId;
+        const profile = profileId ? await getEntityProfile(toId(profileId)) : null;
         if (profile) {
           speaker = {
             id: e.actorId,
@@ -44,7 +51,7 @@ export async function handleListMessages(c: Context): Promise<Response> {
 
       return {
         role: e.actorId === 'player' ? 'user' : 'assistant',
-        content: payload.content || '',
+        content: payload.content ?? '',
         createdAt: e.createdAt.toISOString(),
         idx: Number(e.sequence),
         speaker,
@@ -61,7 +68,7 @@ export async function handlePatchMessage(c: Context): Promise<Response> {
   const idx = parseInt(c.req.param('idx'), 10);
   if (isNaN(idx)) return badRequest(c, 'invalid index');
 
-  const session = await getSession(id as any, ownerEmail);
+  const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
   const rawBody: unknown = await c.req.json().catch(() => null);
@@ -78,7 +85,7 @@ export async function handlePatchMessage(c: Context): Promise<Response> {
     .from(events)
     .where(
       and(
-        eq(events.sessionId, id as any),
+        eq(events.sessionId, toSessionId(id)),
         eq(events.sequence, BigInt(idx)),
         eq(events.type, 'SPOKE')
       )
@@ -92,12 +99,12 @@ export async function handlePatchMessage(c: Context): Promise<Response> {
   const updated = await drizzle
     .update(events)
     .set({
-      payload: { ...(existingEvent.payload as object), content },
+      payload: { ...(existingEvent.payload as SpokePayload), content },
       timestamp: new Date(),
     })
     .where(
       and(
-        eq(events.sessionId, id as any),
+        eq(events.sessionId, toSessionId(id)),
         eq(events.sequence, BigInt(idx)),
         eq(events.type, 'SPOKE')
       )
@@ -119,7 +126,7 @@ export async function handleDeleteMessage(c: Context): Promise<Response> {
 
   console.info(`[API] Request to delete message: session=${id}, idx=${idx}`);
 
-  const session = await getSession(id as any, ownerEmail);
+  const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
   const [existing] = await drizzle
@@ -127,7 +134,7 @@ export async function handleDeleteMessage(c: Context): Promise<Response> {
     .from(events)
     .where(
       and(
-        eq(events.sessionId, id as any),
+        eq(events.sessionId, toSessionId(id)),
         eq(events.sequence, BigInt(idx)),
         eq(events.type, 'SPOKE')
       )
@@ -142,7 +149,7 @@ export async function handleDeleteMessage(c: Context): Promise<Response> {
     .delete(events)
     .where(
       and(
-        eq(events.sessionId, id as any),
+        eq(events.sessionId, toSessionId(id)),
         eq(events.sequence, BigInt(idx)),
         eq(events.type, 'SPOKE')
       )

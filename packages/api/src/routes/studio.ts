@@ -1,24 +1,30 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { ApiError } from '../types.js';
 
-interface GenerateRequest {
-  profile: Record<string, unknown>;
-  history: { role: string; content: string }[];
-  userMessage: string;
-}
+const GenerateRequestSchema = z.object({
+  profile: z.record(z.string(), z.unknown()),
+  history: z.array(z.object({ role: z.string(), content: z.string() })),
+  userMessage: z.string(),
+});
 
-interface InferTraitsRequest {
-  userMessage: string;
-  characterResponse: string;
-  currentProfile: Record<string, unknown>;
-}
+const InferTraitsRequestSchema = z.object({
+  userMessage: z.string(),
+  characterResponse: z.string(),
+  currentProfile: z.record(z.string(), z.unknown()),
+});
 
 export function registerStudioRoutes(app: Hono): void {
   // POST /studio/generate - Generate character response
   app.post('/studio/generate', async (c) => {
     try {
-      const body = await c.req.json();
-      const { profile, history, userMessage } = body;
+      const body: unknown = await c.req.json();
+      const parsed = GenerateRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
+
+      const { profile, history, userMessage } = parsed.data;
 
       // TODO: Integrate with LLM provider
       // For now, return a placeholder response
@@ -34,8 +40,13 @@ export function registerStudioRoutes(app: Hono): void {
   // POST /studio/infer-traits - Infer traits from conversation
   app.post('/studio/infer-traits', async (c) => {
     try {
-      const body = await c.req.json();
-      const { userMessage, characterResponse, currentProfile } = body;
+      const body: unknown = await c.req.json();
+      const parsed = InferTraitsRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
+
+      const { userMessage, characterResponse, currentProfile } = parsed.data;
 
       // TODO: Use LLM to infer traits
       // For now, return empty array
