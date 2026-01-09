@@ -42,6 +42,58 @@ const UpdateDraftSchema = z.object({
   validationState: z.record(z.string(), z.unknown()).optional(),
 });
 
+interface WorkspaceDraftRecord {
+  id: string;
+  name: string | null;
+  workspaceState?: Record<string, unknown> | null;
+  currentStep?: string | null;
+  validationState?: Record<string, unknown> | null;
+}
+
+interface WorkspaceDraftCreateInput {
+  userId: string;
+  name?: string | null;
+  workspaceState?: Record<string, unknown>;
+  currentStep?: string;
+  validationState?: Record<string, unknown>;
+}
+
+interface WorkspaceDraftUpdateInput {
+  name?: string | null;
+  workspaceState?: Record<string, unknown>;
+  currentStep?: string;
+  validationState?: Record<string, unknown>;
+}
+
+interface WorkspaceDraftListOptions {
+  limit?: number;
+}
+
+type ListWorkspaceDraftsFn = (
+  userId: string,
+  options?: WorkspaceDraftListOptions,
+) => Promise<WorkspaceDraftRecord[]>;
+
+type GetWorkspaceDraftFn = (id: string) => Promise<WorkspaceDraftRecord | null>;
+
+type CreateWorkspaceDraftFn = (input: WorkspaceDraftCreateInput) => Promise<WorkspaceDraftRecord>;
+
+type UpdateWorkspaceDraftFn = (
+  id: string,
+  updates: WorkspaceDraftUpdateInput,
+) => Promise<WorkspaceDraftRecord | null>;
+
+type DeleteWorkspaceDraftFn = (id: string) => Promise<boolean>;
+
+type PruneWorkspaceDraftsFn = (olderThanDays: number) => Promise<number>;
+
+const listWorkspaceDraftsRepo = listWorkspaceDrafts as unknown as ListWorkspaceDraftsFn;
+const getWorkspaceDraftRepo = getWorkspaceDraft as unknown as GetWorkspaceDraftFn;
+const createWorkspaceDraftRepo = createWorkspaceDraft as unknown as CreateWorkspaceDraftFn;
+const updateWorkspaceDraftRepo = updateWorkspaceDraft as unknown as UpdateWorkspaceDraftFn;
+const deleteWorkspaceDraftRepo = deleteWorkspaceDraft as unknown as DeleteWorkspaceDraftFn;
+const pruneOldWorkspaceDraftsRepo = pruneOldWorkspaceDrafts as unknown as PruneWorkspaceDraftsFn;
+
 /**
  * Register workspace draft routes.
  */
@@ -52,7 +104,8 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const limit = parseInt(c.req.query('limit') ?? '20', 10);
 
     try {
-      const drafts = await listWorkspaceDrafts(toId(userId), { limit });
+      const drafts =
+        await listWorkspaceDraftsRepo(toId(userId), { limit });
       return c.json({ ok: true, drafts, total: drafts.length }, 200);
     } catch (err) {
       console.error('[API] Failed to list workspace drafts:', err);
@@ -65,7 +118,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const id = c.req.param('id');
 
     try {
-      const draft = await getWorkspaceDraft(toId(id));
+      const draft = await getWorkspaceDraftRepo(toId(id));
       if (!draft) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -96,13 +149,13 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
 
     try {
       // Build params object conditionally to satisfy exactOptionalPropertyTypes
-      const params: Parameters<typeof createWorkspaceDraft>[0] = { userId: toId(userId) };
+      const params: WorkspaceDraftCreateInput = { userId: toId(userId) };
       if (name !== undefined) params.name = name;
       if (workspaceState !== undefined)
         params.workspaceState = workspaceState as Record<string, unknown>;
       if (currentStep !== undefined) params.currentStep = currentStep;
 
-      const draft = await createWorkspaceDraft(params);
+      const draft = await createWorkspaceDraftRepo(params);
       return c.json({ ok: true, draft }, 201);
     } catch (err) {
       console.error('[API] Failed to create workspace draft:', err);
@@ -130,14 +183,14 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
 
     try {
       // Build updates object conditionally to satisfy exactOptionalPropertyTypes
-      const updates: Parameters<typeof updateWorkspaceDraft>[1] = {};
+      const updates: WorkspaceDraftUpdateInput = {};
       if (name !== undefined) updates.name = name;
       if (workspaceState !== undefined)
         updates.workspaceState = workspaceState as Record<string, unknown>;
       if (currentStep !== undefined) updates.currentStep = currentStep;
       if (validationState !== undefined) updates.validationState = validationState;
 
-      const draft = await updateWorkspaceDraft(toId(id), updates);
+      const draft = await updateWorkspaceDraftRepo(toId(id), updates);
       if (!draft) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -153,7 +206,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const id = c.req.param('id');
 
     try {
-      const deleted = await deleteWorkspaceDraft(toId(id));
+      const deleted = await deleteWorkspaceDraftRepo(toId(id));
       if (!deleted) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -169,7 +222,7 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
     const olderThanDays = parseInt(c.req.query('days') ?? '30', 10);
 
     try {
-      const count = await pruneOldWorkspaceDrafts(olderThanDays);
+      const count = await pruneOldWorkspaceDraftsRepo(olderThanDays);
       return c.json({ ok: true, deleted: count }, 200);
     } catch (err) {
       console.error('[API] Failed to prune workspace drafts:', err);

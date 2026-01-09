@@ -7,7 +7,6 @@
 import type { ToolCall, ToolResult } from './types.js';
 import type {
   GetSessionTagsArgs,
-  QueryNpcListArgs,
   GetNpcTranscriptArgs,
   GetSessionTagsResult,
   GetSessionPersonaResult,
@@ -22,15 +21,45 @@ import {
   eq,
   and,
   desc,
-  getEntityProfile,
 } from '@minimal-rpg/db/node';
-import { safeParseJson } from '@minimal-rpg/utils';
 import { toSessionId } from '../../utils/uuid.js';
 
 interface ActorStatePayload {
   profile?: Record<string, unknown>;
   name?: string;
   status?: 'active' | 'inactive';
+}
+
+interface SessionTagBinding {
+  tag_id: string;
+  tag: {
+    name: string;
+    prompt_text: string | null;
+    category: string | null;
+  };
+}
+
+function toActorStatePayload(value: unknown): ActorStatePayload {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const name = typeof candidate.name === 'string' ? candidate.name : undefined;
+  const status =
+    candidate.status === 'active' || candidate.status === 'inactive'
+      ? candidate.status
+      : undefined;
+  const profile =
+    candidate.profile && typeof candidate.profile === 'object'
+      ? (candidate.profile as Record<string, unknown>)
+      : undefined;
+
+  return {
+    ...(profile ? { profile } : {}),
+    ...(name ? { name } : {}),
+    ...(status ? { status } : {}),
+  };
 }
 
 // =============================================================================
@@ -83,7 +112,7 @@ export class SessionToolHandler {
       case 'get_session_persona':
         return this.executeGetSessionPersona();
       case 'query_npc_list':
-        return this.executeQueryNpcList(args as QueryNpcListArgs);
+        return this.executeQueryNpcList();
       case 'get_npc_transcript':
         return this.executeGetNpcTranscript(args as GetNpcTranscriptArgs);
       default:
@@ -115,9 +144,10 @@ export class SessionToolHandler {
     args: GetSessionTagsArgs
   ): Promise<GetSessionTagsResult | ToolResult> {
     try {
-      const bindings = await getSessionTagsWithDefinitions(this.ownerEmail, this.sessionId, {
-        enabledOnly: true,
-      });
+      const bindings =
+        (await getSessionTagsWithDefinitions(this.ownerEmail, this.sessionId, {
+          enabledOnly: true,
+        })) as SessionTagBinding[];
 
       let tags = bindings.map((b) => ({
         id: b.tag_id,
@@ -167,11 +197,13 @@ export class SessionToolHandler {
         };
       }
 
-      const state = playerState.state as ActorStatePayload;
-      const profile = state.profile || state;
+      const state = toActorStatePayload(playerState.state);
+      const profile = state.profile ?? state;
       const name = typeof profile.name === 'string' ? profile.name : playerState.actorId;
       const description =
-        typeof profile.description === 'string' ? profile.description : undefined;
+        typeof (profile as Record<string, unknown>).description === 'string'
+          ? (profile as Record<string, unknown>).description
+          : undefined;
 
       return {
         success: true,
@@ -195,9 +227,7 @@ export class SessionToolHandler {
   /**
    * Query NPCs in session.
    */
-  private async executeQueryNpcList(
-    args: QueryNpcListArgs
-  ): Promise<QueryNpcListResult | ToolResult> {
+  private async executeQueryNpcList(): Promise<QueryNpcListResult | ToolResult> {
     try {
       // Query actorStates for this session
       const instances = await drizzle
@@ -209,13 +239,13 @@ export class SessionToolHandler {
         .orderBy(desc(actorStates.createdAt));
 
       const npcs = instances.map((instance) => {
-        const state = instance.state as ActorStatePayload;
-        const name = state.name || instance.actorId;
+        const state = toActorStatePayload(instance.state);
+        const name = state.name ?? instance.actorId;
 
         return {
           id: instance.actorId,
           name,
-          template_id: instance.entityProfileId || instance.actorId,
+          template_id: instance.entityProfileId ?? instance.actorId,
           is_active: state.status === 'active',
         };
       });
@@ -254,10 +284,11 @@ export class SessionToolHandler {
 
       // Map speaker field to role (player -> user, npc/narrator -> assistant)
       const messages = rows.reverse().map((row) => {
-        const payload = row.payload as { content?: string };
+        const payload = (row.payload ?? {}) as { content?: string };
+        const content = typeof payload.content === 'string' ? payload.content : '';
         return {
           role: row.actorId === 'player' ? 'user' : 'assistant',
-          content: payload.content || '',
+          content,
           timestamp: row.timestamp.toISOString(),
         };
       });
@@ -276,7 +307,7 @@ export class SessionToolHandler {
         .limit(1);
 
       if (actorState) {
-        const state = actorState.state as ActorStatePayload;
+        const state = toActorStatePayload(actorState.state);
         npcName = state.name;
       }
 

@@ -23,6 +23,14 @@ interface SpokePayload {
   entityProfileId?: string;
 }
 
+interface SpokeEventRecord {
+  type: 'SPOKE';
+  actorId: string;
+  createdAt: Date | string | number;
+  sequence: bigint | number | string;
+  payload: SpokePayload | Record<string, unknown> | null | undefined;
+}
+
 export async function handleListMessages(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
   const id = c.req.param('id');
@@ -31,29 +39,36 @@ export async function handleListMessages(c: Context): Promise<Response> {
   if (!session) return notFound(c, 'session not found');
 
   const allEvents = await getEventsForSession(toSessionId(id));
-  const spokeEvents = allEvents.filter((e) => e.type === 'SPOKE');
+  const spokeEvents: SpokeEventRecord[] = allEvents.filter((e): e is SpokeEventRecord => {
+    if (!e || typeof e !== 'object') return false;
+    const candidate = e as { type?: unknown; actorId?: unknown };
+    return candidate.type === 'SPOKE' && typeof candidate.actorId === 'string';
+  });
 
   const messages = await Promise.all(
-    spokeEvents.map(async (e) => {
-      const payload = e.payload as SpokePayload;
+    spokeEvents.map(async (event) => {
+      const payload = (event.payload ?? {}) as SpokePayload;
+      const rawCreatedAt = event.createdAt;
+      const createdAt = rawCreatedAt instanceof Date ? rawCreatedAt : new Date(rawCreatedAt);
+      const sequence = typeof event.sequence === 'bigint' ? event.sequence : BigInt(event.sequence ?? 0);
       let speaker;
-      if (e.actorId && e.actorId !== 'player') {
+      if (event.actorId && event.actorId !== 'player') {
         // Try to find actor profile
-        const profileId = payload.entityProfileId ?? e.actorId;
+        const profileId = payload.entityProfileId ?? event.actorId;
         const profile = profileId ? await getEntityProfile(toId(profileId)) : null;
         if (profile) {
           speaker = {
-            id: e.actorId,
+            id: event.actorId,
             name: profile.name,
           };
         }
       }
 
       return {
-        role: e.actorId === 'player' ? 'user' : 'assistant',
+        role: event.actorId === 'player' ? 'user' : 'assistant',
         content: payload.content ?? '',
-        createdAt: e.createdAt.toISOString(),
-        idx: Number(e.sequence),
+        createdAt: createdAt.toISOString(),
+        idx: Number(sequence),
         speaker,
       };
     })

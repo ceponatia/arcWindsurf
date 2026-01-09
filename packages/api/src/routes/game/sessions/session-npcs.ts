@@ -8,7 +8,7 @@ import { getSession, listActorStatesForSession, upsertActorState } from '@minima
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import { notFound, badRequest, serverError, conflict } from '../../../utils/responses.js';
 import { generateId } from '@minimal-rpg/utils';
-import { findCharacter, isCreateNpcInstanceRequest, tryParseName } from './shared.js';
+import { findCharacter, isCreateNpcInstanceRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../../utils/uuid.js';
 
@@ -31,10 +31,10 @@ export async function handleListNpcs(c: Context): Promise<Response> {
     .filter((ci) => ci.actorType === 'npc')
     .map((ci) => ({
       id: ci.actorId,
-      role: (ci.state as NpcActorState).role || 'npc',
-      label: (ci.state as NpcActorState).label || null,
+      role: (ci.state as NpcActorState).role ?? 'npc',
+      label: (ci.state as NpcActorState).label ?? null,
       templateId: ci.entityProfileId,
-      name: (ci.state as NpcActorState).name || 'Unknown',
+      name: (ci.state as NpcActorState).name ?? 'Unknown',
       createdAt: ci.createdAt ?? undefined,
     }));
 

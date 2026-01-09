@@ -52,3 +52,6 @@ data/*
 
 #Ignore insiders AI rules
 .github/instructions/codacy.instructions.md
+
+# Completed plans
+.dev-docs/plan/
