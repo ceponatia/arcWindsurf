@@ -1,5 +1,4 @@
 export * from './BigFiveSliders.js';
-export * from './common.js';
 export * from './EmotionalBaselineForm.js';
 export * from './FearsList.js';
 export * from './SocialPatternsForm.js';

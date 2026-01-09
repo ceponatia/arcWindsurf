@@ -23,13 +23,8 @@ interface SpokePayload {
   entityProfileId?: string;
 }
 
-interface SpokeEventRecord {
-  type: 'SPOKE';
-  actorId: string;
-  createdAt: Date | string | number;
-  sequence: bigint | number | string;
-  payload: SpokePayload | Record<string, unknown> | null | undefined;
-}
+type DbEvent = Awaited<ReturnType<typeof getEventsForSession>>[number];
+type SpokeEventRecord = DbEvent & { actorId: string; type: 'SPOKE' };
 
 export async function handleListMessages(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
@@ -39,17 +34,15 @@ export async function handleListMessages(c: Context): Promise<Response> {
   if (!session) return notFound(c, 'session not found');
 
   const allEvents = await getEventsForSession(toSessionId(id));
-  const spokeEvents: SpokeEventRecord[] = allEvents.filter((e): e is SpokeEventRecord => {
-    if (!e || typeof e !== 'object') return false;
-    const candidate = e as { type?: unknown; actorId?: unknown };
-    return candidate.type === 'SPOKE' && typeof candidate.actorId === 'string';
-  });
+  const spokeEvents: SpokeEventRecord[] = allEvents.filter(
+    (event): event is SpokeEventRecord => event.type === 'SPOKE' && typeof event.actorId === 'string'
+  );
 
   const messages = await Promise.all(
     spokeEvents.map(async (event) => {
       const payload = (event.payload ?? {}) as SpokePayload;
-      const rawCreatedAt = event.createdAt;
-      const createdAt = rawCreatedAt instanceof Date ? rawCreatedAt : new Date(rawCreatedAt);
+      const rawTimestamp = (event as DbEvent).timestamp;
+      const createdAt = rawTimestamp instanceof Date ? rawTimestamp : new Date(rawTimestamp ?? Date.now());
       const sequence = typeof event.sequence === 'bigint' ? event.sequence : BigInt(event.sequence ?? 0);
       let speaker;
       if (event.actorId && event.actorId !== 'player') {

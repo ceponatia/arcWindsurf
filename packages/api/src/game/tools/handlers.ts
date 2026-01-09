@@ -32,42 +32,28 @@ interface ActorStateRow {
   createdAt?: Date;
 }
 
-interface SessionTagBinding {
-  tag_id: string;
-  tag: {
-    name: string;
-    prompt_text: string | null;
-    category: string | null;
-  };
-}
-
-interface EventRow {
-  actorId: string;
-  payload?: unknown;
-  timestamp: Date;
-}
-
 interface ActorStatePayload {
   profile?: Record<string, unknown>;
   name?: string;
   status?: 'active' | 'inactive';
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object';
+}
+
 function toActorStatePayload(value: unknown): ActorStatePayload {
-  if (!value || typeof value !== 'object') {
+  if (!isRecord(value)) {
     return {};
   }
 
-  const candidate = value as Record<string, unknown>;
-  const name = typeof candidate.name === 'string' ? candidate.name : undefined;
-  const status =
-    candidate.status === 'active' || candidate.status === 'inactive'
-      ? candidate.status
-      : undefined;
-  const profile =
-    candidate.profile && typeof candidate.profile === 'object'
-      ? (candidate.profile as Record<string, unknown>)
-      : undefined;
+  const nameValue = value['name'];
+  const statusValue = value['status'];
+  const profileValue = value['profile'];
+
+  const name = typeof nameValue === 'string' ? nameValue : undefined;
+  const status = statusValue === 'active' || statusValue === 'inactive' ? statusValue : undefined;
+  const profile = isRecord(profileValue) ? profileValue : undefined;
 
   return {
     ...(profile ? { profile } : {}),
@@ -158,15 +144,14 @@ export class SessionToolHandler {
     args: GetSessionTagsArgs
   ): Promise<GetSessionTagsResult | ToolResult> {
     try {
-      const bindings =
-        (await getSessionTagsWithDefinitions(this.ownerEmail, this.sessionId, {
-          enabledOnly: true,
-        })) as SessionTagBinding[];
+      const bindings = await getSessionTagsWithDefinitions(this.ownerEmail, this.sessionId, {
+        enabledOnly: true,
+      });
 
       let tags = bindings.map((b) => ({
-        id: b.tag_id,
+        id: b.tagId,
         name: b.tag.name,
-        promptText: b.tag.prompt_text ?? '',
+        promptText: b.tag.promptText ?? '',
         category: b.tag.category ?? undefined,
       }));
 
@@ -203,7 +188,7 @@ export class SessionToolHandler {
         )
         .limit(1);
 
-      const playerState = playerRows[0] as ActorStateRow | undefined;
+      const playerState = playerRows[0];
 
       if (!playerState) {
         return {
@@ -214,12 +199,13 @@ export class SessionToolHandler {
       }
 
       const state = toActorStatePayload(playerState.state);
-      const profile = state.profile ?? state;
-      const name = typeof profile.name === 'string' ? profile.name : playerState.actorId;
+      const profileSource = state.profile ?? state;
+      const profileRecord = isRecord(profileSource) ? profileSource : {};
+      const nameValue = profileRecord['name'];
+      const name = typeof nameValue === 'string' ? nameValue : playerState.actorId;
       const description =
-        typeof (profile as Record<string, unknown>).description === 'string'
-          ? (profile as Record<string, unknown>).description
-          : undefined;
+        typeof profileRecord['description'] === 'string' ? profileRecord['description'] : undefined;
+      const attributes = isRecord(profileSource) ? profileSource : {};
 
       return {
         success: true,
@@ -227,7 +213,7 @@ export class SessionToolHandler {
           id: playerState.actorId,
           name,
           description,
-          attributes: profile,
+          attributes,
         },
         has_persona: true,
       };
@@ -291,17 +277,17 @@ export class SessionToolHandler {
 
       // Query SPOKE events for this session related to the NPC
       // Note: We might want events where actorId is NPC OR where targetActorId is NPC
-      const rows = (await drizzle
+      const rows = await drizzle
         .select()
         .from(events)
         .where(and(eq(events.sessionId, toSessionId(this.sessionId)), eq(events.type, 'SPOKE')))
         .orderBy(desc(events.sequence))
-        .limit(limit)) as EventRow[];
+        .limit(limit);
 
       // Map speaker field to role (player -> user, npc/narrator -> assistant)
       const messages = rows.reverse().map((row) => {
-        const payload = (row.payload ?? {}) as { content?: string };
-        const content = typeof payload.content === 'string' ? payload.content : '';
+        const payload = isRecord(row.payload) ? row.payload : {};
+        const content = typeof payload['content'] === 'string' ? payload['content'] : '';
         return {
           role: row.actorId === 'player' ? 'user' : 'assistant',
           content,
@@ -322,7 +308,7 @@ export class SessionToolHandler {
         )
         .limit(1);
 
-      const actorState = actorRows[0] as ActorStateRow | undefined;
+      const actorState = actorRows[0];
 
       if (actorState) {
         const state = toActorStatePayload(actorState.state);

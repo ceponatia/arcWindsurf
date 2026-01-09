@@ -27,7 +27,7 @@ services:
 
   api:
     build:
-      context: .
+      context: ../..
       dockerfile: config/docker/Dockerfile.dev
     command: pnpm -F @minimal-rpg/api dev
     environment:
@@ -49,7 +49,7 @@ services:
 
   web:
     build:
-      context: .
+      context: ../..
       dockerfile: config/docker/Dockerfile.dev
     command: pnpm -F @minimal-rpg/web dev
     environment:

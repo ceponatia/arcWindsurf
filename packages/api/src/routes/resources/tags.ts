@@ -157,6 +157,9 @@ export function registerTagRoutes(app: Hono): void {
       }
 
       const tag = await createPromptTag(tagInput);
+      if (!tag) {
+        return c.json({ ok: false, error: 'Failed to create tag' } satisfies ApiError, 500);
+      }
       return c.json(toTagResponse(tag), 201);
     } catch (err) {
       console.error('[API] Failed to create tag:', err);
@@ -265,11 +268,14 @@ export function registerTagRoutes(app: Hono): void {
         sessionId: toSessionId(sessionId),
         tagId: toId(result.data.tagId),
         ...(result.data.targetType ? { targetType: result.data.targetType } : {}),
-        ...(result.data.targetEntityId !== undefined
-          ? { targetEntityId: toId(result.data.targetEntityId) }
-          : {}),
+        ...(result.data.targetEntityId ? { targetEntityId: toId(result.data.targetEntityId) } : {}),
         ...(result.data.enabled !== undefined ? { enabled: result.data.enabled } : {}),
       });
+
+      if (!binding) {
+        return c.json({ ok: false, error: 'Failed to bind tag to session' } satisfies ApiError, 500);
+      }
+
       return c.json(toBindingResponse(binding), 201);
     } catch (err) {
       console.error('[API] Failed to create session tag binding:', err);

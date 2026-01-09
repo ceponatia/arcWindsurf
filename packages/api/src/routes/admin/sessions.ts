@@ -1,8 +1,12 @@
 import type { Hono } from 'hono';
-import { getSessionHistoryAdmin } from '@minimal-rpg/db/node';
+import { getEventsForSession } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
 import { requireAdmin } from '../../auth/middleware.js';
 import { toSessionId } from '../../utils/uuid.js';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object';
+}
 
 interface ToolingFailureEventDto {
   type: 'tooling-failure';
@@ -16,15 +20,6 @@ interface ToolingFailureEntryDto {
   createdAt: string;
   playerInput: string;
   events: ToolingFailureEventDto[];
-}
-
-interface HistoryItem {
-  turnIdx: number;
-  createdAt: string;
-  playerInput: string;
-  debug?: {
-    events?: unknown[];
-  };
 }
 
 export function registerAdminSessionRoutes(app: Hono) {
@@ -42,44 +37,20 @@ export function registerAdminSessionRoutes(app: Hono) {
     }
 
     try {
-      const rawHistory: unknown = await (
-        getSessionHistoryAdmin as (sessionKey: string, options: { limit?: number }) => Promise<unknown>
-      )(toSessionId(sessionId), { limit });
+      const rawEvents = await getEventsForSession(toSessionId(sessionId));
+      const eventsSlice = rawEvents.slice(-limit);
 
-      if (!Array.isArray(rawHistory)) {
-        return c.json(
-          { ok: false, error: 'unexpected history format' } satisfies ApiError,
-          500
-        );
-      }
+      const failures: ToolingFailureEntryDto[] = eventsSlice
+        .map((event) => {
+          const payload = isRecord(event.payload) ? event.payload : {};
+          const payloadEvents = Array.isArray(payload['events'])
+            ? payload['events'].filter((e): e is Record<string, unknown> => Boolean(e && typeof e === 'object'))
+            : [];
 
-      const isHistoryItem = (value: unknown): value is HistoryItem => {
-        return Boolean(
-          value &&
-          typeof value === 'object' &&
-          'turnIdx' in value &&
-          'createdAt' in value &&
-          'playerInput' in value
-        );
-      };
-
-      const history: HistoryItem[] = [];
-      for (const entry of rawHistory) {
-        if (isHistoryItem(entry)) {
-          history.push(entry);
-        }
-      }
-
-      const failures: ToolingFailureEntryDto[] = history
-        .map((h: HistoryItem) => {
-          const debug = h.debug;
-          const events = Array.isArray(debug?.events) ? debug.events : [];
-
-          const toolingFailures: ToolingFailureEventDto[] = events
-            .filter((e): e is Record<string, unknown> => Boolean(e && typeof e === 'object'))
+          const toolingFailures: ToolingFailureEventDto[] = payloadEvents
             .filter((e) => e['type'] === 'tooling-failure')
             .map((e) => ({
-              type: 'tooling-failure',
+              type: 'tooling-failure' as const,
               timestamp: typeof e['timestamp'] === 'string' ? e['timestamp'] : null,
               payload:
                 e['payload'] && typeof e['payload'] === 'object'
@@ -88,14 +59,22 @@ export function registerAdminSessionRoutes(app: Hono) {
               ...(typeof e['source'] === 'string' ? { source: e['source'] } : {}),
             }));
 
+          if (toolingFailures.length === 0) {
+            return null;
+          }
+
+          const playerInputValue = payload['playerInput'];
+          const playerInput = typeof playerInputValue === 'string' ? playerInputValue : '';
+          const createdAt = event.timestamp?.toISOString?.() ?? new Date().toISOString();
+
           return {
-            turnIdx: h.turnIdx,
-            createdAt: h.createdAt,
-            playerInput: h.playerInput,
+            turnIdx: Number(event.sequence),
+            createdAt,
+            playerInput,
             events: toolingFailures,
-          };
+          } satisfies ToolingFailureEntryDto;
         })
-        .filter((h) => h.events.length > 0);
+        .filter((entry): entry is ToolingFailureEntryDto => Boolean(entry));
 
       return c.json(
         {

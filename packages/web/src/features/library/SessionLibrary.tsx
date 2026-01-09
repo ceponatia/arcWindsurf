@@ -97,14 +97,20 @@ export const SessionLibrary: React.FC<SessionLibraryProps> = ({
                 <button onClick={() => onSelect(session.id)} className="flex-1 text-left">
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium text-slate-100">
-                      {session.characterName ?? session.characterTemplateId}
+                      {session.characterName ?? session.playerCharacterId ?? 'Unknown Hero'}
                     </h3>
                     <span className="text-slate-600">×</span>
                     <span className="text-slate-300">
-                      {session.settingName ?? session.settingTemplateId}
+                      {session.settingName ?? session.settingId ?? 'Unknown World'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">{formatDate(session.createdAt)}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {formatDate(
+                      typeof session.createdAt === 'string'
+                        ? session.createdAt
+                        : session.createdAt.toISOString()
+                    )}
+                  </p>
                   {session.id === activeSessionId && (
                     <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded bg-violet-600/20 text-violet-300">
                       Active

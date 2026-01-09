@@ -151,7 +151,7 @@ export function registerPersonaRoutes(app: Hono): void {
       entityType: 'persona',
       name: profile.name,
       profileJson: profile,
-    })) as EntityProfileRow;
+    } as unknown as Parameters<typeof createEntityProfile>[0])) as EntityProfileRow;
 
     const summary = mapPersonaSummary(profile, created.createdAt, created.updatedAt);
     return c.json({ ok: true, persona: summary }, 201);

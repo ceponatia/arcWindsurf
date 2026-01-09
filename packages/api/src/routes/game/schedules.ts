@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { z } from 'zod';
-import { ScheduleTemplateSchema, NpcScheduleSchema } from '@minimal-rpg/schemas';
+import { ScheduleTemplateSchema, NpcScheduleSchema, type NpcSchedule } from '@minimal-rpg/schemas';
 import {
   drizzle as db,
   scheduleTemplates,
@@ -171,6 +171,10 @@ export function registerScheduleRoutes(app: Hono): void {
           scheduleJson: templateData,
         })
         .returning();
+
+      if (!template) {
+        return c.json({ ok: false, error: 'Failed to create template' } satisfies ApiError, 500);
+      }
 
       return c.json(
         {
@@ -415,21 +419,24 @@ export function registerScheduleRoutes(app: Hono): void {
       }
 
       const npcState = asNpcState(actorState.state);
+      const validatedSchedule = scheduleValidation.data;
+      const schedulePayload: NpcActorState['schedule'] = {
+        scheduleData: validatedSchedule,
+        ...(templateId ? { templateId } : {}),
+        ...(placeholderMappings ? { placeholderMappings } : {}),
+      };
+
       const newState: NpcActorState = {
         ...npcState,
-        schedule: {
-          templateId,
-          scheduleData,
-          placeholderMappings,
-        },
+        ...(schedulePayload ? { schedule: schedulePayload } : {}),
       };
 
       await upsertActorState({
         sessionId: toSessionId(sessionId),
         actorType: actorState.actorType,
         actorId: npcId,
-        entityProfileId: actorState.entityProfileId ?? undefined,
-        state: newState,
+        entityProfileId: actorState.entityProfileId ?? null,
+        state: newState as unknown as Record<string, unknown>,
         lastEventSeq: actorState.lastEventSeq,
       });
 
@@ -438,9 +445,9 @@ export function registerScheduleRoutes(app: Hono): void {
           ok: true,
           schedule: {
             npcId,
-            templateId,
-            scheduleData,
-            placeholderMappings,
+            ...(templateId ? { templateId } : {}),
+            scheduleData: validatedSchedule,
+            ...(placeholderMappings ? { placeholderMappings } : {}),
           },
         },
         201
@@ -486,6 +493,7 @@ export function registerScheduleRoutes(app: Hono): void {
       const { templateId, scheduleData, placeholderMappings } = parsed.data;
 
       // Validate schedule data if provided
+      let validatedSchedule: NpcSchedule | undefined;
       if (scheduleData !== undefined) {
         const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
         if (!scheduleValidation.success) {
@@ -498,27 +506,30 @@ export function registerScheduleRoutes(app: Hono): void {
             400
           );
         }
+        validatedSchedule = scheduleValidation.data;
       }
 
       const existingSchedule = asNpcState(actorState.state).schedule ?? {};
 
       const npcState = asNpcState(actorState.state);
+      const schedulePayload: NpcActorState['schedule'] = {
+        ...existingSchedule,
+        ...(templateId ? { templateId } : {}),
+        ...(validatedSchedule ? { scheduleData: validatedSchedule } : {}),
+        ...(placeholderMappings !== undefined ? { placeholderMappings } : {}),
+      };
+
       const newState: NpcActorState = {
         ...npcState,
-        schedule: {
-          ...existingSchedule,
-          ...(templateId !== undefined ? { templateId } : {}),
-          ...(scheduleData !== undefined ? { scheduleData } : {}),
-          ...(placeholderMappings !== undefined ? { placeholderMappings } : {}),
-        },
+        ...(schedulePayload ? { schedule: schedulePayload } : {}),
       };
 
       await upsertActorState({
         sessionId: toSessionId(sessionId),
         actorType: actorState.actorType,
         actorId: npcId,
-        entityProfileId: actorState.entityProfileId ?? undefined,
-        state: newState,
+        entityProfileId: actorState.entityProfileId ?? null,
+        state: newState as unknown as Record<string, unknown>,
         lastEventSeq: actorState.lastEventSeq,
       });
 
@@ -553,8 +564,8 @@ export function registerScheduleRoutes(app: Hono): void {
         sessionId: toSessionId(sessionId),
         actorType: actorState.actorType,
         actorId: npcId,
-        entityProfileId: actorState.entityProfileId ?? undefined,
-        state: remainingState,
+        entityProfileId: actorState.entityProfileId ?? null,
+        state: remainingState as unknown as Record<string, unknown>,
         lastEventSeq: actorState.lastEventSeq,
       });
 

@@ -96,13 +96,15 @@ export function registerItemRoutes(app: Hono): void {
     }
 
     await createEntityProfile({
+      // Explicitly set id even though CreateEntityProfileInput does not declare it
+      // to preserve stable identifiers for item definitions
       id: toId(definition.id),
       entityType: 'item',
       name: definition.name,
       ownerEmail,
       visibility: 'public',
       profileJson: definition,
-    });
+    } as unknown as Parameters<typeof createEntityProfile>[0]);
     const summary: ItemSummary = mapItemSummary(definition);
     return c.json({ ok: true, item: summary }, 201);
   });
@@ -161,11 +163,7 @@ export function registerItemRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
     }
 
-    const deleted = await deleteEntityProfile(toId(id));
-
-    if (!deleted) {
-      return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
-    }
+    await deleteEntityProfile(toId(id));
 
     return c.body(null, 204);
   });

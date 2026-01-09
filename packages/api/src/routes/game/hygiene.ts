@@ -139,7 +139,7 @@ async function saveNpcHygieneState(
     sessionId: toSessionId(sessionId),
     actorType: actorState.actorType,
     actorId: npcId,
-    entityProfileId: actorState.entityProfileId ? toId(actorState.entityProfileId) : undefined,
+    entityProfileId: actorState.entityProfileId ? toId(actorState.entityProfileId) : null,
     state: newState,
     lastEventSeq: actorState.lastEventSeq,
   });

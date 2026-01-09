@@ -27,9 +27,7 @@ export const IdentityPanel: React.FC = () => {
           className="w-full px-4 py-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800 transition-colors"
         >
           <span className="font-medium text-slate-200">Core Identity</span>
-          <span className="text-xs text-slate-500">
-            {expanded.has('core') ? '▼' : '▶'}
-          </span>
+          <span className="text-xs text-slate-500">{expanded.has('core') ? '▼' : '▶'}</span>
         </button>
 
         {expanded.has('core') && (
@@ -60,7 +58,7 @@ export const IdentityPanel: React.FC = () => {
               <label className="block">
                 <span className="text-xs text-slate-400">Gender</span>
                 <select
-                  value={(profile as Record<string, unknown>).gender as string ?? ''}
+                  value={((profile as Record<string, unknown>)['gender'] as string) ?? ''}
                   onChange={(e) => updateProfile('gender' as keyof typeof profile, e.target.value)}
                   className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500"
                 >
