@@ -29,6 +29,8 @@ services:
     build:
       context: ../..
       dockerfile: config/docker/Dockerfile.dev
+    env_file:
+      - ../../.env
     command: pnpm -F @minimal-rpg/api dev
     environment:
       - DB_TARGET=local
@@ -37,7 +39,7 @@ services:
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
       - REDIS_URL=redis://redis:6379
     volumes:
-      - .:/app
+      - ../..:/app
       - /app/node_modules
     ports:
       - '${API_PORT:-3001}:3001'
@@ -51,11 +53,13 @@ services:
     build:
       context: ../..
       dockerfile: config/docker/Dockerfile.dev
+    env_file:
+      - ../../.env
     command: pnpm -F @minimal-rpg/web dev
     environment:
       - VITE_API_BASE_URL=http://localhost:${API_PORT:-3001}
     volumes:
-      - .:/app
+      - ../..:/app
       - /app/node_modules
     ports:
       - '${WEB_PORT:-5173}:5173'
