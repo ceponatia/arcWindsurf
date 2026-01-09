@@ -8,8 +8,6 @@ import {
   LocationNodeSchema,
   LocationConnectionSchema,
   type LocationMap,
-  type LocationNode,
-  type LocationConnection,
   type LocationPrefab,
 } from '@minimal-rpg/schemas';
 import {
@@ -24,6 +22,8 @@ import {
 } from '../../db/sessionsClient.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import type { ApiError } from '../../types.js';
+import type { LocationMapRow, LocationPrefabRow } from '../../types/index.js';
+import { toId } from '../../utils/uuid.js';
 
 // ============================================================================
 // Types
@@ -80,9 +80,9 @@ const CreatePrefabSchema = z.object({
 // Helpers
 // ============================================================================
 
-function mapRowToSummary(row: any): LocationMapSummary {
-  const nodes = Array.isArray(row.nodesJson) ? row.nodesJson : [];
-  const connections = Array.isArray(row.connectionsJson) ? row.connectionsJson : [];
+function mapRowToSummary(row: LocationMapRow): LocationMapSummary {
+  const nodes = row.nodesJson ?? [];
+  const connections = row.connectionsJson ?? [];
   const result: LocationMapSummary = {
     id: row.id,
     name: row.name,
@@ -98,11 +98,9 @@ function mapRowToSummary(row: any): LocationMapSummary {
   return result;
 }
 
-function mapRowToLocationMap(row: any): LocationMap {
-  const nodes = Array.isArray(row.nodesJson) ? (row.nodesJson as LocationNode[]) : [];
-  const connections = Array.isArray(row.connectionsJson)
-    ? (row.connectionsJson as LocationConnection[])
-    : [];
+function mapRowToLocationMap(row: LocationMapRow): LocationMap {
+  const nodes = row.nodesJson ?? [];
+  const connections = row.connectionsJson ?? [];
   const result: LocationMap = {
     id: row.id,
     name: row.name,
@@ -119,11 +117,9 @@ function mapRowToLocationMap(row: any): LocationMap {
   return result;
 }
 
-function mapRowToPrefab(row: any): LocationPrefab {
-  const nodes = Array.isArray(row.nodesJson) ? (row.nodesJson as LocationNode[]) : [];
-  const connections = Array.isArray(row.connectionsJson)
-    ? (row.connectionsJson as LocationConnection[])
-    : [];
+function mapRowToPrefab(row: LocationPrefabRow): LocationPrefab {
+  const nodes = row.nodesJson ?? [];
+  const connections = row.connectionsJson ?? [];
   const result: LocationPrefab = {
     id: row.id,
     name: row.name,
@@ -163,7 +159,7 @@ export function registerLocationMapRoutes(app: Hono): void {
   app.get('/location-maps/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const map = await getLocationMap(id);
+      const map = await getLocationMap(toId(id));
       if (!map) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -211,7 +207,6 @@ export function registerLocationMapRoutes(app: Hono): void {
   // PUT /location-maps/:id - update map
   app.put('/location-maps/:id', async (c) => {
     const id = c.req.param('id');
-    const ownerEmail = getOwnerEmail(c);
 
     let body: unknown;
     try {
@@ -267,7 +262,7 @@ export function registerLocationMapRoutes(app: Hono): void {
     const ownerEmail = getOwnerEmail(c);
 
     try {
-      const source = await getLocationMap(id);
+      const source = await getLocationMap(toId(id));
       if (!source) {
         return c.json({ ok: false, error: 'source map not found' } satisfies ApiError, 404);
       }
@@ -277,8 +272,8 @@ export function registerLocationMapRoutes(app: Hono): void {
         name: `${source.name} (Copy)`,
         settingId: source.settingId,
         description: source.description ?? undefined,
-        nodesJson: (source.nodesJson as any[]) ?? [],
-        connectionsJson: (source.connectionsJson as any[]) ?? [],
+        nodesJson: source.nodesJson ?? [],
+        connectionsJson: source.connectionsJson ?? [],
         defaultStartLocationId: source.defaultStartLocationId,
         tags: source.tags ?? [],
       });
@@ -310,7 +305,7 @@ export function registerLocationMapRoutes(app: Hono): void {
   app.get('/location-prefabs/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const prefab = await getLocationPrefab(id as any);
+      const prefab = await getLocationPrefab(toId(id));
       if (!prefab) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -355,4 +350,3 @@ export function registerLocationMapRoutes(app: Hono): void {
     }
   });
 }
-// Prefabs CRUD

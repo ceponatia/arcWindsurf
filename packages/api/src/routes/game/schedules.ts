@@ -11,7 +11,8 @@ import {
   upsertActorState,
 } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
-import { getOwnerEmail } from '../../auth/ownerEmail.js';
+import { toSessionId, toId } from '../../utils/uuid.js';
+import { asNpcState, type NpcActorState } from '../../types/index.js';
 
 // =============================================================================
 // Request/Response Schemas
@@ -95,7 +96,7 @@ export function registerScheduleRoutes(app: Hono): void {
       const [template] = await db
         .select()
         .from(scheduleTemplates)
-        .where(eq(scheduleTemplates.id, id as any))
+        .where(eq(scheduleTemplates.id, toId(id)))
         .limit(1);
 
       if (!template) {
@@ -166,8 +167,8 @@ export function registerScheduleRoutes(app: Hono): void {
         .insert(scheduleTemplates)
         .values({
           name,
-          description: description || null,
-          scheduleJson: templateData as any,
+          description: description ?? null,
+          scheduleJson: templateData,
         })
         .returning();
 
@@ -241,12 +242,12 @@ export function registerScheduleRoutes(app: Hono): void {
       const [template] = await db
         .update(scheduleTemplates)
         .set({
-          name: name || undefined,
-          description: description || undefined,
-          scheduleJson: (templateData as any) || undefined,
+          name: name ?? undefined,
+          description: description ?? undefined,
+          scheduleJson: templateData ?? undefined,
           updatedAt: new Date(),
         })
-        .where(eq(scheduleTemplates.id, id as any))
+        .where(eq(scheduleTemplates.id, toId(id)))
         .returning();
 
       if (!template) {
@@ -281,7 +282,7 @@ export function registerScheduleRoutes(app: Hono): void {
     const { id } = c.req.param();
 
     try {
-      await db.delete(scheduleTemplates).where(eq(scheduleTemplates.id, id as any));
+      await db.delete(scheduleTemplates).where(eq(scheduleTemplates.id, toId(id)));
       return c.json({ ok: true });
     } catch (error) {
       console.error('Error deleting schedule template:', error);
@@ -307,17 +308,22 @@ export function registerScheduleRoutes(app: Hono): void {
       const npcStates = await db
         .select()
         .from(actorStates)
-        .where(and(eq(actorStates.sessionId, sessionId as any), eq(actorStates.actorType, 'npc')));
+        .where(
+          and(eq(actorStates.sessionId, toSessionId(sessionId)), eq(actorStates.actorType, 'npc'))
+        );
 
       const schedules = npcStates
-        .filter((s) => (s.state as any).schedule)
+        .filter((s) => {
+          const state = asNpcState(s.state);
+          return state.schedule !== undefined;
+        })
         .map((s) => {
-          const state = s.state as any;
+          const state = asNpcState(s.state);
           return {
             npcId: s.actorId,
-            scheduleData: state.schedule.scheduleData,
-            templateId: state.schedule.templateId,
-            placeholderMappings: state.schedule.placeholderMappings,
+            scheduleData: state.schedule?.scheduleData,
+            templateId: state.schedule?.templateId,
+            placeholderMappings: state.schedule?.placeholderMappings,
           };
         });
 
@@ -339,13 +345,14 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId, npcId } = c.req.param();
 
     try {
-      const actorState = await getActorState(sessionId as any, npcId);
+      const actorState = await getActorState(toSessionId(sessionId), npcId);
 
-      if (!actorState || !(actorState.state as any).schedule) {
+      const state = actorState ? asNpcState(actorState.state) : null;
+      if (!state?.schedule) {
         return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
-      const schedule = (actorState.state as any).schedule;
+      const schedule = state.schedule;
 
       return c.json({
         ok: true,
@@ -402,13 +409,14 @@ export function registerScheduleRoutes(app: Hono): void {
         );
       }
 
-      const actorState = await getActorState(sessionId as any, npcId);
+      const actorState = await getActorState(toSessionId(sessionId), npcId);
       if (!actorState) {
         return c.json({ ok: false, error: 'NPC not found in session' }, 404);
       }
 
-      const newState = {
-        ...(actorState.state as object),
+      const npcState = asNpcState(actorState.state);
+      const newState: NpcActorState = {
+        ...npcState,
         schedule: {
           templateId,
           scheduleData,
@@ -417,10 +425,10 @@ export function registerScheduleRoutes(app: Hono): void {
       };
 
       await upsertActorState({
-        sessionId: sessionId as any,
+        sessionId: toSessionId(sessionId),
         actorType: actorState.actorType,
         actorId: npcId,
-        entityProfileId: actorState.entityProfileId as any,
+        entityProfileId: actorState.entityProfileId ?? undefined,
         state: newState,
         lastEventSeq: actorState.lastEventSeq,
       });
@@ -451,7 +459,7 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId, npcId } = c.req.param();
 
     try {
-      const actorState = await getActorState(sessionId as any, npcId);
+      const actorState = await getActorState(toSessionId(sessionId), npcId);
       if (!actorState) {
         return c.json({ ok: false, error: 'not found' }, 404);
       }
@@ -492,10 +500,11 @@ export function registerScheduleRoutes(app: Hono): void {
         }
       }
 
-      const existingSchedule = (actorState.state as any).schedule || {};
+      const existingSchedule = asNpcState(actorState.state).schedule ?? {};
 
-      const newState = {
-        ...(actorState.state as object),
+      const npcState = asNpcState(actorState.state);
+      const newState: NpcActorState = {
+        ...npcState,
         schedule: {
           ...existingSchedule,
           ...(templateId !== undefined ? { templateId } : {}),
@@ -505,10 +514,10 @@ export function registerScheduleRoutes(app: Hono): void {
       };
 
       await upsertActorState({
-        sessionId: sessionId as any,
+        sessionId: toSessionId(sessionId),
         actorType: actorState.actorType,
         actorId: npcId,
-        entityProfileId: actorState.entityProfileId as any,
+        entityProfileId: actorState.entityProfileId ?? undefined,
         state: newState,
         lastEventSeq: actorState.lastEventSeq,
       });
@@ -531,18 +540,20 @@ export function registerScheduleRoutes(app: Hono): void {
     const { sessionId, npcId } = c.req.param();
 
     try {
-      const actorState = await getActorState(sessionId as any, npcId);
+      const actorState = await getActorState(toSessionId(sessionId), npcId);
       if (!actorState) {
         return c.json({ ok: false, error: 'NPC schedule not found' } satisfies ApiError, 404);
       }
 
-      const { schedule, ...remainingState } = actorState.state as any;
+      const npcState = asNpcState(actorState.state);
+      const { schedule: _schedule, ...remainingState } = npcState;
+      void _schedule;
 
       await upsertActorState({
-        sessionId: sessionId as any,
+        sessionId: toSessionId(sessionId),
         actorType: actorState.actorType,
         actorId: npcId,
-        entityProfileId: actorState.entityProfileId as any,
+        entityProfileId: actorState.entityProfileId ?? undefined,
         state: remainingState,
         lastEventSeq: actorState.lastEventSeq,
       });

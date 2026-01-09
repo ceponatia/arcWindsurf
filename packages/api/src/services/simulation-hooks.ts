@@ -20,6 +20,20 @@ import type { SimulationNpcInfo } from './simulation-service.js';
 import { runSimulationTick, runTimeSkipSimulation } from './simulation-service.js';
 import type { NpcScheduleData } from './schedule-service.js';
 import { listActorStatesForSession, bulkUpsertActorStates } from '@minimal-rpg/db/node';
+import type {
+  NpcTier,
+  GameTime,
+  DayPeriod,
+  TieredSimulationConfig,
+  NpcLocationState,
+  LocationOccupancy,
+  PresentNpc,
+  CrowdLevel,
+  TimeSkipSimulation,
+} from '@minimal-rpg/schemas';
+import { toSessionId } from '../utils/uuid.js';
+import type { NpcActorState } from '../types/actor-state.js';
+import { asNpcState } from '../types/actor-state.js';
 
 // =============================================================================
 // Helper Functions
@@ -36,13 +50,31 @@ export interface HookNpcInfo {
   distanceFromPlayer?: number | undefined;
 }
 
-/**
- * Simulation states extracted from actor states.
- */
-interface SimulationContext {
-  lastComputedAt?: any;
-  dayDecisions?: any;
-  currentState?: NpcLocationState;
+function toSimulationNpcInfo({
+  npcId,
+  tier,
+  scheduleData,
+  lastInteractionTurn,
+  distanceFromPlayer,
+}: HookNpcInfo): SimulationNpcInfo {
+  const npcIdValue: SimulationNpcInfo['npcId'] = npcId;
+  const normalizedTier = typeof tier === 'string' ? tier : 'minor';
+  const tierValue: SimulationNpcInfo['tier'] =
+    normalizedTier === 'major' ||
+      normalizedTier === 'minor' ||
+      normalizedTier === 'background' ||
+      normalizedTier === 'transient'
+      ? normalizedTier
+      : 'minor';
+  const scheduleValue: SimulationNpcInfo['scheduleData'] = scheduleData;
+
+  return {
+    npcId: npcIdValue,
+    tier: tierValue,
+    scheduleData: scheduleValue,
+    lastInteractionTurn,
+    distanceFromPlayer,
+  };
 }
 
 /**
@@ -175,19 +207,13 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
     currentTurn,
     npcs,
     config = DEFAULT_TIERED_SIMULATION_CONFIG,
-  } = input;
+  }: TurnHookInput = input;
 
   // Convert to simulation NPC info
-  const simulationNpcs: SimulationNpcInfo[] = npcs.map((npc) => ({
-    npcId: npc.npcId,
-    tier: npc.tier,
-    scheduleData: npc.scheduleData,
-    lastInteractionTurn: npc.lastInteractionTurn,
-    distanceFromPlayer: npc.distanceFromPlayer,
-  }));
+  const simulationNpcs = npcs.map(toSimulationNpcInfo);
 
   // Get current NPC states
-  const actorStates = await listActorStatesForSession(sessionId as any);
+  const actorStates = await listActorStatesForSession(toSessionId(sessionId));
   const npcStatesByActorId = new Map(
     actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
   );
@@ -197,10 +223,11 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
   for (const npcInfo of simulationNpcs) {
     const actorState = npcStatesByActorId.get(npcInfo.npcId);
     if (actorState) {
-      const stateObj = actorState.state as any;
-      const simData = stateObj.simulation || {};
+      const stateObj = asNpcState(actorState.state);
+      const simData: NonNullable<NpcActorState['simulation']> =
+        stateObj.simulation ?? {};
 
-      npcInfo.currentState = simData.currentState || stateObj.locationState;
+      npcInfo.currentState = simData.currentState ?? stateObj.locationState;
       if (npcInfo.currentState) {
         previousLocationStates.set(npcInfo.npcId, npcInfo.currentState);
       }
@@ -225,7 +252,7 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
 
   // Build updated location states
   const locationStates = new Map<string, NpcLocationState>();
-  const updates: any[] = [];
+  const updates: Parameters<typeof bulkUpsertActorStates>[0] = [];
 
   for (const simResult of result.results) {
     locationStates.set(simResult.npcId, simResult.newState);
@@ -233,18 +260,18 @@ export async function onTurnComplete(input: TurnHookInput): Promise<TurnHookResu
     if (simResult.stateChanged) {
       const actorState = npcStatesByActorId.get(simResult.npcId);
       if (actorState) {
-        const stateObj = actorState.state as any;
+        const stateObj = asNpcState(actorState.state);
         const newState = {
           ...stateObj,
           simulation: {
-            ...(stateObj.simulation || {}),
+            ...(stateObj.simulation ?? {}),
             currentState: simResult.newState,
             lastComputedAt: currentTime,
           },
         };
 
         updates.push({
-          sessionId: sessionId as any,
+          sessionId: toSessionId(sessionId),
           actorId: simResult.npcId,
           actorType: 'npc',
           entityProfileId: actorState.entityProfileId,
@@ -299,17 +326,13 @@ export async function onPeriodChange(
     playerLocationId,
     npcs,
     config = DEFAULT_TIERED_SIMULATION_CONFIG,
-  } = input;
+  }: PeriodChangeHookInput = input;
 
   // Convert to simulation NPC info
-  const simulationNpcs: SimulationNpcInfo[] = npcs.map((npc) => ({
-    npcId: npc.npcId,
-    tier: npc.tier,
-    scheduleData: npc.scheduleData,
-  }));
+  const simulationNpcs = npcs.map(toSimulationNpcInfo);
 
   // Get current NPC states
-  const actorStates = await listActorStatesForSession(sessionId as any);
+  const actorStates = await listActorStatesForSession(toSessionId(sessionId));
   const npcStatesByActorId = new Map(
     actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
   );
@@ -319,10 +342,11 @@ export async function onPeriodChange(
   for (const npcInfo of simulationNpcs) {
     const actorState = npcStatesByActorId.get(npcInfo.npcId);
     if (actorState) {
-      const stateObj = actorState.state as any;
-      const simData = stateObj.simulation || {};
+      const stateObj = asNpcState(actorState.state);
+      const simData: NonNullable<NpcActorState['simulation']> =
+        stateObj.simulation ?? {};
 
-      npcInfo.currentState = simData.currentState || stateObj.locationState;
+      npcInfo.currentState = simData.currentState ?? stateObj.locationState;
       if (npcInfo.currentState?.locationId === playerLocationId) {
         previousOccupancy.add(npcInfo.npcId);
       }
@@ -339,7 +363,7 @@ export async function onPeriodChange(
 
   // Build updated location states
   const locationStates = new Map<string, NpcLocationState>();
-  const updates: any[] = [];
+  const updates: Parameters<typeof bulkUpsertActorStates>[0] = [];
   const newOccupancy = new Set<string>();
 
   for (const simResult of result.results) {
@@ -352,18 +376,18 @@ export async function onPeriodChange(
     if (simResult.stateChanged) {
       const actorState = npcStatesByActorId.get(simResult.npcId);
       if (actorState) {
-        const stateObj = actorState.state as any;
+        const stateObj = asNpcState(actorState.state);
         const newState = {
           ...stateObj,
           simulation: {
-            ...(stateObj.simulation || {}),
+            ...(stateObj.simulation ?? {}),
             currentState: simResult.newState,
             lastComputedAt: currentTime,
           },
         };
 
         updates.push({
-          sessionId: sessionId as any,
+          sessionId: toSessionId(sessionId),
           actorId: simResult.npcId,
           actorType: 'npc',
           entityProfileId: actorState.entityProfileId,
@@ -407,17 +431,13 @@ export async function onLocationChange(
     newLocationId,
     npcs,
     config = DEFAULT_TIERED_SIMULATION_CONFIG,
-  } = input;
+  }: LocationChangeHookInput = input;
 
   // Convert to simulation NPC info
-  const simulationNpcs: SimulationNpcInfo[] = npcs.map((npc) => ({
-    npcId: npc.npcId,
-    tier: npc.tier,
-    scheduleData: npc.scheduleData,
-  }));
+  const simulationNpcs = npcs.map(toSimulationNpcInfo);
 
   // Get current NPC states
-  const actorStates = await listActorStatesForSession(sessionId as any);
+  const actorStates = await listActorStatesForSession(toSessionId(sessionId));
   const npcStatesByActorId = new Map(
     actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
   );
@@ -425,9 +445,10 @@ export async function onLocationChange(
   for (const npcInfo of simulationNpcs) {
     const actorState = npcStatesByActorId.get(npcInfo.npcId);
     if (actorState) {
-      const stateObj = actorState.state as any;
-      const simData = stateObj.simulation || {};
-      npcInfo.currentState = simData.currentState || stateObj.locationState;
+      const stateObj = asNpcState(actorState.state);
+      const simData: NonNullable<NpcActorState['simulation']> =
+        stateObj.simulation ?? {};
+      npcInfo.currentState = simData.currentState ?? stateObj.locationState;
     }
   }
 
@@ -440,7 +461,7 @@ export async function onLocationChange(
   });
 
   // Build location states and update
-  const updates: any[] = [];
+  const updates: Parameters<typeof bulkUpsertActorStates>[0] = [];
   const npcsPresent: string[] = [];
 
   for (const simResult of result.results) {
@@ -451,18 +472,18 @@ export async function onLocationChange(
     if (simResult.stateChanged) {
       const actorState = npcStatesByActorId.get(simResult.npcId);
       if (actorState) {
-        const stateObj = actorState.state as any;
+        const stateObj = asNpcState(actorState.state);
         const newState = {
           ...stateObj,
           simulation: {
-            ...(stateObj.simulation || {}),
+            ...(stateObj.simulation ?? {}),
             currentState: simResult.newState,
             lastComputedAt: currentTime,
           },
         };
 
         updates.push({
-          sessionId: sessionId as any,
+          sessionId: toSessionId(sessionId),
           actorId: simResult.npcId,
           actorType: 'npc',
           entityProfileId: actorState.entityProfileId,
@@ -531,17 +552,13 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
     playerLocationId,
     npcs,
     config = DEFAULT_TIERED_SIMULATION_CONFIG,
-  } = input;
+  }: TimeSkipHookInput = input;
 
   // Convert to simulation NPC info
-  const simulationNpcs: SimulationNpcInfo[] = npcs.map((npc) => ({
-    npcId: npc.npcId,
-    tier: npc.tier,
-    scheduleData: npc.scheduleData,
-  }));
+  const simulationNpcs = npcs.map(toSimulationNpcInfo);
 
   // Get current NPC states
-  const actorStates = await listActorStatesForSession(sessionId as any);
+  const actorStates = await listActorStatesForSession(toSessionId(sessionId));
   const npcStatesByActorId = new Map(
     actorStates.filter((s) => s.actorType === 'npc').map((s) => [s.actorId, s])
   );
@@ -549,9 +566,10 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
   for (const npcInfo of simulationNpcs) {
     const actorState = npcStatesByActorId.get(npcInfo.npcId);
     if (actorState) {
-      const stateObj = actorState.state as any;
-      const simData = stateObj.simulation || {};
-      npcInfo.currentState = simData.currentState || stateObj.locationState;
+      const stateObj = asNpcState(actorState.state);
+      const simData: NonNullable<NpcActorState['simulation']> =
+        stateObj.simulation ?? {};
+      npcInfo.currentState = simData.currentState ?? stateObj.locationState;
     }
   }
 
@@ -563,7 +581,7 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
 
   // Build final location states and update
   const finalLocationStates = new Map<string, NpcLocationState>();
-  const updates: any[] = [];
+  const updates: Parameters<typeof bulkUpsertActorStates>[0] = [];
   const npcsAtLocation: string[] = [];
 
   for (const change of simulation.stateChanges) {
@@ -575,18 +593,18 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
 
     const actorState = npcStatesByActorId.get(change.npcId);
     if (actorState) {
-      const stateObj = actorState.state as any;
+      const stateObj = asNpcState(actorState.state);
       const newState = {
         ...stateObj,
         simulation: {
-          ...(stateObj.simulation || {}),
+          ...(stateObj.simulation ?? {}),
           currentState: change.newState,
           lastComputedAt: toTime,
         },
       };
 
       updates.push({
-        sessionId: sessionId as any,
+        sessionId: toSessionId(sessionId),
         actorId: change.npcId,
         actorType: 'npc',
         entityProfileId: actorState.entityProfileId,
@@ -635,57 +653,6 @@ export async function onTimeSkip(input: TimeSkipHookInput): Promise<TimeSkipHook
     occupancy: finalOccupancy,
     summary,
   };
-}
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Generate a narrative description of location occupancy.
- */
-function generateOccupancyDescription(npcCount: number, crowdLevel: CrowdLevel): string {
-  if (npcCount === 0) {
-    return 'The area is deserted.';
-  }
-
-  if (npcCount === 1) {
-    return 'Someone is here.';
-  }
-
-  switch (crowdLevel) {
-    case 'empty':
-      return 'The area is nearly empty.';
-    case 'sparse':
-      return 'A few people are around.';
-    case 'moderate':
-      return 'There is a moderate crowd here.';
-    case 'crowded':
-      return 'The area is crowded with people.';
-    case 'packed':
-      return 'The area is packed wall to wall.';
-    default:
-      return `There are ${npcCount} people here.`;
-  }
-}
-
-/**
- * Generate a summary of what happened during a time skip.
- */
-function generateTimeSkipSummary(simulation: TimeSkipSimulation): string {
-  const changedCount = simulation.stateChanges.filter(
-    (c) => c.previousState.locationId !== c.newState.locationId
-  ).length;
-
-  if (changedCount === 0) {
-    return 'Time passes quietly. Everyone remains where they were.';
-  }
-
-  if (changedCount === 1) {
-    return 'During this time, someone moved to a different location.';
-  }
-
-  return `During this time, ${changedCount} people moved to different locations.`;
 }
 
 // =============================================================================
