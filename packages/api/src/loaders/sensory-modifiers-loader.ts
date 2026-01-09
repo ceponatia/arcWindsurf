@@ -47,11 +47,13 @@ function safeGetModifier(
     return '';
   }
 
+  // eslint-disable-next-line security/detect-object-injection -- bodyPart validated by schema
   const partModifiers = data.bodyParts[bodyPart];
   if (!partModifiers || !Object.prototype.hasOwnProperty.call(partModifiers, senseType)) {
     return '';
   }
 
+  // eslint-disable-next-line security/detect-object-injection -- senseType constrained to smell/touch/taste
   const senseModifiers = partModifiers[senseType];
   return getSensoryModifierByLevel(senseModifiers, level);
 }

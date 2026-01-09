@@ -1,7 +1,7 @@
 # Fresh Migration Plan: World Bus Clean Slate
 
-> **Status**: Ready to Execute  
-> **Created**: 2026-01-07  
+> **Status**: Ready to Execute
+> **Created**: 2026-01-07
 > **Purpose**: Remove all legacy tables and create clean World Bus-only schema
 
 ## Overview
@@ -583,7 +583,7 @@ CREATE TABLE knowledge_nodes (
 CREATE INDEX idx_knowledge_nodes_session ON knowledge_nodes(session_id);
 CREATE INDEX idx_knowledge_nodes_actor ON knowledge_nodes(session_id, actor_id);
 CREATE INDEX idx_knowledge_nodes_type ON knowledge_nodes(node_type);
-CREATE INDEX idx_knowledge_nodes_embedding ON knowledge_nodes 
+CREATE INDEX idx_knowledge_nodes_embedding ON knowledge_nodes
   USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 -- Knowledge edges (relationships between nodes)
@@ -641,4 +641,3 @@ After migration, verify:
 3. **Update Drizzle schema** to match
 4. **Execute migration** on development DB
 5. **Begin Phase B** (Repository Layer refactoring)
-

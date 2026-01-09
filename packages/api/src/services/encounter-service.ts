@@ -127,7 +127,8 @@ export function generateNpcEntranceNarration(
 
   // Pick based on name hash for consistency
   const phraseIndex = hashString(name) % entrancePhrases.length;
-  const phrase = entrancePhrases[phraseIndex] ?? entrancePhrases[0];
+  // eslint-disable-next-line security/detect-object-injection -- index is bounded by entrancePhrases length
+  const phrase = entrancePhrases[phraseIndex] ?? entrancePhrases[0]!;
 
   // Add activity context if not idle
   if (npc.activity.type !== 'idle') {
@@ -152,7 +153,8 @@ export function generateNpcExitNarration(npc: EncounterNpcInfo, exitDirection?: 
   ];
 
   const phraseIndex = hashString(name) % exitPhrases.length;
-  return exitPhrases[phraseIndex] ?? exitPhrases[0];
+  // eslint-disable-next-line security/detect-object-injection -- index is bounded by exitPhrases length
+  return exitPhrases[phraseIndex] ?? exitPhrases[0]!;
 }
 
 // =============================================================================
@@ -170,7 +172,7 @@ function generateSceneDescription(
   playerEntering: boolean
 ): string {
   const verb = playerEntering ? 'enter' : 'are in';
-  const atmosphere = getAtmospherePhrase(crowdLevel, timeOfDay);
+  const atmosphere = getAtmospherePhrase(crowdLevel, timeOfDay as EncounterNarrationOptions['timeOfDay']);
 
   if (locationDescription) {
     return `You ${verb} ${locationName}. ${locationDescription} ${atmosphere}`;
@@ -240,7 +242,8 @@ function generateNpcIntroduction(npc: EncounterNpcInfo, playerEntering: boolean)
       `${name} can be seen ${activityDesc.toLowerCase()}`,
     ];
     const phraseIndex = hashString(name) % presencePhrases.length;
-    return presencePhrases[phraseIndex] ?? presencePhrases[0];
+    // eslint-disable-next-line security/detect-object-injection -- index is bounded by presencePhrases length
+    return presencePhrases[phraseIndex] ?? presencePhrases[0]!;
   } else {
     // NPC entering - use entrance narration
     return generateNpcEntranceNarration(npc);

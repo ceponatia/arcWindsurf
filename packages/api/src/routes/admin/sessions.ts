@@ -18,11 +18,21 @@ interface ToolingFailureEntryDto {
   events: ToolingFailureEventDto[];
 }
 
+interface HistoryItem {
+  turnIdx: number;
+  createdAt: string;
+  playerInput: string;
+  debug?: {
+    events?: unknown[];
+  };
+}
+
 export function registerAdminSessionRoutes(app: Hono) {
   // GET /admin/sessions/:sessionId/tooling-failures - show tooling-failure events
   app.get('/admin/sessions/:sessionId/tooling-failures', requireAdmin, async (c) => {
     const sessionId = c.req.param('sessionId');
     const limitParam = c.req.query('limit');
+
 
     const limitRaw = limitParam ? Number(limitParam) : 50;
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, limitRaw)) : 50;
@@ -32,12 +42,38 @@ export function registerAdminSessionRoutes(app: Hono) {
     }
 
     try {
-      const history = await getSessionHistoryAdmin(toSessionId(sessionId), { limit });
+      const rawHistory: unknown = await (
+        getSessionHistoryAdmin as (sessionKey: string, options: { limit?: number }) => Promise<unknown>
+      )(toSessionId(sessionId), { limit });
+
+      if (!Array.isArray(rawHistory)) {
+        return c.json(
+          { ok: false, error: 'unexpected history format' } satisfies ApiError,
+          500
+        );
+      }
+
+      const isHistoryItem = (value: unknown): value is HistoryItem => {
+        return Boolean(
+          value &&
+          typeof value === 'object' &&
+          'turnIdx' in value &&
+          'createdAt' in value &&
+          'playerInput' in value
+        );
+      };
+
+      const history: HistoryItem[] = [];
+      for (const entry of rawHistory) {
+        if (isHistoryItem(entry)) {
+          history.push(entry);
+        }
+      }
 
       const failures: ToolingFailureEntryDto[] = history
-        .map((h) => {
+        .map((h: HistoryItem) => {
           const debug = h.debug;
-          const events = (debug?.events as unknown[]) ?? [];
+          const events = Array.isArray(debug?.events) ? debug.events : [];
 
           const toolingFailures: ToolingFailureEventDto[] = events
             .filter((e): e is Record<string, unknown> => Boolean(e && typeof e === 'object'))

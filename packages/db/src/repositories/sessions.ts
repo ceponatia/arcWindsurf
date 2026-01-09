@@ -78,3 +78,27 @@ export async function getSessionProjection(sessionId: UUID) {
     .limit(1);
   return result[0];
 }
+
+/**
+ * Alias for getSessionProjection for convenience.
+ */
+export const getProjection = getSessionProjection;
+
+/**
+ * Updates a session projection's worldState.
+ */
+export async function upsertProjection(
+  sessionId: UUID,
+  updates: { worldState?: unknown; location?: unknown; inventory?: unknown; time?: unknown }
+) {
+  const updateData: Record<string, unknown> = {};
+  if (updates.worldState !== undefined) updateData['worldState'] = updates.worldState;
+  if (updates.location !== undefined) updateData['location'] = updates.location;
+  if (updates.inventory !== undefined) updateData['inventory'] = updates.inventory;
+  if (updates.time !== undefined) updateData['time'] = updates.time;
+
+  await db
+    .update(sessionProjections)
+    .set(updateData)
+    .where(eq(sessionProjections.sessionId, sessionId));
+}

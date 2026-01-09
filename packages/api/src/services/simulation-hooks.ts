@@ -44,7 +44,7 @@ import { asNpcState } from '../types/actor-state.js';
  */
 export interface HookNpcInfo {
   npcId: string;
-  tier: NpcTier;
+  tier: NpcTier.NpcTier;
   scheduleData: NpcScheduleData;
   lastInteractionTurn?: number | undefined;
   distanceFromPlayer?: number | undefined;

@@ -15,6 +15,10 @@ import {
 import type { WorldEvent } from '@minimal-rpg/schemas';
 import { toSessionId } from '../../utils/uuid.js';
 
+interface SessionRecord {
+  id: string;
+}
+
 type SpokeEvent = Extract<WorldEvent, { type: 'SPOKE' }>;
 
 interface TurnResponseDto {
@@ -37,7 +41,7 @@ export function registerTurnRoutes(app: Hono): void {
     const sessionKey = toSessionId(sessionId);
     const ownerEmail = getOwnerEmail(c);
 
-    const session = await getSession(sessionKey, ownerEmail);
+    const session = (await getSession(sessionKey, ownerEmail)) as SessionRecord | null;
     if (!session) {
       return notFound(c, 'session not found');
     }
@@ -86,7 +90,8 @@ export function registerTurnRoutes(app: Hono): void {
     // Collect events emitted during this turn
     const collected: WorldEvent[] = [];
     const handler = (event: WorldEvent): void => {
-      if ((event as Record<string, unknown>)['sessionId'] !== sessionKey) return;
+      const eventSessionId = (event as { sessionId?: string }).sessionId;
+      if (eventSessionId !== sessionKey) return;
       collected.push(event);
     };
 
@@ -115,13 +120,6 @@ export function registerTurnRoutes(app: Hono): void {
     );
 
     const message = npcSpoke?.content ?? 'The world is quiet.';
-
-    const npcSpeaker = npcSpoke
-      ? {
-        id: npcSpoke.actorId,
-        name: npcSpoke.actorId,
-      }
-      : undefined;
 
     const response: TurnResponseDto = {
       message,

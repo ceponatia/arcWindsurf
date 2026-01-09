@@ -47,9 +47,12 @@ export function registerItemRoutes(app: Hono): void {
     const id = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    const profile = await getEntityProfile(toId(id), ownerEmail);
+    const profile = await getEntityProfile(toId(id));
 
-    if (profile?.entityType !== 'item') {
+    if (
+      profile?.entityType !== 'item' ||
+      (profile?.ownerEmail !== ownerEmail && profile?.ownerEmail !== 'public')
+    ) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
@@ -78,10 +81,14 @@ export function registerItemRoutes(app: Hono): void {
 
     const definition = parsed.data;
 
-    const existing = await getEntityProfile(toId(definition.id), ownerEmail);
+    const existing = await getEntityProfile(toId(definition.id));
 
     if (existing) {
-      await updateEntityProfile(toId(definition.id), ownerEmail, {
+      const existingOwner = existing?.ownerEmail;
+      if (existingOwner !== undefined && existingOwner !== ownerEmail && existingOwner !== 'public') {
+        return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
+      }
+      await updateEntityProfile(toId(definition.id), {
         profileJson: definition,
       });
       const summary: ItemSummary = mapItemSummary(definition);
@@ -123,13 +130,16 @@ export function registerItemRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'id mismatch' } satisfies ApiError, 400);
     }
 
-    const existing = await getEntityProfile(toId(id), ownerEmail);
+    const existing = await getEntityProfile(toId(id));
 
-    if (existing?.entityType !== 'item') {
+    if (
+      existing?.entityType !== 'item' ||
+      (existing?.ownerEmail !== ownerEmail && existing?.ownerEmail !== 'public')
+    ) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
-    await updateEntityProfile(toId(id), ownerEmail, {
+    await updateEntityProfile(toId(id), {
       profileJson: definition,
     });
     const summary: ItemSummary = mapItemSummary(definition);
@@ -141,7 +151,17 @@ export function registerItemRoutes(app: Hono): void {
     const id = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    const deleted = await deleteEntityProfile(toId(id), ownerEmail);
+    const existing = await getEntityProfile(toId(id));
+
+    if (existing?.entityType !== 'item') {
+      return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
+    }
+
+    if (existing?.ownerEmail !== ownerEmail) {
+      return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
+    }
+
+    const deleted = await deleteEntityProfile(toId(id));
 
     if (!deleted) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);

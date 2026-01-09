@@ -24,7 +24,7 @@ export function registerStudioRoutes(app: Hono): void {
         return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
       }
 
-      const { profile, history, userMessage } = parsed.data;
+      const { userMessage } = parsed.data;
 
       // TODO: Integrate with LLM provider
       // For now, return a placeholder response
@@ -45,8 +45,6 @@ export function registerStudioRoutes(app: Hono): void {
       if (!parsed.success) {
         return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
       }
-
-      const { userMessage, characterResponse, currentProfile } = parsed.data;
 
       // TODO: Use LLM to infer traits
       // For now, return empty array

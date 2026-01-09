@@ -90,11 +90,19 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     const { category, activationMode, isBuiltIn } = queryResult.data;
-    const tags = await listPromptTags({
-      category,
-      activationMode,
-      isBuiltIn,
-    });
+    const tagQuery: Parameters<typeof listPromptTags>[0] = {};
+
+    if (category !== undefined) {
+      tagQuery.category = category;
+    }
+    if (activationMode !== undefined) {
+      tagQuery.activationMode = activationMode;
+    }
+    if (isBuiltIn !== undefined) {
+      tagQuery.isBuiltIn = isBuiltIn;
+    }
+
+    const tags = await listPromptTags(tagQuery);
 
     return c.json(
       {
@@ -136,12 +144,19 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     try {
-      const tag = await createPromptTag({
+      const tagInput: Parameters<typeof createPromptTag>[0] = {
         name: result.data.name,
         promptText: result.data.promptText,
-        shortDescription: result.data.shortDescription,
-        category: result.data.category,
-      });
+      };
+
+      if (result.data.shortDescription !== undefined) {
+        tagInput.shortDescription = result.data.shortDescription;
+      }
+      if (result.data.category !== undefined) {
+        tagInput.category = result.data.category;
+      }
+
+      const tag = await createPromptTag(tagInput);
       return c.json(toTagResponse(tag), 201);
     } catch (err) {
       console.error('[API] Failed to create tag:', err);
@@ -166,12 +181,22 @@ export function registerTagRoutes(app: Hono): void {
     }
 
     try {
-      const updated = await updatePromptTag(toId(id), 'admin', {
-        name: result.data.name,
-        promptText: result.data.promptText,
-        category: result.data.category,
-        shortDescription: result.data.shortDescription,
-      });
+      const updateInput: Parameters<typeof updatePromptTag>[1] = {};
+
+      if (result.data.name !== undefined) {
+        updateInput.name = result.data.name;
+      }
+      if (result.data.promptText !== undefined) {
+        updateInput.promptText = result.data.promptText;
+      }
+      if (result.data.category !== undefined) {
+        updateInput.category = result.data.category;
+      }
+      if (result.data.shortDescription !== undefined) {
+        updateInput.shortDescription = result.data.shortDescription;
+      }
+
+      const updated = await updatePromptTag(toId(id), updateInput);
       if (!updated) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }
@@ -186,7 +211,7 @@ export function registerTagRoutes(app: Hono): void {
   app.delete('/tags/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const deleted = await deletePromptTag(toId(id), 'admin');
+      const deleted = await deletePromptTag(toId(id));
       if (!deleted) {
         return c.json({ ok: false, error: 'Tag not found' } satisfies ApiError, 404);
       }

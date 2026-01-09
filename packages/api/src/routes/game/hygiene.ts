@@ -26,7 +26,6 @@ import {
   loadSensoryModifiers,
   type LoadedSensoryModifiers,
 } from '../../loaders/sensory-modifiers-loader.js';
-import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { toSessionId, toId } from '../../utils/uuid.js';
 
 interface HygieneActorState {
@@ -66,6 +65,7 @@ function getBodyPartState(
   bodyParts: Record<string, BodyPartHygieneState>,
   part: BodyRegionKey
 ): BodyPartHygieneState | undefined {
+  // eslint-disable-next-line security/detect-object-injection -- part is validated against BODY_REGIONS
   return bodyParts[part];
 }
 
@@ -76,6 +76,7 @@ function sanitizeBodyParts(
   return Object.fromEntries(
     BODY_REGION_LIST.map((region) => [
       region,
+      // eslint-disable-next-line security/detect-object-injection -- region comes from BODY_REGIONS constant
       bodyParts[region] ?? {
         points: 0,
         level: 0,
@@ -149,8 +150,7 @@ async function saveNpcHygieneState(
  */
 async function initializeHygieneState(
   sessionId: string,
-  npcId: string,
-  ownerEmail: string
+  npcId: string
 ): Promise<NpcHygieneState> {
   const now = new Date();
   const bodyParts = initializeBodyParts(now.toISOString());
@@ -168,8 +168,7 @@ async function initializeHygieneState(
  */
 async function updateHygieneState(
   sessionId: string,
-  input: HygieneUpdateInput,
-  ownerEmail: string
+  input: HygieneUpdateInput
 ): Promise<NpcHygieneState> {
   const modifiers = await getSensoryModifiers();
   const now = new Date();
@@ -177,7 +176,7 @@ async function updateHygieneState(
   // Get current state or initialize
   let currentState = await getNpcHygieneState(sessionId, input.npcId);
   if (Object.keys(currentState.bodyParts).length === 0) {
-    currentState = await initializeHygieneState(sessionId, input.npcId, ownerEmail);
+    currentState = await initializeHygieneState(sessionId, input.npcId);
   }
 
   const normalizedBodyParts = sanitizeBodyParts(currentState.bodyParts, now.toISOString());
@@ -204,6 +203,7 @@ async function updateHygieneState(
       continue;
     }
 
+    // eslint-disable-next-line security/detect-object-injection -- region comes from BODY_REGIONS constant
     const config = modifiers.decayRates[region];
     if (!config) {
       continue;
@@ -245,15 +245,14 @@ async function updateHygieneState(
 async function applyHygieneEventToNpc(
   sessionId: string,
   npcId: string,
-  event: HygieneEvent,
-  ownerEmail: string
+  event: HygieneEvent
 ): Promise<NpcHygieneState> {
   const modifiers = await getSensoryModifiers();
   const now = new Date();
 
   let currentState = await getNpcHygieneState(sessionId, npcId);
   if (Object.keys(currentState.bodyParts).length === 0) {
-    currentState = await initializeHygieneState(sessionId, npcId, ownerEmail);
+    currentState = await initializeHygieneState(sessionId, npcId);
   }
 
   const nextState = applyHygieneEvent(currentState, event, modifiers.decayRates, now);
@@ -284,10 +283,9 @@ export function registerHygieneRoutes(app: Hono): void {
   app.post('/sessions/:sessionId/npcs/:npcId/hygiene/initialize', async (c) => {
     const sessionId = c.req.param('sessionId');
     const npcId = c.req.param('npcId');
-    const ownerEmail = getOwnerEmail(c);
 
     try {
-      const state = await initializeHygieneState(sessionId, npcId, ownerEmail);
+      const state = await initializeHygieneState(sessionId, npcId);
       return c.json(state, 201);
     } catch (error) {
       console.error('Error initializing hygiene state:', error);
@@ -317,10 +315,8 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
-    const ownerEmail = getOwnerEmail(c);
-
     try {
-      const state = await updateHygieneState(sessionId, parsed.data, ownerEmail);
+      const state = await updateHygieneState(sessionId, parsed.data);
       return c.json(state, 200);
     } catch (error) {
       console.error('Error updating hygiene state:', error);
@@ -350,14 +346,13 @@ export function registerHygieneRoutes(app: Hono): void {
     }
 
     const now = new Date();
-    const ownerEmail = getOwnerEmail(c);
-
     try {
       const state = await getNpcHygieneState(sessionId, npcId);
 
       // Reset specified body parts
       for (const part of parsed.data.bodyParts) {
         if ((BODY_REGIONS as readonly string[]).includes(part)) {
+          // eslint-disable-next-line security/detect-object-injection -- part validated against BODY_REGIONS
           state.bodyParts[part] = {
             points: 0,
             level: 0,
@@ -400,15 +395,8 @@ export function registerHygieneRoutes(app: Hono): void {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
 
-    const ownerEmail = getOwnerEmail(c);
-
     try {
-      const state = await applyHygieneEventToNpc(
-        sessionId,
-        npcId,
-        parsed.data as HygieneEvent,
-        ownerEmail
-      );
+      const state = await applyHygieneEventToNpc(sessionId, npcId, parsed.data as HygieneEvent);
       return c.json(state, 200);
     } catch (error) {
       console.error('Error applying hygiene event:', error);
@@ -438,9 +426,13 @@ export function registerHygieneRoutes(app: Hono): void {
       const level = (partState?.level ?? 0) as HygieneLevel;
 
       const partModifiers = Object.prototype.hasOwnProperty.call(modifiers.bodyParts, bodyPart)
-        ? modifiers.bodyParts[bodyPart]
+        ? // eslint-disable-next-line security/detect-object-injection -- bodyPart validated by isBodyRegion
+        modifiers.bodyParts[bodyPart]
         : undefined;
-      const senseModifiers = partModifiers?.[senseType];
+      const senseModifiers = partModifiers
+        ? // eslint-disable-next-line security/detect-object-injection -- senseType constrained to allowed senses
+        partModifiers[senseType]
+        : undefined;
       const modifier = senseModifiers ? getSensoryModifierByLevel(senseModifiers, level) : '';
 
       return c.json(

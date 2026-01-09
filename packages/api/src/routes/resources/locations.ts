@@ -22,7 +22,6 @@ import {
 } from '../../db/sessionsClient.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import type { ApiError } from '../../types.js';
-import type { LocationMapRow, LocationPrefabRow } from '../../types/index.js';
 import { toId } from '../../utils/uuid.js';
 
 // ============================================================================
@@ -40,6 +39,34 @@ interface LocationMapSummary {
   tags?: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+interface LocationMapRow {
+  id: string;
+  ownerEmail?: string | null;
+  name: string;
+  description?: string | null;
+  settingId?: string | null;
+  nodesJson?: unknown[] | null;
+  connectionsJson?: unknown[] | null;
+  defaultStartLocationId?: string | null;
+  tags?: string[] | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface LocationPrefabRow {
+  id: string;
+  ownerEmail?: string | null;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  nodesJson?: unknown[] | null;
+  connectionsJson?: unknown[] | null;
+  entryPoints?: string[] | null;
+  tags?: string[] | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ============================================================================
@@ -86,15 +113,15 @@ function mapRowToSummary(row: LocationMapRow): LocationMapSummary {
   const result: LocationMapSummary = {
     id: row.id,
     name: row.name,
-    settingId: row.settingId,
+    settingId: row.settingId ?? '',
     isTemplate: true, // Simplified: everything is a template or active session map link
     nodeCount: nodes.length,
     connectionCount: connections.length,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
-  if (row.description) result.description = row.description;
-  if (row.tags) result.tags = row.tags;
+  if (row.description) result.description = row.description ?? undefined;
+  if (row.tags) result.tags = row.tags ?? undefined;
   return result;
 }
 
@@ -104,16 +131,16 @@ function mapRowToLocationMap(row: LocationMapRow): LocationMap {
   const result: LocationMap = {
     id: row.id,
     name: row.name,
-    settingId: row.settingId,
+    settingId: row.settingId ?? '',
     isTemplate: true,
     nodes,
     connections,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
-  if (row.description) result.description = row.description;
-  if (row.defaultStartLocationId) result.defaultStartLocationId = row.defaultStartLocationId;
-  if (row.tags) result.tags = row.tags;
+  if (row.description) result.description = row.description ?? undefined;
+  if (row.defaultStartLocationId) result.defaultStartLocationId = row.defaultStartLocationId ?? undefined;
+  if (row.tags) result.tags = row.tags ?? undefined;
   return result;
 }
 
@@ -125,11 +152,11 @@ function mapRowToPrefab(row: LocationPrefabRow): LocationPrefab {
     name: row.name,
     nodes,
     connections,
-    entryPoints: row.entryPoints,
+    entryPoints: row.entryPoints ?? [],
   };
-  if (row.description) result.description = row.description;
-  if (row.category) result.category = row.category;
-  if (row.tags) result.tags = row.tags;
+  if (row.description) result.description = row.description ?? undefined;
+  if (row.category) result.category = row.category ?? undefined;
+  if (row.tags) result.tags = row.tags ?? undefined;
   return result;
 }
 
@@ -146,8 +173,8 @@ export function registerLocationMapRoutes(app: Hono): void {
   app.get('/location-maps', async (c) => {
     const ownerEmail = getOwnerEmail(c);
     try {
-      const maps = await listLocationMaps(ownerEmail);
-      const summaries = maps.map(mapRowToSummary);
+      const maps = (await listLocationMaps(ownerEmail)) as LocationMapRow[];
+      const summaries = maps.map((row: LocationMapRow) => mapRowToSummary(row));
       return c.json({ ok: true, maps: summaries }, 200);
     } catch (err) {
       console.error('[API] Failed to list location maps:', err);
@@ -159,7 +186,7 @@ export function registerLocationMapRoutes(app: Hono): void {
   app.get('/location-maps/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const map = await getLocationMap(toId(id));
+      const map = (await getLocationMap(toId(id))) as LocationMapRow | null;
       if (!map) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -186,16 +213,29 @@ export function registerLocationMapRoutes(app: Hono): void {
     }
 
     try {
-      const map = await createLocationMap({
+      const mapInput: Parameters<typeof createLocationMap>[0] = {
         ownerEmail,
         name: parsed.data.name,
         settingId: parsed.data.settingId,
-        description: parsed.data.description,
-        nodesJson: parsed.data.nodes,
-        connectionsJson: parsed.data.connections,
-        defaultStartLocationId: parsed.data.defaultStartLocationId,
-        tags: parsed.data.tags,
-      });
+      };
+
+      if (parsed.data.description !== undefined) {
+        mapInput.description = parsed.data.description;
+      }
+      if (parsed.data.nodes !== undefined) {
+        mapInput.nodesJson = parsed.data.nodes;
+      }
+      if (parsed.data.connections !== undefined) {
+        mapInput.connectionsJson = parsed.data.connections;
+      }
+      if (parsed.data.defaultStartLocationId !== undefined) {
+        mapInput.defaultStartLocationId = parsed.data.defaultStartLocationId;
+      }
+      if (parsed.data.tags !== undefined) {
+        mapInput.tags = parsed.data.tags;
+      }
+
+      const map = await createLocationMap(mapInput);
 
       return c.json({ ok: true, map: mapRowToLocationMap(map) }, 201);
     } catch (err) {
@@ -221,14 +261,28 @@ export function registerLocationMapRoutes(app: Hono): void {
     }
 
     try {
-      const updated = await updateLocationMap(id, {
-        name: parsed.data.name,
-        description: parsed.data.description ?? undefined,
-        nodesJson: parsed.data.nodes,
-        connectionsJson: parsed.data.connections,
-        defaultStartLocationId: parsed.data.defaultStartLocationId ?? undefined,
-        tags: parsed.data.tags,
-      });
+      const updateInput: Parameters<typeof updateLocationMap>[1] = {};
+
+      if (parsed.data.name !== undefined) {
+        updateInput.name = parsed.data.name;
+      }
+      if (parsed.data.description !== undefined) {
+        updateInput.description = parsed.data.description;
+      }
+      if (parsed.data.nodes !== undefined) {
+        updateInput.nodesJson = parsed.data.nodes;
+      }
+      if (parsed.data.connections !== undefined) {
+        updateInput.connectionsJson = parsed.data.connections;
+      }
+      if (parsed.data.defaultStartLocationId !== undefined) {
+        updateInput.defaultStartLocationId = parsed.data.defaultStartLocationId;
+      }
+      if (parsed.data.tags !== undefined) {
+        updateInput.tags = parsed.data.tags;
+      }
+
+      const updated = await updateLocationMap(toId(id), updateInput);
 
       if (!updated) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -267,16 +321,25 @@ export function registerLocationMapRoutes(app: Hono): void {
         return c.json({ ok: false, error: 'source map not found' } satisfies ApiError, 404);
       }
 
-      const map = await createLocationMap({
+      const duplicateInput: Parameters<typeof createLocationMap>[0] = {
         ownerEmail,
         name: `${source.name} (Copy)`,
-        settingId: source.settingId,
-        description: source.description ?? undefined,
-        nodesJson: source.nodesJson ?? [],
-        connectionsJson: source.connectionsJson ?? [],
-        defaultStartLocationId: source.defaultStartLocationId,
-        tags: source.tags ?? [],
-      });
+        settingId: source.settingId ?? '',
+        nodesJson: (source.nodesJson ?? []) as unknown[],
+        connectionsJson: (source.connectionsJson ?? []) as unknown[],
+      };
+
+      if (source.description !== undefined) {
+        duplicateInput.description = source.description;
+      }
+      if (source.defaultStartLocationId !== undefined) {
+        duplicateInput.defaultStartLocationId = source.defaultStartLocationId;
+      }
+      if (source.tags !== undefined) {
+        duplicateInput.tags = source.tags ?? [];
+      }
+
+      const map = await createLocationMap(duplicateInput);
 
       return c.json({ ok: true, map: mapRowToLocationMap(map) }, 201);
     } catch (err) {
@@ -293,8 +356,11 @@ export function registerLocationMapRoutes(app: Hono): void {
   app.get('/location-prefabs', async (c) => {
     const category = c.req.query('category');
     try {
-      const prefabs = await listLocationPrefabs(category);
-      return c.json({ ok: true, prefabs: prefabs.map(mapRowToPrefab) }, 200);
+      const prefabs = (await listLocationPrefabs(category)) as LocationPrefabRow[];
+      return c.json(
+        { ok: true, prefabs: prefabs.map((row: LocationPrefabRow) => mapRowToPrefab(row)) },
+        200
+      );
     } catch (err) {
       console.error('[API] Failed to list prefabs:', err);
       return c.json({ ok: false, error: 'failed to list prefabs' } satisfies ApiError, 500);
@@ -305,7 +371,7 @@ export function registerLocationMapRoutes(app: Hono): void {
   app.get('/location-prefabs/:id', async (c) => {
     const id = c.req.param('id');
     try {
-      const prefab = await getLocationPrefab(toId(id));
+      const prefab = (await getLocationPrefab(toId(id))) as LocationPrefabRow | null;
       if (!prefab) {
         return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
       }
@@ -332,16 +398,27 @@ export function registerLocationMapRoutes(app: Hono): void {
     }
 
     try {
-      const prefab = await createLocationPrefab({
+      const prefabInput: Parameters<typeof createLocationPrefab>[0] = {
         ownerEmail,
         name: parsed.data.name,
-        description: parsed.data.description,
-        category: parsed.data.category,
         nodesJson: parsed.data.nodes,
-        connectionsJson: parsed.data.connections,
         entryPoints: parsed.data.entryPoints,
-        tags: parsed.data.tags,
-      });
+      };
+
+      if (parsed.data.description !== undefined) {
+        prefabInput.description = parsed.data.description;
+      }
+      if (parsed.data.category !== undefined) {
+        prefabInput.category = parsed.data.category;
+      }
+      if (parsed.data.connections !== undefined) {
+        prefabInput.connectionsJson = parsed.data.connections;
+      }
+      if (parsed.data.tags !== undefined) {
+        prefabInput.tags = parsed.data.tags;
+      }
+
+      const prefab = await createLocationPrefab(prefabInput);
 
       return c.json({ ok: true, prefab: mapRowToPrefab(prefab) }, 201);
     } catch (err) {

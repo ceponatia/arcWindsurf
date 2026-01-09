@@ -3,10 +3,6 @@ import {
   getSession as rawGetSession,
   listSessions as rawListSessions,
   deleteSession as rawDeleteSession,
-  // Per-session state slice helpers
-  getLocationState as rawGetLocationState,
-  getInventoryState as rawGetInventoryState,
-  getTimeState as rawGetTimeState,
   // Enhanced tag functions
   listPromptTags as rawListPromptTags,
   getPromptTag as rawGetPromptTag,
@@ -18,39 +14,32 @@ import {
   getSessionTagsWithDefinitions as rawGetSessionTagsWithDefinitions,
   toggleSessionTagBinding as rawToggleSessionTagBinding,
   deleteSessionTagBinding as rawDeleteSessionTagBinding,
-  // Session location map functions
-  getSessionLocationMap as rawGetSessionLocationMap,
-  createSessionLocationMap as rawCreateSessionLocationMap,
-  deleteSessionLocationMap as rawDeleteSessionLocationMap,
 } from '@minimal-rpg/db/node';
 
-export const createSession = rawCreateSession;
-export const getSession = rawGetSession;
-export const listSessions = rawListSessions;
-export const deleteSession = rawDeleteSession;
+export const createSession: typeof rawCreateSession = rawCreateSession;
+export const getSession: typeof rawGetSession = rawGetSession;
+export const listSessions: typeof rawListSessions = rawListSessions;
+export const deleteSession: typeof rawDeleteSession = rawDeleteSession;
 
 // Per-session state slice helpers
-export const getLocationState = rawGetLocationState;
-export const getInventoryState = rawGetInventoryState;
-export const getTimeState = rawGetTimeState;
+// Deprecated slice helpers removed (use projections instead)
 
 // Enhanced tag CRUD functions
-export const listPromptTags = rawListPromptTags;
-export const getPromptTag = rawGetPromptTag;
-export const createPromptTag = rawCreatePromptTag;
-export const updatePromptTag = rawUpdatePromptTag;
-export const deletePromptTag = rawDeletePromptTag;
+export const listPromptTags: typeof rawListPromptTags = rawListPromptTags;
+export const getPromptTag: typeof rawGetPromptTag = rawGetPromptTag;
+export const createPromptTag: typeof rawCreatePromptTag = rawCreatePromptTag;
+export const updatePromptTag: typeof rawUpdatePromptTag = rawUpdatePromptTag;
+export const deletePromptTag: typeof rawDeletePromptTag = rawDeletePromptTag;
 
 // Session tag binding functions
-export const createSessionTagBinding = rawCreateSessionTagBinding;
-export const getSessionTagsWithDefinitions = rawGetSessionTagsWithDefinitions;
-export const toggleSessionTagBinding = rawToggleSessionTagBinding;
-export const deleteSessionTagBinding = rawDeleteSessionTagBinding;
+export const createSessionTagBinding: typeof rawCreateSessionTagBinding = rawCreateSessionTagBinding;
+export const getSessionTagsWithDefinitions: typeof rawGetSessionTagsWithDefinitions =
+  rawGetSessionTagsWithDefinitions;
+export const toggleSessionTagBinding: typeof rawToggleSessionTagBinding = rawToggleSessionTagBinding;
+export const deleteSessionTagBinding: typeof rawDeleteSessionTagBinding = rawDeleteSessionTagBinding;
 
 // Session location map functions
-export const getSessionLocationMap = rawGetSessionLocationMap;
-export const createSessionLocationMap = rawCreateSessionLocationMap;
-export const deleteSessionLocationMap = rawDeleteSessionLocationMap;
+// Legacy session location map helpers removed in favor of createLocationMap/getLocationMap
 
 // World functions
 export {
@@ -72,10 +61,8 @@ export {
   updateEntityProfile,
   deleteEntityProfile,
   getActorState,
-  listActorStates,
-  saveActorState,
-  getOwnerEmail,
-  ensureUserAccount,
+  listActorStatesForSession,
+  upsertActorState,
 } from '@minimal-rpg/db/node';
 
 // Re-export Record types for consumers

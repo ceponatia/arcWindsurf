@@ -24,10 +24,12 @@ import {
 } from '@minimal-rpg/db/node';
 import { toSessionId } from '../../utils/uuid.js';
 
-interface ActorStatePayload {
-  profile?: Record<string, unknown>;
-  name?: string;
-  status?: 'active' | 'inactive';
+interface ActorStateRow {
+  actorId: string;
+  actorType: string;
+  state: unknown;
+  entityProfileId?: string | null;
+  createdAt?: Date;
 }
 
 interface SessionTagBinding {
@@ -37,6 +39,18 @@ interface SessionTagBinding {
     prompt_text: string | null;
     category: string | null;
   };
+}
+
+interface EventRow {
+  actorId: string;
+  payload?: unknown;
+  timestamp: Date;
+}
+
+interface ActorStatePayload {
+  profile?: Record<string, unknown>;
+  name?: string;
+  status?: 'active' | 'inactive';
 }
 
 function toActorStatePayload(value: unknown): ActorStatePayload {
@@ -181,13 +195,15 @@ export class SessionToolHandler {
   private async executeGetSessionPersona(): Promise<GetSessionPersonaResult | ToolResult> {
     try {
       // In the new schema, persona is stored as an actor_state with actorType 'player'
-      const [playerState] = await drizzle
+      const playerRows = await drizzle
         .select()
         .from(actorStates)
         .where(
           and(eq(actorStates.sessionId, toSessionId(this.sessionId)), eq(actorStates.actorType, 'player'))
         )
         .limit(1);
+
+      const playerState = playerRows[0] as ActorStateRow | undefined;
 
       if (!playerState) {
         return {
@@ -230,13 +246,13 @@ export class SessionToolHandler {
   private async executeQueryNpcList(): Promise<QueryNpcListResult | ToolResult> {
     try {
       // Query actorStates for this session
-      const instances = await drizzle
+      const instances = (await drizzle
         .select()
         .from(actorStates)
         .where(
           and(eq(actorStates.sessionId, toSessionId(this.sessionId)), eq(actorStates.actorType, 'npc'))
         )
-        .orderBy(desc(actorStates.createdAt));
+        .orderBy(desc(actorStates.createdAt))) as ActorStateRow[];
 
       const npcs = instances.map((instance) => {
         const state = toActorStatePayload(instance.state);
@@ -275,12 +291,12 @@ export class SessionToolHandler {
 
       // Query SPOKE events for this session related to the NPC
       // Note: We might want events where actorId is NPC OR where targetActorId is NPC
-      const rows = await drizzle
+      const rows = (await drizzle
         .select()
         .from(events)
         .where(and(eq(events.sessionId, toSessionId(this.sessionId)), eq(events.type, 'SPOKE')))
         .orderBy(desc(events.sequence))
-        .limit(limit);
+        .limit(limit)) as EventRow[];
 
       // Map speaker field to role (player -> user, npc/narrator -> assistant)
       const messages = rows.reverse().map((row) => {
@@ -295,7 +311,7 @@ export class SessionToolHandler {
 
       // Try to get NPC name from actor states
       let npcName: string | undefined;
-      const [actorState] = await drizzle
+      const actorRows = await drizzle
         .select()
         .from(actorStates)
         .where(
@@ -305,6 +321,8 @@ export class SessionToolHandler {
           )
         )
         .limit(1);
+
+      const actorState = actorRows[0] as ActorStateRow | undefined;
 
       if (actorState) {
         const state = toActorStatePayload(actorState.state);

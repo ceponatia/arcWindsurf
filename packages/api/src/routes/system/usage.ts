@@ -5,7 +5,6 @@ import {
   actorStates,
   eq,
   desc,
-  and,
 } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
 import { toId } from '../../utils/uuid.js';

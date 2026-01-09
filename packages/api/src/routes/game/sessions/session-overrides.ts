@@ -22,6 +22,12 @@ import { findCharacter, findSetting } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toSessionId } from '../../../utils/uuid.js';
 
+interface SessionRecord {
+  id: string;
+  playerCharacterId?: string | null;
+  settingId?: string | null;
+}
+
 export async function handlePutCharacterOverrides(
   c: Context,
   getLoaded: LoadedDataGetter
@@ -32,10 +38,10 @@ export async function handlePutCharacterOverrides(
 
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(toSessionId(id), ownerEmail);
+  const session = (await getSession(toSessionId(id), ownerEmail)) as SessionRecord | null;
   if (!session) return notFound(c, 'session not found');
 
-  const character = await findCharacter(loaded, session.playerCharacterId || '');
+  const character = await findCharacter(loaded, session.playerCharacterId ?? '');
   if (!character) {
     return serverError(c, 'character not found for session');
   }
@@ -75,10 +81,10 @@ export async function handlePutSettingOverrides(
 
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
-  const session = await getSession(toSessionId(id), ownerEmail);
+  const session = (await getSession(toSessionId(id), ownerEmail)) as SessionRecord | null;
   if (!session) return notFound(c, 'session not found');
 
-  const setting = await findSetting(loaded, session.settingId || '');
+  const setting = await findSetting(loaded, session.settingId ?? '');
   if (!setting) {
     return serverError(c, 'setting not found for session');
   }

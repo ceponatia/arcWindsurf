@@ -39,7 +39,7 @@ export async function upsertCharacterOverrides(params: {
     sessionId: toSessionId(sessionId),
     actorId: characterId,
     actorType: 'player',
-    entityProfileId: actorState.entityProfileId ? toId(actorState.entityProfileId) : undefined,
+    entityProfileId: actorState.entityProfileId ? toId(actorState.entityProfileId) : null,
     state: finalProfile,
     lastEventSeq: actorState.lastEventSeq,
   });
@@ -64,7 +64,7 @@ export async function upsertSettingOverrides(params: {
     throw new Error(`projection not found for session ${sessionId}`);
   }
 
-  const currentProfile = (projection.worldState as SettingProfile) || baseline;
+  const currentProfile = (projection.worldState as SettingProfile) ?? baseline;
   const previous = { ...(currentProfile as unknown as Record<string, unknown>) };
   const nextProfile = deepMergeReplaceArrays<SettingProfile>(currentProfile, overrides);
   const parsedNext = SettingProfileSchema.safeParse(nextProfile);

@@ -12,6 +12,12 @@ import { findCharacter, findSetting } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toSessionId } from '../../../utils/uuid.js';
 
+interface SessionRecord {
+  id: string;
+  playerCharacterId?: string | null;
+  settingId?: string | null;
+}
+
 export async function handleGetEffective(
   c: Context,
   getLoaded: LoadedDataGetter
@@ -22,11 +28,11 @@ export async function handleGetEffective(
   const id = c.req.param('id');
   const ownerEmail = getOwnerEmail(c);
   // getSession(id, ownerEmail) from @minimal-rpg/db/node
-  const session = await getSession(toSessionId(id), ownerEmail);
+  const session = (await getSession(toSessionId(id), ownerEmail)) as SessionRecord | null;
   if (!session) return notFound(c, 'session not found');
 
-  const character = await findCharacter(loaded, session.playerCharacterId || '');
-  const setting = await findSetting(loaded, session.settingId || '');
+  const character = await findCharacter(loaded, session.playerCharacterId ?? '');
+  const setting = await findSetting(loaded, session.settingId ?? '');
   if (!character || !setting) {
     return serverError(c, 'character or setting not found for session');
   }

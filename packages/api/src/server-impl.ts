@@ -24,9 +24,14 @@ import {
   registerPersistenceHandler,
   type WorldEvent,
 } from '@minimal-rpg/bus';
-import { eventRepository, drizzle, sessions } from '@minimal-rpg/db';
+import { saveEvent, drizzle, sessions } from '@minimal-rpg/db';
 import { eq, sql } from 'drizzle-orm';
 import { toSessionId } from './utils/uuid.js';
+
+interface EventWithSession {
+  payload?: { sessionId?: string } & Record<string, unknown>;
+  sessionId?: string;
+}
 
 const app = new Hono();
 
@@ -36,10 +41,9 @@ worldBus.use(persistenceMiddleware);
 
 // Register persistence handler
 registerPersistenceHandler(async (event: WorldEvent) => {
-  const rawEvent = event as Record<string, unknown>;
-  const payload = rawEvent['payload'] as Record<string, unknown> | undefined;
-  const sessionId =
-    (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
+  const rawEvent = event as EventWithSession;
+  const payload = rawEvent.payload;
+  const sessionId = rawEvent.sessionId ?? payload?.sessionId;
 
   if (sessionId) {
     const coercedSessionId = toSessionId(sessionId);
@@ -58,7 +62,16 @@ registerPersistenceHandler(async (event: WorldEvent) => {
 
       if (newSeq !== undefined) {
         // 2. Save event with the new sequence
-        await eventRepository.save(coercedSessionId, event, BigInt(newSeq));
+        // Spread the event to capture all properties as payload
+        const { type, sessionId: _eventSessionId, ...eventPayload } = event as Record<string, unknown>;
+        void _eventSessionId; // Intentionally unused - destructured to exclude from payload
+        await saveEvent({
+          sessionId: coercedSessionId,
+          sequence: BigInt(newSeq),
+          type: type as string,
+          payload: eventPayload,
+          actorId: (eventPayload['actorId'] as string) ?? null,
+        });
       }
     } catch (err) {
       console.error('[bus] persistence error:', err);

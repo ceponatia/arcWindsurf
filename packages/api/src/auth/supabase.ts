@@ -12,6 +12,7 @@ export interface SupabaseAuthConfig {
 }
 
 function readStringEnv(name: string): string | null {
+  // eslint-disable-next-line security/detect-object-injection -- controlled lookup of environment variable
   const v = process.env[name];
   if (!v) return null;
   const t = v.trim();
@@ -56,8 +57,9 @@ export function getSupabaseAuthConfig(): SupabaseAuthConfig | null {
 }
 
 function readEmailFromPayload(payload: JWTPayload): string | null {
-  const email = payload['email'];
-  return typeof email === 'string' && email.trim().length > 0 ? email.trim() : null;
+  const claim = typeof payload.email === 'string' ? payload.email : null;
+  const email = claim?.trim() ?? '';
+  return email.length > 0 ? email : null;
 }
 
 /**

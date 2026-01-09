@@ -15,6 +15,20 @@ import type { ApiError } from '../../types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../utils/uuid.js';
 
+interface EntityProfileRow {
+  id: string;
+  ownerEmail?: string | null;
+  entityType?: string | null;
+  name?: string | null;
+  profileJson?: unknown;
+  createdAt: Date | string | null | undefined;
+  updatedAt: Date | string | null | undefined;
+}
+
+interface SessionRecord {
+  id: string;
+}
+
 interface PersonaActorState {
   profile?: PersonaProfile | Record<string, unknown>;
   status?: 'active' | 'inactive';
@@ -53,7 +67,11 @@ export function registerPersonaRoutes(app: Hono): void {
   app.get('/personas', async (c) => {
     const ownerEmail = getOwnerEmail(c);
 
-    const personas = await listEntityProfiles(ownerEmail, 'persona');
+    const personas = (await listEntityProfiles({
+      ownerEmail,
+      entityType: 'persona',
+      visibility: 'public',
+    })) as EntityProfileRow[];
 
     const summaries: PersonaSummary[] = personas
       .map((p) => {
@@ -74,7 +92,7 @@ export function registerPersonaRoutes(app: Hono): void {
   app.get('/personas/:id', async (c) => {
     const id = c.req.param('id');
 
-    const persona = await getEntityProfile(toId(id));
+    const persona = (await getEntityProfile(toId(id))) as EntityProfileRow | null;
 
     if (persona?.entityType !== 'persona') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -106,17 +124,17 @@ export function registerPersonaRoutes(app: Hono): void {
     const profile = parsed.data;
 
     // Check if persona with this ID already exists
-    const existing = await getEntityProfile(toId(profile.id));
+    const existing = (await getEntityProfile(toId(profile.id))) as EntityProfileRow | null;
 
     if (existing) {
       if (existing.ownerEmail !== ownerEmail && existing.ownerEmail !== 'public') {
         return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
       }
       // Update existing persona
-      const updated = await updateEntityProfile(toId(profile.id), {
+      const updated = (await updateEntityProfile(toId(profile.id), {
         name: profile.name,
         profileJson: profile,
-      });
+      })) as EntityProfileRow | null;
       if (!updated) {
         return c.json(
           { ok: false, error: 'persona not found after update' } satisfies ApiError,
@@ -127,13 +145,13 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: true, persona: summary }, 200);
     }
 
-    const created = await createEntityProfile({
+    const created = (await createEntityProfile({
       id: toId(profile.id),
       ownerEmail,
       entityType: 'persona',
       name: profile.name,
       profileJson: profile,
-    });
+    })) as EntityProfileRow;
 
     const summary = mapPersonaSummary(profile, created.createdAt, created.updatedAt);
     return c.json({ ok: true, persona: summary }, 201);
@@ -163,7 +181,7 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'id mismatch' } satisfies ApiError, 400);
     }
 
-    const existing = await getEntityProfile(toId(id));
+    const existing = (await getEntityProfile(toId(id))) as EntityProfileRow | null;
 
     if (!existing) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -173,10 +191,10 @@ export function registerPersonaRoutes(app: Hono): void {
       return c.json({ ok: false, error: 'not authorized' } satisfies ApiError, 403);
     }
 
-    const updated = await updateEntityProfile(toId(id), {
+    const updated = (await updateEntityProfile(toId(id), {
       name: profile.name,
       profileJson: profile,
-    });
+    })) as EntityProfileRow | null;
 
     if (!updated) {
       return c.json({ ok: false, error: 'update failed' } satisfies ApiError, 500);
@@ -191,7 +209,7 @@ export function registerPersonaRoutes(app: Hono): void {
     const id = c.req.param('id');
     const ownerEmail = getOwnerEmail(c);
 
-    const existing = await getEntityProfile(toId(id));
+    const existing = (await getEntityProfile(toId(id))) as EntityProfileRow | null;
 
     if (!existing) {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -222,13 +240,13 @@ export function registerPersonaRoutes(app: Hono): void {
     }
 
     // Check if session exists
-    const session = await getSession(sessionId, ownerEmail);
+    const session = (await getSession(sessionId, ownerEmail)) as SessionRecord | null;
     if (!session) {
       return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
     }
 
     // Check if persona exists
-    const persona = await getEntityProfile(toId(body.personaId));
+    const persona = (await getEntityProfile(toId(body.personaId))) as EntityProfileRow | null;
 
     if (persona?.entityType !== 'persona') {
       return c.json({ ok: false, error: 'persona not found' } satisfies ApiError, 404);
@@ -270,7 +288,7 @@ export function registerPersonaRoutes(app: Hono): void {
 
     try {
       const state = playerState.state as PersonaActorState;
-      const profile = PersonaProfileSchema.parse(state.profile || state);
+      const profile = PersonaProfileSchema.parse(state.profile ?? state);
 
       return c.json(
         {
