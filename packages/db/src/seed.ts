@@ -1,3 +1,4 @@
+import { getArraySafe } from '@minimal-rpg/schemas';
 import { pool } from './utils/client.js';
 import { seedBuiltInTags } from './seeds/built-in-tags.js';
 import { seedTestEntities } from './seeds/test-entities.js';
@@ -17,14 +18,14 @@ function parseSeedArgs(argv: string[]): {
   let includeTestEntities = false;
 
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i] ?? '';
+    const a = getArraySafe(argv, i) ?? '';
     if (a === '--upsert') {
       builtInTagsMode = 'upsert';
       continue;
     }
 
     if (a === '--mode') {
-      const v = argv[i + 1];
+      const v = getArraySafe(argv, i + 1);
       if (v === 'insert' || v === 'upsert') {
         builtInTagsMode = v;
         i++;

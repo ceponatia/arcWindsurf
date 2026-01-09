@@ -1,3 +1,4 @@
+import { setRecord } from '../../shared/record-helpers.js';
 import type { HygieneProfile } from '../../state/hygiene-types.js';
 import { flattenHygieneData } from '../../state/hygiene-types.js';
 import { CLEAN_SKIN, NEUTRAL_FAINT } from '../constants.js';
@@ -65,7 +66,7 @@ export const FEET_HYGIENE_MODIFIERS = flattenHygieneData(FEET_HYGIENE_CONFIG, [.
 
 const TOE_DEFAULTS = TOE_REGIONS.reduce(
   (acc, region) => {
-    acc[region] = NEUTRAL_FAINT;
+    setRecord(acc, region, NEUTRAL_FAINT);
     return acc;
   },
   {} as Record<string, RegionScent>

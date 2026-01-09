@@ -1,3 +1,4 @@
+import { getRecordOptional } from '@minimal-rpg/schemas';
 import type { ZodSchema } from 'zod';
 
 /**
@@ -39,7 +40,7 @@ export function extractJsonField<T>(text: string | null | undefined, field: stri
   if (!text) return undefined;
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
-    const value = parsed[field];
+    const value = getRecordOptional(parsed, field);
     return value as T | undefined;
   } catch {
     return undefined;

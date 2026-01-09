@@ -1,3 +1,4 @@
+import { getRecordOptional } from '../../shared/record-helpers.js';
 import type { BodyRegion } from '../regions.js';
 import type { RegionTexture } from '../../body-regions/sensory-types.js';
 import type { BodyMap } from '../sensory.js';
@@ -14,5 +15,5 @@ export function getRegionTexture(
   region: BodyRegion
 ): RegionTexture | undefined {
   if (!bodyMap) return undefined;
-  return bodyMap[region]?.texture;
+  return getRecordOptional(bodyMap, region)?.texture;
 }

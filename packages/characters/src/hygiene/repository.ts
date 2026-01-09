@@ -1,8 +1,9 @@
-import type {
-  BodyPartHygieneState,
-  HygieneLevel,
-  NpcHygieneRow,
-  NpcHygieneState,
+import {
+  type BodyPartHygieneState,
+  type HygieneLevel,
+  type NpcHygieneRow,
+  type NpcHygieneState,
+  setRecord,
 } from '@minimal-rpg/schemas';
 import type { HygieneRepository } from './types.js';
 
@@ -45,13 +46,13 @@ function toPartState(row: NpcHygieneRow): BodyPartHygieneState {
 }
 
 export class DbHygieneRepository implements HygieneRepository {
-  constructor(private readonly db: HygieneDb) {}
+  constructor(private readonly db: HygieneDb) { }
 
   async getState(sessionId: string, npcId: string): Promise<NpcHygieneState> {
     const rows = await this.db.npcHygieneState.findMany({ where: { sessionId, npcId } });
     const bodyParts: Record<string, BodyPartHygieneState> = {};
     for (const row of rows) {
-      bodyParts[row.bodyPart] = toPartState(row);
+      setRecord(bodyParts, row.bodyPart, toPartState(row));
     }
     return { npcId, bodyParts };
   }
@@ -125,11 +126,11 @@ export class DbHygieneRepository implements HygieneRepository {
         update: {},
       });
 
-      bodyParts[region] = {
+      setRecord(bodyParts, region, {
         points: 0,
         level: 0,
         lastUpdatedAt: at.toISOString(),
-      };
+      });
     }
 
     return { npcId, bodyParts };

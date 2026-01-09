@@ -12,6 +12,7 @@ import type {
   SimulationPriority,
   SimulationStrategy,
 } from './types.js';
+import { getRecord } from '../shared/record-helpers.js';
 import { DEFAULT_INTEREST_CONFIG, NPC_TIER_DEFAULTS } from './defaults.js';
 
 // =============================================================================
@@ -265,7 +266,7 @@ export function createSimulationPriority(
   tier: NpcTier,
   currentTurn: number
 ): SimulationPriority {
-  const basePriority = NPC_TIER_DEFAULTS[tier].simulationPriority;
+  const basePriority = getRecord(NPC_TIER_DEFAULTS, tier).simulationPriority;
 
   return {
     npcId,

@@ -5,6 +5,7 @@
  *
  * @see dev-docs/31-npc-simulation-and-performance.md
  */
+import { getRecord } from '../shared/record-helpers.js';
 import type {
   TieredSimulationConfig,
   SimulationBudgetConfig,
@@ -113,7 +114,7 @@ export function createNpcSimulationPriority(
   tier: NpcTier,
   distanceFromPlayer = 0
 ): NpcSimulationPriority {
-  const basePriority = TIER_BASE_PRIORITY[tier];
+  const basePriority = getRecord(TIER_BASE_PRIORITY, tier);
   return {
     npcId,
     basePriority,
@@ -130,7 +131,7 @@ export function getSimulationTierConfig(
   tier: NpcTier,
   config: TieredSimulationConfig = DEFAULT_TIERED_SIMULATION_CONFIG
 ) {
-  return config[tier];
+  return getRecord(config, tier);
 }
 
 /**
@@ -141,6 +142,6 @@ export function shouldUpdateOnTrigger(
   trigger: 'turn' | 'period-change' | 'location-change' | 'time-skip',
   config: TieredSimulationConfig = DEFAULT_TIERED_SIMULATION_CONFIG
 ): boolean {
-  const tierConfig = config[tier];
+  const tierConfig = getRecord(config, tier);
   return tierConfig.updateOn.includes(trigger);
 }

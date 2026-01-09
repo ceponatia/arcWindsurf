@@ -1,18 +1,5 @@
-import {
-  pgTable,
-  uuid,
-  text,
-  timestamp,
-  jsonb,
-  bigint,
-  integer,
-  real,
-  boolean,
-  doublePrecision,
-  index,
-  unique,
-  customType,
-} from 'drizzle-orm/pg-core';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, jsonb, bigint, integer, real, boolean, doublePrecision, index, unique, customType } from 'drizzle-orm/pg-core';
 
 // Custom type for pgvector
 const vector = customType<{ data: number[] }>({
@@ -101,7 +88,7 @@ export const locations = pgTable(
     atmosphere: jsonb('atmosphere').default({}),
     capacity: integer('capacity'),
     accessibility: text('accessibility').default('open'),
-    parentLocationId: uuid('parent_location_id').references(() => locations.id, {
+    parentLocationId: uuid('parent_location_id').references((): AnyPgColumn => locations.id, {
       onDelete: 'set null',
     }),
     embedding: vector('embedding', { dimensions: 1536 }),
@@ -160,7 +147,7 @@ export const prefabLocationInstances = pgTable(
       .references(() => locations.id, { onDelete: 'cascade' }),
     positionX: doublePrecision('position_x').notNull().default(0.5),
     positionY: doublePrecision('position_y').notNull().default(0.5),
-    parentInstanceId: uuid('parent_instance_id').references(() => prefabLocationInstances.id, {
+    parentInstanceId: uuid('parent_instance_id').references((): AnyPgColumn => prefabLocationInstances.id, {
       onDelete: 'set null',
     }),
     depth: integer('depth').notNull().default(0),
@@ -282,7 +269,7 @@ export const events = pgTable(
     type: text('type').notNull(), // 'SPOKE', 'MOVED', 'TICK', 'PLAYER_ACTION', etc.
     payload: jsonb('payload').notNull(),
     actorId: text('actor_id'),
-    causedByEventId: uuid('caused_by_event_id').references((): any => events.id, {
+    causedByEventId: uuid('caused_by_event_id').references((): AnyPgColumn => events.id, {
       onDelete: 'set null',
     }),
     timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),

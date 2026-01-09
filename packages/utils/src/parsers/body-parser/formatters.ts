@@ -10,7 +10,7 @@ import type {
   RegionVisual,
   RegionFlavor,
 } from '@minimal-rpg/schemas';
-import { BODY_REGIONS } from '@minimal-rpg/schemas';
+import { BODY_REGIONS, getRecordOptional } from '@minimal-rpg/schemas';
 
 /**
  * Format a RegionScent back to human-readable text.
@@ -97,7 +97,7 @@ export function formatBodyMap(bodyMap: BodyMap): string {
   const lines: string[] = [];
 
   for (const region of BODY_REGIONS) {
-    const data = bodyMap[region];
+    const data = getRecordOptional(bodyMap, region);
     if (!data) continue;
 
     if (data.scent) {

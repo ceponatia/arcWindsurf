@@ -1,3 +1,4 @@
+import { getRecord } from '../shared/record-helpers.js';
 import {
   ARMS_REGIONS,
   BODY_REGIONS,
@@ -34,7 +35,7 @@ export type BodyRegionGroup = keyof typeof BODY_REGION_GROUPS;
  * Get regions in a group.
  */
 export function getRegionsInGroup(group: BodyRegionGroup): readonly BodyRegion[] {
-  return BODY_REGION_GROUPS[group];
+  return getRecord(BODY_REGION_GROUPS, group);
 }
 
 /**

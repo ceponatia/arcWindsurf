@@ -6,6 +6,7 @@ export { BASE_THEME } from './base.js';
 export { MODERN_WOMAN_THEME } from './modern-woman.js';
 export { MODERN_MAN_THEME } from './modern-man.js';
 
+import { getRecordOptional } from '@minimal-rpg/schemas';
 import { BASE_THEME } from './base.js';
 import { MODERN_WOMAN_THEME } from './modern-woman.js';
 import { MODERN_MAN_THEME } from './modern-man.js';
@@ -24,5 +25,5 @@ export const CHARACTER_THEMES: Record<string, CharacterTheme> = {
  * Get a theme by ID, falling back to base theme.
  */
 export function getTheme(id: string): CharacterTheme {
-  return CHARACTER_THEMES[id] ?? BASE_THEME;
+  return getRecordOptional(CHARACTER_THEMES, id) ?? BASE_THEME;
 }

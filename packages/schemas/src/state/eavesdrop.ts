@@ -7,6 +7,7 @@
  * @see dev-docs/32-npc-encounters-and-occupancy.md Section 5.3
  */
 import { z } from 'zod';
+import { getRecord, getArraySafe } from '../shared/record-helpers.js';
 import type { CrowdLevel } from './occupancy.js';
 import type { InteractionProximity } from './npc-location.js';
 
@@ -121,8 +122,8 @@ export function getInteractionSnippet(
   npc1Name: string,
   npc2Name: string
 ): string {
-  const snippets = NPC_INTERACTION_SNIPPETS[relationship];
+  const snippets = getRecord(NPC_INTERACTION_SNIPPETS, relationship);
   const index = Math.floor(Math.random() * snippets.length);
-  const template = snippets[index] ?? snippets[0] ?? '{npc1} and {npc2} are present.';
+  const template = getArraySafe(snippets, index) ?? getArraySafe(snippets, 0) ?? '{npc1} and {npc2} are present.';
   return template.replace('{npc1}', npc1Name).replace('{npc2}', npc2Name);
 }

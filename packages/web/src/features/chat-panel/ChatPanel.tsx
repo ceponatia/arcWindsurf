@@ -281,7 +281,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     const userMessage =
       messages && targetIdx >= 0 && targetIdx < messages.length ? messages[targetIdx] : null;
 
-    if (!userMessage || userMessage.role !== 'user') return;
+    if (userMessage?.role !== 'user') return;
 
     const userContent = userMessage.content;
     const userSequence = userMessage.idx;

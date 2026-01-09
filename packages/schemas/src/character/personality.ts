@@ -1,3 +1,4 @@
+import { getRecordOptional } from '../shared/record-helpers.js';
 import { z } from 'zod';
 
 /**
@@ -795,7 +796,7 @@ export function resolveTraitToDimension(
   trait: string
 ): { dimension: PersonalityDimension; facet?: string; polarity: 'high' | 'low' } | undefined {
   const normalized = trait.toLowerCase().trim();
-  return TRAIT_ALIASES[normalized];
+  return getRecordOptional(TRAIT_ALIASES, normalized);
 }
 
 /**
@@ -827,9 +828,9 @@ export function validateTraitSet(traits: string[]): {
   const hardConflicts: TraitConflict[] = [];
   const softConflicts: TraitConflict[] = [];
 
-  for (let i = 0; i < traits.length; i++) {
-    for (let j = i + 1; j < traits.length; j++) {
-      const conflict = checkTraitConflict(traits[i]!, traits[j]!);
+  traits.forEach((trait1, i) => {
+    traits.slice(i + 1).forEach((trait2) => {
+      const conflict = checkTraitConflict(trait1, trait2);
       if (conflict) {
         if (conflict.type === 'soft') {
           softConflicts.push(conflict);
@@ -837,8 +838,8 @@ export function validateTraitSet(traits: string[]): {
           hardConflicts.push(conflict);
         }
       }
-    }
-  }
+    });
+  });
 
   return {
     valid: hardConflicts.length === 0,
@@ -864,7 +865,7 @@ export function getCompatibleTraits(selectedTrait: string, allTraits: string[]):
  * Get the prompt fragment for a trait ID.
  */
 export function getTraitPrompt(traitId: string): TraitPrompt | undefined {
-  return TRAIT_PROMPTS[traitId];
+  return getRecordOptional(TRAIT_PROMPTS, traitId);
 }
 
 /**
@@ -890,5 +891,5 @@ export function getOppositeTraitId(traitId: string): string | undefined {
   if (!facet || !polarity) return undefined;
   const oppositePolarity = polarity === 'high' ? 'low' : 'high';
   const opposite = `${facet}:${oppositePolarity}`;
-  return TRAIT_PROMPTS[opposite] ? opposite : undefined;
+  return getRecordOptional(TRAIT_PROMPTS, opposite) ? opposite : undefined;
 }

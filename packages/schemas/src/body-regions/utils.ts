@@ -1,3 +1,4 @@
+import { getRecordOptional, setRecord } from '../shared/record-helpers.js';
 import { REGION_HIERARCHY, RACE_EXCLUSIONS, GENDER_EXCLUSIONS } from './hierarchy.js';
 
 /**
@@ -14,8 +15,8 @@ export const getFilteredHierarchy = (
   const raceKey = race.toLowerCase();
   const genderKey = gender.toLowerCase();
 
-  const raceExclusions = RACE_EXCLUSIONS[raceKey] ?? [];
-  const genderExclusions = GENDER_EXCLUSIONS[genderKey] ?? [];
+  const raceExclusions = getRecordOptional(RACE_EXCLUSIONS, raceKey) ?? [];
+  const genderExclusions = getRecordOptional(GENDER_EXCLUSIONS, genderKey) ?? [];
   const allExclusions = new Set([...raceExclusions, ...genderExclusions]);
 
   const filtered: Record<string, string[]> = {};
@@ -27,7 +28,7 @@ export const getFilteredHierarchy = (
     const filteredSubRegions = subRegions.filter((sub) => !allExclusions.has(sub));
 
     if (filteredSubRegions.length > 0) {
-      filtered[region] = filteredSubRegions;
+      setRecord(filtered, region, filteredSubRegions);
     }
   });
 

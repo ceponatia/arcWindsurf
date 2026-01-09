@@ -50,7 +50,7 @@ export function registerItemRoutes(app: Hono): void {
 
     const profile = await getEntityProfile(id as any, ownerEmail);
 
-    if (!profile || profile.entityType !== 'item') {
+    if (profile?.entityType !== 'item') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
@@ -126,7 +126,7 @@ export function registerItemRoutes(app: Hono): void {
 
     const existing = await getEntityProfile(id as any, ownerEmail);
 
-    if (!existing || existing.entityType !== 'item') {
+    if (existing?.entityType !== 'item') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 

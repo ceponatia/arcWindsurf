@@ -65,7 +65,7 @@ export async function findCharacter(
   if (fsChar) return fsChar;
 
   const dbChar = await getEntityProfile(id as any);
-  if (dbChar && dbChar.entityType === 'character') {
+  if (dbChar?.entityType === 'character') {
     try {
       return CharacterProfileSchema.parse(dbChar.profileJson);
     } catch {
@@ -83,7 +83,7 @@ export async function findSetting(loaded: LoadedData, id: string): Promise<Setti
   if (fsSet) return fsSet;
 
   const dbSet = await getEntityProfile(id as any);
-  if (dbSet && dbSet.entityType === 'setting') {
+  if (dbSet?.entityType === 'setting') {
     try {
       return SettingProfileSchema.parse(dbSet.profileJson);
     } catch {

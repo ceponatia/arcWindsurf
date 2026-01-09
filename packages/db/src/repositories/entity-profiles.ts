@@ -1,7 +1,7 @@
 import { drizzle as db } from '../connection/index.js';
 import { entityProfiles } from '../schema/index.js';
-import { eq, and, or, sql } from 'drizzle-orm';
-import type { UUID, OwnerEmail } from '../types.js';
+import { eq, and, or } from 'drizzle-orm';
+import type { UUID } from '../types.js';
 
 export interface CreateEntityProfileInput {
   entityType: string;

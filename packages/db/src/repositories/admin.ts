@@ -1,4 +1,5 @@
 import { db, resolvedDbUrl, pool } from '../utils/client.js';
+import { getRecordOptional } from '@minimal-rpg/schemas';
 import type {
   DbColumn,
   DbOverviewResult,
@@ -118,7 +119,7 @@ export async function deleteDbRow(modelName: string, id: string): Promise<void> 
     sessiontimestates: 'session_time_state',
   };
   const key = modelName.toLowerCase();
-  const table = map[key];
+  const table = getRecordOptional(map, key);
   if (!table) throw new Error('Unknown model');
 
   const res: QueryResult<DbRow> = await pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]);

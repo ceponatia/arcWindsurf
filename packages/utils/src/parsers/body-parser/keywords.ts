@@ -2,6 +2,7 @@
  * Keyword mappings for body sensory parsing.
  */
 
+import { getRecordOptional } from '@minimal-rpg/schemas';
 import type { RegionTexture } from '@minimal-rpg/schemas';
 
 // ============================================================================
@@ -263,8 +264,8 @@ export function containsSensoryKeyword(text: string, keywords: readonly string[]
     // \b = word boundary (ensures whole word match)
     // (...)? = optional suffix group
     // Final \b ensures suffix is at end of word (no characters after)
-    const suffixPattern = VERB_SUFFIXES.map(escapeRegex).join('|');
-    const pattern = new RegExp(`\\b${escapedKeyword}(${suffixPattern})?\\b`, 'i');
+    const suffixPattern = VERB_SUFFIXES.join('|');
+    const pattern = new RegExp(`\\b${escapedKeyword}(?:${suffixPattern})?\\b`, 'i');
 
     if (pattern.test(lower)) {
       return true;
@@ -347,7 +348,7 @@ export function extractIntensity(phrase: string): { intensity: number; cleaned: 
     }
 
     // Check for keyword intensity
-    const keywordIntensity = INTENSITY_KEYWORDS[word];
+    const keywordIntensity = getRecordOptional(INTENSITY_KEYWORDS, word);
     if (keywordIntensity !== undefined) {
       intensity = keywordIntensity;
       continue; // Don't include intensity keywords in the cleaned output
@@ -371,7 +372,7 @@ export function extractTemperature(phrase: string): {
   const cleanedWords: string[] = [];
 
   for (const word of words) {
-    const keywordTemp = TEMPERATURE_KEYWORDS[word];
+    const keywordTemp = getRecordOptional(TEMPERATURE_KEYWORDS, word);
     if (keywordTemp !== undefined) {
       temperature = keywordTemp;
       continue;
@@ -394,7 +395,7 @@ export function extractMoisture(phrase: string): {
   const cleanedWords: string[] = [];
 
   for (const word of words) {
-    const keywordMoist = MOISTURE_KEYWORDS[word];
+    const keywordMoist = getRecordOptional(MOISTURE_KEYWORDS, word);
     if (keywordMoist !== undefined) {
       moisture = keywordMoist;
       continue;

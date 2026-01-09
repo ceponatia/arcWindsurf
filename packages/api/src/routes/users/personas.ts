@@ -70,7 +70,7 @@ export function registerPersonaRoutes(app: Hono): void {
 
     const persona = await getEntityProfile(id as any);
 
-    if (!persona || persona.entityType !== 'persona') {
+    if (persona?.entityType !== 'persona') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
@@ -224,7 +224,7 @@ export function registerPersonaRoutes(app: Hono): void {
     // Check if persona exists
     const persona = await getEntityProfile(body.personaId as any);
 
-    if (!persona || persona.entityType !== 'persona') {
+    if (persona?.entityType !== 'persona') {
       return c.json({ ok: false, error: 'persona not found' } satisfies ApiError, 404);
     }
 

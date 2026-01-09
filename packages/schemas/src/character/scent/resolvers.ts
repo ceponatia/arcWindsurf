@@ -1,3 +1,4 @@
+import { getRecordOptional, getTuple } from '../../shared/record-helpers.js';
 import type { BodyRegion } from '../regions.js';
 import type { HygieneLevel } from '../../state/hygiene.js';
 import type { RegionScent } from '../../body-regions/sensory-types.js';
@@ -47,8 +48,8 @@ export function resolveRegionScent(
   region: BodyRegion,
   hygieneLevel: HygieneLevel = 0
 ): ResolvedScentContext {
-  const userDefined = bodyMap?.[region]?.scent;
-  const tierDefault = DEFAULT_SCENTS[region];
+  const userDefined = getRecordOptional(bodyMap, region)?.scent;
+  const tierDefault = getRecordOptional(DEFAULT_SCENTS, region);
 
   const base: RegionScent | undefined = userDefined ?? tierDefault;
   const source: ResolvedScentContext['source'] = userDefined
@@ -77,7 +78,7 @@ export function resolveRegionScent(
     };
   }
 
-  const profile = HYGIENE_SCENT_MODIFIERS[region];
+  const profile = getRecordOptional(HYGIENE_SCENT_MODIFIERS, region);
   if (!profile) {
     return {
       source,
@@ -87,7 +88,7 @@ export function resolveRegionScent(
       modifiedNotes: base.notes ?? [],
     };
   }
-  const modifiers = profile[hygieneLevel];
+  const modifiers = getTuple(profile, hygieneLevel);
   if (!modifiers) {
     return {
       source,

@@ -1,5 +1,5 @@
-import { eq, and, or } from 'drizzle-orm';
-import { db } from '../index.js';
+import { eq, and } from 'drizzle-orm';
+import { drizzle as db } from '../connection/index.js';
 import { promptTags, sessionTags } from '../schema/index.js';
 import type { UUID } from '../types.js';
 import type {
@@ -11,7 +11,7 @@ import type {
 
 export async function listPromptTags(options: ListTagsOptions = {}) {
   // Simplification: ignoring owner/visibility for now as they are not in schema
-  let query = db.select().from(promptTags);
+  const query = db.select().from(promptTags);
 
   // We only support category and isActive (mapping isBuiltIn to isActive for now or just ignoring)
   const filters = [];
@@ -29,7 +29,7 @@ export async function listPromptTags(options: ListTagsOptions = {}) {
   return await query;
 }
 
-export async function getPromptTag(id: UUID, owner?: string) {
+export async function getPromptTag(id: UUID) {
   const result = await db.select().from(promptTags).where(eq(promptTags.id, id)).limit(1);
   return result[0];
 }
@@ -48,7 +48,7 @@ export async function createPromptTag(input: CreateTagInput) {
   return tag;
 }
 
-export async function updatePromptTag(id: UUID, owner: string, input: UpdateTagInput) {
+export async function updatePromptTag(id: UUID, input: UpdateTagInput) {
   const [updated] = await db
     .update(promptTags)
     .set({
@@ -63,7 +63,7 @@ export async function updatePromptTag(id: UUID, owner: string, input: UpdateTagI
   return updated;
 }
 
-export async function deletePromptTag(id: UUID, owner: string) {
+export async function deletePromptTag(id: UUID) {
   const [deleted] = await db.delete(promptTags).where(eq(promptTags.id, id)).returning();
   return !!deleted;
 }
@@ -73,8 +73,8 @@ export async function createSessionTagBinding(ownerEmail: string, params: Create
   const [binding] = await db
     .insert(sessionTags)
     .values({
-      sessionId: params.sessionId as UUID,
-      tagId: params.tagId as UUID,
+      sessionId: params.sessionId,
+      tagId: params.tagId,
       enabled: params.enabled ?? true,
     })
     .returning();
@@ -90,7 +90,7 @@ export async function getSessionTagsWithDefinitions(
   sessionId: string,
   options: { enabledOnly?: boolean } = {}
 ) {
-  const filters = [eq(sessionTags.sessionId, sessionId as UUID)];
+  const filters = [eq(sessionTags.sessionId, sessionId)];
   if (options.enabledOnly) {
     filters.push(eq(sessionTags.enabled, true));
   }
@@ -118,7 +118,7 @@ export async function toggleSessionTagBinding(
   const [updated] = await db
     .update(sessionTags)
     .set({ enabled })
-    .where(eq(sessionTags.id, bindingId as UUID))
+    .where(eq(sessionTags.id, bindingId))
     .returning();
   return updated;
 }
@@ -126,7 +126,7 @@ export async function toggleSessionTagBinding(
 export async function deleteSessionTagBinding(ownerEmail: string, bindingId: string) {
   const [deleted] = await db
     .delete(sessionTags)
-    .where(eq(sessionTags.id, bindingId as UUID))
+    .where(eq(sessionTags.id, bindingId))
     .returning();
   return !!deleted;
 }

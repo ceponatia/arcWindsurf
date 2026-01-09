@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useCharacterStudio } from './hooks/useCharacterStudio.js';
-import { activePanel, completionScore } from './signals.js';
+import { completionScore } from './signals.js';
 import { ConversationPane } from './components/conversation/ConversationPane.js';
 import { TraitSuggestions } from './components/traits/TraitSuggestions.js';
 import { IdentityPanel } from './components/IdentityPanel.js';
@@ -21,12 +21,19 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({
   useSignals();
 
   const { profile, isDirty, saveStatus, save, isEditing } = useCharacterStudio({
-    id,
+    id: id ?? null,
     onSave,
   });
 
-  const panel = activePanel.value;
   const completion = completionScore.value;
+
+  const handleSave = () => {
+    void save();
+  };
+
+  const handleCancel = () => {
+    onCancel?.();
+  };
 
   return (
     <div className="h-full flex flex-col bg-slate-950">
@@ -35,8 +42,8 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({
         completion={completion}
         isDirty={isDirty}
         saveStatus={saveStatus}
-        onSave={save}
-        onCancel={onCancel}
+        onSave={handleSave}
+        onCancel={handleCancel}
         isEditing={isEditing}
       />
 

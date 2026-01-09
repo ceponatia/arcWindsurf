@@ -14,9 +14,9 @@
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
-    "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
+    "lint": "eslint src --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@minimal-rpg/schemas": "workspace:*"

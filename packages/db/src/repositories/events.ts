@@ -1,14 +1,13 @@
 import { eq, and, gte, asc } from 'drizzle-orm';
 import { drizzle } from '../connection/drizzle.js';
 import { events } from '../schema/index.js';
-import { type WorldEvent } from '@minimal-rpg/schemas';
 import type { UUID } from '../types.js';
 
 export interface SaveEventInput {
   sessionId: UUID;
   sequence: bigint;
   type: string;
-  payload: any;
+  payload: Record<string, unknown> | unknown[];
   actorId?: string | null;
   causedByEventId?: UUID | null;
 }

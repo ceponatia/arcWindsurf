@@ -162,9 +162,9 @@ export class SessionToolHandler {
 
       const state = playerState.state as Record<string, any>;
       const profile = state.profile || state;
-      const name = typeof profile['name'] === 'string' ? profile['name'] : playerState.actorId;
+      const name = typeof profile.name === 'string' ? profile.name : playerState.actorId;
       const description =
-        typeof profile['description'] === 'string' ? profile['description'] : undefined;
+        typeof profile.description === 'string' ? profile.description : undefined;
 
       return {
         success: true,

@@ -313,9 +313,9 @@ export function useAppController(): AppControllerValue {
   };
 
   const onStartSession = async (charId?: string, setSelectionId?: string, tags?: string[]) => {
-    const finalCharacterId = charId || selectedCharacterId;
-    const finalSettingId = setSelectionId || selectedSettingId;
-    const finalTagIds = tags || selectedTagIds;
+    const finalCharacterId = charId ?? selectedCharacterId;
+    const finalSettingId = setSelectionId ?? selectedSettingId;
+    const finalTagIds = tags ?? selectedTagIds;
 
     if (!finalCharacterId || !finalSettingId) return;
     setCreating(true);

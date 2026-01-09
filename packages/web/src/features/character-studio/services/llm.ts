@@ -42,7 +42,7 @@ export async function generateCharacterResponse(
     throw new Error(`Generate failed: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as { content: string };
   return { content: data.content };
 }
 
@@ -76,6 +76,6 @@ export async function inferTraitsFromMessage(
     return [];
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as { traits?: Omit<InferredTrait, 'status'>[] };
   return data.traits ?? [];
 }

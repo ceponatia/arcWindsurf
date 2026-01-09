@@ -5,6 +5,8 @@ import {
   calculateHygieneLevel,
   getSensoryModifierByLevel,
   isFootRelatedPart,
+  getRecordOptional,
+  setRecord,
   type HygieneEvent,
   type HygieneLevel,
 } from '@minimal-rpg/schemas';
@@ -41,11 +43,11 @@ export class HygieneService {
     const state = await this.repository.getState(sessionId, npcId);
 
     for (const part of bodyParts) {
-      state.bodyParts[part] = {
+      setRecord(state.bodyParts, part, {
         points: 0,
         level: 0,
         lastUpdatedAt: at.toISOString(),
-      } satisfies BodyPartHygieneState;
+      } satisfies BodyPartHygieneState);
     }
 
     return state;
@@ -69,12 +71,12 @@ export class HygieneService {
         continue;
       }
 
-      const config = modifiers.decayRates[region];
+      const config = getRecordOptional(modifiers.decayRates, region);
       if (!config) {
         continue;
       }
 
-      const current = state.bodyParts[region] ?? { points: 0, level: 0 };
+      const current = getRecordOptional(state.bodyParts, region) ?? { points: 0, level: 0 };
       const currentLevel = (current.level ?? 0) as HygieneLevel;
 
       const decayPoints = calculateDecayPoints(
@@ -97,7 +99,7 @@ export class HygieneService {
       };
 
       await this.repository.upsertPart(sessionId, input.npcId, region, nextPart);
-      state.bodyParts[region] = nextPart;
+      setRecord(state.bodyParts, region, nextPart);
     }
 
     return { state };
@@ -122,7 +124,7 @@ export class HygieneService {
     const nextState = applyHygieneEvent(state, event, modifiers.decayRates, at);
 
     for (const [bodyPart, nextPart] of Object.entries(nextState.bodyParts)) {
-      const prev = state.bodyParts[bodyPart];
+      const prev = getRecordOptional(state.bodyParts, bodyPart);
       if (prev && prev.points === nextPart.points && prev.level === nextPart.level) {
         continue;
       }
@@ -141,11 +143,11 @@ export class HygieneService {
   ): Promise<{ level: HygieneLevel; modifier: string }> {
     const modifiers = await this.modifiers.load();
     const state = await this.repository.getState(sessionId, npcId);
-    const partState = state.bodyParts[bodyPart];
+    const partState = getRecordOptional(state.bodyParts, bodyPart);
     const level = (partState?.level ?? 0) as HygieneLevel;
 
-    const partModifiers = modifiers.bodyParts[bodyPart];
-    const senseModifiers = partModifiers?.[senseType];
+    const partModifiers = getRecordOptional(modifiers.bodyParts, bodyPart);
+    const senseModifiers = getRecordOptional(partModifiers, senseType);
     const modifier = senseModifiers ? getSensoryModifierByLevel(senseModifiers, level) : '';
 
     return { level, modifier };

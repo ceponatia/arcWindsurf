@@ -52,7 +52,7 @@ async function getSensoryModifiers(): Promise<LoadedSensoryModifiers> {
 async function getNpcHygieneState(sessionId: string, npcId: string): Promise<NpcHygieneState> {
   const actorState = await getActorState(sessionId as any, npcId);
 
-  if (!actorState || !actorState.state) {
+  if (!actorState?.state) {
     return { npcId, bodyParts: {} };
   }
 

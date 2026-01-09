@@ -1,4 +1,5 @@
 import type { ZodError } from 'zod';
+import { getRecordOptional, setPartialRecord } from '@minimal-rpg/schemas';
 import type { FieldErrorMap } from './types.js';
 
 export type { FieldErrorMap };
@@ -16,13 +17,13 @@ export function mapZodErrorsToFields<FieldKey extends string = string>(
   for (const issue of error.issues) {
     const key = pathToField(issue.path as (string | number)[]);
     if (!key) continue;
-    const existing = result[key];
+    const existing = getRecordOptional(result, key);
     if (!existing) {
-      result[key] = issue.message;
+      setPartialRecord(result, key, issue.message);
     } else if (maxPerField > 1) {
       const messages = existing.split('\n');
       if (messages.length < maxPerField && !messages.includes(issue.message)) {
-        result[key] = [...messages, issue.message].join('\n');
+        setPartialRecord(result, key, [...messages, issue.message].join('\n'));
       }
     }
   }

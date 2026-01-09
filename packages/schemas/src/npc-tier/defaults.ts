@@ -3,6 +3,7 @@
  *
  * Default configurations for NPC tiers and interest scoring.
  */
+import { getRecord } from '../shared/record-helpers.js';
 import type { NpcTier, NpcTierConfig, InterestConfig, PlayerInterestScore } from './types.js';
 
 // =============================================================================
@@ -84,7 +85,7 @@ export function createInitialInterestScore(npcId: string): PlayerInterestScore {
  */
 export function getTierConfig(tier: NpcTier, overrides?: Partial<NpcTierConfig>): NpcTierConfig {
   return {
-    ...NPC_TIER_DEFAULTS[tier],
+    ...getRecord(NPC_TIER_DEFAULTS, tier),
     ...overrides,
   };
 }
@@ -109,5 +110,5 @@ export function getNextTier(tier: NpcTier): NpcTier | null {
  * Check if a tier can be promoted.
  */
 export function canPromote(tier: NpcTier): boolean {
-  return NPC_TIER_DEFAULTS[tier].promotable;
+  return getRecord(NPC_TIER_DEFAULTS, tier).promotable;
 }

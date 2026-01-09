@@ -1,3 +1,4 @@
+import { getRecordOptional, setRecord } from '@minimal-rpg/schemas';
 import type { Reducer, Projection } from '../types.js';
 import { DEFAULT_START_TIME, createDefaultNpcLocationState } from '@minimal-rpg/schemas';
 import type { NpcLocationState } from '@minimal-rpg/schemas';
@@ -19,106 +20,102 @@ export const initialNpcsState: NpcsState = {};
 
 export const npcReducer: Reducer<NpcsState> = (state, event) => {
   switch (event.type) {
-    case 'ACTOR_SPAWN':
+    case 'ACTOR_SPAWN': {
       if (event.actorType !== 'npc') return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          id: event.actorId,
-          location: createDefaultNpcLocationState(event.locationId, DEFAULT_START_TIME),
-          health: { current: 100, max: 100 },
-          status: 'alive',
-          inventory: [],
-        },
-      };
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        id: event.actorId,
+        location: createDefaultNpcLocationState(event.locationId, DEFAULT_START_TIME),
+        health: { current: 100, max: 100 },
+        status: 'alive',
+        inventory: [],
+      });
+      return nextState;
+    }
 
     case 'ACTOR_DESPAWN': {
       const actorId = event.actorId;
       const newState = { ...state };
+      // SECURITY: actorId is validated as part of the event payload
+      // eslint-disable-next-line security/detect-object-injection
       delete newState[actorId];
       return newState;
     }
 
     case 'MOVED': {
-      const npc = state[event.actorId];
+      const npc = getRecordOptional(state, event.actorId);
       if (!npc) return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          ...npc,
-          location: {
-            ...npc.location,
-            locationId: event.toLocationId,
-          },
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        ...npc,
+        location: {
+          ...npc.location,
+          locationId: event.toLocationId,
         },
-      };
+      });
+      return nextState;
     }
 
     case 'DAMAGED': {
-      const npc = state[event.actorId];
+      const npc = getRecordOptional(state, event.actorId);
       if (!npc) return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          ...npc,
-          health: {
-            ...npc.health,
-            current: Math.max(0, npc.health.current - event.amount),
-          },
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        ...npc,
+        health: {
+          ...npc.health,
+          current: Math.max(0, npc.health.current - event.amount),
         },
-      };
+      });
+      return nextState;
     }
 
     case 'HEALED': {
-      const npc = state[event.actorId];
+      const npc = getRecordOptional(state, event.actorId);
       if (!npc) return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          ...npc,
-          health: {
-            ...npc.health,
-            current: Math.min(npc.health.max, npc.health.current + event.amount),
-          },
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        ...npc,
+        health: {
+          ...npc.health,
+          current: Math.min(npc.health.max, npc.health.current + event.amount),
         },
-      };
+      });
+      return nextState;
     }
 
     case 'DIED': {
-      const npc = state[event.actorId];
+      const npc = getRecordOptional(state, event.actorId);
       if (!npc) return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          ...npc,
-          status: 'dead',
-          health: { ...npc.health, current: 0 },
-        },
-      };
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        ...npc,
+        status: 'dead',
+        health: { ...npc.health, current: 0 },
+      });
+      return nextState;
     }
 
     case 'ITEM_ACQUIRED': {
-      const npc = state[event.actorId];
+      const npc = getRecordOptional(state, event.actorId);
       if (!npc) return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          ...npc,
-          inventory: [...npc.inventory, event.itemId],
-        },
-      };
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        ...npc,
+        inventory: [...npc.inventory, event.itemId],
+      });
+      return nextState;
     }
 
     case 'ITEM_DROPPED': {
-      const npc = state[event.actorId];
+      const npc = getRecordOptional(state, event.actorId);
       if (!npc) return state;
-      return {
-        ...state,
-        [event.actorId]: {
-          ...npc,
-          inventory: npc.inventory.filter((id) => id !== event.itemId),
-        },
-      };
+      const nextState = { ...state };
+      setRecord(nextState, event.actorId, {
+        ...npc,
+        inventory: npc.inventory.filter((id) => id !== event.itemId),
+      });
+      return nextState;
     }
 
     default:

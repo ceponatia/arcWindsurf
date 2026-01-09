@@ -12,12 +12,12 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "pnpm exec tsc -b",
+    "build": "tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
-    "lint": "eslint src --ext .ts --cache --cache-location ../../.eslintcache",
+    "lint": "eslint src --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "typecheck": "pnpm exec tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@minimal-rpg/retrieval": "workspace:*",

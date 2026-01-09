@@ -5,4 +5,4 @@
  * to avoid code duplication and maintain a single source of truth.
  */
 
-export { isUrlDomain, isSupabaseUrl, redactUrlForLogging } from '../../../utils/src/url-sanitizer';
+export { isUrlDomain, isSupabaseUrl, redactUrlForLogging } from '@minimal-rpg/utils';

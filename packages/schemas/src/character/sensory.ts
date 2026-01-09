@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { setPartialRecord } from '../shared/record-helpers.js';
 import { BODY_REGIONS, type BodyRegion } from './regions.js';
 import {
   RegionScentSchema,
@@ -55,7 +56,7 @@ export * from './appearance/utils.js';
  */
 const BODY_MAP_SHAPE: Record<string, z.ZodTypeAny> = {};
 for (const region of BODY_REGIONS) {
-  BODY_MAP_SHAPE[region] = BodyRegionDataSchema.optional();
+  setPartialRecord(BODY_MAP_SHAPE, region, BodyRegionDataSchema.optional());
 }
 
 // We cast the schema to ensure the inferred type matches BodyMap

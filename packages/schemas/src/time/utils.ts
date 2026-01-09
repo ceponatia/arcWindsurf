@@ -15,6 +15,7 @@ import type {
   PendingTimeEvent,
   SessionTimeState,
 } from './types.js';
+import { getArraySafe } from '../shared/record-helpers.js';
 import { DEFAULT_TIME_CONFIG, DEFAULT_DAY_PERIODS } from './defaults.js';
 
 // =============================================================================
@@ -180,13 +181,8 @@ export function getCurrentPeriod(
   }
 
   // If no period found (shouldn't happen with proper config), return the first one
-  // Use non-null assertion since DEFAULT_DAY_PERIODS always has entries
-  const fallback = sortedPeriods[sortedPeriods.length - 1];
-  if (!fallback) {
-    // This should never happen with DEFAULT_DAY_PERIODS, but satisfy TypeScript
-    return { name: 'unknown', startHour: 0 };
-  }
-  return fallback;
+  // DEFAULT_DAY_PERIODS always has entries, so fallback is guaranteed to exist
+  return sortedPeriods[sortedPeriods.length - 1]!;
 }
 
 /**
@@ -275,7 +271,7 @@ export function getDayName(
   if (!calendar?.dayNames.length) return undefined;
 
   const dayIndex = (time.absoluteDay - 1) % config.daysPerWeek;
-  return calendar.dayNames[dayIndex];
+  return getArraySafe(calendar.dayNames, dayIndex);
 }
 
 /**
@@ -288,7 +284,7 @@ export function getMonthName(
   const calendar = config.calendar;
   if (!calendar?.monthNames.length) return undefined;
 
-  return calendar.monthNames[time.month - 1];
+  return getArraySafe(calendar.monthNames, time.month - 1);
 }
 
 /**
@@ -377,7 +373,7 @@ export function validateTimeSkip(
 
   // Pick a random rejection message
   const messages = config.skipConfig?.rejectionMessages ?? ["That's a bit too long to skip."];
-  const rejectionMessage = messages[Math.floor(Math.random() * messages.length)];
+  const rejectionMessage = getArraySafe(messages, Math.floor(Math.random() * messages.length)) ?? messages[0];
 
   return {
     allowed: false,

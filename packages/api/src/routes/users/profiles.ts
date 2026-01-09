@@ -68,7 +68,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
 
     // Check DB
     const dbChar = await getEntityProfile(id as any);
-    if (dbChar && dbChar.entityType === 'character') {
+    if (dbChar?.entityType === 'character') {
       try {
         const profile = dbChar.profileJson as any;
         const parsed = CharacterProfileSchema.parse(profile);
@@ -155,7 +155,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     const existing = await getEntityProfile(id as any);
-    if (!existing || existing.entityType !== 'character') {
+    if (existing?.entityType !== 'character') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 
@@ -209,7 +209,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
 
     // Check DB
     const dbSet = await getEntityProfile(id as any);
-    if (dbSet && dbSet.entityType === 'setting') {
+    if (dbSet?.entityType === 'setting') {
       try {
         const profile = dbSet.profileJson as any;
         const parsed = SettingProfileSchema.parse(profile);
@@ -275,7 +275,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     const ownerEmail = getOwnerEmail(c);
     const id = c.req.param('id');
     const existing = await getEntityProfile(id as any);
-    if (!existing || existing.entityType !== 'setting') {
+    if (existing?.entityType !== 'setting') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
     }
 

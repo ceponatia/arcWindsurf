@@ -1,4 +1,3 @@
-import type { CharacterProfile } from '@minimal-rpg/schemas';
 import {
   getCharacter,
   saveCharacter,

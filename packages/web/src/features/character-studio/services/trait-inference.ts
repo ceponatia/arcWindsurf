@@ -1,13 +1,12 @@
+import { getRecordOptional, setRecord } from '@minimal-rpg/schemas';
 import type { InferredTrait, ConversationMessage } from '../signals.js';
-import type { CharacterProfile } from '@minimal-rpg/schemas';
 
 /**
  * Simple client-side trait inference based on keyword matching.
  * This is a fallback when the API is unavailable.
  */
 export function inferTraitsFromKeywords(
-  message: string,
-  _currentProfile: Partial<CharacterProfile>
+  message: string
 ): Omit<InferredTrait, 'status'>[] {
   const traits: Omit<InferredTrait, 'status'>[] = [];
   const lower = message.toLowerCase();
@@ -79,7 +78,7 @@ export function inferTraitsFromKeywords(
 
 function extractFearSpecific(message: string): string {
   // Simple extraction - take the phrase after "afraid of" or "fear of"
-  const match = message.match(/(?:afraid of|fear of|scared of)\s+([^.!?,]+)/i);
+  const match = /(?:afraid of|fear of|scared of)\s+([^.!?,]+)/i.exec(message);
   return match?.[1]?.trim() ?? 'unspecified';
 }
 
@@ -98,13 +97,14 @@ export function analyzeConversationThemes(
     const words = msg.content.toLowerCase().split(/\s+/);
     for (const word of words) {
       if (word.length > 5) {
-        themes[word] = (themes[word] ?? 0) + 1;
+        const count = getRecordOptional(themes, word) ?? 0;
+        setRecord(themes, word, count + 1);
       }
     }
   }
 
   return Object.entries(themes)
-    .filter(([_, count]) => count > 2)
+    .filter(([, count]) => count > 2)
     .map(([theme, frequency]) => ({ theme, frequency }))
     .sort((a, b) => b.frequency - a.frequency)
     .slice(0, 10);

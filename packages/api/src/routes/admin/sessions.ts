@@ -36,7 +36,7 @@ export function registerAdminSessionRoutes(app: Hono) {
       const failures: ToolingFailureEntryDto[] = history
         .map((h) => {
           const debug = h.debug;
-          const events = (debug?.['events'] as unknown[]) ?? [];
+          const events = (debug?.events as unknown[]) ?? [];
 
           const toolingFailures: ToolingFailureEventDto[] = events
             .filter((e): e is Record<string, unknown> => Boolean(e && typeof e === 'object'))

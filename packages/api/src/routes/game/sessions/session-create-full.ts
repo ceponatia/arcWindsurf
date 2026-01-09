@@ -216,7 +216,7 @@ export async function handleCreateFullSession(
       .select()
       .from(promptTags)
       .where(inArray(promptTags.id, tagIds as any));
-    const foundTagIds = new Set(tagResult.map((r) => r.id as string));
+    const foundTagIds = new Set(tagResult.map((r) => r.id));
     const missingTags = tagIds.filter((id) => !foundTagIds.has(id));
     if (missingTags.length > 0) {
       return notFound(c, `tags not found: ${missingTags.join(', ')}`);

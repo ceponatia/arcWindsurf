@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { db } from '../index.js';
+import { drizzle as db } from '../connection/index.js';
 import { sessions, sessionProjections } from '../schema/index.js';
 import type { UUID } from '../types.js';
 
@@ -19,8 +19,8 @@ export async function createSession(params: {
         id: params.id,
         ownerEmail: params.ownerEmail,
         name: `Session ${params.id.substring(0, 8)}`,
-        playerCharacterId: params.characterTemplateId as any,
-        settingId: params.settingTemplateId as any,
+        playerCharacterId: params.characterTemplateId,
+        settingId: params.settingTemplateId,
       })
       .returning();
 

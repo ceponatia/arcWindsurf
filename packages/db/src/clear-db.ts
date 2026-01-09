@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
+import { resolveDatabaseUrl } from './connection/resolve-database-url.js';
 import { isSupabaseUrl } from './utils/url-validator.js';
 
 // this is for deleting the db and starting fresh. DO NOT USE IN PRODUCTION

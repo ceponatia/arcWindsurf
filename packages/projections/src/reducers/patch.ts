@@ -2,8 +2,7 @@ import * as jsonpatch from 'fast-json-patch';
 import type { Operation } from 'fast-json-patch';
 
 // Handling CJS/ESM interop for fast-json-patch
-// @ts-ignore
-const applyPatch = jsonpatch.default?.applyPatch || jsonpatch.applyPatch;
+const applyPatch = (jsonpatch.default?.applyPatch || jsonpatch.applyPatch).bind(jsonpatch);
 
 /**
  * A generic reducer that applies JSON patches.

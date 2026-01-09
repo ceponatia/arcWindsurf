@@ -14,6 +14,7 @@
  * character schemas decoupled from item schemas.
  */
 
+import { getRecordOptional } from '../shared/record-helpers.js';
 import { BODY_REGIONS, type BodyRegion, type BodySide } from '../body-regions/index.js';
 
 export { BODY_REGIONS };
@@ -251,12 +252,12 @@ function extractSide(normalized: string): { side: BodySide | undefined; value: s
   // Use non-greedy quantifiers to prevent ReDoS vulnerability (polynomial backtracking)
   const prefix = /^(left|right)\s+(.+)$/.exec(cleaned);
   if (prefix) {
-    return { side: prefix[1] as BodySide, value: prefix[2] ?? '' };
+    return { side: prefix[1] as BodySide, value: prefix[2]! };
   }
 
   const suffix = /^(.+)\s+(left|right)$/.exec(cleaned);
   if (suffix) {
-    return { side: suffix[2] as BodySide, value: suffix[1] ?? '' };
+    return { side: suffix[2] as BodySide, value: suffix[1]! };
   }
 
   return { side: undefined, value: cleaned };
@@ -284,7 +285,7 @@ function applySideToRegion(region: BodyRegion, side: BodySide | undefined): Body
     toes: { left: 'leftBigToe', right: 'rightBigToe' },
   };
 
-  const mapped = sideMap[region];
+  const mapped = getRecordOptional(sideMap, region);
   if (mapped) {
     return side === 'left' ? mapped.left : mapped.right;
   }
@@ -338,7 +339,7 @@ export function resolveBodyRegion(
   }
 
   // Check aliases
-  const aliased = BODY_REGION_ALIASES[value];
+  const aliased = getRecordOptional(BODY_REGION_ALIASES, value);
   if (aliased) {
     return applySideToRegion(aliased, side);
   }

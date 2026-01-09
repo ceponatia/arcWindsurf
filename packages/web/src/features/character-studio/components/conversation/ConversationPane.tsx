@@ -22,7 +22,7 @@ export const ConversationPane: React.FC = () => {
 
   const handleSend = useCallback(() => {
     if (!input.trim() || isGenerating) return;
-    sendMessage(input.trim());
+    void sendMessage(input.trim());
     setInput('');
   }, [input, isGenerating, sendMessage]);
 
@@ -38,7 +38,7 @@ export const ConversationPane: React.FC = () => {
 
   const handlePromptSelect = useCallback(
     (prompt: string) => {
-      sendMessage(prompt);
+      void sendMessage(prompt);
     },
     [sendMessage]
   );

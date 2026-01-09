@@ -21,7 +21,6 @@ import type {
   UpdateTagRequest,
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
-import type { Speaker } from '../../types.js';
 import { getAccessToken } from '../auth/accessToken.js';
 import type { AuthLoginResponse, AuthMeResponse } from '../auth/types.js';
 
@@ -481,11 +480,11 @@ export async function sendMessage(
     ...(result.metadata ? { turnMetadata: result.metadata } : {}),
     ...(result.speaker
       ? {
-          speaker: {
-            id: result.speaker.actorId,
-            name: result.speaker.name || result.speaker.actorId,
-          },
-        }
+        speaker: {
+          id: result.speaker.actorId,
+          name: result.speaker.name ?? result.speaker.actorId,
+        },
+      }
       : {}),
   };
 

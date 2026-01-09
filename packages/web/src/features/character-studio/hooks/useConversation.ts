@@ -6,7 +6,6 @@ import {
   pendingTraits,
   characterProfile,
   addMessage,
-  type InferredTrait,
 } from '../signals.js';
 import { generateCharacterResponse, inferTraitsFromMessage } from '../services/llm.js';
 

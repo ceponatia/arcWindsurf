@@ -10,6 +10,7 @@ import {
   type HygieneLevel,
   type NpcHygieneState,
 } from './hygiene.js';
+import { getTuple, setRecord, getRecordOptional } from '../shared/record-helpers.js';
 
 export const CLEANING_EVENTS = {
   fullBath: { levelDelta: -5, affectedGroups: 'all' },
@@ -50,7 +51,7 @@ function getMinPointsForLevelLocal(
   level: HygieneLevel,
   thresholds: HygieneThresholdsTuple = DEFAULT_THRESHOLDS
 ): number {
-  return thresholds[level];
+  return getTuple(thresholds, level);
 }
 
 function resolveAffectedBodyParts(
@@ -108,19 +109,19 @@ export function applyHygieneEvent(
     const affected = resolveAffectedBodyParts(spec.affectedGroups, undefined);
 
     for (const part of affected) {
-      const current: { points: number; level: number } = nextBodyParts[part] ?? {
+      const current = getRecordOptional(nextBodyParts, part) ?? {
         points: 0,
         level: 0,
       };
       const nextLevel = clampHygieneLevelLocal(current.level + spec.levelDelta);
-      const thresholds = (decayRates?.[part]?.thresholds ??
+      const thresholds = (getRecordOptional(decayRates, part)?.thresholds ??
         DEFAULT_THRESHOLDS) as unknown as HygieneThresholdsTuple;
 
-      nextBodyParts[part] = {
+      setRecord(nextBodyParts, part, {
         points: getMinPointsForLevelLocal(nextLevel, thresholds),
         level: nextLevel,
         lastUpdatedAt: now,
-      };
+      });
     }
 
     return { ...state, bodyParts: nextBodyParts };
@@ -130,19 +131,19 @@ export function applyHygieneEvent(
   const affected = resolveAffectedBodyParts(spec.affectedGroups, event.bodyParts);
 
   for (const part of affected) {
-    const current: { points: number; level: number } = nextBodyParts[part] ?? {
+    const current = getRecordOptional(nextBodyParts, part) ?? {
       points: 0,
       level: 0,
     };
     const nextLevel = clampHygieneLevelLocal(current.level + spec.levelDelta);
-    const thresholds = (decayRates?.[part]?.thresholds ??
+    const thresholds = (getRecordOptional(decayRates, part)?.thresholds ??
       DEFAULT_THRESHOLDS) as unknown as HygieneThresholdsTuple;
 
-    nextBodyParts[part] = {
+    setRecord(nextBodyParts, part, {
       points: getMinPointsForLevelLocal(nextLevel, thresholds),
       level: nextLevel,
       lastUpdatedAt: now,
-    };
+    });
   }
 
   return { ...state, bodyParts: nextBodyParts };

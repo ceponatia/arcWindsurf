@@ -1,3 +1,4 @@
+import { getArraySafe, setRecord, getRecordOptional, type BodyRegion } from '@minimal-rpg/schemas';
 import { Pool } from 'pg';
 import { registerType } from '../vector/pgvector.js';
 import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
@@ -25,9 +26,8 @@ import type {
   UserSessionRow,
 } from '../types.js';
 
-const env: Record<string, string | undefined> =
-  (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
-    ?.env ?? {};
+const globalEnv = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const env: Record<string, string | undefined> = globalEnv;
 
 export const resolvedDbUrl = resolveDatabaseUrl(env).url;
 export const resolvedDbPath = resolvedDbUrl;
@@ -81,9 +81,9 @@ function buildQuery(
   const params: unknown[] = [];
   let text = '';
   for (let i = 0; i < strings.length; i++) {
-    text += strings[i];
+    text += getArraySafe(strings, i) ?? '';
     if (i < values.length) {
-      params.push(values[i]);
+      params.push(getArraySafe(values, i));
       text += `$${params.length}`;
     }
   }
@@ -103,19 +103,19 @@ function asDate(v: unknown): Date | null {
 function camelizeRow<T extends DbRow>(row: DbRow): T {
   const out: DbRow = {};
   for (const k of Object.keys(row)) {
-    const v = (row as Record<string, unknown>)[k];
+    const v = getRecordOptional(row, k as BodyRegion);
     const ck = k.replace(/_[a-z]/g, (m) => m[1]!.toUpperCase());
     if (ck === 'createdAt' || ck === 'updatedAt') {
-      (out as Record<string, unknown>)[ck] = asDate(v) ?? undefined;
+      setRecord(out as Record<string, unknown>, ck, asDate(v) ?? undefined);
     } else if (
       (ck === 'profileJson' || ck === 'templateSnapshot' || ck === 'overridesJson') &&
       typeof v === 'object' &&
       v !== null
     ) {
       // return stringified JSON to match previous Prisma shape
-      (out as Record<string, unknown>)[ck] = JSON.stringify(v);
+      setRecord(out as Record<string, unknown>, ck, JSON.stringify(v));
     } else {
-      (out as Record<string, unknown>)[ck] = v;
+      setRecord(out as Record<string, unknown>, ck, v);
     }
   }
   return out as T;

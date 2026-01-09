@@ -1,3 +1,5 @@
+import { getRecordOptional, setRecord } from '@minimal-rpg/schemas';
+
 /**
  * Check if value is a plain object (not array, null, Date, etc.).
  */
@@ -25,16 +27,16 @@ export function deepMergeReplaceArrays<T>(base: T, override: unknown): T {
     : { ...(base as Record<string, unknown>) };
 
   for (const [k, v] of Object.entries(override)) {
-    const current = (result as Record<string, unknown>)[k];
+    const current = getRecordOptional(result as Record<string, unknown>, k);
     if (Array.isArray(v)) {
       // Arrays are replaced, not merged
-      (result as Record<string, unknown>)[k] = v;
+      setRecord(result as Record<string, unknown>, k, v);
     } else if (isPlainObject(v) && isPlainObject(current)) {
       // Recursively merge objects
-      (result as Record<string, unknown>)[k] = deepMergeReplaceArrays(current, v);
+      setRecord(result as Record<string, unknown>, k, deepMergeReplaceArrays(current, v));
     } else {
       // Primitives replace
-      (result as Record<string, unknown>)[k] = v;
+      setRecord(result as Record<string, unknown>, k, v);
     }
   }
 
@@ -88,12 +90,12 @@ export function deepDiff<T>(original: T, modified: T): DeepDiffResult {
         const newPath = path ? `${path}.${key}` : key;
         if (!(key in orig)) {
           addedPaths.push(newPath);
-          result[key] = mod[key];
+          setRecord(result, key, getRecordOptional(mod, key));
           hasChanges = true;
         } else {
-          const keyDiff = diff(orig[key], mod[key], newPath);
+          const keyDiff = diff(getRecordOptional(orig, key), getRecordOptional(mod, key), newPath);
           if (keyDiff !== undefined) {
-            result[key] = keyDiff;
+            setRecord(result, key, keyDiff);
             hasChanges = true;
           }
         }

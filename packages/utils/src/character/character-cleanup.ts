@@ -1,4 +1,4 @@
-import { type BodyMap, getFilteredHierarchy, REGION_GROUPS } from '@minimal-rpg/schemas';
+import { type BodyMap, getFilteredHierarchy, REGION_GROUPS, getRecordOptional, setPartialRecord, type BodyRegion } from '@minimal-rpg/schemas';
 
 /**
  * Prunes a BodyMap by removing keys that are not valid for the given race and gender.
@@ -18,7 +18,7 @@ export const pruneBodyMap = (body: BodyMap, race: string, gender: string): BodyM
     subRegions.forEach((sub) => {
       validRegions.add(sub);
       // Also add group members if this sub-region is a group (e.g. 'arms' -> 'leftArm', 'rightArm')
-      const groupMembers = REGION_GROUPS[sub];
+      const groupMembers = getRecordOptional(REGION_GROUPS, sub as BodyRegion);
       if (groupMembers) {
         groupMembers.forEach((member) => validRegions.add(member));
       }
@@ -38,8 +38,7 @@ export const pruneBodyMap = (body: BodyMap, race: string, gender: string): BodyM
 
   Object.entries(body).forEach(([key, data]) => {
     if (validRegions.has(key)) {
-      // @ts-expect-error - key is string, but we check against validRegions
-      pruned[key] = data;
+      setPartialRecord(pruned, key as BodyRegion, data);
     }
   });
 

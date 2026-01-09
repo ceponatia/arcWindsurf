@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { setRecord } from '../shared/record-helpers.js';
 import {
   RegionScentSchema,
   RegionTextureSchema,
@@ -65,7 +66,7 @@ export function flattenHygieneData(
 
   // 1. Apply default profile to all regions initially
   for (const region of allRegions) {
-    result[region] = config.default;
+    setRecord(result, region, config.default);
   }
 
   // 2. Apply group overrides
@@ -74,7 +75,7 @@ export function flattenHygieneData(
       for (const region of group.regions) {
         // Only apply if the region is in the allowed list (safety check)
         if (allRegions.includes(region)) {
-          result[region] = group.profile;
+          setRecord(result, region, group.profile);
         }
       }
     }

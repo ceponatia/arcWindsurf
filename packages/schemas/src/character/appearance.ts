@@ -1,3 +1,4 @@
+import { setRecord, getRecord, getRecordOptional } from '../shared/record-helpers.js';
 import { BODY_REGIONS } from './regions.js';
 import { HEAD_APPEARANCE } from '../body-regions/head/appearance.js';
 import { NECK_APPEARANCE } from '../body-regions/neck/appearance.js';
@@ -105,7 +106,7 @@ function buildAppearanceRegionAttributes(): Record<
   const out = {} as Record<AppearanceRegion, Record<string, AppearanceAttributeDef>>;
 
   for (const region of APPEARANCE_REGIONS) {
-    out[region] = DEFAULT_REGION_ATTRIBUTES;
+    setRecord(out, region, DEFAULT_REGION_ATTRIBUTES);
   }
 
   // General build
@@ -115,7 +116,7 @@ function buildAppearanceRegionAttributes(): Record<
   };
 
   // Appearance-specific regions (not in BODY_REGIONS)
-  out.eyes = HEAD_APPEARANCE['eyes'] ?? DEFAULT_REGION_ATTRIBUTES;
+  out.eyes = getRecordOptional(HEAD_APPEARANCE, 'eyes') ?? DEFAULT_REGION_ATTRIBUTES;
   out.skin = {
     tone: { label: 'Tone', placeholder: 'e.g., pale, tan, olive, dark' },
     condition: { label: 'Condition', placeholder: 'e.g., clear, freckled, scarred' },
@@ -145,14 +146,14 @@ export const APPEARANCE_REGION_ATTRIBUTES: Record<
 export function getRegionAttributes(
   region: AppearanceRegion
 ): Record<string, AppearanceAttributeDef> {
-  return APPEARANCE_REGION_ATTRIBUTES[region];
+  return getRecord(APPEARANCE_REGION_ATTRIBUTES, region);
 }
 
 /**
  * Get the first attribute key for a region (default selection).
  */
 export function getDefaultAttribute(region: AppearanceRegion): string {
-  const attrs = APPEARANCE_REGION_ATTRIBUTES[region];
+  const attrs = getRecord(APPEARANCE_REGION_ATTRIBUTES, region);
   return Object.keys(attrs)[0] ?? '';
 }
 
@@ -171,7 +172,7 @@ function buildAppearanceRegionLabels(): Record<AppearanceRegion, string> {
   const out = {} as Record<AppearanceRegion, string>;
 
   for (const region of APPEARANCE_REGIONS) {
-    out[region] = regionToLabel(region);
+    setRecord(out, region, regionToLabel(region));
   }
 
   out.overall = 'Overall Build';

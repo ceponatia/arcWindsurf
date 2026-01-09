@@ -1,6 +1,6 @@
 import { drizzle as db } from '../connection/index.js';
 import { locations } from '../schema/index.js';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { UUID } from '../types.js';
 
 export interface CreateLocationInput {

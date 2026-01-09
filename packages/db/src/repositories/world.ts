@@ -2,11 +2,8 @@ import { drizzle as db } from '../connection/index.js';
 import {
   locationMaps,
   locationPrefabs,
-  prefabLocationInstances,
-  prefabConnections,
-  prefabEntryPoints,
 } from '../schema/index.js';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { UUID } from '../types.js';
 
 // =============================================================================

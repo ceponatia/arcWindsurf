@@ -34,16 +34,18 @@ export function getRecord<K extends string, V>(record: Record<K, V>, key: K): V 
 /**
  * Type-safe getter for optional Record<K, V> where K is a closed union.
  *
+ * Handles both required and partial records, and optional objects.
+ *
  * @example
- * const body: Record<BodyRegion, RegionData> | undefined = {...};
+ * const body: Partial<Record<BodyRegion, RegionData>> | undefined = {...};
  * const data = getRecordOptional(body, 'feet'); // RegionData | undefined
  *
  * @param record - Optional record with keys of type K
  * @param key - Key from the closed union K
- * @returns Value at the key, or undefined if record is undefined
+ * @returns Value at the key, or undefined if record or value is not present
  */
 export function getRecordOptional<K extends string, V>(
-  record: Record<K, V> | undefined,
+  record: Partial<Record<K, V>> | Record<K, V | undefined> | undefined,
   key: K
 ): V | undefined {
   if (!record) return undefined;
@@ -55,24 +57,17 @@ export function getRecordOptional<K extends string, V>(
 /**
  * Type-safe getter for Partial<Record<K, V>> where some keys may be missing.
  *
- * Use this for objects/interfaces with optional properties where K is still
- * a known union type (e.g., RelationshipScores with optional 'attraction').
- *
- * @example
- * const affinity: { fondness: number; attraction?: number } = {...};
- * const value = getPartialRecord(affinity, 'attraction'); // number | undefined
+ * @deprecated Use getRecordOptional instead, which handles partial records and undefined objects.
  *
  * @param obj - Object with optional properties of type K
  * @param key - Key from the closed union K
  * @returns Value at the key, or undefined if not present
  */
 export function getPartialRecord<K extends string, V>(
-  obj: Partial<Record<K, V>> | Record<K, V | undefined>,
+  obj: Partial<Record<K, V>> | Record<K, V | undefined> | undefined,
   key: K
 ): V | undefined {
-  // SECURITY: Key is constrained to union K by TypeScript, not arbitrary input
-  // eslint-disable-next-line security/detect-object-injection
-  return obj[key];
+  return getRecordOptional(obj, key);
 }
 
 /**
@@ -140,8 +135,8 @@ export function getArraySafe<T>(array: readonly T[], index: number): T | undefin
 type ValueAtIndex<C, N extends number> = C extends readonly unknown[]
   ? C[N]
   : C extends Record<N, infer V>
-    ? V
-    : never;
+  ? V
+  : never;
 
 /**
  * Type-safe tuple/array access for numeric indices.

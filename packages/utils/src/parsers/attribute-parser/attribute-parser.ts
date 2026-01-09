@@ -1,3 +1,4 @@
+import { getArraySafe } from '@minimal-rpg/schemas';
 import type {
   ParserPattern,
   ExtractedAttribute,
@@ -46,7 +47,7 @@ export class AttributeParser {
       const match = pattern.pattern.exec(text);
       if (match) {
         const captureGroup = pattern.captureGroup ?? 1;
-        const value = match[captureGroup];
+        const value = getArraySafe(match, captureGroup);
         if (value) {
           results.push({
             name: pattern.name,

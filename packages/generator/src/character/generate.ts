@@ -2,6 +2,7 @@
  * Character generator - creates complete character profiles from themes.
  */
 
+import { getRecordOptional, setRecord, getArraySafe, setPartialRecord } from '@minimal-rpg/schemas';
 import type {
   AttachmentStyle,
   BodyMap,
@@ -166,9 +167,9 @@ function generateSummary(theme: CharacterTheme, name: string, age: number): stri
   return template
     .replace('{name}', name)
     .replace('{age}', String(age))
-    .replace('{trait1}', traits[0] ?? 'thoughtful')
-    .replace('{trait2}', traits[1] ?? 'kind')
-    .replace('{trait3}', traits[2] ?? 'curious');
+    .replace('{trait1}', getArraySafe(traits, 0) ?? 'thoughtful')
+    .replace('{trait2}', getArraySafe(traits, 1) ?? 'kind')
+    .replace('{trait3}', getArraySafe(traits, 2) ?? 'curious');
 }
 
 /**
@@ -267,7 +268,7 @@ function generateBodyMap(
     }
 
     // Get region-specific pools or fall back to general
-    const regionPools = theme.body.regions?.[region];
+    const regionPools = getRecordOptional(theme.body.regions, region);
     const generalPools = theme.body.general;
 
     const scentPrimaries = regionPools?.scentPrimaries ?? generalPools.scentPrimaries;
@@ -316,7 +317,7 @@ function generateBodyMap(
 
     // Only add region if it has at least one sensory type
     if (regionData.scent || regionData.texture || regionData.flavor) {
-      bodyMap[region] = regionData;
+      setPartialRecord(bodyMap, region, regionData);
     }
   }
 
@@ -335,7 +336,7 @@ function generatePersonalityMap(theme: CharacterTheme): PersonalityMap {
     for (const [dim, range] of Object.entries(pers.dimensionBiases)) {
       if (range) {
         const [min, max] = range;
-        dimensions[dim as keyof typeof dimensions] = randomFloatRounded(min, max);
+        setRecord(dimensions as Record<string, number>, dim, randomFloatRounded(min, max));
       }
     }
   } else {
@@ -363,7 +364,7 @@ function generatePersonalityMap(theme: CharacterTheme): PersonalityMap {
   const fears = [];
   for (let i = 0; i < fearCount; i++) {
     const category: FearCategory = pickFromPool(pers.fearCategories);
-    const descriptions = FEAR_DESCRIPTIONS[category] ?? ['the unknown'];
+    const descriptions = getRecordOptional(FEAR_DESCRIPTIONS, category) ?? ['the unknown'];
     const copingMechanism: CopingMechanism = pickFromPool(pers.copingMechanisms);
     fears.push({
       category,
@@ -468,8 +469,8 @@ function generateDetails(theme: CharacterTheme): CharacterDetail[] {
 
   for (let i = 0; i < count; i++) {
     const area = pickRandom(areas);
-    const labelPool = theme.details.labels[area];
-    const valuePool = theme.details.values[area];
+    const labelPool = getRecordOptional(theme.details.labels, area);
+    const valuePool = getRecordOptional(theme.details.values, area);
 
     if (!labelPool || !valuePool) continue;
 

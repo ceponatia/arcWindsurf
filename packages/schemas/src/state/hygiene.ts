@@ -19,7 +19,7 @@
  */
 
 import { z } from 'zod';
-import { getRecord } from '../shared/record-helpers.js';
+import { getRecord, getTuple, setRecord, getRecordOptional } from '../shared/record-helpers.js';
 import { BODY_REGIONS } from '../character/regions.js';
 
 /**
@@ -128,8 +128,8 @@ export const ENVIRONMENT_MULTIPLIERS: Record<EnvironmentType, number> = {
 /**
  * Sense types for sensory modifiers.
  */
-export const SENSORY_TYPES = ['smell', 'touch', 'taste'] as const;
-export type SensoryType = (typeof SENSORY_TYPES)[number];
+export const HYGIENE_SENSE_TYPES = ['smell', 'touch', 'taste'] as const;
+export type HygieneSenseType = (typeof HYGIENE_SENSE_TYPES)[number];
 
 /**
  * Schema for a single body part's hygiene state.
@@ -365,8 +365,7 @@ export function getMinPointsForLevel(
   thresholds: HygieneThresholds = DEFAULT_HYGIENE_THRESHOLDS
 ): number {
   // HygieneLevel (0-6) is validated and HygieneThresholds is a trusted 7-element tuple
-  // eslint-disable-next-line security/detect-object-injection
-  return thresholds[level];
+  return getTuple(thresholds, level);
 }
 
 /**
@@ -396,8 +395,7 @@ export function calculateDecayPoints(
   // Optional level-aware decay curve (kept optional for backward compatibility)
   if (currentLevel !== undefined) {
     // HygieneLevel (0-6) is validated and HYGIENE_DECAY_MULTIPLIERS is a trusted 7-element tuple
-    // eslint-disable-next-line security/detect-object-injection
-    multiplier *= HYGIENE_DECAY_MULTIPLIERS[currentLevel];
+    multiplier *= getTuple(HYGIENE_DECAY_MULTIPLIERS, currentLevel);
   }
 
   return baseDecay * turnsElapsed * multiplier;
@@ -411,10 +409,10 @@ export function createInitialHygieneState(npcId: string): NpcHygieneState {
 
   // Initialize all body regions to clean (0 points, level 0)
   for (const region of BODY_REGIONS) {
-    bodyParts[region] = {
+    setRecord(bodyParts, region, {
       points: 0,
       level: 0,
-    };
+    });
   }
 
   return {
@@ -447,13 +445,13 @@ export function resetBodyPartHygiene(
   const now = at.toISOString();
 
   for (const part of bodyParts) {
-    if (newBodyParts[part]) {
-      const thresholds = decayRates?.[part]?.thresholds ?? DEFAULT_HYGIENE_THRESHOLDS;
-      newBodyParts[part] = {
+    if (getRecordOptional(newBodyParts, part)) {
+      const thresholds = getRecordOptional(decayRates, part)?.thresholds ?? DEFAULT_HYGIENE_THRESHOLDS;
+      setRecord(newBodyParts, part, {
         points: getMinPointsForLevel(targetLevel, thresholds),
         level: targetLevel,
         lastUpdatedAt: now,
-      };
+      });
     }
   }
 
@@ -480,16 +478,16 @@ export function increaseBodyPartHygiene(
   const now = at.toISOString();
 
   for (const part of bodyParts) {
-    const current = newBodyParts[part] ?? { points: 0, level: 0 };
-    const thresholds = decayRates[part]?.thresholds ?? DEFAULT_HYGIENE_THRESHOLDS;
+    const current = getRecordOptional(newBodyParts, part) ?? { points: 0, level: 0 };
+    const thresholds = getRecordOptional(decayRates, part)?.thresholds ?? DEFAULT_HYGIENE_THRESHOLDS;
     const nextPoints = Math.max(0, current.points + Math.max(0, pointsToAdd));
     const nextLevel = calculateHygieneLevel(nextPoints, thresholds);
 
-    newBodyParts[part] = {
+    setRecord(newBodyParts, part, {
       points: nextPoints,
       level: nextLevel,
       lastUpdatedAt: now,
-    };
+    });
   }
 
   return {
@@ -538,13 +536,13 @@ export function applyHygieneDecay(
   for (const [bodyPart, config] of Object.entries(decayRates)) {
     if (input.cleanedParts?.includes(bodyPart)) continue;
 
-    newBodyParts[bodyPart] = calculateUpdatedPartState(
+    setRecord(newBodyParts, bodyPart, calculateUpdatedPartState(
       bodyPart,
       config,
-      newBodyParts[bodyPart],
+      getRecordOptional(newBodyParts, bodyPart),
       input,
       now
-    );
+    ));
   }
 
   return { ...state, bodyParts: newBodyParts };
@@ -560,8 +558,8 @@ function applyCleaning(
 ): Record<string, BodyPartHygieneState> {
   const result = { ...bodyParts };
   for (const part of cleanedParts) {
-    if (result[part]) {
-      result[part] = { points: 0, level: 0, lastUpdatedAt: now };
+    if (getRecordOptional(result, part)) {
+      setRecord(result, part, { points: 0, level: 0, lastUpdatedAt: now });
     }
   }
   return result;

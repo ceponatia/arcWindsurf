@@ -13,7 +13,7 @@ import type { CharacterProfile } from '@minimal-rpg/schemas';
 
 export interface UseCharacterStudioOptions {
   id?: string | null;
-  onSave?: () => void;
+  onSave?: (() => void) | undefined;
 }
 
 export interface UseCharacterStudioResult {

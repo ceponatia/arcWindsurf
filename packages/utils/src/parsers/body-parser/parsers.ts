@@ -10,7 +10,7 @@ import type {
   RegionVisual,
   RegionFlavor,
 } from '@minimal-rpg/schemas';
-import { BODY_REGIONS, resolveBodyRegion } from '@minimal-rpg/schemas';
+import { BODY_REGIONS, resolveBodyRegion, getArraySafe, setPartialRecord, getRecordOptional } from '@minimal-rpg/schemas';
 import {
   detectSensoryType,
   extractIntensity,
@@ -71,7 +71,7 @@ export function parseScent(description: string): RegionScent | undefined {
     const notes: string[] = [];
     const intensityPattern = /^intensity\s*$/i;
     for (let i = 1; i < parts.length; i++) {
-      const part = parts[i];
+      const part = getArraySafe(parts, i);
       if (!part) continue;
       const { cleaned } = extractIntensity(part);
       // Skip "intensity X" entries
@@ -174,7 +174,7 @@ export function parseFlavor(description: string): RegionFlavor | undefined {
     const notes: string[] = [];
     const intensityPattern = /^intensity\s*$/i;
     for (let i = 1; i < parts.length; i++) {
-      const part = parts[i];
+      const part = getArraySafe(parts, i);
       if (!part) continue;
       const { cleaned } = extractIntensity(part);
       // Skip "intensity X" entries
@@ -295,9 +295,11 @@ export function parseBodyEntries(input: string): BodyParseResult {
     }
 
     // Merge into body map
-    bodyMap[entry.region] ??= {};
+    if (!getRecordOptional(bodyMap, entry.region)) {
+      setPartialRecord(bodyMap, entry.region, {});
+    }
 
-    const regionData = bodyMap[entry.region];
+    const regionData = getRecordOptional(bodyMap, entry.region);
     if (regionData) {
       if (entry.scent) {
         regionData.scent = entry.scent;

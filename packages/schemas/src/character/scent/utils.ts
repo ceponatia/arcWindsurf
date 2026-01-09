@@ -1,3 +1,4 @@
+import { getRecordOptional, getPartialRecord, setRecord } from '../../shared/record-helpers.js';
 import { BODY_REGIONS, type BodyRegion } from '../regions.js';
 import type { RegionScent } from '../../body-regions/sensory-types.js';
 import type { BodyMap } from '../sensory.js';
@@ -17,14 +18,14 @@ export function getRegionScent(
   if (!bodyMap) return undefined;
 
   // Try the specific region first
-  const regionData = bodyMap[region];
+  const regionData = getRecordOptional(bodyMap, region);
   if (regionData?.scent) {
     return regionData.scent;
   }
 
   // Fallback to torso for general body scent (unless already checking torso)
   if (region !== 'torso') {
-    return bodyMap.torso?.scent;
+    return getRecordOptional(bodyMap, 'torso')?.scent;
   }
 
   return undefined;
@@ -36,7 +37,7 @@ export function getRegionScent(
 export function getScentRegions(bodyMap: BodyMap | undefined): BodyRegion[] {
   if (!bodyMap) return [];
 
-  return BODY_REGIONS.filter((region) => bodyMap[region]?.scent !== undefined);
+  return BODY_REGIONS.filter((region) => getRecordOptional(bodyMap, region)?.scent !== undefined);
 }
 
 /**
@@ -49,19 +50,19 @@ export function buildLegacyScentSummary(bodyMap: BodyMap | undefined): Record<st
   const result: Record<string, string> = {};
 
   if (bodyMap.hair?.scent) {
-    result['hairScent'] = bodyMap.hair.scent.primary;
+    setRecord(result, 'hairScent', bodyMap.hair.scent.primary);
   }
 
   if (bodyMap.torso?.scent) {
-    result['bodyScent'] = bodyMap.torso.scent.primary;
+    setRecord(result, 'bodyScent', bodyMap.torso.scent.primary);
   }
 
   // Check for perfume-like scents on neck/chest (common perfume application areas)
   const perfumeRegions: BodyRegion[] = ['neck', 'chest'];
   for (const region of perfumeRegions) {
-    const scent = bodyMap[region]?.scent;
-    if (scent && !result['perfume']) {
-      result['perfume'] = scent.primary;
+    const scent = getRecordOptional(bodyMap, region)?.scent;
+    if (scent && !getPartialRecord(result, 'perfume')) {
+      setRecord(result, 'perfume', scent.primary);
     }
   }
 

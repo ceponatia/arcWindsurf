@@ -1,3 +1,4 @@
+import { getRecordOptional } from '../../shared/record-helpers.js';
 import { BODY_REGIONS, type BodyRegion } from '../regions.js';
 import type { RegionFlavor } from '../../body-regions/sensory-types.js';
 import type { BodyMap } from '../sensory.js';
@@ -14,7 +15,7 @@ export function getRegionFlavor(
   region: BodyRegion
 ): RegionFlavor | undefined {
   if (!bodyMap) return undefined;
-  return bodyMap[region]?.flavor;
+  return getRecordOptional(bodyMap, region)?.flavor;
 }
 
 /**
@@ -23,5 +24,5 @@ export function getRegionFlavor(
 export function getFlavorRegions(bodyMap: BodyMap | undefined): BodyRegion[] {
   if (!bodyMap) return [];
 
-  return BODY_REGIONS.filter((region) => bodyMap[region]?.flavor !== undefined);
+  return BODY_REGIONS.filter((region) => getRecordOptional(bodyMap, region)?.flavor !== undefined);
 }

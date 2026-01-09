@@ -5,6 +5,7 @@
  *
  * @see dev-docs/31-npc-simulation-and-performance.md
  */
+import { getRecord } from '../shared/record-helpers.js';
 import type { GameTime } from '../time/types.js';
 import type { NpcTier } from '../npc-tier/types.js';
 import type { NpcLocationState } from '../state/npc-location.js';
@@ -47,7 +48,7 @@ export function adjustPriorityByRecency(
   // Priority decays over time but never below tier minimum
   // Decay is slow: 1000 turns to reach 10% of original
   const decayFactor = Math.max(0.1, 1 - turnsSince / 1000);
-  const tierMinimum = TIER_MINIMUM_PRIORITY[tier];
+  const tierMinimum = getRecord(TIER_MINIMUM_PRIORITY, tier);
 
   return Math.max(tierMinimum, priority.basePriority * decayFactor);
 }

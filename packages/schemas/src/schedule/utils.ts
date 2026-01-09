@@ -6,6 +6,7 @@
  *
  * @see dev-docs/27-npc-schedules-and-routines.md
  */
+import { getRecordOptional, getArraySafe } from '../shared/record-helpers.js';
 import type { GameTime } from '../time/types.js';
 import type { NpcActivity } from '../state/npc-location.js';
 import type {
@@ -135,8 +136,8 @@ export function evaluateCondition(condition: ChoiceCondition, context: Condition
           'fall',
           'fall',
           'winter',
-        ];
-        return seasons[month] === condition.value;
+        ] as const;
+        return getArraySafe(seasons, month) === condition.value;
       }
       if (condition.key === 'month') {
         return context.currentTime.month === condition.value;
@@ -173,7 +174,7 @@ export function evaluateCondition(condition: ChoiceCondition, context: Condition
 
     case 'npc-state':
       if (!context.npcState) return false;
-      return context.npcState[condition.key] === condition.value;
+      return getRecordOptional(context.npcState, condition.key) === condition.value;
 
     case 'inventory':
       if (!context.inventory) return false;
@@ -191,16 +192,16 @@ export function evaluateCondition(condition: ChoiceCondition, context: Condition
 
     case 'custom':
       if (!context.custom) return false;
-      return context.custom[condition.key] === condition.value;
+      return getRecordOptional(context.custom, condition.key) === condition.value;
 
     case 'trait': // Trait conditions require NPC trait data in context
-    // For now, check npcState for traits
-    {
-      if (!context.npcState) return false;
-      const traits = context.npcState['traits'] as string[] | undefined;
-      if (!traits) return false;
-      return traits.includes(String(condition.value));
-    }
+      // For now, check npcState for traits
+      {
+        if (!context.npcState) return false;
+        const traits = context.npcState['traits'] as string[] | undefined;
+        if (!traits) return false;
+        return traits.includes(String(condition.value));
+      }
 
     default:
       return false;
@@ -289,7 +290,11 @@ export function resolveScheduleChoice(
   }
 
   // Find closest match to roll
-  let closest = weightedOptions[0]!;
+  const firstOption = getArraySafe(weightedOptions, 0);
+  if (!firstOption) {
+    return { option: null, rollValue };
+  }
+  let closest = firstOption;
   let closestDiff = Math.abs(rollValue - closest.weight);
 
   for (const wo of weightedOptions) {

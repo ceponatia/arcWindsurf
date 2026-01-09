@@ -16,16 +16,20 @@ export function generateId(): string {
 
   // 2. Try Node's crypto.randomUUID() via require, if available
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-    const nodeCrypto = require('crypto');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nodeCrypto = require('crypto') as typeof import('crypto');
     if (nodeCrypto && typeof nodeCrypto.randomUUID === 'function') {
       return nodeCrypto.randomUUID();
     }
     if (nodeCrypto && typeof nodeCrypto.randomBytes === 'function') {
-      const bytes: Buffer = nodeCrypto.randomBytes(16);
+      const bytes = nodeCrypto.randomBytes(16);
       // Format as RFC4122 version 4 UUID
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const b6 = bytes[6];
+      const b8 = bytes[8];
+      if (b6 !== undefined && b8 !== undefined) {
+        bytes[6] = (b6 & 0x0f) | 0x40;
+        bytes[8] = (b8 & 0x3f) | 0x80;
+      }
       const hex = bytes.toString('hex');
       return (
         hex.slice(0, 8) +
@@ -47,16 +51,20 @@ export function generateId(): string {
   try {
     if (
       typeof crypto !== 'undefined' &&
-      typeof (crypto as Crypto).getRandomValues === 'function'
+      typeof crypto.getRandomValues === 'function'
     ) {
       const bytes = new Uint8Array(16);
-      (crypto as Crypto).getRandomValues(bytes);
+      crypto.getRandomValues(bytes);
       // Per RFC4122 section 4.4: set version and variant bits
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const b6 = bytes[6];
+      const b8 = bytes[8];
+      if (b6 !== undefined && b8 !== undefined) {
+        bytes[6] = (b6 & 0x0f) | 0x40;
+        bytes[8] = (b8 & 0x3f) | 0x80;
+      }
       const hex: string[] = [];
-      for (let i = 0; i < bytes.length; i++) {
-        hex.push(bytes[i].toString(16).padStart(2, '0'));
+      for (const b of bytes) {
+        hex.push(b.toString(16).padStart(2, '0'));
       }
       return (
         hex.slice(0, 4).join('') +

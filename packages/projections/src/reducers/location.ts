@@ -1,3 +1,4 @@
+import { getRecordOptional, setRecord } from '@minimal-rpg/schemas';
 import type { Reducer, Projection } from '../types.js';
 
 export interface LocationState {
@@ -14,24 +15,26 @@ export const locationReducer: Reducer<LocationsState> = (state, event) => {
   switch (event.type) {
     case 'ACTOR_SPAWN': {
       const locId = event.locationId;
-      const current = state[locId] ?? { id: locId, actors: [], items: [] };
-      return {
-        ...state,
-        [locId]: {
-          ...current,
-          actors: [...new Set([...current.actors, event.actorId])],
-        },
-      };
+      const current = getRecordOptional(state, locId) ?? { id: locId, actors: [], items: [] };
+      const nextState = { ...state };
+      setRecord(nextState, locId, {
+        ...current,
+        actors: [...new Set([...current.actors, event.actorId])],
+      });
+      return nextState;
     }
 
     case 'ACTOR_DESPAWN': {
       const actorId = event.actorId;
       const newState = { ...state };
-      for (const [id, location] of Object.entries(newState)) {
-        newState[id] = {
-          ...location,
-          actors: location.actors.filter((aId) => aId !== actorId),
-        };
+      for (const id of Object.keys(newState)) {
+        const location = getRecordOptional(newState, id);
+        if (location) {
+          setRecord(newState, id, {
+            ...location,
+            actors: location.actors.filter((aId) => aId !== actorId),
+          });
+        }
       }
       return newState;
     }
@@ -40,18 +43,19 @@ export const locationReducer: Reducer<LocationsState> = (state, event) => {
       const newState = { ...state };
       const { actorId, fromLocationId, toLocationId } = event;
 
-      if (newState[fromLocationId]) {
-        newState[fromLocationId] = {
-          ...newState[fromLocationId],
-          actors: newState[fromLocationId].actors.filter((id) => id !== actorId),
-        };
+      const fromLoc = getRecordOptional(newState, fromLocationId);
+      if (fromLoc) {
+        setRecord(newState, fromLocationId, {
+          ...fromLoc,
+          actors: fromLoc.actors.filter((id) => id !== actorId),
+        });
       }
 
-      const toLoc = newState[toLocationId] ?? { id: toLocationId, actors: [], items: [] };
-      newState[toLocationId] = {
+      const toLoc = getRecordOptional(newState, toLocationId) ?? { id: toLocationId, actors: [], items: [] };
+      setRecord(newState, toLocationId, {
         ...toLoc,
         actors: [...new Set([...toLoc.actors, actorId])],
-      };
+      });
 
       return newState;
     }
@@ -59,11 +63,14 @@ export const locationReducer: Reducer<LocationsState> = (state, event) => {
     case 'ITEM_ACQUIRED': {
       // Scan all locations to remove the item
       const newState = { ...state };
-      for (const [id, location] of Object.entries(newState)) {
-        newState[id] = {
-          ...location,
-          items: location.items.filter((iId) => iId !== event.itemId),
-        };
+      for (const id of Object.keys(newState)) {
+        const location = getRecordOptional(newState, id);
+        if (location) {
+          setRecord(newState, id, {
+            ...location,
+            items: location.items.filter((iId) => iId !== event.itemId),
+          });
+        }
       }
       return newState;
     }
@@ -77,14 +84,13 @@ export const locationReducer: Reducer<LocationsState> = (state, event) => {
         return state;
       }
 
-      const current = state[locId] ?? { id: locId, actors: [], items: [] };
-      return {
-        ...state,
-        [locId]: {
-          ...current,
-          items: [...new Set([...current.items, event.itemId])],
-        },
-      };
+      const current = getRecordOptional(state, locId) ?? { id: locId, actors: [], items: [] };
+      const nextState = { ...state };
+      setRecord(nextState, locId, {
+        ...current,
+        items: [...new Set([...current.items, event.itemId])],
+      });
+      return nextState;
     }
 
     default:
