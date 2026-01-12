@@ -1,4 +1,4 @@
-import { OpenAIProvider, type LLMMessage } from '@minimal-rpg/llm';
+import { OpenAIProvider, type LLMMessage, type LLMResponse, type LLMStreamChunk } from '@minimal-rpg/llm';
 import type { CharacterProfile } from '@minimal-rpg/schemas';
 import { Effect } from 'effect';
 import { Hono } from 'hono';
@@ -22,7 +22,7 @@ const openaiApiKey = process.env['OPENAI_API_KEY'] ?? '';
 const openaiModel = process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini';
 const openaiBaseUrl = process.env['OPENAI_BASE_URL'];
 
-const llmProvider = openrouterApiKey
+const defaultLlmProvider = openrouterApiKey
   ? new OpenAIProvider({
     id: 'studio',
     apiKey: openrouterApiKey,
@@ -39,6 +39,11 @@ const llmProvider = openrouterApiKey
         : {}),
     })
     : null;
+
+export interface StudioLlmProvider {
+  chat(messages: LLMMessage[]): Effect.Effect<LLMResponse, Error>;
+  stream(messages: LLMMessage[]): Effect.Effect<AsyncIterable<LLMStreamChunk>, Error>;
+}
 
 const GenerateRequestSchema = z.object({
   profile: z.record(z.string(), z.unknown()),
@@ -65,7 +70,12 @@ interface StudioError {
   retryable: boolean;
 }
 
-export function registerStudioRoutes(app: Hono): void {
+export interface RegisterStudioRoutesOptions {
+  llmProvider?: StudioLlmProvider | null;
+}
+
+export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOptions): void {
+  const llmProvider = options?.llmProvider ?? defaultLlmProvider;
   // POST /studio/generate - Generate character response
   app.post('/studio/generate', async (c) => {
     try {
@@ -158,6 +168,9 @@ export function registerStudioRoutes(app: Hono): void {
       try {
         const result = await Effect.runPromise(llmProvider.stream(messages));
         for await (const chunk of result) {
+          if (c.req.raw.signal.aborted) {
+            return;
+          }
           const delta = chunk.choices?.[0]?.delta?.content;
           if (delta) {
             await stream.writeSSE({ event: 'content', data: JSON.stringify({ content: delta }) });
@@ -166,7 +179,11 @@ export function registerStudioRoutes(app: Hono): void {
         await stream.writeSSE({ event: 'done', data: JSON.stringify({ done: true }) });
       } catch (error) {
         console.error('Generate stream error:', error);
-        await stream.writeSSE({ event: 'error', data: JSON.stringify({ error: 'stream_failed' }) });
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ error: 'stream_failed', message: getMessage(error) }),
+        });
+        await stream.writeSSE({ event: 'done', data: JSON.stringify({ done: true }) });
       }
     });
   });

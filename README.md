@@ -123,6 +123,19 @@ npx tsx scripts/test-tool-calling.ts --verbose         # Show API details
 npx tsx scripts/test-tool-calling.ts --prompt "..."    # Custom prompt
 ```
 
+**Studio SSE streaming test**: Validate `/studio/generate/stream` sends `content` chunks and finishes with a `done` event:
+
+```bash
+node scripts/test-streaming.mjs --target=studio --message "Generate a short NPC greeting." \
+  --apiBaseUrl http://localhost:3001
+```
+
+You can also test the underlying OpenAI-compatible streaming API directly (OpenAI/OpenRouter) using keys/models from `.env`:
+
+```bash
+node scripts/test-streaming.mjs --target=openai --message "Say hello in one sentence."
+```
+
 **Personality test**: Test LLM responses to personality traits:
 
 ```bash

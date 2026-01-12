@@ -77,9 +77,9 @@ eventSource.addEventListener('done', () => {
 
 ## Acceptance Criteria
 
-- [ ] Streaming endpoint available
-- [ ] LLM stream method used
-- [ ] Chunks sent as SSE events
-- [ ] Stream completes with 'done' event
-- [ ] Errors handled and stream closed gracefully
-- [ ] Works with existing OpenAI provider
+- [x] Streaming endpoint available
+- [x] LLM stream method used
+- [x] Chunks sent as SSE events
+- [x] Stream completes with 'done' event (test via script using keys in .env)
+- [x] Errors handled and stream closed gracefully
+- [x] Works with existing OpenAI/OpenRouter provider

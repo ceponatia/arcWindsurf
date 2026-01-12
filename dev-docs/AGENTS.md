@@ -7,8 +7,10 @@
 
 ## Folders
 
-- Drafts of implementation and development plans go in plan/ until they are ready to be implemented, then they are moved to ../waves/wave-x.x/
-  - File naming convention: `wave-x.x-title.md`
-- Completed plans go in plan/completed/
-- Vision, requirements gathering, and discovery documents go in vision/ and a subfolder for each wave
-  - File naming convention: `VIS-x.x-title.md`, `REQ-x.x-title.md`, `DISC-x.x-title.md`
+- Top level folders should be consecutively numbered and then have a short descriptive name
+  - Example: `001-getting-started/`, `002-architecture/`
+- Inside each folder is a plan, vision, and tasks folder
+  - Plan contains design docs, architecture decisions, and research
+  - Status contains progress reports, retrospectives, and meeting notes
+  - Tasks contains user stories, issues, and project management artifacts
+- Other folders can exist for specific domains (e.g., `agents/`, `vision/`, `tutorials/`)
