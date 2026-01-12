@@ -105,18 +105,15 @@ import { getLLMProvider } from '@minimal-rpg/llm';
 - [x] CognitionLayer has async `decideLLM()` method
 - [x] NPC prompts file created with decision prompts
 - [x] NPC state machine uses invoke for async cognition
-- [ ] LLM provider injected into NPC actors *(see TASK-008a)*
+- [x] LLM provider injected into NPC actors *(see TASK-008a)*
 - [x] NPC profile (personality) used in decision making
 - [x] Fallback to rule-based if LLM fails
 - [x] Existing tests still pass (rule-based path)
-- [ ] Response time acceptable (<2s for decision) *(see TASK-008a)*
+- [ ] Response time acceptable (<2s for decision) *(timeout cap enforced + unit test; not validated with real inference)*
 
 ## Blocked By
 
-**TASK-008a** must be completed to validate the remaining acceptance criteria:
-
-- LLM provider injection requires wiring through `NpcActor` and `ActorRegistry.spawn()`
-- Response time validation requires timing instrumentation in `decideLLM()`
+Response time validation still needs real inference testing to confirm typical latency stays under the 2s cap.
 
 ## Notes
 

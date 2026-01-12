@@ -3,6 +3,27 @@ import type { LLMMessage, LLMProvider } from '@minimal-rpg/llm';
 import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
 import type { CognitionContext, ActionResult } from './types.js';
 import { NPC_DECISION_SYSTEM_PROMPT, buildNpcCognitionPrompt } from './prompts.js';
+import { performance } from 'node:perf_hooks';
+
+const NPC_DECISION_TIMEOUT_MS = 2000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((err: unknown) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+  });
+}
 
 /**
  * Cognition layer - decision-making for NPCs.
@@ -86,6 +107,8 @@ export class CognitionLayer {
   ): Promise<ActionResult | null> {
     if (context.perception.relevantEvents.length === 0) return null;
 
+    const start = performance.now();
+
     try {
       const prompt = buildNpcCognitionPrompt(context.perception, context.state, profile);
       const messages: LLMMessage[] = [
@@ -93,7 +116,17 @@ export class CognitionLayer {
         { role: 'user', content: prompt },
       ];
 
-      const result = await Effect.runPromise(llmProvider.chat(messages));
+      const result = await withTimeout(
+        Effect.runPromise(llmProvider.chat(messages)),
+        NPC_DECISION_TIMEOUT_MS,
+        '[NPC Cognition] LLM decision'
+      );
+
+      const elapsed = performance.now() - start;
+      if (elapsed > NPC_DECISION_TIMEOUT_MS) {
+        console.warn(`[NPC Cognition] Decision took ${elapsed.toFixed(0)}ms (>2s threshold)`);
+      }
+
       const content = result.content?.trim();
       if (!content || content.toUpperCase().includes('NO_ACTION')) {
         return this.decideSync(context);
@@ -109,7 +142,10 @@ export class CognitionLayer {
 
       return { intent, delayMs: 300 } satisfies ActionResult;
     } catch (error) {
-      console.error('Cognition LLM error:', error);
+      if (error instanceof Error && error.message.includes('timed out')) {
+        console.warn(`[NPC Cognition] Decision timed out (>${NPC_DECISION_TIMEOUT_MS}ms); falling back to rules`);
+      }
+      console.error('[NPC Cognition] LLM failed, falling back to rules', error);
       return this.decideSync(context);
     }
   }

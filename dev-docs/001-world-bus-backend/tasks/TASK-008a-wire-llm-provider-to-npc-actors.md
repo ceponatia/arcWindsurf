@@ -133,12 +133,12 @@ static async decideLLM(
 
 ## Acceptance Criteria
 
-- [ ] `NpcActorConfig` interface exists in `base/types.ts`
-- [ ] `NpcActor` accepts and forwards `profile` and `llmProvider` to context
-- [ ] `ActorRegistry.spawn()` accepts and forwards these parameters
-- [ ] Timing instrumentation logs warning if decision >2s
-- [ ] Existing tests still pass
-- [ ] Integration test: spawn NPC with mock LLM provider, verify provider reaches cognition
+- [x] `NpcActorConfig` interface exists in `base/types.ts`
+- [x] `NpcActor` accepts and forwards `profile` and `llmProvider` to context
+- [x] `ActorRegistry.spawn()` accepts and forwards these parameters
+- [x] Timing instrumentation logs warning if decision times out (>2s cap)
+- [x] Existing tests still pass
+- [x] Integration test: spawn NPC with mock LLM provider, verify provider reaches cognition
 
 ## Testing
 

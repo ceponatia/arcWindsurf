@@ -107,14 +107,14 @@ export async function recoverSessionSequence(sessionId: string): Promise<void> {
 
 ## Acceptance Criteria
 
-- [ ] Event persistence service created
-- [ ] Handler registered at API startup
-- [ ] WorldBus uses persistence middleware
-- [ ] Events saved to `events` table on emit
-- [ ] Sequence numbers incrementing correctly per session
-- [ ] Session sequence recovered on load
-- [ ] System events (no session) handled gracefully
-- [ ] Database errors logged but don't block bus
+- [x] Event persistence service created
+- [x] Handler registered at API startup
+- [x] WorldBus uses persistence middleware
+- [x] Events saved to `events` table on emit
+- [x] Sequence numbers incrementing correctly per session
+- [x] Session sequence recovered on load
+- [x] System events (no session) handled gracefully
+- [x] Database errors logged but don't block bus
 
 ## Notes
 

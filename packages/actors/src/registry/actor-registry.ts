@@ -1,4 +1,4 @@
-import type { Actor, ActorConfig } from '../base/types.js';
+import type { Actor, ActorConfig, NpcActorConfig } from '../base/types.js';
 import { NpcActor } from '../npc/npc-actor.js';
 import { PlayerActor } from '../player/player-actor.js';
 import { worldBus } from '@minimal-rpg/bus';
@@ -14,7 +14,10 @@ export class ActorRegistry {
   /**
    * Spawn a new actor.
    */
-  spawn(config: ActorConfig & { npcId?: string }): Actor {
+  spawn(
+    config: ActorConfig &
+      Partial<Pick<NpcActorConfig, 'npcId' | 'profile' | 'llmProvider'>>
+  ): Actor {
     if (this.actors.has(config.id)) {
       throw new Error(`Actor ${config.id} already exists`);
     }
@@ -25,7 +28,12 @@ export class ActorRegistry {
       if (!config.npcId) {
         throw new Error('npcId required for NPC actors');
       }
-      actor = new NpcActor({ ...config, npcId: config.npcId });
+      actor = new NpcActor({
+        ...config,
+        npcId: config.npcId,
+        ...(config.profile ? { profile: config.profile } : {}),
+        ...(config.llmProvider ? { llmProvider: config.llmProvider } : {}),
+      } satisfies NpcActorConfig);
     } else if (config.type === 'player') {
       actor = new PlayerActor(config);
     } else {

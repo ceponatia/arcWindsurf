@@ -1,6 +1,6 @@
 import { createActor } from 'xstate';
 import type { WorldEvent } from '@minimal-rpg/schemas';
-import type { Actor, ActorConfig, BaseActorState } from '../base/types.js';
+import type { Actor, BaseActorState, NpcActorConfig } from '../base/types.js';
 import { BaseActorLifecycle } from '../base/lifecycle.js';
 import { createNpcMachine } from './npc-machine.js';
 import type { NpcMachineContext } from './types.js';
@@ -19,7 +19,7 @@ export class NpcActor implements Actor {
   private readonly machine: any;
   private readonly lifecycle: BaseActorLifecycle;
 
-  constructor(config: ActorConfig & { npcId: string }) {
+  constructor(config: NpcActorConfig) {
     this.id = config.id;
     this.sessionId = config.sessionId;
     this.npcId = config.npcId;
@@ -32,6 +32,8 @@ export class NpcActor implements Actor {
       sessionId: this.sessionId,
       locationId: this.locationId,
       recentEvents: [],
+      ...(config.profile ? { profile: config.profile } : {}),
+      ...(config.llmProvider ? { llmProvider: config.llmProvider } : {}),
     };
 
     // Create and start the machine

@@ -1,4 +1,4 @@
-import { createMachine, assign } from 'xstate';
+import { createMachine, assign, fromPromise } from 'xstate';
 import type { WorldEvent, CharacterProfile } from '@minimal-rpg/schemas';
 import type { NpcMachineContext } from './types.js';
 import { PerceptionLayer } from './perception.js';
@@ -40,13 +40,16 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
         thinking: {
           invoke: {
             src: 'llmDecision',
+            input: ({ context }) => context,
             onDone: {
               target: 'acting',
-              actions: assign({ pendingIntent: (_, event) => (event.data as WorldEvent | null) ?? undefined }),
+              actions: assign({
+                pendingIntent: ({ event }) => (event.output as WorldEvent | null) ?? undefined,
+              }),
             },
             onError: {
               target: 'acting',
-              actions: assign({ pendingIntent: (_, event) => (event.data as WorldEvent | null) ?? undefined }),
+              actions: assign({ pendingIntent: () => undefined }),
             },
           },
         },
@@ -108,8 +111,9 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
           pendingIntent: () => undefined,
         }),
       },
-      services: {
-        llmDecision: ({ context }) => async () => {
+      actors: {
+        llmDecision: fromPromise(async ({ input }) => {
+          const context = input as NpcMachineContext;
           if (!context.perception) return null;
 
           const cognitionContext = {
@@ -138,7 +142,7 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
 
           const result = CognitionLayer.decideSync(cognitionContext);
           return result?.intent ?? null;
-        },
+        }),
       },
     }
   );

@@ -1,4 +1,6 @@
 import type { WorldEvent } from '@minimal-rpg/schemas';
+import type { LLMProvider } from '@minimal-rpg/llm';
+import type { CharacterProfile } from '@minimal-rpg/schemas';
 
 /**
  * Actor types in the simulation.
@@ -55,6 +57,15 @@ export interface ActorConfig {
   type: ActorType;
   sessionId: string;
   locationId: string;
+}
+
+/**
+ * NPC actor configuration.
+ */
+export interface NpcActorConfig extends ActorConfig {
+  npcId: string;
+  profile?: CharacterProfile;
+  llmProvider?: LLMProvider;
 }
 
 /**
