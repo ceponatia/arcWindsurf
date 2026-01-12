@@ -16,6 +16,7 @@ import { generateId } from '@minimal-rpg/utils';
 import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../../utils/uuid.js';
+import { primeSessionSequence } from '../../../services/event-persistence.js';
 
 interface SpokePayload {
   content?: string;
@@ -36,6 +37,7 @@ export async function handleGetSession(c: Context): Promise<Response> {
 
   // Fetch messages from events
   const allEvents = await getEventsForSession(toSessionId(id));
+  primeSessionSequence(id, allEvents);
   const spokeEvents: SpokeEventRecord[] = allEvents.filter(
     (event): event is SpokeEventRecord => event.type === 'SPOKE' && typeof event.actorId === 'string'
   );

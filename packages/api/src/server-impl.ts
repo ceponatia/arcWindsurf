@@ -22,62 +22,17 @@ import {
   telemetryMiddleware,
   persistenceMiddleware,
   registerPersistenceHandler,
-  type WorldEvent,
 } from '@minimal-rpg/bus';
-import { saveEvent, drizzle, sessions } from '@minimal-rpg/db';
-import { eq, sql } from 'drizzle-orm';
-import { toSessionId } from './utils/uuid.js';
-
-interface EventWithSession {
-  payload?: { sessionId?: string } & Record<string, unknown>;
-  sessionId?: string;
-}
+import { persistWorldEvent } from './services/event-persistence.js';
 
 const app = new Hono();
 
-// Initialize WorldBus middleware
-worldBus.use(telemetryMiddleware);
-worldBus.use(persistenceMiddleware);
-
-// Register persistence handler
-registerPersistenceHandler(async (event: WorldEvent) => {
-  const rawEvent = event as EventWithSession;
-  const payload = rawEvent.payload;
-  const sessionId = rawEvent.sessionId ?? payload?.sessionId;
-
-  if (sessionId) {
-    const coercedSessionId = toSessionId(sessionId);
-    try {
-      // 1. Atomically increment event_seq in sessions table and get the new value
-      const updatedSessions = await drizzle
-        .update(sessions)
-        .set({
-          eventSeq: sql`${sessions.eventSeq} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(eq(sessions.id, coercedSessionId))
-        .returning({ eventSeq: sessions.eventSeq });
-
-      const newSeq = updatedSessions[0]?.eventSeq;
-
-      if (newSeq !== undefined) {
-        // 2. Save event with the new sequence
-        // Spread the event to capture all properties as payload
-        const { type, sessionId: _eventSessionId, ...eventPayload } = event as Record<string, unknown>;
-        void _eventSessionId; // Intentionally unused - destructured to exclude from payload
-        await saveEvent({
-          sessionId: coercedSessionId,
-          sequence: BigInt(newSeq),
-          type: type as string,
-          payload: eventPayload,
-          actorId: (eventPayload['actorId'] as string) ?? null,
-        });
-      }
-    } catch (err) {
-      console.error('[bus] persistence error:', err);
-    }
-  }
-});
+function initializeWorldBus(): void {
+  worldBus.use(telemetryMiddleware);
+  worldBus.use(persistenceMiddleware);
+  registerPersistenceHandler(persistWorldEvent);
+  console.log('[bus] persistence initialized');
+}
 
 app.onError((err, c) => {
   console.error('[server] Unhandled error:', err);
@@ -94,6 +49,8 @@ let loaded: LoadedData | undefined = undefined;
 
 export async function startServer(): Promise<void> {
   try {
+    initializeWorldBus();
+
     // Load character + setting JSON from data/
     loaded = await loadData();
     console.log(
