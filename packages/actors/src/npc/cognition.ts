@@ -1,4 +1,3 @@
-import type { WorldEvent } from '@minimal-rpg/schemas';
 import { Effect } from 'effect';
 import type { LLMMessage, LLMProvider } from '@minimal-rpg/llm';
 import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';

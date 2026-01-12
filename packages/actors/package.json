@@ -23,6 +23,7 @@
     "@minimal-rpg/llm": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
     "@minimal-rpg/services": "workspace:*",
+    "effect": "3.10.13",
     "xstate": "^5.18.2"
   },
   "devDependencies": {

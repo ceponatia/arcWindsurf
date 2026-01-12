@@ -87,10 +87,10 @@ app.post('/studio/generate', async (c) => {
 
 ## Acceptance Criteria
 
-- [ ] Missing API key returns 503 with CONFIG_ERROR
-- [ ] Rate limit returns 429 with RATE_LIMITED
-- [ ] Timeout returns 504 with TIMEOUT
-- [ ] Other LLM errors return 502 with LLM_UNAVAILABLE
-- [ ] Parse errors in infer-traits return empty array (graceful)
-- [ ] All errors logged with context
-- [ ] Error responses include `retryable` flag
+- [x] Missing API key returns 503 with CONFIG_ERROR
+- [x] Rate limit returns 429 with RATE_LIMITED
+- [x] Timeout returns 504 with TIMEOUT
+- [x] Other LLM errors return 502 with LLM_UNAVAILABLE
+- [x] Parse errors in infer-traits return empty array (graceful)
+- [x] All errors logged with context
+- [x] Error responses include `retryable` flag

@@ -118,12 +118,18 @@ importers:
       '@minimal-rpg/bus':
         specifier: workspace:*
         version: link:../bus
+      '@minimal-rpg/llm':
+        specifier: workspace:*
+        version: link:../llm
       '@minimal-rpg/schemas':
         specifier: workspace:*
         version: link:../schemas
       '@minimal-rpg/services':
         specifier: workspace:*
         version: link:../services
+      effect:
+        specifier: 3.10.13
+        version: 3.10.13
       xstate:
         specifier: ^5.18.2
         version: 5.25.0

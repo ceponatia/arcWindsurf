@@ -149,10 +149,14 @@ function helpText() {
   return `\
 Usage:
   node scripts/test-streaming.mjs --target=studio --message "Hello" [options]
+  node scripts/test-streaming.mjs --target=studio-generate --message "Hello" [options]
+  node scripts/test-streaming.mjs --target=studio-infer-traits --message "..." --characterResponse "..." [options]
   node scripts/test-streaming.mjs --target=openai --message "Hello" [options]
 
 Targets:
   --target=studio    Connect to API SSE endpoint /studio/generate/stream (expects event: done)
+  --target=studio-generate       POST /studio/generate (non-streaming)
+  --target=studio-infer-traits   POST /studio/infer-traits (non-streaming)
   --target=openai    Connect to OpenAI-compatible chat.completions stream (expects [DONE])
 
 Common options:
@@ -165,6 +169,12 @@ Studio options:
   --profileFile path/to/profile.json
   --history '[]'
   --historyFile path/to/history.json
+
+Infer-traits options:
+  --characterResponse "..."          Required when --target=studio-infer-traits
+  --characterResponseFile path        Load characterResponse from file
+  --currentProfile '{...}'            Defaults to {}
+  --currentProfileFile path           Load currentProfile from file
 
 OpenAI/OpenRouter options:
   --baseUrl https://openrouter.ai/api/v1   (or OPENAI_BASE_URL)
@@ -260,6 +270,106 @@ async function main() {
       if (!sawDone) {
         fail('Stream ended without a `done` event.');
       }
+      return;
+    }
+
+    if (target === 'studio-generate') {
+      const apiPort = parseIntOr(process.env.API_PORT ?? process.env.PORT, 3001);
+      const apiBaseUrl = String(args['apiBaseUrl'] ?? process.env.VITE_API_BASE_URL ?? `http://localhost:${apiPort}`);
+
+      const profile = args['profileFile']
+        ? await readJsonFile(String(args['profileFile']))
+        : args['profile']
+          ? JSON.parse(String(args['profile']))
+          : {};
+
+      const history = args['historyFile']
+        ? await readJsonFile(String(args['historyFile']))
+        : args['history']
+          ? JSON.parse(String(args['history']))
+          : [];
+
+      const url = new URL('/studio/generate', apiBaseUrl);
+      console.log(`Connecting (studio generate): ${url.toString()}`);
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profile,
+          history,
+          userMessage: message,
+        }),
+        signal: controller.signal,
+      });
+
+      const text = await res.text().catch(() => '');
+      if (!res.ok) {
+        fail(`HTTP ${res.status} ${res.statusText}${text ? `\n${text}` : ''}`);
+      }
+
+      try {
+        const parsed = JSON.parse(text);
+        if (typeof parsed?.content === 'string') {
+          process.stdout.write(parsed.content);
+          process.stdout.write('\n');
+          return;
+        }
+      } catch {
+        // ignore
+      }
+
+      process.stdout.write(text);
+      process.stdout.write('\n');
+      return;
+    }
+
+    if (target === 'studio-infer-traits') {
+      const apiPort = parseIntOr(process.env.API_PORT ?? process.env.PORT, 3001);
+      const apiBaseUrl = String(args['apiBaseUrl'] ?? process.env.VITE_API_BASE_URL ?? `http://localhost:${apiPort}`);
+
+      const characterResponse = args['characterResponseFile']
+        ? await fs.readFile(String(args['characterResponseFile']), 'utf8')
+        : args['characterResponse']
+          ? String(args['characterResponse'])
+          : '';
+      if (!characterResponse) {
+        fail('Missing required --characterResponse (or --characterResponseFile) for --target=studio-infer-traits');
+      }
+
+      const currentProfile = args['currentProfileFile']
+        ? await readJsonFile(String(args['currentProfileFile']))
+        : args['currentProfile']
+          ? JSON.parse(String(args['currentProfile']))
+          : {};
+
+      const url = new URL('/studio/infer-traits', apiBaseUrl);
+      console.log(`Connecting (studio infer-traits): ${url.toString()}`);
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userMessage: message,
+          characterResponse,
+          currentProfile,
+        }),
+        signal: controller.signal,
+      });
+
+      const text = await res.text().catch(() => '');
+      if (!res.ok) {
+        fail(`HTTP ${res.status} ${res.statusText}${text ? `\n${text}` : ''}`);
+      }
+
+      process.stdout.write(text);
+      process.stdout.write('\n');
       return;
     }
 

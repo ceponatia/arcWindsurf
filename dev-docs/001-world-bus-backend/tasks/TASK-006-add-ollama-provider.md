@@ -88,10 +88,10 @@ curl http://localhost:11434/v1/chat/completions \
 
 ## Acceptance Criteria
 
-- [ ] OllamaProvider class created
-- [ ] Implements LLMProvider interface
-- [ ] chat() method works with Ollama API
-- [ ] stream() method works with Ollama API
-- [ ] Default baseURL points to local Ollama
-- [ ] Exported from package index
-- [ ] TypeScript compiles without errors
+- [x] OllamaProvider class created
+- [x] Implements LLMProvider interface
+- [x] chat() method works with Ollama API
+- [x] stream() method works with Ollama API
+- [x] Default baseURL points to local Ollama
+- [x] Exported from package index
+- [x] TypeScript compiles without errors
