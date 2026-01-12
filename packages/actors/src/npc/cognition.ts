@@ -1,5 +1,9 @@
 import type { WorldEvent } from '@minimal-rpg/schemas';
+import { Effect } from 'effect';
+import type { LLMMessage, LLMProvider } from '@minimal-rpg/llm';
+import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
 import type { CognitionContext, ActionResult } from './types.js';
+import { NPC_DECISION_SYSTEM_PROMPT, buildNpcCognitionPrompt } from './prompts.js';
 
 /**
  * Cognition layer - decision-making for NPCs.
@@ -71,6 +75,44 @@ export class CognitionLayer {
    */
   static async decide(context: CognitionContext): Promise<ActionResult | null> {
     return await Promise.resolve(this.decideSync(context));
+  }
+
+  /**
+   * LLM-backed decision making. Falls back to rule-based decideSync on error or empty response.
+   */
+  static async decideLLM(
+    context: CognitionContext,
+    profile: CharacterProfile,
+    llmProvider: LLMProvider
+  ): Promise<ActionResult | null> {
+    if (context.perception.relevantEvents.length === 0) return null;
+
+    try {
+      const prompt = buildNpcCognitionPrompt(context.perception, context.state, profile);
+      const messages: LLMMessage[] = [
+        { role: 'system', content: NPC_DECISION_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ];
+
+      const result = await Effect.runPromise(llmProvider.chat(messages));
+      const content = result.content?.trim();
+      if (!content || content.toUpperCase().includes('NO_ACTION')) {
+        return this.decideSync(context);
+      }
+
+      const intent: WorldEvent = {
+        type: 'SPEAK_INTENT',
+        content,
+        actorId: context.state.id,
+        sessionId: context.state.sessionId,
+        timestamp: new Date(),
+      };
+
+      return { intent, delayMs: 300 } satisfies ActionResult;
+    } catch (error) {
+      console.error('Cognition LLM error:', error);
+      return this.decideSync(context);
+    }
   }
 
   /**

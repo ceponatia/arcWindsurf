@@ -1,9 +1,10 @@
 import { createMachine, assign } from 'xstate';
-import type { WorldEvent } from '@minimal-rpg/schemas';
+import type { WorldEvent, CharacterProfile } from '@minimal-rpg/schemas';
 import type { NpcMachineContext } from './types.js';
 import { PerceptionLayer } from './perception.js';
 import { CognitionLayer } from './cognition.js';
 import { worldBus } from '@minimal-rpg/bus';
+import type { LLMProvider } from '@minimal-rpg/llm';
 
 /**
  * NPC state machine definition.
@@ -37,9 +38,16 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
           },
         },
         thinking: {
-          entry: 'think',
-          always: {
-            target: 'acting',
+          invoke: {
+            src: 'llmDecision',
+            onDone: {
+              target: 'acting',
+              actions: assign({ pendingIntent: (_, event) => (event.data as WorldEvent | null) ?? undefined }),
+            },
+            onError: {
+              target: 'acting',
+              actions: assign({ pendingIntent: (_, event) => (event.data as WorldEvent | null) ?? undefined }),
+            },
           },
         },
         acting: {
@@ -82,32 +90,7 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
             });
           },
         }),
-        think: assign({
-          pendingIntent: ({ context }) => {
-            if (!context.perception) return undefined;
-
-            const cognitionContext = {
-              perception: context.perception,
-              state: {
-                id: context.actorId,
-                type: 'npc' as const,
-                npcId: context.npcId,
-                sessionId: context.sessionId,
-                locationId: context.locationId,
-                spawnedAt: new Date(),
-                lastActiveAt: new Date(),
-                recentEvents: context.recentEvents,
-                goals: [],
-              },
-              availableActions: ['SPEAK_INTENT', 'MOVE_INTENT'],
-            };
-
-            // For Phase 3, synchronous cognition
-            // Phase 4 will add LLM calls via invoke
-            const result = CognitionLayer.decideSync(cognitionContext);
-            return result?.intent;
-          },
-        }),
+        think: () => undefined,
         emitIntent: ({ context }) => {
           if (context.pendingIntent) {
             const enriched = {
@@ -124,6 +107,38 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
           perception: () => undefined,
           pendingIntent: () => undefined,
         }),
+      },
+      services: {
+        llmDecision: ({ context }) => async () => {
+          if (!context.perception) return null;
+
+          const cognitionContext = {
+            perception: context.perception,
+            state: {
+              id: context.actorId,
+              type: 'npc' as const,
+              npcId: context.npcId,
+              sessionId: context.sessionId,
+              locationId: context.locationId,
+              spawnedAt: new Date(),
+              lastActiveAt: new Date(),
+              recentEvents: context.recentEvents,
+              goals: [],
+            },
+            availableActions: ['SPEAK_INTENT', 'MOVE_INTENT'],
+          };
+
+          const llmProvider = context.llmProvider as LLMProvider | undefined;
+          const profile = context.profile as CharacterProfile | undefined;
+
+          if (llmProvider && profile) {
+            const result = await CognitionLayer.decideLLM(cognitionContext, profile, llmProvider);
+            return result?.intent ?? null;
+          }
+
+          const result = CognitionLayer.decideSync(cognitionContext);
+          return result?.intent ?? null;
+        },
       },
     }
   );

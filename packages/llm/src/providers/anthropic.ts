@@ -33,7 +33,7 @@ export class AnthropicProvider implements LLMProvider {
   constructor(config: AnthropicProviderConfig) {
     this.id = config.id;
     this.model = config.model;
-    this.client = new Anthropic({ apiKey: config.apiKey }) as Anthropic;
+    this.client = new Anthropic({ apiKey: config.apiKey });
   }
 
   chat(messages: LLMMessage[], options?: ChatOptions): Effect.Effect<LLMResponse, Error> {
@@ -56,7 +56,6 @@ export class AnthropicProvider implements LLMProvider {
           ...(options?.stop ? { stop_sequences: options.stop } : {}),
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const response = (await this.client.messages.create(body)) as Message;
 
         const content = extractFirstText(response.content as { type: string; text?: string }[]);
@@ -99,7 +98,6 @@ export class AnthropicProvider implements LLMProvider {
           ...(options?.stop ? { stop_sequences: options.stop } : {}),
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const stream = (await this.client.messages.create(body)) as AsyncIterable<RawMessageStreamEvent>;
 
         async function* mapChunks(): AsyncIterable<LLMStreamChunk> {

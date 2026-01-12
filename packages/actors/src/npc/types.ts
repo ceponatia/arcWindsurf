@@ -1,5 +1,7 @@
 import type { WorldEvent } from '@minimal-rpg/schemas';
 import type { BaseActorState } from '../base/types.js';
+import type { LLMProvider } from '@minimal-rpg/llm';
+import type { CharacterProfile } from '@minimal-rpg/schemas';
 
 /**
  * NPC-specific state extensions.
@@ -62,6 +64,8 @@ export interface NpcMachineContext {
   perception?: PerceptionContext;
   cognition?: CognitionContext;
   pendingIntent?: WorldEvent;
+  profile?: CharacterProfile;
+  llmProvider?: LLMProvider;
 }
 
 /**
