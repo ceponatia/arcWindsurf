@@ -23,6 +23,7 @@
     "@minimal-rpg/bus": "workspace:*",
     "@minimal-rpg/characters": "workspace:*",
     "@minimal-rpg/db": "workspace:*",
+    "@minimal-rpg/llm": "workspace:*",
     "@minimal-rpg/projections": "workspace:*",
     "@minimal-rpg/retrieval": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
@@ -30,6 +31,7 @@
     "@minimal-rpg/utils": "workspace:*",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
+    "effect": "3.10.13",
     "hono": "^4.10.6",
     "jose": "^6.1.0"
   },

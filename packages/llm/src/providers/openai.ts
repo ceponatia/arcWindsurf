@@ -16,6 +16,13 @@ export interface OpenAIProviderConfig {
   model: string;
 }
 
+export interface OpenRouterEnvConfig {
+  /** Provider ID used for metrics/logging. Defaults to 'openrouter'. */
+  id?: string;
+  /** Fallback model if OPENROUTER_MODEL is missing. */
+  defaultModel?: string;
+}
+
 export class OpenAIProvider implements LLMProvider {
   private client: OpenAI;
   public readonly id: string;
@@ -105,13 +112,13 @@ export class OpenAIProvider implements LLMProvider {
 
         const toolCalls: ToolCall[] | null = choice.message.tool_calls
           ? choice.message.tool_calls.map((toolCall) => ({
-              id: toolCall.id,
-              type: 'function',
-              function: {
-                name: toolCall.function.name,
-                arguments: toolCall.function.arguments,
-              },
-            }))
+            id: toolCall.id,
+            type: 'function',
+            function: {
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            },
+          }))
           : null;
 
         return {
@@ -120,10 +127,10 @@ export class OpenAIProvider implements LLMProvider {
           tool_calls: toolCalls,
           usage: response.usage
             ? {
-                prompt_tokens: response.usage.prompt_tokens,
-                completion_tokens: response.usage.completion_tokens,
-                total_tokens: response.usage.total_tokens,
-              }
+              prompt_tokens: response.usage.prompt_tokens,
+              completion_tokens: response.usage.completion_tokens,
+              total_tokens: response.usage.total_tokens,
+            }
             : null,
         } satisfies LLMResponse;
       },
@@ -205,4 +212,22 @@ export class OpenAIProvider implements LLMProvider {
       catch: (error) => (error instanceof Error ? error : new Error(String(error))),
     });
   }
+}
+
+/**
+ * Convenience factory to build an OpenRouter-backed provider using env vars.
+ * Expects OPENROUTER_API_KEY and optional OPENROUTER_MODEL/OPENROUTER_BASE_URL.
+ */
+export function createOpenRouterProviderFromEnv(
+  config?: OpenRouterEnvConfig
+): OpenAIProvider | null {
+  const apiKey = process.env['OPENROUTER_API_KEY'] ?? '';
+  if (!apiKey) return null;
+
+  const model =
+    process.env['OPENROUTER_MODEL'] ?? config?.defaultModel ?? 'deepseek/deepseek-v3.2';
+  const baseURL = process.env['OPENROUTER_BASE_URL'] ?? 'https://openrouter.ai/api/v1';
+  const id = config?.id ?? 'openrouter';
+
+  return new OpenAIProvider({ id, apiKey, baseURL, model });
 }
