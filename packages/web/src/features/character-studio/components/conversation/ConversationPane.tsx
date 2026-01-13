@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { Loader2, AlertCircle, X } from 'lucide-react';
 import { useConversation } from '../../hooks/useConversation.js';
 import { characterProfile } from '../../signals.js';
 import { MessageBubble } from './MessageBubble.js';
@@ -10,6 +11,7 @@ export const ConversationPane: React.FC = () => {
 
   const { messages, isGenerating, sendMessage } = useConversation();
   const [input, setInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -20,25 +22,35 @@ export const ConversationPane: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || isGenerating) return;
-    void sendMessage(input.trim());
-    setInput('');
+    setError(null);
+    try {
+      await sendMessage(input.trim());
+      setInput('');
+    } catch (err) {
+      setError('Failed to send message. Please try again.');
+    }
   }, [input, isGenerating, sendMessage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        handleSend();
+        void handleSend();
       }
     },
     [handleSend]
   );
 
   const handlePromptSelect = useCallback(
-    (prompt: string) => {
-      void sendMessage(prompt);
+    async (prompt: string) => {
+      setError(null);
+      try {
+        await sendMessage(prompt);
+      } catch (err) {
+        setError('Failed to process prompt. Please try again.');
+      }
     },
     [sendMessage]
   );
@@ -47,9 +59,7 @@ export const ConversationPane: React.FC = () => {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/50">
-        <h3 className="text-sm font-medium text-slate-200">
-          Conversation with {characterName}
-        </h3>
+        <h3 className="text-sm font-medium text-slate-200">Conversation with {characterName}</h3>
         <p className="text-xs text-slate-500 mt-1">
           Chat to discover their personality. Traits will be inferred automatically.
         </p>
@@ -57,17 +67,30 @@ export const ConversationPane: React.FC = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-        {messages.length === 0 && (
-          <ConversationPrompts onSelect={handlePromptSelect} />
+        {error && (
+          <div className="bg-red-900/20 border border-red-800/50 text-red-400 p-3 rounded-lg flex items-start justify-between gap-2 text-xs">
+            <div className="flex gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-500 hover:text-red-400 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         )}
+
+        {messages.length === 0 && <ConversationPrompts onSelect={handlePromptSelect} />}
 
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} characterName={characterName} />
         ))}
 
         {isGenerating && (
-          <div className="flex items-center gap-2 text-slate-400 text-sm">
-            <div className="animate-pulse">●</div>
+          <div className="flex items-center gap-3 text-slate-400 text-sm px-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
             <span>{characterName} is thinking...</span>
           </div>
         )}

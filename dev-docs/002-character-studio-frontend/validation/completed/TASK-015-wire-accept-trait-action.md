@@ -63,8 +63,8 @@ const pendingTraits = signal<InferredTrait[]>([]);
 
 ## Acceptance Criteria
 
-- [ ] Clicking accept applies trait value to profile
-- [ ] Form field updates visually after acceptance
-- [ ] Trait status changes to 'accepted'
-- [ ] No errors in console
-- [ ] Changes persist when saving character
+- [x] Clicking accept applies trait value to profile
+- [x] Form field updates visually after acceptance
+- [x] Trait status changes to 'accepted'
+- [x] No errors in console
+- [x] Changes persist when saving character

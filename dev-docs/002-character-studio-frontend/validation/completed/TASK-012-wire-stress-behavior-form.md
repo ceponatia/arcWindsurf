@@ -61,10 +61,10 @@ export const StressBehaviorForm: React.FC = () => {
 
 ## Fields to Implement
 
-- [ ] Primary stress response (select: fight/flight/freeze/fawn)
-- [ ] Threshold slider (0-1)
-- [ ] Tells list (add/remove string items)
-- [ ] Coping mechanisms list (optional)
+- [x] Primary stress response (select: fight/flight/freeze/fawn)
+- [x] Threshold slider (0-1)
+- [x] Tells list (add/remove string items)
+- [x] Coping mechanisms list (optional)
 
 ## Acceptance Criteria
 
@@ -73,3 +73,7 @@ export const StressBehaviorForm: React.FC = () => {
 - [ ] Threshold slider updates signal
 - [ ] Tells list allows add/remove
 - [ ] Values persist when saving character
+
+## Notes
+
+Determine how the stress behaviors interact with character prompts and ensure consistency.

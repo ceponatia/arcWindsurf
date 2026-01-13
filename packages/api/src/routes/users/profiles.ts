@@ -18,12 +18,18 @@ import type { LoadedDataGetter, CharacterSummary, SettingSummary } from '../../l
 import { mapCharacterSummary, mapSettingSummary } from '../../mappers/profile-mappers.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { toId } from '../../utils/uuid.js';
+import crypto from 'node:crypto';
 
 interface ProfilesRouteDeps {
   getLoaded: LoadedDataGetter;
 }
 
 export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void {
+  const isUuid = (value: string): boolean =>
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      value
+    );
+
   // GET /characters - summarized character profiles
   app.get('/characters', async (c) => {
     const ownerEmail = getOwnerEmail(c);
@@ -93,7 +99,9 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     if (!parsed.success) {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
-    const profile = parsed.data;
+    const rawProfile = parsed.data;
+    const normalizedId = isUuid(rawProfile.id) ? rawProfile.id : crypto.randomUUID();
+    const profile: CharacterProfile = { ...rawProfile, id: normalizedId };
 
     // Check if it's a filesystem character (cannot edit)
     const existingFs = deps.getLoaded()?.characters.find((c) => c.id === profile.id);
@@ -121,6 +129,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     await createEntityProfile({
+      id: toId(profile.id),
       entityType: 'character',
       name: profile.name,
       ownerEmail,
@@ -232,7 +241,9 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     if (!parsed.success) {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
-    const profile = parsed.data;
+    const rawProfile = parsed.data;
+    const profileId = isUuid(rawProfile.id) ? rawProfile.id : crypto.randomUUID();
+    const profile: SettingProfile = { ...rawProfile, id: profileId };
 
     // Use provided id or reject if duplicate (unless updating DB setting)
     const existingFs = deps.getLoaded()?.settings.find((s) => s.id === profile.id);
@@ -256,6 +267,7 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
     }
 
     await createEntityProfile({
+      id: toId(profile.id),
       entityType: 'setting',
       name: profile.name,
       ownerEmail,

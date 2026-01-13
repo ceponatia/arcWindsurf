@@ -67,11 +67,13 @@ export const ValuesList: React.FC = () => {
 
 ## Features to Support
 
-- [ ] Display existing values
-- [ ] Add new value
-- [ ] Remove value
-- [ ] Edit value priority
-- [ ] Reorder values (optional for v1)
+Check off once supported.
+
+- [x] Display existing values
+- [x] Add new value
+- [x] Remove value
+- [x] Edit value priority
+- [x] Reorder values (optional for v1)
 
 ## Acceptance Criteria
 

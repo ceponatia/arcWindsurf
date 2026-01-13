@@ -82,9 +82,9 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
 
 ## Acceptance Criteria
 
-- [ ] Function exists and is exported
-- [ ] Handles nested personalityMap paths
-- [ ] Handles top-level profile paths
-- [ ] Handles array appends for values/fears
-- [ ] TypeScript compiles without errors
-- [ ] Unit tests pass (if added)
+- [x] Function exists and is exported
+- [x] Handles nested personalityMap paths
+- [x] Handles top-level profile paths
+- [x] Handles array appends for values/fears
+- [x] TypeScript compiles without errors
+- [x] Unit tests pass (if added)

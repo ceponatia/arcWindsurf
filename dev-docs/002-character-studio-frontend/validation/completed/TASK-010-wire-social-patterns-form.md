@@ -80,3 +80,7 @@ export const SocialPatternsForm: React.FC = () => {
 - [ ] Select changes update signal immediately
 - [ ] All fields work (strangerDefault, conflictStyle, etc.)
 - [ ] Values persist when saving character
+
+## Notes
+
+Determine how the social patterns work with the LLM prompts and ensure consistency.

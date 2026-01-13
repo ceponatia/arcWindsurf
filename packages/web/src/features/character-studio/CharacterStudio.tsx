@@ -1,7 +1,8 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { Loader2 } from 'lucide-react';
 import { useCharacterStudio } from './hooks/useCharacterStudio.js';
-import { completionScore } from './signals.js';
+import { completionScore, fieldErrors } from './signals.js';
 import { ConversationPane } from './components/conversation/ConversationPane.js';
 import { TraitSuggestions } from './components/traits/TraitSuggestions.js';
 import { IdentityPanel } from './components/IdentityPanel.js';
@@ -13,14 +14,10 @@ export interface CharacterStudioProps {
   onCancel?: () => void;
 }
 
-export const CharacterStudio: React.FC<CharacterStudioProps> = ({
-  id,
-  onSave,
-  onCancel,
-}) => {
+export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, onCancel }) => {
   useSignals();
 
-  const { profile, isDirty, saveStatus, save, isEditing } = useCharacterStudio({
+  const { profile, isDirty, saveStatus, isLoading, save, isEditing } = useCharacterStudio({
     id: id ?? null,
     onSave,
   });
@@ -35,6 +32,17 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({
     onCancel?.();
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-slate-950">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-violet-500 animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading Character Studio...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col bg-slate-950">
       <StudioHeader
@@ -45,22 +53,25 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({
         onSave={handleSave}
         onCancel={handleCancel}
         isEditing={isEditing}
+        hasErrors={Object.keys(fieldErrors.value).length > 0}
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: Conversation Pane */}
-        <div className="w-1/2 border-r border-slate-800 flex flex-col">
+        {/* Left: Conversation Pane (Fixed Width) */}
+        <div className="w-[450px] flex-shrink-0 border-r border-slate-800 flex flex-col bg-slate-900/10">
           <ConversationPane />
         </div>
 
-        {/* Right: Identity & Traits */}
-        <div className="w-1/2 flex flex-col overflow-hidden">
+        {/* Right: Identity & Traits (Flexible) */}
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Trait Suggestions (top) */}
           <TraitSuggestions />
 
-          {/* Identity Cards (scrollable) */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-            <IdentityPanel />
+          {/* Identity Cards (scrollable area) */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            <div className="max-w-4xl mx-auto">
+              <IdentityPanel />
+            </div>
           </div>
         </div>
       </div>

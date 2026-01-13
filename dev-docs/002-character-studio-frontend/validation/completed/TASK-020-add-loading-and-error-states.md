@@ -108,9 +108,9 @@ const handleSave = async () => {
 
 ## Acceptance Criteria
 
-- [ ] Loading spinner shows during LLM generation
-- [ ] Send button disabled while generating
-- [ ] API errors display user-friendly message
-- [ ] Save button shows loading state
-- [ ] Success/failure feedback after save
-- [ ] Errors are dismissible
+- [x] Loading spinner shows during LLM generation
+- [x] Send button disabled while generating
+- [x] API errors display user-friendly message
+- [x] Save button shows loading state
+- [x] Success/failure feedback after save
+- [x] Errors are dismissible

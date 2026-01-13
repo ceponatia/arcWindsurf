@@ -1,5 +1,8 @@
 import { signal, computed } from '@preact/signals-react';
 import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
+import type { StudioFieldErrors, StudioFieldKey } from './validation/types.js';
+import { applyTrait } from './utils/trait-applicator.js';
+import { validateCharacterProfileBeforeSave } from './validation/validateCharacterProfileBeforeSave.js';
 
 // ============================================================================
 // Character Data Signals
@@ -11,11 +14,17 @@ export const characterProfile = signal<Partial<CharacterProfile>>({});
 /** Character ID (null for new characters) */
 export const characterId = signal<string | null>(null);
 
+/** Main studio loading state */
+export const isStudioLoading = signal<boolean>(false);
+
 /** Dirty flag - unsaved changes exist */
 export const isDirty = signal<boolean>(false);
 
 /** Save status */
 export const saveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+/** Field-level validation errors (used for save-time warnings) */
+export const fieldErrors = signal<StudioFieldErrors>({});
 
 // ============================================================================
 // Conversation Signals
@@ -34,7 +43,7 @@ export interface InferredTrait {
   value: unknown;         // e.g., 'guarded'
   confidence: number;     // 0-1
   source: string;         // Quote from conversation that triggered inference
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'dismissed';
 }
 
 /** Conversation history with the character */
@@ -62,22 +71,34 @@ export const expandedCards = signal<Set<string>>(new Set(['core']));
 // Computed Signals
 // ============================================================================
 
+/**
+ * Detailed completion status for each major section
+ */
+export const sectionCompletion = computed(() => {
+  const p = characterProfile.value;
+  const pm = p.personalityMap;
+
+  return {
+    name: !!p.name?.trim(),
+    backstory: !!p.backstory?.trim(),
+    dimensions: !!(pm?.dimensions && Object.keys(pm.dimensions).length > 0),
+    values: !!(pm?.values && pm.values.length > 0),
+    fears: !!(pm?.fears && pm.fears.length > 0),
+    social: !!(pm?.social && Object.keys(pm.social).length > 0),
+    speech: !!(pm?.speech && Object.keys(pm.speech).length > 0),
+    stress: !!(pm?.stress && Object.keys(pm.stress).length > 0),
+    physique: !!(p.physique && (typeof p.physique === 'string' ? p.physique.trim().length > 0 : Object.keys(p.physique).length > 0)),
+    body: !!(p.body && Object.keys(p.body).length > 0),
+  };
+});
+
 /** Completion percentage (0-100) */
 export const completionScore = computed(() => {
-  const p = characterProfile.value;
-  let score = 0;
+  const completion = sectionCompletion.value;
+  const items = Object.values(completion);
+  const completedCount = items.filter(Boolean).length;
 
-  if (p.name?.trim()) score += 15;
-  if (p.age) score += 5;
-  if (p.summary?.trim()) score += 15;
-  if (p.backstory?.trim()) score += 10;
-  if (p.personalityMap?.dimensions && Object.keys(p.personalityMap.dimensions).length > 0) score += 20;
-  if (p.personalityMap?.values && p.personalityMap.values.length > 0) score += 15;
-  if (p.personalityMap?.fears && p.personalityMap.fears.length > 0) score += 10;
-  if (p.personalityMap?.speech) score += 5;
-  if (p.body && Object.keys(p.body).length > 0) score += 5;
-
-  return Math.min(100, score);
+  return Math.round((completedCount / items.length) * 100);
 });
 
 /** All accepted traits from conversation */
@@ -106,6 +127,40 @@ export function updatePersonalityMap(updates: Partial<PersonalityMap>): void {
   isDirty.value = true;
 }
 
+/**
+ * Validates the current character profile.
+ * Updates fieldErrors signal and returns true if valid.
+ */
+export function validateProfile(): boolean {
+  const errors = validateCharacterProfileBeforeSave(characterProfile.value);
+  fieldErrors.value = errors;
+  return Object.keys(errors).length === 0;
+}
+
+/**
+ * Replace all field errors at once.
+ */
+export function setFieldErrors(next: StudioFieldErrors): void {
+  fieldErrors.value = next;
+}
+
+/**
+ * Clear a single field error.
+ */
+export function clearFieldError(key: StudioFieldKey): void {
+  const current = fieldErrors.value;
+  if (!current[key]) return;
+  const { [key]: _removed, ...rest } = current;
+  fieldErrors.value = rest;
+}
+
+/**
+ * Clear all field errors.
+ */
+export function clearAllFieldErrors(): void {
+  fieldErrors.value = {};
+}
+
 export function addMessage(message: Omit<ConversationMessage, 'id' | 'timestamp'>): void {
   const newMessage: ConversationMessage = {
     ...message,
@@ -116,10 +171,16 @@ export function addMessage(message: Omit<ConversationMessage, 'id' | 'timestamp'
 }
 
 export function acceptTrait(traitId: string): void {
+  const trait = pendingTraits.value.find(t => t.path === traitId);
+  if (!trait) return;
+
+  // Apply the trait value to the profile
+  applyTrait(trait);
+
+  // Update trait status to 'accepted'
   pendingTraits.value = pendingTraits.value.map(t =>
-    t.path === traitId ? { ...t, status: 'accepted' } : t
+    t.path === traitId ? { ...t, status: 'accepted' as const } : t
   );
-  // TODO: Apply trait to characterProfile
 }
 
 export function rejectTrait(traitId: string): void {
@@ -133,6 +194,7 @@ export function resetStudio(): void {
   characterId.value = null;
   isDirty.value = false;
   saveStatus.value = 'idle';
+  fieldErrors.value = {};
   conversationHistory.value = [];
   pendingTraits.value = [];
   isGenerating.value = false;

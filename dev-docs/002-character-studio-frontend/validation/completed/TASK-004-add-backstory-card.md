@@ -47,3 +47,10 @@ import { characterProfile, updateProfile } from '../signals.js';
 - [ ] Typing updates the signal
 - [ ] Changes persist when saving character
 - [ ] Card collapses/expands correctly
+
+---
+
+## Completion Log (2026-01-12)
+
+- Added the "Backstory" card to `IdentityPanel.tsx` using the `IdentityCard` wrapper.
+- Wired the textarea to `characterProfile.value.backstory`.

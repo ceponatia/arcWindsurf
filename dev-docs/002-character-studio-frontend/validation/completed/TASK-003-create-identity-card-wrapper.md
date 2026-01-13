@@ -52,9 +52,18 @@ interface IdentityCardProps {
 
 ## Acceptance Criteria
 
-- [ ] Component renders with title
-- [ ] Click toggles open/closed state
-- [ ] Children render when open
-- [ ] Optional completion indicator displays
-- [ ] TypeScript compiles without errors
-- [ ] Exported from components index (if one exists)
+- [x] Component renders with title
+- [x] Click toggles open/closed state
+- [x] Children render when open
+- [x] Optional completion indicator displays
+- [x] TypeScript compiles without errors
+- [x] Exported from components index (if one exists)
+
+---
+
+## Completion Log (2026-01-12)
+
+- Created [IdentityCard.tsx](packages/web/src/features/character-studio/components/IdentityCard.tsx) with support for collapsible sections and progress indicators.
+- Migrated "Core Identity" section in [IdentityPanel.tsx](packages/web/src/features/character-studio/components/IdentityPanel.tsx) to use the new component.
+- Switched from manual Unicode arrows to `Lucide` icons for a cleaner UI.
+- Verified smooth transitions and functionality in the browser.

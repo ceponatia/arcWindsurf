@@ -59,7 +59,11 @@ export const EmotionalBaselineForm: React.FC = () => {
 
 ## Acceptance Criteria
 
-- [ ] Form displays current emotional baseline values
-- [ ] Changes update signal immediately
-- [ ] Values persist when saving character
-- [ ] Component uses `useSignals()` for reactivity
+- [x] Form displays current emotional baseline values
+- [x] Changes update signal immediately
+- [x] Values persist when saving character
+- [x] Component uses `useSignals()` for reactivity
+
+## Notes
+
+- Form will 400 if Summary is empty because schema requires it. Consider adding default text or validation.

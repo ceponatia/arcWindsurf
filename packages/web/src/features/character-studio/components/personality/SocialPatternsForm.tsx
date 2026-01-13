@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSignals } from '@preact/signals-react/runtime';
 import {
   STRANGER_DEFAULTS,
   WARMTH_RATES,
@@ -7,85 +8,68 @@ import {
   CRITICISM_RESPONSES,
   BOUNDARY_TYPES,
 } from '@minimal-rpg/schemas';
-import type { PersonalityFormState } from '@minimal-rpg/schemas';
-import { Subsection, SelectInput } from '../../../../shared/components/common.js';
+import { characterProfile, updatePersonalityMap } from '../../signals.js';
+import { SelectInput } from '../../../../shared/components/common.js';
 
-interface SocialPatternsFormProps {
-  pm: PersonalityFormState;
-  updatePM: <K extends keyof PersonalityFormState>(key: K, value: PersonalityFormState[K]) => void;
-}
+export const SocialPatternsForm: React.FC = () => {
+  useSignals();
 
-export const SocialPatternsForm: React.FC<SocialPatternsFormProps> = ({ pm, updatePM }) => {
+  const social = characterProfile.value.personalityMap?.social ?? {
+    strangerDefault: STRANGER_DEFAULTS[1],
+    warmthRate: WARMTH_RATES[1],
+    preferredRole: SOCIAL_ROLES[1],
+    conflictStyle: CONFLICT_STYLES[1],
+    criticismResponse: CRITICISM_RESPONSES[1],
+    boundaries: BOUNDARY_TYPES[1],
+  };
+
+  const handleChange = (field: string, value: unknown) => {
+    updatePersonalityMap({
+      social: {
+        ...social,
+        [field]: value,
+      },
+    });
+  };
+
   return (
-    <Subsection title="Social Patterns">
-      <div className="grid grid-cols-2 gap-3">
-        <SelectInput
-          label="Stranger Default"
-          value={pm.social.strangerDefault}
-          onChange={(v) =>
-            updatePM('social', {
-              ...pm.social,
-              strangerDefault: v as (typeof STRANGER_DEFAULTS)[number],
-            })
-          }
-          options={STRANGER_DEFAULTS}
-        />
-        <SelectInput
-          label="Warmth Rate"
-          value={pm.social.warmthRate}
-          onChange={(v) =>
-            updatePM('social', {
-              ...pm.social,
-              warmthRate: v as (typeof WARMTH_RATES)[number],
-            })
-          }
-          options={WARMTH_RATES}
-        />
-        <SelectInput
-          label="Preferred Role"
-          value={pm.social.preferredRole}
-          onChange={(v) =>
-            updatePM('social', {
-              ...pm.social,
-              preferredRole: v as (typeof SOCIAL_ROLES)[number],
-            })
-          }
-          options={SOCIAL_ROLES}
-        />
-        <SelectInput
-          label="Conflict Style"
-          value={pm.social.conflictStyle}
-          onChange={(v) =>
-            updatePM('social', {
-              ...pm.social,
-              conflictStyle: v as (typeof CONFLICT_STYLES)[number],
-            })
-          }
-          options={CONFLICT_STYLES}
-        />
-        <SelectInput
-          label="Criticism Response"
-          value={pm.social.criticismResponse}
-          onChange={(v) =>
-            updatePM('social', {
-              ...pm.social,
-              criticismResponse: v as (typeof CRITICISM_RESPONSES)[number],
-            })
-          }
-          options={CRITICISM_RESPONSES}
-        />
-        <SelectInput
-          label="Boundaries"
-          value={pm.social.boundaries}
-          onChange={(v) =>
-            updatePM('social', {
-              ...pm.social,
-              boundaries: v as (typeof BOUNDARY_TYPES)[number],
-            })
-          }
-          options={BOUNDARY_TYPES}
-        />
-      </div>
-    </Subsection>
+    <div className="grid grid-cols-2 gap-3">
+      <SelectInput
+        label="Stranger Default"
+        value={social.strangerDefault}
+        onChange={(v) => handleChange('strangerDefault', v)}
+        options={STRANGER_DEFAULTS}
+      />
+      <SelectInput
+        label="Warmth Rate"
+        value={social.warmthRate}
+        onChange={(v) => handleChange('warmthRate', v)}
+        options={WARMTH_RATES}
+      />
+      <SelectInput
+        label="Preferred Role"
+        value={social.preferredRole}
+        onChange={(v) => handleChange('preferredRole', v)}
+        options={SOCIAL_ROLES}
+      />
+      <SelectInput
+        label="Conflict Style"
+        value={social.conflictStyle}
+        onChange={(v) => handleChange('conflictStyle', v)}
+        options={CONFLICT_STYLES}
+      />
+      <SelectInput
+        label="Criticism Response"
+        value={social.criticismResponse}
+        onChange={(v) => handleChange('criticismResponse', v)}
+        options={CRITICISM_RESPONSES}
+      />
+      <SelectInput
+        label="Boundaries"
+        value={social.boundaries}
+        onChange={(v) => handleChange('boundaries', v)}
+        options={BOUNDARY_TYPES}
+      />
+    </div>
   );
 };

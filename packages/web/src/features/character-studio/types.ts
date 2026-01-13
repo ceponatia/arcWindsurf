@@ -222,7 +222,7 @@ export interface FearEntry {
   category: FearCategory;
   specific: string;
   intensity: number;
-  triggers: string;
+  triggers: string[];
   copingMechanism: CopingMechanism;
 }
 
@@ -271,8 +271,8 @@ export interface StressBehaviorEntry {
   secondary?: (typeof STRESS_RESPONSES)[number];
   threshold: number;
   recoveryRate: (typeof RECOVERY_RATES)[number];
-  soothingActivities: string;
-  stressIndicators: string;
+  soothingActivities: string[];
+  stressIndicators: string[];
 }
 
 /**
@@ -369,7 +369,7 @@ export const createFearEntry = (): FearEntry => ({
   category: FEAR_CATEGORIES[0],
   specific: '',
   intensity: 0.5,
-  triggers: '',
+  triggers: [],
   copingMechanism: COPING_MECHANISMS[0],
 });
 
@@ -403,8 +403,8 @@ export const createStressBehaviorEntry = (): StressBehaviorEntry => ({
   primary: STRESS_RESPONSES[2], // freeze
   threshold: 0.5,
   recoveryRate: RECOVERY_RATES[1], // moderate
-  soothingActivities: '',
-  stressIndicators: '',
+  soothingActivities: [],
+  stressIndicators: [],
 });
 
 export const createPersonalityFormState = (): PersonalityFormState => ({

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 
 export interface StudioHeaderProps {
   characterName: string;
@@ -8,6 +9,7 @@ export interface StudioHeaderProps {
   onSave: () => void;
   onCancel?: () => void;
   isEditing: boolean;
+  hasErrors?: boolean;
 }
 
 export const StudioHeader: React.FC<StudioHeaderProps> = ({
@@ -18,6 +20,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onSave,
   onCancel,
   isEditing,
+  hasErrors,
 }) => {
   return (
     <header className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
@@ -26,9 +29,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           {isEditing ? `Editing: ${characterName}` : 'Create Character'}
         </h1>
         <div className="flex items-center gap-3 mt-1">
-          <div className="text-xs text-slate-500">
-            {completion}% complete
-          </div>
+          <div className="text-xs text-slate-500">{completion}% complete</div>
           <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-violet-500 transition-all duration-300"
@@ -39,7 +40,12 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-        {isDirty && (
+        {hasErrors && <span className="text-xs text-red-400">Please fix validation errors</span>}
+        {saveStatus === 'saved' && (
+          <span className="text-xs text-emerald-400">Character saved!</span>
+        )}
+        {saveStatus === 'error' && <span className="text-xs text-red-400">Save failed</span>}
+        {isDirty && saveStatus === 'idle' && (
           <span className="text-xs text-amber-400">Unsaved changes</span>
         )}
 
@@ -55,9 +61,16 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         <button
           onClick={onSave}
           disabled={saveStatus === 'saving'}
-          className="px-4 py-2 text-sm bg-violet-600 text-white rounded-lg hover:bg-violet-500 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-sm bg-violet-600 text-white rounded-lg hover:bg-violet-500 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
-          {saveStatus === 'saving' ? 'Saving...' : 'Save Character'}
+          {saveStatus === 'saving' ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            'Save Character'
+          )}
         </button>
       </div>
     </header>

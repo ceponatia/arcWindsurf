@@ -16,7 +16,7 @@ cp .env.example .env
 
 Defaults (used if not set):
 
-- `PORT=3001`
+- `PORT=3002`
 - `OPENROUTER_MODEL=deepseek/deepseek-chat`
 
 Required for LLM calls:

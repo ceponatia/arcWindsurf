@@ -68,3 +68,7 @@ export const SpeechStyleForm: React.FC = () => {
 - [ ] All fields work (vocabulary, directness, etc.)
 - [ ] Optional quirks field works (if present)
 - [ ] Values persist when saving character
+
+## Notes
+
+Determine how speech patterns work with the prompts.
