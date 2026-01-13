@@ -254,6 +254,88 @@ test.describe('Character Studio - Tasks 001-015 Validation', () => {
       await expect(page.locator('text=Core Identity').first()).toBeVisible();
     });
   });
+
+  test.describe('TASK-019: Form Validation', () => {
+    test('should block save when required fields are missing', async ({ page }) => {
+      await page.goto('/#/character-studio');
+
+      // Attempt to save immediately (empty name)
+      const saveButton = page.getByRole('button', { name: /save/i });
+      await saveButton.click();
+
+      // Check for global error in header
+      await expect(page.getByText('Please fix validation errors')).toBeVisible();
+
+      // Check for inline field error
+      await expect(page.getByText('Name is required')).toBeVisible();
+
+      // Fill name
+      const nameInput = page.locator('input[placeholder="Character name"]');
+      await nameInput.fill('Valid Name');
+
+      // Check global error is still there but inline error might be cleared if implemented
+      // (My implementation clears inline error on change)
+      await expect(page.getByText('Name is required')).not.toBeVisible();
+    });
+  });
+
+  test.describe('TASK-020: Loading & Error States', () => {
+    test('should show thinking state during conversation', async ({ page }) => {
+      await page.goto('/#/character-studio');
+
+      const textarea = page.locator('textarea[placeholder*="Ask"]');
+      await textarea.fill('Hello');
+      await page.keyboard.press('Enter');
+
+      // Check for thinking indicator
+      await expect(page.getByText('is thinking...')).toBeVisible();
+    });
+
+    test('should show saving state in header', async ({ page }) => {
+      await page.goto('/#/character-studio');
+
+      // Fill required fields to allow save
+      await page.locator('input[placeholder="Character name"]').fill('Save Test');
+      await page.locator('textarea[placeholder*="brief description"]').fill('Test summary');
+      await page.locator('text=Backstory').first().click();
+      await page.locator('textarea[placeholder*="background"]').fill('Test backstory');
+
+      const saveButton = page.getByRole('button', { name: /save/i });
+      await saveButton.click();
+
+      // Check for "Saving..." text or spinner
+      await expect(page.getByText('Saving...')).toBeVisible();
+    });
+  });
+
+  test.describe('TASK-021: Completion Indicators', () => {
+    test('should show completion percentage and card checkmarks', async ({ page }) => {
+      await page.goto('/#/character-studio');
+
+      // Initial check (likely 0% or low %)
+      const headerCompletion = page.locator('header').getByText(/% complete/);
+      await expect(headerCompletion).toBeVisible();
+
+      // Check that Core Identity does NOT have a checkmark initially (name is empty)
+      const coreHeaderButton = page.getByRole('button', { name: /Core Identity/ });
+      const coreCheckmark = coreHeaderButton.locator('svg.text-emerald-500');
+      await expect(coreCheckmark).not.toBeVisible();
+
+      // Fill name
+      await page.locator('input[placeholder="Character name"]').fill('Completion Test');
+
+      // Collapse card to see checkmark (Scenario requirement: checkmark on collapsed cards)
+      await page.locator('text=Core Identity').first().click(); // Collapses it
+
+      // Check for checkmark
+      await expect(coreCheckmark).toBeVisible();
+
+      // Verify overall percentage increased
+      const completionText = await headerCompletion.textContent();
+      const percent = parseInt(completionText || '0');
+      expect(percent).toBeGreaterThan(0);
+    });
+  });
 });
 
 test.describe('Additional Validations', () => {

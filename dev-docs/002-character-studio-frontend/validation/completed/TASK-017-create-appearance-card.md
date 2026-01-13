@@ -111,8 +111,8 @@ export const AppearanceCard: React.FC = () => {
 
 ## Acceptance Criteria
 
-- [ ] AppearanceCard component renders
-- [ ] Height and Build fields work
-- [ ] Notable Features textarea works
-- [ ] Overall Impression textarea works
-- [ ] Values persist when saving character
+- [x] AppearanceCard component renders
+- [x] Height and Build fields work
+- [x] Notable Features textarea works
+- [x] Overall Impression textarea works
+- [x] Values persist when saving character

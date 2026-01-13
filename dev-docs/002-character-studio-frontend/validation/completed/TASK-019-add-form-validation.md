@@ -85,9 +85,9 @@ export async function saveCharacter(): Promise<boolean> {
 
 ## Acceptance Criteria
 
-- [ ] Required fields marked with asterisk
-- [ ] Validation runs on save attempt
-- [ ] Errors display inline with fields
-- [ ] Save blocked when validation fails
-- [ ] Errors clear when field is corrected
-- [ ] User can still navigate away (no hard blocking)
+- [x] Required fields marked with asterisk
+- [x] Validation runs on save attempt
+- [x] Errors display inline with fields
+- [x] Save blocked when validation fails
+- [x] Errors clear when field is corrected
+- [x] User can still navigate away (no hard blocking)

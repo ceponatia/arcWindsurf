@@ -15,7 +15,7 @@ interface Physique {
 /**
  * AppearanceCard handles overall physical characteristics.
  */
-export const AppearanceCard: React.FC = () => {
+export const AppearanceCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => {
   useSignals();
 
   /** Current physique from signal, ensuring it's an object for this component */
@@ -57,6 +57,7 @@ export const AppearanceCard: React.FC = () => {
       title="Physical Appearance"
       defaultOpen={false}
       completionPercent={calculateCompletion()}
+      hasContent={hasContent}
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">

@@ -117,8 +117,8 @@ const completion = calculateCompletion();
 
 ## Acceptance Criteria
 
-- [ ] Overall completion percentage displays
-- [ ] Progress bar updates as fields are filled
-- [ ] Individual cards show content indicator
-- [ ] Indicators update in real-time as user edits
-- [ ] Empty vs filled state is visually distinct
+- [x] Overall completion percentage displays
+- [x] Progress bar updates as fields are filled
+- [x] Individual cards show content indicator
+- [x] Indicators update in real-time as user edits
+- [x] Empty vs filled state is visually distinct

@@ -2,6 +2,7 @@ import { signal, computed } from '@preact/signals-react';
 import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
 import type { StudioFieldErrors, StudioFieldKey } from './validation/types.js';
 import { applyTrait } from './utils/trait-applicator.js';
+import { validateCharacterProfileBeforeSave } from './validation/validateCharacterProfileBeforeSave.js';
 
 // ============================================================================
 // Character Data Signals
@@ -70,22 +71,34 @@ export const expandedCards = signal<Set<string>>(new Set(['core']));
 // Computed Signals
 // ============================================================================
 
+/**
+ * Detailed completion status for each major section
+ */
+export const sectionCompletion = computed(() => {
+  const p = characterProfile.value;
+  const pm = p.personalityMap;
+
+  return {
+    name: !!p.name?.trim(),
+    backstory: !!p.backstory?.trim(),
+    dimensions: !!(pm?.dimensions && Object.keys(pm.dimensions).length > 0),
+    values: !!(pm?.values && pm.values.length > 0),
+    fears: !!(pm?.fears && pm.fears.length > 0),
+    social: !!(pm?.social && Object.keys(pm.social).length > 0),
+    speech: !!(pm?.speech && Object.keys(pm.speech).length > 0),
+    stress: !!(pm?.stress && Object.keys(pm.stress).length > 0),
+    physique: !!(p.physique && (typeof p.physique === 'string' ? p.physique.trim().length > 0 : Object.keys(p.physique).length > 0)),
+    body: !!(p.body && Object.keys(p.body).length > 0),
+  };
+});
+
 /** Completion percentage (0-100) */
 export const completionScore = computed(() => {
-  const p = characterProfile.value;
-  let score = 0;
+  const completion = sectionCompletion.value;
+  const items = Object.values(completion);
+  const completedCount = items.filter(Boolean).length;
 
-  if (p.name?.trim()) score += 15;
-  if (p.age) score += 5;
-  if (p.summary?.trim()) score += 15;
-  if (p.backstory?.trim()) score += 10;
-  if (p.personalityMap?.dimensions && Object.keys(p.personalityMap.dimensions).length > 0) score += 20;
-  if (p.personalityMap?.values && p.personalityMap.values.length > 0) score += 15;
-  if (p.personalityMap?.fears && p.personalityMap.fears.length > 0) score += 10;
-  if (p.personalityMap?.speech) score += 5;
-  if (p.body && Object.keys(p.body).length > 0) score += 5;
-
-  return Math.min(100, score);
+  return Math.round((completedCount / items.length) * 100);
 });
 
 /** All accepted traits from conversation */
@@ -112,6 +125,16 @@ export function updatePersonalityMap(updates: Partial<PersonalityMap>): void {
     personalityMap: { ...current, ...updates },
   };
   isDirty.value = true;
+}
+
+/**
+ * Validates the current character profile.
+ * Updates fieldErrors signal and returns true if valid.
+ */
+export function validateProfile(): boolean {
+  const errors = validateCharacterProfileBeforeSave(characterProfile.value);
+  fieldErrors.value = errors;
+  return Object.keys(errors).length === 0;
 }
 
 /**

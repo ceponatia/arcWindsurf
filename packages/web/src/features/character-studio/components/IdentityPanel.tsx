@@ -1,7 +1,13 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { RACES, ALIGNMENTS } from '@minimal-rpg/schemas';
-import { characterProfile, updateProfile, fieldErrors, clearFieldError } from '../signals.js';
+import {
+  characterProfile,
+  updateProfile,
+  fieldErrors,
+  clearFieldError,
+  sectionCompletion,
+} from '../signals.js';
 import { IdentityCard } from './IdentityCard.js';
 import { BigFiveSliders } from './personality/BigFiveSliders.js';
 import { EmotionalBaselineForm } from './personality/EmotionalBaselineForm.js';
@@ -17,6 +23,7 @@ export const IdentityPanel: React.FC = () => {
   useSignals();
 
   const profile = characterProfile.value;
+  const completion = sectionCompletion.value;
 
   /**
    * Helper to determine completion of Core Identity.
@@ -63,6 +70,7 @@ export const IdentityPanel: React.FC = () => {
         title="Core Identity"
         defaultOpen={true}
         completionPercent={getCoreCompletion()}
+        hasContent={completion.name}
       >
         <div className="space-y-4">
           <label className="block">
@@ -144,6 +152,7 @@ export const IdentityPanel: React.FC = () => {
         title="Backstory"
         defaultOpen={false}
         completionPercent={getBackstoryCompletion()}
+        hasContent={completion.backstory}
       >
         <div className="space-y-4">
           <label className="block">
@@ -225,15 +234,12 @@ export const IdentityPanel: React.FC = () => {
         </div>
       </IdentityCard>
 
-      {/* Body & Appearance Cards */}
-      <BodyCard />
-      <AppearanceCard />
-
       {/* Personality Dimensions Card */}
       <IdentityCard
         title="Personality Dimensions"
         defaultOpen={true}
         completionPercent={getPersonalityCompletion('dimensions')}
+        hasContent={completion.dimensions}
       >
         <BigFiveSliders />
       </IdentityCard>
@@ -252,6 +258,7 @@ export const IdentityPanel: React.FC = () => {
         title="Values & Motivations"
         defaultOpen={false}
         completionPercent={getPersonalityCompletion('values')}
+        hasContent={completion.values}
       >
         <ValuesList />
       </IdentityCard>
@@ -261,6 +268,7 @@ export const IdentityPanel: React.FC = () => {
         title="Fears & Triggers"
         defaultOpen={false}
         completionPercent={getPersonalityCompletion('fears')}
+        hasContent={completion.fears}
       >
         <FearsList />
       </IdentityCard>
@@ -270,6 +278,7 @@ export const IdentityPanel: React.FC = () => {
         title="Social Patterns"
         defaultOpen={false}
         completionPercent={getPersonalityCompletion('social')}
+        hasContent={completion.social}
       >
         <SocialPatternsForm />
       </IdentityCard>
@@ -279,6 +288,7 @@ export const IdentityPanel: React.FC = () => {
         title="Voice & Communication"
         defaultOpen={false}
         completionPercent={getPersonalityCompletion('speech')}
+        hasContent={completion.speech}
       >
         <SpeechStyleForm />
       </IdentityCard>
@@ -288,9 +298,14 @@ export const IdentityPanel: React.FC = () => {
         title="Stress Response"
         defaultOpen={false}
         completionPercent={getPersonalityCompletion('stress')}
+        hasContent={completion.stress}
       >
         <StressBehaviorForm />
       </IdentityCard>
+
+      {/* Physical & Body Cards */}
+      <AppearanceCard hasContent={completion.physique} />
+      <BodyCard hasContent={completion.body} />
 
       {/* Additional cards can be added here */}
       <div className="text-xs text-slate-500 text-center py-4">

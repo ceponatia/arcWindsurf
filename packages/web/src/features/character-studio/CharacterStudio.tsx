@@ -1,7 +1,8 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { Loader2 } from 'lucide-react';
 import { useCharacterStudio } from './hooks/useCharacterStudio.js';
-import { completionScore } from './signals.js';
+import { completionScore, fieldErrors } from './signals.js';
 import { ConversationPane } from './components/conversation/ConversationPane.js';
 import { TraitSuggestions } from './components/traits/TraitSuggestions.js';
 import { IdentityPanel } from './components/IdentityPanel.js';
@@ -35,7 +36,7 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, on
     return (
       <div className="h-full flex items-center justify-center bg-slate-950">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-violet-500 animate-spin mx-auto mb-4" />
           <p className="text-slate-400">Loading Character Studio...</p>
         </div>
       </div>
@@ -52,6 +53,7 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, on
         onSave={handleSave}
         onCancel={handleCancel}
         isEditing={isEditing}
+        hasErrors={Object.keys(fieldErrors.value).length > 0}
       />
 
       <div className="flex-1 flex overflow-hidden">

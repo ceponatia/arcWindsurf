@@ -5,7 +5,7 @@ import { pendingTraits, acceptTrait, rejectTrait } from '../../signals.js';
 export const TraitSuggestions: React.FC = () => {
   useSignals();
 
-  const pending = pendingTraits.value.filter(t => t.status === 'pending');
+  const pending = pendingTraits.value.filter((t) => t.status === 'pending');
 
   if (pending.length === 0) {
     return null;
@@ -27,9 +27,7 @@ export const TraitSuggestions: React.FC = () => {
               <div className="text-sm text-slate-200 font-medium">
                 {formatTraitPath(trait.path)}
               </div>
-              <div className="text-xs text-slate-400 truncate">
-                "{trait.source}"
-              </div>
+              <div className="text-xs text-slate-400 truncate">"{trait.source}"</div>
               <div className="text-xs text-violet-400 mt-1">
                 Confidence: {Math.round(trait.confidence * 100)}%
               </div>
@@ -59,8 +57,10 @@ export const TraitSuggestions: React.FC = () => {
 function formatTraitPath(path: string): string {
   const parts = path.split('.');
   const last = parts[parts.length - 1];
-  return last
-    ?.replace(/([A-Z])/g, ' $1')
-    .replace(/^./, s => s.toUpperCase())
-    .trim() ?? path;
+  return (
+    last
+      ?.replace(/([A-Z])/g, ' $1')
+      .replace(/^./, (s) => s.toUpperCase())
+      .trim() ?? path
+  );
 }

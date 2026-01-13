@@ -101,8 +101,8 @@ export const BodyCard: React.FC = () => {
 
 ## Acceptance Criteria
 
-- [ ] BodyCard component renders
-- [ ] All four regions have input fields
-- [ ] Changes update the signal
-- [ ] Values persist when saving character
-- [ ] Integrates with IdentityCard wrapper
+- [x] BodyCard component renders
+- [x] All four regions have input fields
+- [x] Changes update the signal
+- [x] Values persist when saving character
+- [x] Integrates with IdentityCard wrapper

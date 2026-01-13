@@ -1,0 +1,466 @@
+### Page state
+- Page URL: http://172.25.0.2:5174/#/character-studio?id=fc118760-bb81-4ec0-9a48-89e56d4043ed
+- Page Title: ArcAgentic
+- Page Snapshot:
+```yaml
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - button "ArcAgentic" [ref=e7] [cursor=pointer]
+    - navigation [ref=e8]:
+      - button "Home" [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+        - generic [ref=e13]: Home
+      - button "Characters" [ref=e14] [cursor=pointer]:
+        - img [ref=e15]
+        - generic [ref=e17]: Characters
+      - button "Personas" [ref=e18] [cursor=pointer]:
+        - img [ref=e19]
+        - generic [ref=e21]: Personas
+      - button "Settings" [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - generic [ref=e25]: Settings
+      - button "Locations" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+        - generic [ref=e29]: Locations
+      - button "Tags" [ref=e30] [cursor=pointer]:
+        - img [ref=e31]
+        - generic [ref=e33]: Tags
+      - button "Items" [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+        - generic [ref=e38]: Items
+      - button "Sessions" [ref=e39] [cursor=pointer]:
+        - img [ref=e40]
+        - generic [ref=e42]: Sessions
+    - generic [ref=e43]:
+      - button "Documentation" [ref=e44] [cursor=pointer]:
+        - img [ref=e45]
+        - generic [ref=e47]: Documentation
+      - link "DB View" [ref=e48] [cursor=pointer]:
+        - /url: "#/dbview"
+      - link "Tooling Failures" [ref=e49] [cursor=pointer]:
+        - /url: "#/toolingfailures"
+  - main [ref=e50]:
+    - generic [ref=e428]:
+      - generic [ref=e429]:
+        - generic [ref=e430]:
+          - 'heading "Editing: Test Character Edited" [level=1] [ref=e687]'
+          - generic [ref=e433]: 40% complete
+        - generic [ref=e436]:
+          - button "Cancel" [ref=e437] [cursor=pointer]
+          - button "Save Character" [ref=e438] [cursor=pointer]
+      - generic [ref=e439]:
+        - generic [ref=e441]:
+          - generic [ref=e442]:
+            - heading "Conversation with Test Character Edited" [level=3] [ref=e689]
+            - paragraph [ref=e444]: Chat to discover their personality. Traits will be inferred automatically.
+          - generic [ref=e445]:
+            - paragraph [ref=e830]: Tell me about yourself.
+            - generic [ref=e836]:
+              - generic [ref=e837]: Test Character Edited
+              - paragraph [ref=e838]: "*shifts nervously, glancing around* Well... I'm just a test. I exist to be run through loops and checks. But I try to be thorough! I really do. The bugs... they're what keep me up sometimes. Especially the null ones."
+          - generic [ref=e458]:
+            - textbox "Ask Test Character Edited something..." [ref=e690]
+            - button "Send" [disabled] [ref=e460]
+        - generic [ref=e464]:
+          - generic [ref=e465]:
+            - button "Core Identity" [ref=e466] [cursor=pointer]:
+              - generic [ref=e467]:
+                - generic [ref=e469]: Core Identity
+                - generic [ref=e473]: 50%
+              - img [ref=e475]
+            - generic [ref=e479]:
+              - generic [ref=e480]:
+                - generic [ref=e481]:
+                  - text: Name
+                  - generic [ref=e482]: "*"
+                - textbox "Name *" [ref=e483]:
+                  - /placeholder: Character name
+                  - text: Test Character Edited
+              - generic [ref=e484]:
+                - generic [ref=e485]:
+                  - text: Age
+                  - spinbutton "Age" [ref=e486]
+                - generic [ref=e487]:
+                  - text: Gender
+                  - combobox "Gender" [ref=e488]:
+                    - option "Select..." [selected]
+                    - option "Male"
+                    - option "Female"
+                    - option "Other"
+              - generic [ref=e489]:
+                - generic [ref=e490]:
+                  - text: Summary
+                  - generic [ref=e491]: "*"
+                - textbox "Summary *" [ref=e492]:
+                  - /placeholder: A brief description of who they are...
+                  - text: A brave test character used for E2E validation.
+          - button "Backstory" [ref=e494] [cursor=pointer]:
+            - generic [ref=e495]:
+              - generic [ref=e496]:
+                - generic [ref=e497]: Backstory
+                - img [ref=e498]
+              - generic [ref=e503]: 100%
+            - img [ref=e505]
+          - generic [ref=e507]:
+            - button "Classification" [ref=e508] [cursor=pointer]:
+              - generic [ref=e509]:
+                - generic [ref=e511]: Classification
+                - generic [ref=e515]: 33%
+              - img [ref=e517]
+            - option "Select..." [selected]
+            - option "Human"
+            - option "Elf"
+            - option "Dwarf"
+            - option "Hobbit"
+            - option "Orc"
+            - option "Half-Orc"
+            - option "Half-Troll"
+            - option "Faerie"
+            - option "Gnome"
+            - option "Select..." [selected]
+            - option "Chaotic Evil"
+            - option "Chaotic Neutral"
+            - option "Chaotic Good"
+            - option "True Neutral"
+            - option "Lawful Evil"
+            - option "Lawful Neutral"
+            - option "Lawful Good"
+            - option "Commoner"
+            - option "Notable"
+            - option "Elite" [selected]
+            - option "Legendary"
+          - generic [ref=e519]:
+            - button "Personality Dimensions" [ref=e520] [cursor=pointer]:
+              - generic [ref=e521]:
+                - generic [ref=e523]: Personality Dimensions
+                - generic [ref=e527]: 100%
+              - img [ref=e529]
+            - generic [ref=e533]:
+              - img [ref=e536]:
+                - generic [ref=e552]: Openness
+                - generic [ref=e553]: Conscientiousness
+                - generic [ref=e554]: Extraversion
+                - generic [ref=e555]: Agreeableness
+                - generic [ref=e556]: Neuroticism
+              - generic [ref=e557]:
+                - generic [ref=e558]: Openness
+                - generic [ref=e559]:
+                  - generic [ref=e560]: Low
+                  - slider "Openness Low High 20%" [ref=e691]: "0.2"
+                  - generic [ref=e562]: High
+                  - generic [ref=e563]: 20%
+              - generic [ref=e564]:
+                - generic [ref=e565]: Conscientiousness
+                - generic [ref=e566]:
+                  - generic [ref=e567]: Low
+                  - slider "Conscientiousness Low High 50%" [ref=e568]: "0.5"
+                  - generic [ref=e569]: High
+                  - generic [ref=e570]: 50%
+              - generic [ref=e571]:
+                - generic [ref=e572]: Extraversion
+                - generic [ref=e573]:
+                  - generic [ref=e574]: Low
+                  - slider "Extraversion Low High 50%" [ref=e575]: "0.5"
+                  - generic [ref=e576]: High
+                  - generic [ref=e577]: 50%
+              - generic [ref=e578]:
+                - generic [ref=e579]: Agreeableness
+                - generic [ref=e580]:
+                  - generic [ref=e581]: Low
+                  - slider "Agreeableness Low High 50%" [ref=e582]: "0.5"
+                  - generic [ref=e583]: High
+                  - generic [ref=e584]: 50%
+              - generic [ref=e585]:
+                - generic [ref=e586]: Neuroticism
+                - generic [ref=e587]:
+                  - generic [ref=e588]: Low
+                  - slider "Neuroticism Low High 50%" [ref=e589]: "0.5"
+                  - generic [ref=e590]: High
+                  - generic [ref=e591]: 50%
+          - generic [ref=e592]:
+            - button "Emotional Baseline" [ref=e593] [cursor=pointer]:
+              - generic [ref=e594]:
+                - generic [ref=e596]: Emotional Baseline
+                - generic [ref=e599]: 0%
+              - img [ref=e731]
+            - generic [ref=e735]:
+              - generic [ref=e736]:
+                - generic [ref=e737]:
+                  - generic [ref=e738]: Current Emotion
+                  - combobox "Current Emotion" [ref=e739]:
+                    - option "joy"
+                    - option "trust"
+                    - option "fear"
+                    - option "surprise"
+                    - option "sadness"
+                    - option "disgust"
+                    - option "anger"
+                    - option "anticipation" [selected]
+                - generic [ref=e740]:
+                  - generic [ref=e741]: Intensity
+                  - combobox "Intensity" [ref=e742]:
+                    - option "mild" [selected]
+                    - option "moderate"
+                    - option "strong"
+                    - option "intense"
+                - generic [ref=e743]:
+                  - generic [ref=e744]: Mood Baseline
+                  - combobox "Mood Baseline" [ref=e745]:
+                    - option "joy"
+                    - option "trust" [selected]
+                    - option "fear"
+                    - option "surprise"
+                    - option "sadness"
+                    - option "disgust"
+                    - option "anger"
+                    - option "anticipation"
+                - generic [ref=e746]:
+                  - generic [ref=e747]: Blend (optional)
+                  - combobox "Blend (optional)" [ref=e748]:
+                    - option [selected]
+                    - option "joy"
+                    - option "trust"
+                    - option "fear"
+                    - option "surprise"
+                    - option "sadness"
+                    - option "disgust"
+                    - option "anger"
+                    - option "anticipation"
+              - generic [ref=e749]:
+                - generic [ref=e750]: Mood Stability
+                - button "Help" [ref=e752]:
+                  - img [ref=e753]
+              - generic [ref=e756]:
+                - generic [ref=e757]: Volatile
+                - slider "Volatile Stable 50%" [ref=e758]: "0.5"
+                - generic [ref=e759]: Stable
+                - generic [ref=e760]: 50%
+          - generic [ref=e603]:
+            - button "Values & Motivations" [ref=e604] [cursor=pointer]:
+              - generic [ref=e605]:
+                - generic [ref=e607]: Values & Motivations
+                - generic [ref=e613]: 0%
+              - img [ref=e692]
+            - button "+ Add Value" [ref=e706] [cursor=pointer]
+          - generic [ref=e617]:
+            - button "Fears & Triggers" [ref=e618] [cursor=pointer]:
+              - generic [ref=e619]:
+                - generic [ref=e620]:
+                  - generic [ref=e621]: Fears & Triggers
+                  - img [ref=e622]
+                - generic [ref=e627]: 100%
+              - img [ref=e629]
+            - option "loss"
+            - option "failure" [selected]
+            - option "rejection"
+            - option "abandonment"
+            - option "exposure"
+            - option "helplessness"
+            - option "death"
+            - option "unknown"
+            - option "change"
+            - option "intimacy"
+            - option "avoidance" [selected]
+            - option "denial"
+            - option "confrontation"
+            - option "humor"
+            - option "aggression"
+          - generic [ref=e631]:
+            - button "Social Patterns" [ref=e632] [cursor=pointer]:
+              - generic [ref=e633]:
+                - generic [ref=e635]: Social Patterns
+                - generic [ref=e638]: 0%
+              - img [ref=e707]
+            - generic [ref=e711]:
+              - generic [ref=e712]:
+                - generic [ref=e713]: Stranger Default
+                - combobox "Stranger Default" [ref=e714]:
+                  - option "welcoming"
+                  - option "neutral" [selected]
+                  - option "guarded"
+                  - option "hostile"
+              - generic [ref=e715]:
+                - generic [ref=e716]: Warmth Rate
+                - combobox "Warmth Rate" [ref=e717]:
+                  - option "fast"
+                  - option "moderate" [selected]
+                  - option "slow"
+                  - option "very slow"
+              - generic [ref=e718]:
+                - generic [ref=e719]: Preferred Role
+                - combobox "Preferred Role" [ref=e720]:
+                  - option "leader"
+                  - option "supporter" [selected]
+                  - option "advisor"
+                  - option "loner"
+                  - option "entertainer"
+                  - option "caretaker"
+              - generic [ref=e721]:
+                - generic [ref=e722]: Conflict Style
+                - combobox "Conflict Style" [ref=e723]:
+                  - option "confrontational"
+                  - option "diplomatic" [selected]
+                  - option "avoidant"
+                  - option "passive aggressive"
+                  - option "collaborative"
+              - generic [ref=e724]:
+                - generic [ref=e725]: Criticism Response
+                - combobox "Criticism Response" [ref=e726]:
+                  - option "defensive"
+                  - option "reflective" [selected]
+                  - option "dismissive"
+                  - option "hurt"
+                  - option "grateful"
+              - generic [ref=e727]:
+                - generic [ref=e728]: Boundaries
+                - combobox "Boundaries" [ref=e729]:
+                  - option "rigid"
+                  - option "healthy" [selected]
+                  - option "porous"
+                  - option "nonexistent"
+          - generic [ref=e642]:
+            - button "Voice & Communication" [ref=e643] [cursor=pointer]:
+              - generic [ref=e644]:
+                - generic [ref=e646]: Voice & Communication
+                - generic [ref=e649]: 0%
+              - img [ref=e761]
+            - generic [ref=e765]:
+              - generic [ref=e766]:
+                - generic [ref=e767]: Vocabulary
+                - combobox "Vocabulary" [ref=e768]:
+                  - option "simple"
+                  - option "average" [selected]
+                  - option "educated"
+                  - option "erudite"
+                  - option "archaic"
+              - generic [ref=e769]:
+                - generic [ref=e770]: Sentence Structure
+                - combobox "Sentence Structure" [ref=e771]:
+                  - option "terse"
+                  - option "simple"
+                  - option "moderate" [selected]
+                  - option "complex"
+                  - option "elaborate"
+              - generic [ref=e772]:
+                - generic [ref=e773]: Formality
+                - combobox "Formality" [ref=e774]:
+                  - option "casual"
+                  - option "neutral" [selected]
+                  - option "formal"
+                  - option "ritualistic"
+              - generic [ref=e775]:
+                - generic [ref=e776]: Humor Frequency
+                - combobox "Humor Frequency" [ref=e777]:
+                  - option "none"
+                  - option "rare"
+                  - option "occasional" [selected]
+                  - option "frequent"
+                  - option "constant"
+              - generic [ref=e778]:
+                - generic [ref=e779]: Humor Type
+                - combobox "Humor Type" [ref=e780]:
+                  - option [selected]
+                  - option "dry"
+                  - option "sarcastic"
+                  - option "witty"
+                  - option "slapstick"
+                  - option "dark"
+                  - option "self deprecating"
+              - generic [ref=e781]:
+                - generic [ref=e782]: Expressiveness
+                - combobox "Expressiveness" [ref=e783]:
+                  - option "stoic"
+                  - option "reserved"
+                  - option "moderate" [selected]
+                  - option "expressive"
+                  - option "dramatic"
+              - generic [ref=e784]:
+                - generic [ref=e785]: Directness
+                - combobox "Directness" [ref=e786]:
+                  - option "blunt"
+                  - option "direct" [selected]
+                  - option "tactful"
+                  - option "indirect"
+                  - option "evasive"
+              - generic [ref=e787]:
+                - generic [ref=e788]: Pace
+                - combobox "Pace" [ref=e789]:
+                  - option "slow"
+                  - option "measured"
+                  - option "moderate" [selected]
+                  - option "quick"
+                  - option "rapid"
+          - generic [ref=e653]:
+            - button "Stress Response" [ref=e654] [cursor=pointer]:
+              - generic [ref=e655]:
+                - generic [ref=e657]: Stress Response
+                - generic [ref=e660]: 0%
+              - img [ref=e790]
+            - generic [ref=e794]:
+              - generic [ref=e795]:
+                - generic [ref=e796]:
+                  - generic [ref=e797]: Primary Response
+                  - combobox "Primary Response" [ref=e798]:
+                    - option "fight"
+                    - option "flight"
+                    - option "freeze" [selected]
+                    - option "fawn"
+                - generic [ref=e799]:
+                  - generic [ref=e800]: Secondary Response
+                  - combobox "Secondary Response" [ref=e801]:
+                    - option [selected]
+                    - option "fight"
+                    - option "flight"
+                    - option "freeze"
+                    - option "fawn"
+              - generic [ref=e802]:
+                - generic [ref=e803]:
+                  - generic [ref=e804]: Stress Threshold
+                  - button "Help" [ref=e806]:
+                    - img [ref=e807]
+                - generic [ref=e810]:
+                  - generic [ref=e811]: Low
+                  - slider "Low High 50%" [ref=e812]: "0.5"
+                  - generic [ref=e813]: High
+                  - generic [ref=e814]: 50%
+              - generic [ref=e816]:
+                - generic [ref=e817]: Recovery Rate
+                - combobox "Recovery Rate" [ref=e818]:
+                  - option "slow"
+                  - option "moderate" [selected]
+                  - option "fast"
+              - generic [ref=e819]:
+                - generic [ref=e821]:
+                  - generic [ref=e822]: Stress Indicators (Tells)
+                  - button "+ Add Tell" [ref=e823] [cursor=pointer]
+                - generic [ref=e825]:
+                  - generic [ref=e826]: Soothing Activities (Coping)
+                  - button "+ Add Activity" [ref=e827] [cursor=pointer]
+          - generic [ref=e664]:
+            - button "Physical Appearance" [ref=e665] [cursor=pointer]:
+              - generic [ref=e666]:
+                - generic [ref=e668]: Physical Appearance
+                - generic [ref=e671]: 0%
+              - img [ref=e673]
+            - option "slight"
+            - option "lean"
+            - option "average" [selected]
+            - option "athletic"
+            - option "muscular"
+            - option "heavy"
+          - button "Body & Appearance" [ref=e676] [cursor=pointer]:
+            - generic [ref=e677]:
+              - generic [ref=e679]: Body & Appearance
+              - generic [ref=e682]: 0%
+            - img [ref=e684]
+          - generic [ref=e686]: More identity cards coming soon...
+    - generic [ref=e288]:
+      - navigation [ref=e289]:
+        - link "Documentation" [ref=e290] [cursor=pointer]:
+          - /url: "#/docs"
+        - link "Contact Us" [ref=e291] [cursor=pointer]:
+          - /url: mailto:support@snarebox.com
+        - link "GitHub" [ref=e292] [cursor=pointer]:
+          - /url: https://github.com/snarebox/minimal-rpg
+      - paragraph [ref=e293]: © 2026 Snarebox, LLC. All rights reserved.
+```

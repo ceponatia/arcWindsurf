@@ -8,12 +8,12 @@ import {
   isStudioLoading,
   resetStudio,
   updateProfile,
+  validateProfile,
   setFieldErrors,
   clearAllFieldErrors,
 } from '../signals.js';
 import { generateCharacterId, loadCharacter, persistCharacter } from '../services/api.js';
 import type { CharacterProfile } from '@minimal-rpg/schemas';
-import { validateCharacterProfileBeforeSave } from '../validation/validateCharacterProfileBeforeSave.js';
 
 export interface UseCharacterStudioOptions {
   id?: string | null;
@@ -44,6 +44,7 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
       loadCharacter(id).then(profile => {
         characterProfile.value = profile;
         isDirty.value = false;
+        clearAllFieldErrors();
       }).catch(err => {
         console.error('Failed to load character:', err);
       }).finally(() => {
@@ -65,13 +66,12 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
   }, [id]);
 
   const save = useCallback(async () => {
-    const errors = validateCharacterProfileBeforeSave(characterProfile.value);
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+    if (!validateProfile()) {
       return;
     }
 
     saveStatus.value = 'saving';
+    const savingStartedAtMs = Date.now();
     try {
       const current = characterProfile.value as Partial<CharacterProfile>;
       const profile: CharacterProfile = {
@@ -90,6 +90,8 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
 
       characterProfile.value = profile;
       await persistCharacter(profile);
+
+      await waitForMinSavingIndicator(savingStartedAtMs, 300);
       saveStatus.value = 'saved';
       isDirty.value = false;
       clearAllFieldErrors();
@@ -102,6 +104,7 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
         }
       }, 3000);
     } catch {
+      await waitForMinSavingIndicator(savingStartedAtMs, 300);
       saveStatus.value = 'error';
     }
   }, [onSave]);
@@ -120,4 +123,17 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
     reset,
     updateField: updateProfile,
   };
+}
+
+/**
+ * Ensures the saving indicator is visible for at least a minimum duration.
+ *
+ * This prevents instant failures (eg, network error) from skipping the
+ * intermediate 'saving' UI state entirely.
+ */
+async function waitForMinSavingIndicator(startedAtMs: number, minDurationMs: number): Promise<void> {
+  const elapsed = Date.now() - startedAtMs;
+  const remaining = minDurationMs - elapsed;
+  if (remaining <= 0) return;
+  await new Promise<void>((resolve) => setTimeout(resolve, remaining));
 }

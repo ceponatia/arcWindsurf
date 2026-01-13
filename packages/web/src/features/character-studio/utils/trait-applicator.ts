@@ -59,10 +59,10 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
       const incoming = normalizeStringList(value);
       updatePersonalityMap({
         stress: {
-          ...(sectionData as object),
+          ...(sectionData as any),
           [field]: [...existing, ...incoming],
         },
-      } as Partial<PersonalityMap>);
+      } as any);
       return;
     }
 

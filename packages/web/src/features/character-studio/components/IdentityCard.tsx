@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check } from 'lucide-react';
 
 interface IdentityCardProps {
   title: string;
   defaultOpen?: boolean;
   completionPercent?: number; // 0-100, optional
+  hasContent?: boolean | undefined;
   children: React.ReactNode;
 }
 
@@ -15,6 +16,7 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({
   title,
   defaultOpen = false,
   completionPercent,
+  hasContent,
   children,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -29,7 +31,15 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({
         }`}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-          <span className="font-semibold text-slate-200 text-sm tracking-wide">{title}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-200 text-sm tracking-wide">{title}</span>
+            {hasContent && !isOpen && (
+              <Check
+                size={14}
+                className="text-emerald-500 animate-in fade-in zoom-in duration-300"
+              />
+            )}
+          </div>
           {completionPercent !== undefined && (
             <div className="flex items-center gap-2 flex-1 max-w-[100px]" aria-hidden="true">
               <div className="h-1 flex-1 bg-slate-700 rounded-full overflow-hidden">

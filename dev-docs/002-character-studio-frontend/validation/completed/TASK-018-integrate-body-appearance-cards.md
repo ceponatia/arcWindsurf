@@ -60,8 +60,8 @@ Add after the personality cards, before any final summary section:
 
 ## Acceptance Criteria
 
-- [ ] Both cards appear in IdentityPanel
-- [ ] Cards collapse/expand correctly
-- [ ] All fields in both cards are functional
-- [ ] No duplicate wrapper issues
-- [ ] Scroll still works with added content
+- [x] Both cards appear in IdentityPanel
+- [x] Cards collapse/expand correctly
+- [x] All fields in both cards are functional
+- [x] No duplicate wrapper issues
+- [x] Scroll still works with added content

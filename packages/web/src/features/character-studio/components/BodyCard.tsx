@@ -8,7 +8,7 @@ import { IdentityCard } from './IdentityCard.js';
  * BodyCard handles high-level physical descriptions for key regions.
  * Simplified for Phase 3 to focus on description fields rather than full sensory data.
  */
-export const BodyCard: React.FC = () => {
+export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => {
   useSignals();
 
   /** Current body map from signal */
@@ -56,6 +56,7 @@ export const BodyCard: React.FC = () => {
       title="Body & Appearance"
       defaultOpen={false}
       completionPercent={calculateCompletion()}
+      hasContent={hasContent}
     >
       <div className="space-y-4">
         <label className="block">

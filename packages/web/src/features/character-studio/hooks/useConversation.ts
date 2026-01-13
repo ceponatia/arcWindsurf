@@ -58,6 +58,7 @@ export function useConversation(): UseConversationResult {
         role: 'system',
         content: 'Failed to generate response. Please try again.',
       });
+      throw err;
     } finally {
       isGenerating.value = false;
     }

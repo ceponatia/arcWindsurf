@@ -82,7 +82,7 @@ export const buildPersonalityMap = (pm: PersonalityFormState): PersonalityMap | 
         category: f.category,
         specific: f.specific,
         intensity: f.intensity,
-        triggers: splitList(f.triggers),
+        triggers: f.triggers,
         copingMechanism: f.copingMechanism,
       }));
   }
@@ -143,15 +143,15 @@ export const buildPersonalityMap = (pm: PersonalityFormState): PersonalityMap | 
     st.secondary !== undefined ||
     st.threshold !== 0.5 ||
     st.recoveryRate !== 'moderate' ||
-    st.soothingActivities.trim() ||
-    st.stressIndicators.trim();
+    st.soothingActivities.some((s) => s.trim()) ||
+    st.stressIndicators.some((s) => s.trim());
   if (hasStressChanges) {
     result.stress = {
       primary: st.primary,
       threshold: st.threshold,
       recoveryRate: st.recoveryRate,
-      soothingActivities: splitList(st.soothingActivities),
-      stressIndicators: splitList(st.stressIndicators),
+      soothingActivities: st.soothingActivities.filter((s) => s.trim()),
+      stressIndicators: st.stressIndicators.filter((s) => s.trim()),
       ...(st.secondary ? { secondary: st.secondary } : {}),
     };
   }
@@ -302,7 +302,7 @@ export function personalityMapToFormState(pm: PersonalityMap | undefined): Perso
       category: f.category,
       specific: f.specific,
       intensity: f.intensity ?? 0.5,
-      triggers: (f.triggers ?? []).join(', '),
+      triggers: f.triggers ?? [],
       copingMechanism: f.copingMechanism ?? 'avoidance',
     }));
   }
@@ -346,8 +346,8 @@ export function personalityMapToFormState(pm: PersonalityMap | undefined): Perso
       primary: pm.stress.primary ?? base.stress.primary,
       threshold: pm.stress.threshold ?? base.stress.threshold,
       recoveryRate: pm.stress.recoveryRate ?? base.stress.recoveryRate,
-      soothingActivities: (pm.stress.soothingActivities ?? []).join(', '),
-      stressIndicators: (pm.stress.stressIndicators ?? []).join(', '),
+      soothingActivities: pm.stress.soothingActivities ?? [],
+      stressIndicators: pm.stress.stressIndicators ?? [],
     };
     base.stress = pm.stress.secondary
       ? { ...stressBase, secondary: pm.stress.secondary }
