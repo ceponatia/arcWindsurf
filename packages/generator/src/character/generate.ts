@@ -2,7 +2,13 @@
  * Character generator - creates complete character profiles from themes.
  */
 
-import { getRecordOptional, setRecord, getArraySafe, setPartialRecord } from '@minimal-rpg/schemas';
+import {
+  getRecordOptional,
+  setRecord,
+  getArraySafe,
+  setPartialRecord,
+  RACES,
+} from '@minimal-rpg/schemas';
 import type {
   AttachmentStyle,
   BodyMap,
@@ -16,6 +22,7 @@ import type {
   EmotionIntensity,
   FearCategory,
   Gender,
+  Race,
   PersonalityMap,
   Physique,
 } from '@minimal-rpg/schemas';
@@ -86,6 +93,9 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
   const age = getValue('age', existing.age, () =>
     randomInt(theme.basics.ageRange[0], theme.basics.ageRange[1])
   );
+  const race = getValue('race', (existing as any).race, () =>
+    theme.basics.races ? pickFromPool(theme.basics.races) : 'Human'
+  );
   const summary = getValue('summary', existing.summary, () => generateSummary(theme, name, age));
   const backstory = getValue('backstory', existing.backstory, () => generateBackstory(theme, name));
   const personalityText = getValue('personality', existing.personality, () =>
@@ -120,6 +130,7 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
     name,
     age,
     gender,
+    race: race as any,
     summary,
     backstory,
     personality: personalityText,

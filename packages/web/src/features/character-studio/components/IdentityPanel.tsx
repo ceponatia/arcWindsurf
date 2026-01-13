@@ -25,53 +25,10 @@ export const IdentityPanel: React.FC = () => {
   const profile = characterProfile.value;
   const completion = sectionCompletion.value;
 
-  /**
-   * Helper to determine completion of Core Identity.
-   */
-  const getCoreCompletion = () => {
-    const fields = [profile.name, profile.age, profile.gender, profile.summary];
-    const filled = fields.filter((f) => {
-      if (typeof f === 'string') return f.trim().length > 0;
-      if (typeof f === 'number') return true;
-      return Boolean(f);
-    }).length;
-    return (filled / fields.length) * 100;
-  };
-
-  /**
-   * Helper for Backstory completion.
-   */
-  const getBackstoryCompletion = () => (profile.backstory?.trim().length ? 100 : 0);
-
-  /**
-   * Helper for Classification completion.
-   */
-  const getClassificationCompletion = () => {
-    const fields = [profile.race, profile.alignment, profile.tier];
-    const filled = fields.filter(Boolean).length;
-    return (filled / fields.length) * 100;
-  };
-
-  /**
-   * Helper for personality sub-maps.
-   */
-  const getPersonalityCompletion = (key: keyof NonNullable<typeof profile.personalityMap>) => {
-    const map = profile.personalityMap?.[key];
-    if (!map) return 0;
-    if (Array.isArray(map)) return map.length > 0 ? 100 : 0;
-    if (typeof map === 'object') return Object.keys(map).length > 0 ? 100 : 0;
-    return 0;
-  };
-
   return (
     <div className="space-y-4 pb-8">
       {/* Core Identity Card */}
-      <IdentityCard
-        title="Core Identity"
-        defaultOpen={true}
-        completionPercent={getCoreCompletion()}
-        hasContent={completion.name}
-      >
+      <IdentityCard title="Core Identity" defaultOpen={true} hasContent={completion.name}>
         <div className="space-y-4">
           <label className="block">
             <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -98,28 +55,53 @@ export const IdentityPanel: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-xs text-slate-400">Age</span>
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                Age <span className="text-red-500">*</span>
+              </span>
               <input
                 type="number"
+                inputMode="numeric"
                 value={profile.age ?? ''}
-                onChange={(e) => updateProfile('age', parseInt(e.target.value, 10))}
-                className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500"
+                onChange={(e) => {
+                  updateProfile('age', parseInt(e.target.value, 10));
+                  clearFieldError('age');
+                }}
+                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                  fieldErrors.value.age
+                    ? 'ring-red-500 focus:ring-red-500'
+                    : 'ring-slate-700 focus:ring-violet-500'
+                }`}
                 placeholder="Age"
               />
+              {fieldErrors.value.age && (
+                <div className="mt-1 text-xs text-red-400">{fieldErrors.value.age}</div>
+              )}
             </label>
 
             <label className="block">
-              <span className="text-xs text-slate-400">Gender</span>
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                Gender <span className="text-red-500">*</span>
+              </span>
               <select
                 value={((profile as Record<string, unknown>)['gender'] as string) ?? ''}
-                onChange={(e) => updateProfile('gender' as keyof typeof profile, e.target.value)}
-                className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500"
+                onChange={(e) => {
+                  updateProfile('gender' as keyof typeof profile, e.target.value);
+                  clearFieldError('gender' as any);
+                }}
+                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                  fieldErrors.value.gender
+                    ? 'ring-red-500 focus:ring-red-500'
+                    : 'ring-slate-700 focus:ring-violet-500'
+                }`}
               >
                 <option value="">Select...</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="other">Other</option>
               </select>
+              {fieldErrors.value.gender && (
+                <div className="mt-1 text-xs text-red-400">{fieldErrors.value.gender}</div>
+              )}
             </label>
           </div>
 
@@ -148,12 +130,7 @@ export const IdentityPanel: React.FC = () => {
       </IdentityCard>
 
       {/* Backstory Card */}
-      <IdentityCard
-        title="Backstory"
-        defaultOpen={false}
-        completionPercent={getBackstoryCompletion()}
-        hasContent={completion.backstory}
-      >
+      <IdentityCard title="Backstory" defaultOpen={false} hasContent={completion.backstory}>
         <div className="space-y-4">
           <label className="block">
             <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -180,18 +157,23 @@ export const IdentityPanel: React.FC = () => {
       </IdentityCard>
 
       {/* Classification Card */}
-      <IdentityCard
-        title="Classification"
-        defaultOpen={false}
-        completionPercent={getClassificationCompletion()}
-      >
+      <IdentityCard title="Classification" defaultOpen={false}>
         <div className="grid grid-cols-3 gap-4">
           <label className="block">
-            <span className="text-xs text-slate-400">Race</span>
+            <span className="text-xs text-slate-400 flex items-center gap-1">
+              Race <span className="text-red-500">*</span>
+            </span>
             <select
               value={profile.race ?? ''}
-              onChange={(e) => updateProfile('race', e.target.value as any)}
-              className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500"
+              onChange={(e) => {
+                updateProfile('race', e.target.value as any);
+                clearFieldError('race');
+              }}
+              className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                fieldErrors.value.race
+                  ? 'ring-red-500 focus:ring-red-500'
+                  : 'ring-slate-700 focus:ring-violet-500'
+              }`}
             >
               <option value="">Select...</option>
               {RACES.map((race) => (
@@ -200,6 +182,9 @@ export const IdentityPanel: React.FC = () => {
                 </option>
               ))}
             </select>
+            {fieldErrors.value.race && (
+              <div className="mt-1 text-xs text-red-400">{fieldErrors.value.race}</div>
+            )}
           </label>
 
           <label className="block">
@@ -238,48 +223,28 @@ export const IdentityPanel: React.FC = () => {
       <IdentityCard
         title="Personality Dimensions"
         defaultOpen={true}
-        completionPercent={getPersonalityCompletion('dimensions')}
         hasContent={completion.dimensions}
       >
         <BigFiveSliders />
       </IdentityCard>
 
       {/* Emotional Baseline Card */}
-      <IdentityCard
-        title="Emotional Baseline"
-        defaultOpen={false}
-        completionPercent={getPersonalityCompletion('emotionalBaseline')}
-      >
+      <IdentityCard title="Emotional Baseline" defaultOpen={false}>
         <EmotionalBaselineForm />
       </IdentityCard>
 
       {/* Values Card */}
-      <IdentityCard
-        title="Values & Motivations"
-        defaultOpen={false}
-        completionPercent={getPersonalityCompletion('values')}
-        hasContent={completion.values}
-      >
+      <IdentityCard title="Values & Motivations" defaultOpen={false} hasContent={completion.values}>
         <ValuesList />
       </IdentityCard>
 
       {/* Fears Card */}
-      <IdentityCard
-        title="Fears & Triggers"
-        defaultOpen={false}
-        completionPercent={getPersonalityCompletion('fears')}
-        hasContent={completion.fears}
-      >
+      <IdentityCard title="Fears & Triggers" defaultOpen={false} hasContent={completion.fears}>
         <FearsList />
       </IdentityCard>
 
       {/* Social Patterns Card */}
-      <IdentityCard
-        title="Social Patterns"
-        defaultOpen={false}
-        completionPercent={getPersonalityCompletion('social')}
-        hasContent={completion.social}
-      >
+      <IdentityCard title="Social Patterns" defaultOpen={false} hasContent={completion.social}>
         <SocialPatternsForm />
       </IdentityCard>
 
@@ -287,19 +252,13 @@ export const IdentityPanel: React.FC = () => {
       <IdentityCard
         title="Voice & Communication"
         defaultOpen={false}
-        completionPercent={getPersonalityCompletion('speech')}
         hasContent={completion.speech}
       >
         <SpeechStyleForm />
       </IdentityCard>
 
       {/* Stress Card */}
-      <IdentityCard
-        title="Stress Response"
-        defaultOpen={false}
-        completionPercent={getPersonalityCompletion('stress')}
-        hasContent={completion.stress}
-      >
+      <IdentityCard title="Stress Response" defaultOpen={false} hasContent={completion.stress}>
         <StressBehaviorForm />
       </IdentityCard>
 

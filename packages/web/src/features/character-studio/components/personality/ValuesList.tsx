@@ -59,6 +59,11 @@ export const ValuesList: React.FC = () => {
           </button>
         </div>
       ))}
+      {values.length === 0 && (
+        <div className="text-xs text-slate-500 italic py-2">
+          💡 Adding at least one core value helps define your character's motivations
+        </div>
+      )}
       {values.length < 5 && (
         <button
           type="button"

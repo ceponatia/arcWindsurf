@@ -21,5 +21,18 @@ export function validateCharacterProfileBeforeSave(
   const backstoryError = validateRequiredString(profile.backstory, 'Backstory');
   if (backstoryError) errors.backstory = backstoryError;
 
+  const raceError = validateRequiredString(profile.race, 'Race');
+  if (raceError) errors.race = raceError;
+
+  // Age validation
+  if (!profile.age || profile.age <= 0) {
+    errors.age = 'Age is required';
+  }
+
+  // Gender validation
+  if (!profile.gender || (profile.gender as string) === '') {
+    errors.gender = 'Gender is required';
+  }
+
   return errors;
 }

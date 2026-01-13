@@ -243,6 +243,7 @@ export const buildProfile = (form: FormState): CharacterProfile => {
     ...(gender ? { gender } : {}),
     summary: form.summary.trim(),
     backstory: form.backstory.trim(),
+    race: form.race as any,
     tags,
     tier: 'minor', // Default tier for manually created characters
     personality: parsePersonality(form.personality),

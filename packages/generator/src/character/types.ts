@@ -4,6 +4,7 @@
 
 import type {
   Gender,
+  Race,
   BodyRegion,
   AppearanceRegion,
   CharacterProfile,
@@ -97,6 +98,8 @@ export interface CharacterBasicsPools {
   firstNames: ValuePool<string>;
   /** Pool of last names (optional) */
   lastNames?: ValuePool<string>;
+  /** Pool of races (optional, falls back to schema RACES) */
+  races?: ValuePool<Race>;
   /** Age range [min, max] */
   ageRange: [number, number];
   /** Pool of summary templates (use {name} for interpolation) */
