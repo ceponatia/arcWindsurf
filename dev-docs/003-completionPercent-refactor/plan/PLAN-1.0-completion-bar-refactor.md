@@ -65,28 +65,71 @@ Remove per-card progress bars entirely. Replace with a single overall completion
 2. Consider adding a breakdown tooltip showing which required fields are missing
 3. Style the indicator to be clear and actionable
 
-## Open Questions
+## Decisions
 
-1. **Which fields should be required?**
-   - Currently only `name`, `summary`, `backstory` are validated on save
-   - Should we require at least one value? One fear?
-   - Should race/alignment/tier be required?
+### Required Fields for Completion (6 total)
 
-2. **Should we show field-level indicators?**
-   - Keep the green checkmark (`hasContent`) on cards?
-   - Add red indicator for missing required fields?
+| Field | Schema Status | Decision |
+|-------|---------------|----------|
+| `name` | Required (`z.string().min(1)`) | **Required** |
+| `age` | Optional in schema | **Required** - Important for character context |
+| `gender` | Optional in schema | **Required** - User must select (not "Select...") |
+| `summary` | Required (`z.string().min(1)`) | **Required** |
+| `backstory` | Required (`z.string().min(1)`) | **Required** - Provides narrative context to LLM |
+| `race` | Optional in schema | **Required** - Schema change needed to match gender |
 
-3. **Weighted completion?**
-   - Should backstory (free-text, effort) count more than name (single field)?
-   - Or simple percentage based on required field count?
+### Excluded from Completion (have meaningful defaults)
+
+| Section | Reason |
+|---------|--------|
+| Big Five dimensions | Sliders always have value; 50% is valid |
+| Emotional Baseline | All fields default to sensible values |
+| Social Patterns | All fields default to neutral/moderate |
+| Speech Style | All fields default to average/moderate |
+| Stress Response | All fields default to sensible values |
+| Classification (alignment, tier) | Have meaningful defaults |
+
+### Suggested (Not Required)
+
+| Field | UI Treatment |
+|-------|--------------|
+| Values list | Show hint: "Add at least one core value" |
+| Appearance fields | Optional enhancement |
+| Body regions | Advanced feature |
+
+### Schema Changes Needed
+
+1. Update `CharacterBasicsSchema` to make `race` required (currently optional)
+2. Keep `alignment` and `tier` optional with defaults
+
+### Completion Calculation
+
+```typescript
+const REQUIRED_FIELDS = ['name', 'age', 'gender', 'summary', 'backstory', 'race'] as const;
+
+// Completion = (filledRequiredFields / 6) * 100
+// "Select..." values count as unfilled
+```
+
+### UI Changes
+
+1. Remove per-card progress bars from all `IdentityCard` instances
+2. Keep green checkmark (`hasContent`) for visual feedback on collapsed cards
+3. Enhance header completion indicator to show percentage
+4. Consider tooltip showing which required fields are missing
 
 ## Files to Modify
 
 ```text
+packages/schemas/src/character/
+├── basics.ts                     # Make race required in CharacterBasicsSchema
+
 packages/web/src/features/character-studio/
-├── signals.ts                    # Update sectionCompletion, completionScore
+├── signals.ts                    # Update completionScore to track 6 required fields
+├── validation/
+│   └── validateCharacterProfileBeforeSave.ts  # Add age, gender, race validation
 ├── components/
-│   ├── IdentityPanel.tsx         # Remove completionPercent props
+│   ├── IdentityPanel.tsx         # Remove completionPercent props, fix age input
 │   ├── IdentityCard.tsx          # Keep as-is (prop becomes optional/unused)
 │   ├── StudioHeader.tsx          # Enhance completion display
 │   ├── BodyCard.tsx              # Remove internal completion calc
@@ -103,7 +146,10 @@ packages/web/src/features/character-studio/
 
 ## Related Tasks
 
-- Define required fields schema (TASK-001)
-- Update completion signals (TASK-002)
-- Remove per-card progress bars (TASK-003)
-- Enhance header completion display (TASK-004)
+- TASK-001: Make race required in schema
+- TASK-002: Update save validation for new required fields
+- TASK-003: Refactor completion signals for required fields only
+- TASK-004: Remove per-card progress bars from IdentityPanel
+- TASK-005: Enhance header completion display
+- TASK-006: Fix age input (remove spinner arrows)
+- TASK-007: Add values suggestion hint
