@@ -8,8 +8,8 @@
 ## Environment
 
 - API: localhost:3002 (pnpm -F @minimal-rpg/api dev, Postgres via Docker)
-- Web: localhost:5174 (pnpm -F @minimal-rpg/web dev --host)
-- Browser: Playwright-driven (<http://localhost:5174/#/character-studio>)
+- Web: localhost:5173 (pnpm -F @minimal-rpg/web dev --host)
+- Browser: Playwright-driven (<http://localhost:5173/#/character-studio>)
 
 ## Repro Steps
 

@@ -149,7 +149,7 @@ async function terminatePid(pid) {
 
 const ports = (() => {
   const args = process.argv.slice(2);
-  if (args.length === 0) return [3001, 5174];
+  if (args.length === 0) return [3001, 5173];
   return args.map(parsePort);
 })();
 

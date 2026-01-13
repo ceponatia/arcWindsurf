@@ -112,9 +112,9 @@ What this does:
 - Starts:
   - PostgreSQL (database)
   - API server on `http://localhost:3002`
-  - Web app on `http://localhost:5174`
+  - Web app on `http://localhost:5173`
 
-You should see logs streaming in the terminal. When everything is ready, you will see messages that the API and Vite dev server are listening on ports 3002 and 5174.
+You should see logs streaming in the terminal. When everything is ready, you will see messages that the API and Vite dev server are listening on ports 3002 and 5173.
 
 ### Keeping It Running
 
@@ -141,7 +141,7 @@ docker compose -f config/docker/docker-compose.yml up
 Once Docker Compose is running:
 
 1. Open your browser
-2. Go to `http://localhost:5174`
+2. Go to `http://localhost:5173`
 
 You should see the ArcAgentic interface.
 
@@ -192,7 +192,7 @@ pnpm -F @minimal-rpg/api dev
 pnpm -F @minimal-rpg/web dev
 ```
 
-5. Open `http://localhost:5174` in your browser
+5. Open `http://localhost:5173` in your browser
 
 For most non-developers, the Docker Compose approach earlier in this guide is simpler and requires fewer tools.
 
@@ -219,7 +219,7 @@ For normal use, you can manage everything (characters, settings, sessions) throu
 
 - Make sure Docker Desktop is running
 - Make sure you ran `docker compose -f config/docker/docker-compose.yml up --build` from the correct folder
-- Check that your browser is pointing to `http://localhost:5174`
+- Check that your browser is pointing to `http://localhost:5173`
 
 **I see errors about the API or OpenRouter**
 

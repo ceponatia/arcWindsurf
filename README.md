@@ -32,13 +32,13 @@ pnpm dev
 
 ```bash
 pnpm -F @minimal-rpg/api dev   # http://localhost:3002
-pnpm -F @minimal-rpg/web dev   # http://localhost:5174
+pnpm -F @minimal-rpg/web dev   # http://localhost:5173
 ```
 
 - API: <http://localhost:3002>
-- Web: <http://localhost:5174>
+- Web: <http://localhost:5173>
 - Postgres: `localhost:${PG_PORT:-5432}` (set `PG_PORT` in `.env` if 5432 is taken)
-- `pnpm dev:kill` frees ports 3002/5174 if something is already running.
+- `pnpm dev:kill` frees ports 3002/5173 if something is already running.
 - Web chat: when a session has NPC instances, use the selector beside the input to target an NPC; leave it on Auto to use the primary/default.
 
 ## 2. Quickstart (Docker)
@@ -57,7 +57,7 @@ docker compose -f config/docker/docker-compose.yml up --build
 This starts Postgres, the API, and the Web dev server:
 
 - API: <http://localhost:3002>
-- Web: <http://localhost:5174>
+- Web: <http://localhost:5173>
 
 Stop containers with `Ctrl+C`, or in another shell:
 
@@ -93,7 +93,7 @@ docker compose -f config/docker/docker-compose.yml up
 Core repo scripts (root `package.json`):
 
 - `pnpm dev`: Run API + Web dev servers via Turbo.
-- `pnpm dev:kill`: Free ports 3002/5174 if something is blocking them.
+- `pnpm dev:kill`: Free ports 3002/5173 if something is blocking them.
 - `pnpm build`: Turbo build all packages.
 - `pnpm lint`: Lint the workspace.
 - `pnpm test`: Run vitest suites via Turbo.
@@ -151,7 +151,7 @@ pnpm test:trait -- --trait "quiet, introverted, empathetic"
 - PostgreSQL 16+ with pgvector is required.
 - The repo-root `.env` is shared by API, scripts, and Vite (via `envDir`).
 - `DB_TARGET=local` uses `DATABASE_URL_LOCAL`; staging/prod can set `DB_TARGET=supabase` or use `DATABASE_URL` directly.
-- Default ports: Postgres `${PG_PORT:-5432}`, API `${API_PORT:-3002}`, Web `${WEB_PORT:-5174}`.
+- Default ports: Postgres `${PG_PORT:-5432}`, API `${API_PORT:-3002}`, Web `${WEB_PORT:-5173}`.
 
 Apply or update schema:
 
@@ -272,7 +272,7 @@ Additional details live in `dev-docs/` (LLM recommendations, migration guide, we
 ### Dev DB viewer
 
 - Enable server flag `ADMIN_DB_TOOLS=true` (API) and `VITE_DB_TOOLS=true` (Web)
-- Visit <http://localhost:5174/dbview> for table metadata + recent rows
+- Visit <http://localhost:5173/dbview> for table metadata + recent rows
 
 ### Common issues
 

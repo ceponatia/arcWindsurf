@@ -1,5 +1,5 @@
 ### Page state
-- Page URL: http://172.25.0.2:5174/#/character-studio?id=fc118760-bb81-4ec0-9a48-89e56d4043ed
+- Page URL: http://172.25.0.2:5173/#/character-studio?id=fc118760-bb81-4ec0-9a48-89e56d4043ed
 - Page Title: ArcAgentic
 - Page Snapshot:
 ```yaml
