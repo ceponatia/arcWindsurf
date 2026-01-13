@@ -219,8 +219,9 @@ interface NavButtonProps {
 const NavButton: React.FC<NavButtonProps> = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-      }`}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+      active ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+    }`}
   >
     {icon}
     <span>{label}</span>
@@ -384,10 +385,13 @@ const DesktopLayout: React.FC<AppLayoutProps> = ({ controller }) => {
         {/* Main content area */}
         <main className="flex-1 flex flex-col overflow-hidden">
           <section
-            className={`flex-1 ${viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'
-              }`}
+            className={`flex-1 ${
+              ['chat', 'character-studio'].includes(viewMode)
+                ? 'overflow-hidden'
+                : 'overflow-y-auto custom-scrollbar'
+            }`}
           >
-            <div className={viewMode === 'chat' ? 'h-full' : 'p-6'}>
+            <div className={['chat', 'character-studio'].includes(viewMode) ? 'h-full' : 'p-6'}>
               <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
                 <MainContent
                   viewMode={viewMode}
@@ -508,7 +512,9 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
     window.location.hash = '#/chat';
   };
 
-  const handleNavClose = () => { setNavOpen(false); };
+  const handleNavClose = () => {
+    setNavOpen(false);
+  };
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans flex flex-col">
@@ -518,7 +524,9 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
           ArcAgentic
         </button>
         <button
-          onClick={() => { setNavOpen(!navOpen); }}
+          onClick={() => {
+            setNavOpen(!navOpen);
+          }}
           className="p-2 rounded-md text-slate-300 hover:bg-slate-800"
         >
           <svg
@@ -629,8 +637,11 @@ const MobileLayout: React.FC<AppLayoutProps> = ({ controller }) => {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div
-          className={`flex-1 ${viewMode === 'chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-4'
-            }`}
+          className={`flex-1 ${
+            ['chat', 'character-studio'].includes(viewMode)
+              ? 'overflow-hidden'
+              : 'overflow-y-auto custom-scrollbar p-4'
+          }`}
         >
           <Suspense fallback={<div className="text-sm text-slate-400">Loading view…</div>}>
             <MainContent

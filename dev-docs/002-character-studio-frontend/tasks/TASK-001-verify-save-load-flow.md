@@ -3,7 +3,7 @@
 **Priority**: P0
 **Estimate**: 1 hour
 **Phase**: 0 - Verification
-**Blocks**: None
+**Blocks**: TASK-001a-fix-character-create-db-error
 
 ---
 
@@ -23,16 +23,18 @@ Verify that the character creation and loading flow works end-to-end before maki
 
 ## What to Check
 
-- [ ] New character form initializes with empty/default values
-- [ ] Save button triggers API call
-- [ ] API returns success response
-- [ ] Character list shows saved character
-- [ ] Loading character populates `characterProfile` signal
-- [ ] No console errors during flow
+- [x] New character form initializes with empty/default values
+- [x] Save button triggers API call
+- [x] API returns success response
+- [x] Character list shows saved character
+- [x] Loading character populates `characterProfile` signal
+- [x] No console errors during flow
+
+Status: TASK-001a-fix-character-create-db-error completed.
 
 ## If Issues Found
 
-Document issues in a new file: `TASK-001a-fix-<issue>.md`
+Document issues in a new file: `TASK-001b-fix-<issue>.md`
 
 Common issues to watch for:
 
@@ -43,5 +45,17 @@ Common issues to watch for:
 
 ## Acceptance Criteria
 
-- [ ] Complete flow documented as working OR
-- [ ] Blocking issues identified and documented for fix
+- [x] Complete flow documented as working OR
+- [x] Blocking issues identified and documented for fix
+- [x] No console errors during save/load flow
+
+---
+
+## Verification Log (2026-01-12)
+
+Verified flow using Playwright automation:
+1. **Form Initialization**: Confirmed "Name" and "Summary" fields are empty with correct placeholders. "Age" starts at 0 and "Gender" defaults to "Select...".
+2. **Save Flow**: Created character "Playwright Test User". POST to `http://localhost:3002/characters` returned `201 Created`.
+3. **List View**: Navigated to `/characters` and confirmed "Playwright Test User" appears in the character list.
+4. **Load Flow**: Clicked the character card. URL updated with character ID. All fields (Name, Age, Gender, Summary) were correctly populated in the editor.
+5. **Console**: No errors found (except favicon.ico 404).

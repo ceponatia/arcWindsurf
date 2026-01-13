@@ -31,14 +31,14 @@ pnpm dev
 - Or run individually if you prefer separate terminals:
 
 ```bash
-pnpm -F @minimal-rpg/api dev   # http://localhost:3001
-pnpm -F @minimal-rpg/web dev   # http://localhost:5173
+pnpm -F @minimal-rpg/api dev   # http://localhost:3002
+pnpm -F @minimal-rpg/web dev   # http://localhost:5174
 ```
 
-- API: <http://localhost:3001>
-- Web: <http://localhost:5173>
+- API: <http://localhost:3002>
+- Web: <http://localhost:5174>
 - Postgres: `localhost:${PG_PORT:-5432}` (set `PG_PORT` in `.env` if 5432 is taken)
-- `pnpm dev:kill` frees ports 3001/5173 if something is already running.
+- `pnpm dev:kill` frees ports 3002/5174 if something is already running.
 - Web chat: when a session has NPC instances, use the selector beside the input to target an NPC; leave it on Auto to use the primary/default.
 
 ## 2. Quickstart (Docker)
@@ -54,10 +54,10 @@ If port 5432 is already in use on your machine, set `PG_PORT=5433` (or another f
 docker compose -f config/docker/docker-compose.yml up --build
 ```
 
-This starts Postgres, the API, and the Web dev server on the same ports as the pnpm workflow:
+This starts Postgres, the API, and the Web dev server:
 
-- API: <http://localhost:3001>
-- Web: <http://localhost:5173>
+- API: <http://localhost:3002>
+- Web: <http://localhost:5174>
 
 Stop containers with `Ctrl+C`, or in another shell:
 
@@ -93,7 +93,7 @@ docker compose -f config/docker/docker-compose.yml up
 Core repo scripts (root `package.json`):
 
 - `pnpm dev`: Run API + Web dev servers via Turbo.
-- `pnpm dev:kill`: Free ports 3001/5173 if something is blocking them.
+- `pnpm dev:kill`: Free ports 3002/5174 if something is blocking them.
 - `pnpm build`: Turbo build all packages.
 - `pnpm lint`: Lint the workspace.
 - `pnpm test`: Run vitest suites via Turbo.
@@ -127,7 +127,7 @@ npx tsx scripts/test-tool-calling.ts --prompt "..."    # Custom prompt
 
 ```bash
 node scripts/test-streaming.mjs --target=studio --message "Generate a short NPC greeting." \
-  --apiBaseUrl http://localhost:3001
+  --apiBaseUrl http://localhost:3002
 ```
 
 You can also test the underlying OpenAI-compatible streaming API directly (OpenAI/OpenRouter) using keys/models from `.env`:
@@ -151,7 +151,7 @@ pnpm test:trait -- --trait "quiet, introverted, empathetic"
 - PostgreSQL 16+ with pgvector is required.
 - The repo-root `.env` is shared by API, scripts, and Vite (via `envDir`).
 - `DB_TARGET=local` uses `DATABASE_URL_LOCAL`; staging/prod can set `DB_TARGET=supabase` or use `DATABASE_URL` directly.
-- Default ports: Postgres `${PG_PORT:-5432}`, API `${API_PORT:-3001}`, Web `${WEB_PORT:-5173}`.
+- Default ports: Postgres `${PG_PORT:-5432}`, API `${API_PORT:-3002}`, Web `${WEB_PORT:-5174}`.
 
 Apply or update schema:
 
@@ -174,7 +174,7 @@ Postgres data lives in the `pgdata` volume. Use `docker compose -f config/docker
 
 ## 5. API Overview
 
-Base URL: <http://localhost:3001>
+Base URL: <http://localhost:3002>
 
 - `GET /characters` – list characters (id, name, summary, tags)
 - `POST /characters` – create character (body: CharacterProfile JSON)
@@ -239,7 +239,7 @@ See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md)
 
 ### Core env vars
 
-- `PORT` (default `3001`)
+- `PORT` (default `3002`)
 - `DB_TARGET` – `local` (dev) or `supabase` (staging)
 - `DATABASE_URL_LOCAL` – local Postgres connection string (used when `DB_TARGET=local`)
 - `DATABASE_URL` – Postgres connection string (set this via Fly secrets for staging/prod)
@@ -250,7 +250,7 @@ For GitHub Pages builds (see `.github/workflows/web-pages-staging.yml`), set **e
 
 - `VITE_SUPABASE_URL` (your Supabase project URL, `https://<ref>.supabase.co`)
 - `VITE_SUPABASE_ANON_KEY` (your Supabase anon key)
-- `VITE_API_BASE_URL` (your deployed API base URL; otherwise the web app will default to `http://localhost:3001`)
+- `VITE_API_BASE_URL` (your deployed API base URL; otherwise the web app will default to `http://localhost:3002`)
 
 ### LLM (OpenRouter)
 
@@ -259,7 +259,7 @@ For GitHub Pages builds (see `.github/workflows/web-pages-staging.yml`), set **e
 
 ### Frontend (Vite)
 
-- `VITE_API_BASE_URL` (default `http://localhost:3001`)
+- `VITE_API_BASE_URL` (default `http://localhost:3002`)
 - `VITE_API_MESSAGE_TIMEOUT_MS` (default `60000`)
 - `VITE_STRICT_MODE` (default `false`)
 
@@ -272,7 +272,7 @@ Additional details live in `dev-docs/` (LLM recommendations, migration guide, we
 ### Dev DB viewer
 
 - Enable server flag `ADMIN_DB_TOOLS=true` (API) and `VITE_DB_TOOLS=true` (Web)
-- Visit <http://localhost:5173/dbview> for table metadata + recent rows
+- Visit <http://localhost:5174/dbview> for table metadata + recent rows
 
 ### Common issues
 

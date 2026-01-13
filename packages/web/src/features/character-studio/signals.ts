@@ -1,5 +1,7 @@
 import { signal, computed } from '@preact/signals-react';
 import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
+import type { StudioFieldErrors, StudioFieldKey } from './validation/types.js';
+import { applyTrait } from './utils/trait-applicator.js';
 
 // ============================================================================
 // Character Data Signals
@@ -11,11 +13,17 @@ export const characterProfile = signal<Partial<CharacterProfile>>({});
 /** Character ID (null for new characters) */
 export const characterId = signal<string | null>(null);
 
+/** Main studio loading state */
+export const isStudioLoading = signal<boolean>(false);
+
 /** Dirty flag - unsaved changes exist */
 export const isDirty = signal<boolean>(false);
 
 /** Save status */
 export const saveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+/** Field-level validation errors (used for save-time warnings) */
+export const fieldErrors = signal<StudioFieldErrors>({});
 
 // ============================================================================
 // Conversation Signals
@@ -34,7 +42,7 @@ export interface InferredTrait {
   value: unknown;         // e.g., 'guarded'
   confidence: number;     // 0-1
   source: string;         // Quote from conversation that triggered inference
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'dismissed';
 }
 
 /** Conversation history with the character */
@@ -106,6 +114,30 @@ export function updatePersonalityMap(updates: Partial<PersonalityMap>): void {
   isDirty.value = true;
 }
 
+/**
+ * Replace all field errors at once.
+ */
+export function setFieldErrors(next: StudioFieldErrors): void {
+  fieldErrors.value = next;
+}
+
+/**
+ * Clear a single field error.
+ */
+export function clearFieldError(key: StudioFieldKey): void {
+  const current = fieldErrors.value;
+  if (!current[key]) return;
+  const { [key]: _removed, ...rest } = current;
+  fieldErrors.value = rest;
+}
+
+/**
+ * Clear all field errors.
+ */
+export function clearAllFieldErrors(): void {
+  fieldErrors.value = {};
+}
+
 export function addMessage(message: Omit<ConversationMessage, 'id' | 'timestamp'>): void {
   const newMessage: ConversationMessage = {
     ...message,
@@ -116,10 +148,16 @@ export function addMessage(message: Omit<ConversationMessage, 'id' | 'timestamp'
 }
 
 export function acceptTrait(traitId: string): void {
+  const trait = pendingTraits.value.find(t => t.path === traitId);
+  if (!trait) return;
+
+  // Apply the trait value to the profile
+  applyTrait(trait);
+
+  // Update trait status to 'accepted'
   pendingTraits.value = pendingTraits.value.map(t =>
-    t.path === traitId ? { ...t, status: 'accepted' } : t
+    t.path === traitId ? { ...t, status: 'accepted' as const } : t
   );
-  // TODO: Apply trait to characterProfile
 }
 
 export function rejectTrait(traitId: string): void {
@@ -133,6 +171,7 @@ export function resetStudio(): void {
   characterId.value = null;
   isDirty.value = false;
   saveStatus.value = 'idle';
+  fieldErrors.value = {};
   conversationHistory.value = [];
   pendingTraits.value = [];
   isGenerating.value = false;

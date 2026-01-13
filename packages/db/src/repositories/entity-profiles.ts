@@ -4,6 +4,7 @@ import { eq, and, or } from 'drizzle-orm';
 import type { UUID } from '../types.js';
 
 export interface CreateEntityProfileInput {
+  id?: UUID;
   entityType: string;
   name: string;
   ownerEmail?: string;
@@ -18,6 +19,7 @@ export async function createEntityProfile(input: CreateEntityProfileInput) {
   const [result] = await db
     .insert(entityProfiles)
     .values({
+      id: input.id,
       entityType: input.entityType,
       name: input.name,
       ownerEmail: input.ownerEmail ?? 'public',

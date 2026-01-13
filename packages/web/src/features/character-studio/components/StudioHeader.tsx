@@ -26,9 +26,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           {isEditing ? `Editing: ${characterName}` : 'Create Character'}
         </h1>
         <div className="flex items-center gap-3 mt-1">
-          <div className="text-xs text-slate-500">
-            {completion}% complete
-          </div>
+          <div className="text-xs text-slate-500">{completion}% complete</div>
           <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-violet-500 transition-all duration-300"
@@ -39,7 +37,11 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-        {isDirty && (
+        {saveStatus === 'saved' && (
+          <span className="text-xs text-emerald-400">Character saved!</span>
+        )}
+        {saveStatus === 'error' && <span className="text-xs text-red-400">Save failed</span>}
+        {isDirty && saveStatus === 'idle' && (
           <span className="text-xs text-amber-400">Unsaved changes</span>
         )}
 

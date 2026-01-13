@@ -35,8 +35,6 @@ services:
     environment:
       - DB_TARGET=local
       - DATABASE_URL_LOCAL=postgres://postgres:password@db:5432/minirpg
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
       - REDIS_URL=redis://redis:6379
     volumes:
       - ../..:/app

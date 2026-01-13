@@ -1,63 +1,56 @@
 import React from 'react';
+import { useSignals } from '@preact/signals-react/runtime';
 import { CORE_EMOTIONS, EMOTION_INTENSITIES } from '@minimal-rpg/schemas';
 import { HelpIcon } from '@minimal-rpg/ui';
-import type { PersonalityFormState } from '@minimal-rpg/schemas';
-import { Subsection, SelectInput, SliderInput } from '../../../../shared/components/common.js';
+import { characterProfile, updatePersonalityMap } from '../../signals.js';
+import { SelectInput, SliderInput } from '../../../../shared/components/common.js';
 
-interface EmotionalBaselineFormProps {
-  pm: PersonalityFormState;
-  updatePM: <K extends keyof PersonalityFormState>(key: K, value: PersonalityFormState[K]) => void;
-}
+export const EmotionalBaselineForm: React.FC = () => {
+  useSignals();
 
-export const EmotionalBaselineForm: React.FC<EmotionalBaselineFormProps> = ({ pm, updatePM }) => {
+  const baseline = characterProfile.value.personalityMap?.emotionalBaseline ?? {
+    current: CORE_EMOTIONS[7], // anticipation
+    intensity: EMOTION_INTENSITIES[0], // mild
+    moodBaseline: CORE_EMOTIONS[1], // trust
+    moodStability: 0.5,
+  };
+
+  const handleChange = (updates: Partial<typeof baseline>) => {
+    updatePersonalityMap({
+      emotionalBaseline: {
+        ...baseline,
+        ...updates,
+      },
+    });
+  };
+
   return (
-    <Subsection title="Emotional Baseline">
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <SelectInput
           label="Current Emotion"
-          value={pm.emotionalBaseline.current}
-          onChange={(v) =>
-            updatePM('emotionalBaseline', {
-              ...pm.emotionalBaseline,
-              current: v as (typeof CORE_EMOTIONS)[number],
-            })
-          }
+          value={baseline.current}
+          onChange={(v) => handleChange({ current: v as (typeof CORE_EMOTIONS)[number] })}
           options={CORE_EMOTIONS}
         />
         <SelectInput
           label="Intensity"
-          value={pm.emotionalBaseline.intensity}
-          onChange={(v) =>
-            updatePM('emotionalBaseline', {
-              ...pm.emotionalBaseline,
-              intensity: v as (typeof EMOTION_INTENSITIES)[number],
-            })
-          }
+          value={baseline.intensity}
+          onChange={(v) => handleChange({ intensity: v as (typeof EMOTION_INTENSITIES)[number] })}
           options={EMOTION_INTENSITIES}
         />
         <SelectInput
           label="Mood Baseline"
-          value={pm.emotionalBaseline.moodBaseline}
-          onChange={(v) =>
-            updatePM('emotionalBaseline', {
-              ...pm.emotionalBaseline,
-              moodBaseline: v as (typeof CORE_EMOTIONS)[number],
-            })
-          }
+          value={baseline.moodBaseline}
+          onChange={(v) => handleChange({ moodBaseline: v as (typeof CORE_EMOTIONS)[number] })}
           options={CORE_EMOTIONS}
         />
         <SelectInput
           label="Blend (optional)"
-          value={pm.emotionalBaseline.blend ?? ''}
+          value={baseline.blend ?? ''}
           onChange={(v) => {
             const newBlend = v ? (v as (typeof CORE_EMOTIONS)[number]) : undefined;
-            const baseEntry = {
-              current: pm.emotionalBaseline.current,
-              intensity: pm.emotionalBaseline.intensity,
-              moodBaseline: pm.emotionalBaseline.moodBaseline,
-              moodStability: pm.emotionalBaseline.moodStability,
-            };
-            updatePM('emotionalBaseline', newBlend ? { ...baseEntry, blend: newBlend } : baseEntry);
+            handleChange({ blend: newBlend });
           }}
           options={['', ...CORE_EMOTIONS]}
         />
@@ -68,13 +61,11 @@ export const EmotionalBaselineForm: React.FC<EmotionalBaselineFormProps> = ({ pm
       </div>
       <SliderInput
         label=""
-        value={pm.emotionalBaseline.moodStability}
-        onChange={(v) =>
-          updatePM('emotionalBaseline', { ...pm.emotionalBaseline, moodStability: v })
-        }
+        value={baseline.moodStability}
+        onChange={(v) => handleChange({ moodStability: v })}
         lowLabel="Volatile"
         highLabel="Stable"
       />
-    </Subsection>
+    </div>
   );
 };

@@ -64,6 +64,8 @@ export const FearsList: React.FC = () => {
 
 ## Features to Support
 
+Check off once supported.
+
 - [ ] Display existing fears
 - [ ] Add new fear with category, specific, intensity
 - [ ] Remove fear
@@ -71,8 +73,8 @@ export const FearsList: React.FC = () => {
 
 ## Acceptance Criteria
 
-- [ ] List displays current fears
-- [ ] Add creates new fear entry
-- [ ] Remove deletes fear
-- [ ] Field changes update signal
-- [ ] Fears persist when saving character
+- [x] List displays current fears
+- [x] Add creates new fear entry
+- [x] Remove deletes fear
+- [x] Field changes update signal
+- [x] Fears persist when saving character
