@@ -71,6 +71,9 @@ export const expandedCards = signal<Set<string>>(new Set(['core']));
 // Computed Signals
 // ============================================================================
 
+export const REQUIRED_FIELDS = ['name', 'age', 'gender', 'summary', 'backstory', 'race'] as const;
+export type RequiredField = typeof REQUIRED_FIELDS[number];
+
 /**
  * Detailed completion status for each major section
  */
@@ -92,13 +95,27 @@ export const sectionCompletion = computed(() => {
   };
 });
 
-/** Completion percentage (0-100) */
+/** Completion status for required fields only */
+export const requiredFieldsCompletion = computed(() => {
+  const p = characterProfile.value;
+
+  return {
+    name: !!p.name?.trim(),
+    age: typeof p.age === 'number' && p.age > 0,
+    gender: !!p.gender && (p.gender as string) !== '',
+    summary: !!p.summary?.trim(),
+    backstory: !!p.backstory?.trim(),
+    race: !!p.race && (p.race as string) !== '',
+  };
+});
+
+/** Completion percentage (0-100) based on required fields only */
 export const completionScore = computed(() => {
-  const completion = sectionCompletion.value;
+  const completion = requiredFieldsCompletion.value;
   const items = Object.values(completion);
   const completedCount = items.filter(Boolean).length;
 
-  return Math.round((completedCount / items.length) * 100);
+  return Math.round((completedCount / REQUIRED_FIELDS.length) * 100);
 });
 
 /** All accepted traits from conversation */

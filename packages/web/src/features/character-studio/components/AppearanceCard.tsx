@@ -34,31 +34,8 @@ export const AppearanceCard: React.FC<{ hasContent?: boolean }> = ({ hasContent 
     updateProfile('physique', nextPhysique as any);
   };
 
-  /**
-   * Calculate completion for physical appearance.
-   */
-  const calculateCompletion = (): number => {
-    const fields: (keyof Physique)[] = [
-      'height',
-      'build',
-      'ageAppearance',
-      'notableFeatures',
-      'impression',
-    ];
-    const filled = fields.filter((f) => {
-      const val = physique[f];
-      return typeof val === 'string' && val.trim().length > 0;
-    }).length;
-    return (filled / fields.length) * 100;
-  };
-
   return (
-    <IdentityCard
-      title="Physical Appearance"
-      defaultOpen={false}
-      completionPercent={calculateCompletion()}
-      hasContent={hasContent}
-    >
+    <IdentityCard title="Physical Appearance" defaultOpen={false} hasContent={hasContent}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <label className="block">

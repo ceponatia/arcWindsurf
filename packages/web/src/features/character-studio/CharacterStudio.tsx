@@ -22,8 +22,6 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, on
     onSave,
   });
 
-  const completion = completionScore.value;
-
   const handleSave = () => {
     void save();
   };
@@ -47,7 +45,6 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, on
     <div className="h-full flex flex-col bg-slate-950">
       <StudioHeader
         characterName={profile.name ?? 'New Character'}
-        completion={completion}
         isDirty={isDirty}
         saveStatus={saveStatus}
         onSave={handleSave}

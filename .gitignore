@@ -54,4 +54,5 @@ data/*
 .github/instructions/codacy.instructions.md
 
 # Completed plans
-.dev-docs/plan/
+.dev-docs/999-initial-archive/
+.dev-docs/*/validation/completed/

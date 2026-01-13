@@ -44,7 +44,7 @@ export const CharacterBasicsSchema = CoreIdentitySchema.extend({
   /**
    * Character race.
    */
-  race: z.enum(RACES).optional(),
+  race: z.enum(RACES),
 
   /**
    * NPC tier classification.

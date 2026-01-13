@@ -1,9 +1,10 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useSignals } from '@preact/signals-react/runtime';
+import { completionScore, requiredFieldsCompletion } from '../signals.js';
 
 export interface StudioHeaderProps {
   characterName: string;
-  completion: number;
   isDirty: boolean;
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   onSave: () => void;
@@ -14,7 +15,6 @@ export interface StudioHeaderProps {
 
 export const StudioHeader: React.FC<StudioHeaderProps> = ({
   characterName,
-  completion,
   isDirty,
   saveStatus,
   onSave,
@@ -22,19 +22,71 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   isEditing,
   hasErrors,
 }) => {
+  useSignals();
+
+  const score = completionScore.value;
+  const fields = requiredFieldsCompletion.value;
+
+  const missingFields = Object.entries(fields)
+    .filter(([_, filled]) => !filled)
+    .map(([field]) => field);
+
+  const getStatusColor = () => {
+    if (score === 100) return 'bg-emerald-500';
+    if (score === 0) return 'bg-orange-500';
+    return 'bg-violet-500';
+  };
+
+  const getStatusTextColor = () => {
+    if (score === 100) return 'text-emerald-400';
+    if (score === 0) return 'text-orange-400';
+    return 'text-slate-400';
+  };
+
   return (
     <header className="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-100">
-          {isEditing ? `Editing: ${characterName}` : 'Create Character'}
-        </h1>
-        <div className="flex items-center gap-3 mt-1">
-          <div className="text-xs text-slate-500">{completion}% complete</div>
-          <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-violet-500 transition-all duration-300"
-              style={{ width: `${completion}%` }}
-            />
+      <div className="flex items-center gap-6">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-100">
+            {isEditing ? `Editing: ${characterName}` : 'Create Character'}
+          </h1>
+          <div className="flex items-center gap-3 mt-1 group relative">
+            <div className={`text-xs ${getStatusTextColor()} font-medium uppercase tracking-wider`}>
+              {score === 100 ? (
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Complete
+                </div>
+              ) : (
+                `${score}% complete`
+              )}
+            </div>
+            <div className="w-32 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${getStatusColor()} transition-all duration-500 ease-out`}
+                style={{ width: `${score}%` }}
+              />
+            </div>
+
+            {/* Tooltip for missing fields */}
+            {missingFields.length > 0 && (
+              <div className="absolute top-full mt-2 left-0 z-50 w-48 p-2 bg-slate-800 border border-slate-700 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">
+                  Missing Required Fields
+                </div>
+                <div className="space-y-1">
+                  {missingFields.map((field) => (
+                    <div
+                      key={field}
+                      className="text-xs text-slate-300 flex items-center gap-1.5 capitalize"
+                    >
+                      <div className="w-1 h-1 rounded-full bg-orange-500" />
+                      {field}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

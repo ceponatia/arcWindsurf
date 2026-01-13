@@ -41,23 +41,8 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
     updateProfile('body', updatedBody);
   };
 
-  /**
-   * Calculate completion percentage for the body card.
-   * Tracks 4 key regions: hair, face, torso, hands.
-   */
-  const calculateCompletion = (): number => {
-    const regions: BodyRegion[] = ['hair', 'face', 'torso', 'hands'] as BodyRegion[];
-    const filled = regions.filter((r) => getRegionDescription(r).trim().length > 0).length;
-    return (filled / regions.length) * 100;
-  };
-
   return (
-    <IdentityCard
-      title="Body & Appearance"
-      defaultOpen={false}
-      completionPercent={calculateCompletion()}
-      hasContent={hasContent}
-    >
+    <IdentityCard title="Body & Appearance" defaultOpen={false} hasContent={hasContent}>
       <div className="space-y-4">
         <label className="block">
           <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Hair</span>

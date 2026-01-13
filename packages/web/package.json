@@ -9,7 +9,6 @@
     "dev": "vite",
     "lint": "eslint src --ext .ts,.tsx --cache --cache-location ../../.eslintcache",
     "test": "vitest run --passWithNoTests",
-    "test:e2e": "playwright test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -34,7 +33,6 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@playwright/test": "^1.57.0",
     "@tailwindcss/typography": "^0.5.15",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
