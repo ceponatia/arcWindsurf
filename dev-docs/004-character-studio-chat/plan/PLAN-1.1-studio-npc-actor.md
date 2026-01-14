@@ -158,6 +158,202 @@ type DiscoveryTopic =
 4. **Relationship Probe** - Explore social dynamics
 5. **Values Clarification** - Surface core beliefs through dilemmas
 
+## Advanced Conversation Features
+
+### 1. Dilemma Engine
+
+Present tailored moral dilemmas based on the character's emerging values.
+
+```typescript
+interface DilemmaEngine {
+  // Generate dilemma based on profile gaps and values
+  generateDilemma(profile: Partial<CharacterProfile>): Dilemma;
+
+  // Analyze response to extract value signals
+  analyzeResponse(dilemma: Dilemma, response: string): ValueSignal[];
+}
+
+interface Dilemma {
+  scenario: string;           // The situation
+  conflictingValues: string[]; // e.g., ['loyalty', 'honesty']
+  targetTraits: string[];      // Traits this could reveal
+}
+```
+
+Example dilemma:
+
+```text
+"You discover your closest friend has been stealing from the village elder
+to feed their sick child. The elder asks if you know anything. What do you say?"
+```
+
+### 2. Emotional Range Demonstration
+
+Ask the character to express the same thought in different emotional states:
+
+```typescript
+interface EmotionalRangeRequest {
+  basePrompt: string;         // "How do you feel about your father?"
+  emotions: EmotionState[];   // ['neutral', 'vulnerable', 'angry']
+}
+
+interface EmotionalRangeResponse {
+  variations: {
+    emotion: EmotionState;
+    response: string;
+  }[];
+  inferredRange: {
+    dimension: string;        // e.g., 'expressiveness'
+    value: number;            // 0-1 based on variation spread
+  };
+}
+```
+
+### 3. Contradiction Mirror
+
+When contradictions are detected, have the character reflect on them:
+
+```typescript
+interface ContradictionMirror {
+  // Detect contradiction between new evidence and existing profile
+  detectContradiction(
+    newEvidence: InferredTrait,
+    profile: Partial<CharacterProfile>
+  ): Contradiction | null;
+
+  // Generate reflection prompt for character
+  buildReflectionPrompt(contradiction: Contradiction): string;
+}
+
+interface Contradiction {
+  existingTrait: { path: string; value: unknown };
+  newEvidence: { path: string; value: unknown };
+  reflectionPrompt: string;   // "Earlier you said X, but now Y. How do you reconcile that?"
+}
+```
+
+### 4. Relationship Vignettes
+
+Quick micro-simulations showing character interactions with archetypes:
+
+```typescript
+type RelationshipArchetype =
+  | 'authority-figure'
+  | 'romantic-interest'
+  | 'rival'
+  | 'child'
+  | 'stranger'
+  | 'old-friend';
+
+interface VignetteRequest {
+  archetype: RelationshipArchetype;
+  scenario: 'first-meeting' | 'conflict' | 'request-for-help' | 'casual';
+}
+
+interface VignetteResponse {
+  dialogue: string;           // The interaction
+  inferredPatterns: {         // Social patterns revealed
+    strangerDefault?: string;
+    warmthRate?: string;
+    conflictStyle?: string;
+  };
+}
+```
+
+### 5. Memory Excavation
+
+Collaboratively generate backstory through "recovered memories":
+
+```typescript
+interface MemoryExcavation {
+  // Prompt character to recall a memory
+  promptMemory(topic: MemoryTopic): string;
+
+  // Parse response into potential backstory content
+  extractBackstoryElements(response: string): BackstoryElement[];
+}
+
+type MemoryTopic =
+  | 'earliest-memory'
+  | 'proudest-moment'
+  | 'deepest-regret'
+  | 'first-loss'
+  | 'defining-choice';
+
+interface BackstoryElement {
+  content: string;
+  confidence: number;
+  suggestedIntegration: string; // Where in backstory this fits
+}
+```
+
+### 6. First Impression Generator
+
+Character reflects on how others perceive them:
+
+```typescript
+interface FirstImpressionRequest {
+  context?: 'tavern' | 'court' | 'battlefield' | 'marketplace';
+}
+
+interface FirstImpressionResponse {
+  externalPerception: string;  // "People usually think I'm..."
+  internalReaction: string;    // "And they're right/wrong because..."
+  inferredGap: {               // Self-perception vs presentation
+    presentedTrait: string;
+    actualTrait: string;
+  } | null;
+}
+```
+
+### 7. Internal Monologue Mode
+
+Show character's unspoken thoughts alongside dialogue:
+
+```typescript
+interface InternalMonologueResponse {
+  spoken: string;              // What they say out loud
+  thought: string;             // What they're thinking
+  inferredTraits: {            // Traits from the gap
+    path: string;
+    evidence: 'spoken' | 'thought' | 'contrast';
+  }[];
+}
+```
+
+Example:
+
+```text
+Character says: "I'm fine with whatever you decide."
+Character thinks: (Why do I always do this? Just say what you want for once.)
+```
+
+### 8. Voice Fingerprint Analysis
+
+After sufficient conversation, generate a voice analysis:
+
+```typescript
+interface VoiceFingerprint {
+  vocabulary: {
+    level: 'simple' | 'average' | 'educated' | 'erudite';
+    distinctiveWords: string[];
+  };
+  rhythm: {
+    averageSentenceLength: number;
+    variability: 'consistent' | 'varied' | 'erratic';
+  };
+  patterns: {
+    signaturePhrases: string[];
+    avoidedTopics: string[];
+    emotionalTriggers: string[];
+  };
+  humor: {
+    frequency: 'none' | 'rare' | 'occasional' | 'frequent';
+    type: string | null;
+  };
+}
+```
+
 ## Enhanced Prompts
 
 ### System Prompt Philosophy
@@ -333,7 +529,11 @@ interface StudioSession {
 - Redis (distributed, TTL-based expiry)
 - Database (persistent, queryable)
 
-For MVP: In-memory with session ID passed from frontend.
+**Decision**: Database table with 24-hour TTL auto-cleanup. This provides:
+- Persistence across page refreshes
+- Survival through server restarts
+- No additional Redis dependency
+- Automatic cleanup of stale sessions
 
 ### Frontend Integration
 
@@ -392,20 +592,49 @@ const sendMessage = async (content: string) => {
 - [ ] Add `/studio/suggest-prompt` endpoint
 - [ ] Integrate suggestions into frontend
 
-### Phase 5: Polish
+### Phase 5: Advanced Features
 
-- [ ] Session state management (memory → Redis)
+- [ ] Implement Dilemma Engine
+- [ ] Implement Emotional Range Demonstration
+- [ ] Implement Contradiction Mirror
+- [ ] Implement Relationship Vignettes
+- [ ] Implement Memory Excavation
+- [ ] Implement First Impression Generator
+- [ ] Implement Internal Monologue Mode
+- [ ] Implement Voice Fingerprint Analysis
+
+### Phase 6: Polish & Integration
+
 - [ ] Character deletion from studio
 - [ ] Performance optimization
 - [ ] Error handling and fallbacks
 
+### Phase 7: Validation & Testing
+
+- [ ] Validate all character profile fields connect to inference
+- [ ] Test Big Five personality dimension inference
+- [ ] Test emotional baseline inference
+- [ ] Test values and fears inference
+- [ ] Test social patterns inference
+- [ ] Test speech style inference
+- [ ] Test stress response inference
+- [ ] Test backstory generation/integration
+- [ ] End-to-end character creation flow testing
+
+## Decisions Made
+
+1. **Session persistence**: Yes - database table with 24-hour TTL auto-cleanup
+2. **State machine**: XState for the studio actor (consistency with game NPC)
+3. **Prompt philosophy**: Embodiment over explicit roleplay rules
+4. **DiscoveryGuide**: Yes - implement topic-based guided exploration
+
 ## Open Questions
 
-1. **Session persistence**: Should conversation state survive page refresh?
-2. **Multi-character sessions**: Can user switch characters mid-session?
-3. **Export conversation**: Save conversation transcript with character?
-4. **Voice consistency scoring**: Rate how well responses match established traits?
-5. **Guided mode toggle**: Let users opt into structured discovery vs free chat?
+1. **Multi-character sessions**: Can user switch characters mid-session?
+2. **Export conversation**: Save conversation transcript with character?
+3. **Voice consistency scoring**: Rate how well responses match established traits?
+4. **Guided mode toggle**: Let users opt into structured discovery vs free chat?
+5. **Feature flags**: Should advanced features (dilemma, vignettes) be toggleable?
 
 ## Success Metrics
 
@@ -422,10 +651,22 @@ packages/actors/src/studio-npc/
 ├── index.ts
 ├── types.ts
 ├── studio-actor.ts
+├── studio-machine.ts         # XState machine
 ├── conversation.ts
 ├── prompts.ts
 ├── inference.ts
-└── discovery.ts
+├── discovery.ts
+├── dilemma.ts                # Dilemma Engine
+├── emotional-range.ts        # Emotional Range Demo
+├── contradiction.ts          # Contradiction Mirror
+├── vignettes.ts              # Relationship Vignettes
+├── memory-excavation.ts      # Memory Excavation
+├── first-impression.ts       # First Impression Generator
+├── internal-monologue.ts     # Internal Monologue Mode
+└── voice-fingerprint.ts      # Voice Fingerprint Analysis
+
+packages/db/src/
+└── studio-sessions.ts        # DB table with 24hr TTL
 
 packages/api/src/routes/
 └── studio.ts                 # Extend with new endpoints
@@ -434,3 +675,69 @@ packages/web/src/features/character-studio/
 ├── hooks/useConversation.ts  # Update to use new API
 └── signals.ts                # Add suggestedPrompts signal
 ```
+
+## Character Profile Fields to Validate
+
+The following fields from the character-studio UI must be testable through conversation:
+
+### Core Identity
+
+- `name` - Character knows and responds to their name
+- `age` - Age-appropriate references and memories
+- `gender` - Consistent gender expression
+- `race` - Cultural/racial background in responses
+- `summary` - Quick self-description matches summary
+- `backstory` - Memories and history consistent with backstory
+
+### Big Five Personality (personalityMap.dimensions)
+
+- `openness` - Curiosity, creativity, willingness to try new things
+- `conscientiousness` - Organization, reliability, follow-through
+- `extraversion` - Energy in social situations, talkativeness
+- `agreeableness` - Cooperation, trust, empathy
+- `neuroticism` - Emotional stability, anxiety, mood swings
+
+### Emotional Baseline (personalityMap.emotionalBaseline)
+
+- `defaultMood` - Resting emotional state
+- `moodStability` - How quickly emotions shift
+- `emotionalExpressiveness` - How openly emotions show
+- Core emotions: `joy`, `sadness`, `anger`, `fear`, `disgust`, `surprise`
+
+### Values & Fears
+
+- `values[]` - Priorities surface in dilemmas and choices
+- `fears[]` - Avoidance behaviors, anxiety triggers
+
+### Social Patterns (personalityMap.social)
+
+- `strangerDefault` - Initial warmth/coldness with new people
+- `warmthRate` - How quickly trust develops
+- `preferredRole` - Leader/supporter/loner tendencies
+- `conflictStyle` - How disagreements are handled
+- `criticismResponse` - Reaction to negative feedback
+- `boundaries` - Personal space and limits
+
+### Speech Style (personalityMap.speech)
+
+- `vocabulary` - Word complexity and range
+- `sentenceStructure` - Simple vs elaborate sentences
+- `formality` - Casual vs formal register
+- `humor` - Frequency and type of humor
+- `expressiveness` - Emotional color in speech
+- `directness` - Blunt vs indirect communication
+- `pace` - Speaking rhythm
+
+### Stress Response (personalityMap.stress)
+
+- `primary` - Fight/flight/freeze/fawn default
+- `secondary` - Backup stress response
+- `threshold` - How much stress before response triggers
+- `recoveryRate` - How quickly composure returns
+- `soothingActivities` - What helps them calm down
+- `stressIndicators` - Observable signs of stress
+
+### Appearance & Body
+
+- Physical descriptions should be self-consistent
+- Body language should match personality
