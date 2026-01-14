@@ -4,6 +4,7 @@ import {
   createStudioNpcActor,
   StudioNpcActor,
   DiscoveryGuide,
+  buildStudioSystemPrompt,
   type InferredTrait,
 } from '@minimal-rpg/actors';
 import {
@@ -113,7 +114,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   const isHttpError = (err: unknown): err is { status: number } => {
-    return typeof err === 'object' && err !== null && typeof (err as any)['status'] === 'number';
+    return typeof err === 'object' && err !== null && typeof (err as any).status === 'number';
   };
 
   const toStudioError = (err: unknown): { status: number; body: StudioError } => {
@@ -314,6 +315,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
 
   // POST /studio/conversation - Main conversation endpoint
   app.post('/studio/conversation', async (c) => {
+    const requestStart = performance.now();
     try {
       const body: unknown = await c.req.json();
       const parsed = ConversationRequestSchema.safeParse(body);
@@ -335,9 +337,10 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       }
 
       const { message, profile } = parsed.data;
-      let sessionId = parsed.data['sessionId'];
+      let sessionId = parsed.data.sessionId;
 
       // Get or create session
+      const sessionStart = performance.now();
       let session: StudioSession | null = null;
       let actor: StudioNpcActor | undefined;
 
@@ -345,6 +348,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         session = await getStudioSession(sessionId);
         actor = actorCache.get(sessionId);
       }
+      const sessionMs = performance.now() - sessionStart;
 
       if (!session) {
         // Create new session
@@ -386,9 +390,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       actor.updateProfile(profile as Partial<CharacterProfile>);
 
       // Send message and get response
+      const respondStart = performance.now();
       const response = await actor.respond(message);
+      const respondMs = performance.now() - respondStart;
 
       // Persist updated state
+      const persistStart = performance.now();
       const state = actor.exportState();
       await updateStudioSession(sessionId, {
         profileSnapshot: profile,
@@ -401,6 +408,10 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         inferredTraits: state.inferredTraits,
         exploredTopics: Array.from(state.exploredTopics),
       });
+      const persistMs = performance.now() - persistStart;
+
+      const totalMs = performance.now() - requestStart;
+      console.log(`[StudioTiming] sessionId=${sessionId} total=${totalMs.toFixed(0)}ms session=${sessionMs.toFixed(0)}ms respond=${respondMs.toFixed(0)}ms persist=${persistMs.toFixed(0)}ms`);
 
       return c.json({
         ok: true,
@@ -415,6 +426,165 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       console.error('Studio conversation error:', error);
       return c.json({ ok: false, error: 'Conversation failed' }, 500);
     }
+  });
+
+  // POST /studio/conversation/stream - Streaming conversation endpoint
+  app.post('/studio/conversation/stream', async (c) => {
+    const body: unknown = await c.req.json();
+    const parsed = ConversationRequestSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+    }
+
+    if (!llmProvider) {
+      return c.json(
+        {
+          ok: false,
+          error: 'LLM provider not configured',
+          code: 'CONFIG_ERROR',
+          retryable: false,
+        } satisfies StudioError,
+        503
+      );
+    }
+
+    const { message, profile } = parsed.data;
+    let sessionId = parsed.data.sessionId;
+
+    // Get or create session
+    let session: StudioSession | null = null;
+    let actor: StudioNpcActor | undefined;
+
+    if (sessionId) {
+      session = await getStudioSession(sessionId);
+      actor = actorCache.get(sessionId);
+    }
+
+    if (!session) {
+      sessionId = crypto.randomUUID();
+      session = await createStudioSession(sessionId, profile);
+    }
+
+    if (!actor && sessionId) {
+      actor = createStudioNpcActor({
+        sessionId,
+        profile: profile as Partial<CharacterProfile>,
+        llmProvider,
+      });
+      actorCache.set(sessionId, actor);
+
+      if (session.conversation.length > 0) {
+        actor.restoreState({
+          conversation: session.conversation.map((m, idx) => ({
+            id: `msg-${idx}`,
+            content: m.content,
+            role: m.role as 'user' | 'character' | 'system',
+            timestamp: new Date(m.timestamp),
+            thought: undefined,
+          })),
+          summary: session.summary,
+          inferredTraits: session.inferredTraits as any[],
+          exploredTopics: session.exploredTopics as any[],
+        });
+      }
+    }
+
+    if (!actor || !sessionId) {
+      return c.json({ ok: false, error: 'Failed to initialize actor' }, 500);
+    }
+
+    actor.updateProfile(profile as Partial<CharacterProfile>);
+
+    return streamSSE(c, async (stream) => {
+      let fullResponse = '';
+
+      try {
+        // Send session ID first
+        await stream.writeSSE({
+          event: 'session',
+          data: JSON.stringify({ sessionId }),
+        });
+
+        // Get current state for context
+        const currentState = actor.exportState();
+
+        // Build messages for streaming
+        const messages: LLMMessage[] = [
+          { role: 'system', content: buildStudioSystemPrompt(profile as Partial<CharacterProfile>, currentState.summary) },
+        ];
+
+        // Add context window (existing messages + new user message)
+        const contextWindow = currentState.conversation.slice(-19);
+        messages.push(...contextWindow.map(m => ({
+          role: (m.role === 'character' ? 'assistant' : 'user') as LLMMessage['role'],
+          content: m.content,
+        })));
+
+        // Add the new user message
+        messages.push({ role: 'user', content: message });
+
+        // Stream the response
+        const iterable = await runLlmEffect(llmProvider.stream(messages));
+
+        for await (const chunk of iterable) {
+          const delta = (chunk as unknown as { choices?: { delta?: { content?: string } }[] })?.choices?.[0]?.delta?.content;
+          const content = typeof delta === 'string' ? delta : '';
+          if (!content) continue;
+
+          fullResponse += content;
+          await stream.writeSSE({
+            event: 'content',
+            data: JSON.stringify({ content }),
+          });
+        }
+
+        // Build new conversation array with user message and response
+        const now = new Date();
+        const newConversation = [
+          ...currentState.conversation.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp.toISOString(),
+          })),
+          { role: 'user' as const, content: message, timestamp: now.toISOString() },
+          { role: 'character' as const, content: fullResponse, timestamp: new Date().toISOString() },
+        ];
+
+        // Persist state directly
+        await updateStudioSession(sessionId, {
+          profileSnapshot: profile,
+          conversation: newConversation,
+          summary: currentState.summary,
+          inferredTraits: currentState.inferredTraits,
+          exploredTopics: Array.from(currentState.exploredTopics),
+        });
+
+        // Invalidate actor cache so next request gets fresh state
+        actorCache.delete(sessionId);
+
+        // Send completion with metadata
+        await stream.writeSSE({
+          event: 'done',
+          data: JSON.stringify({
+            done: true,
+            response: fullResponse,
+            inferredTraits: [],
+            meta: {
+              messageCount: newConversation.length,
+              summarized: currentState.summary !== null,
+              exploredTopics: Array.from(currentState.exploredTopics),
+            },
+          }),
+        });
+      } catch (err) {
+        console.error('Stream conversation error:', getMessage(err));
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ error: 'stream_failed', message: getMessage(err) }),
+        });
+      }
+    });
   });
 
   // POST /studio/suggest-prompt - Get suggested prompts
@@ -456,7 +626,37 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     }
   });
 
-  // POST /studio/dilemma - Generate a moral dilemma
+  // POST /studio/dilemma/generate - Generate just the dilemma scenario (no response)
+  app.post('/studio/dilemma/generate', async (c) => {
+    try {
+      const body: unknown = await c.req.json();
+      const profile = (body as { profile?: Partial<CharacterProfile> })?.profile;
+
+      if (!profile) {
+        return c.json({ ok: false, error: 'Profile required' }, 400);
+      }
+
+      if (!llmProvider) {
+        return c.json({ ok: false, error: 'LLM not configured' }, 503);
+      }
+
+      // Use the DilemmaEngine to generate just the scenario
+      const { DilemmaEngine } = await import('@minimal-rpg/actors');
+      const engine = new DilemmaEngine({ llmProvider: llmProvider as LLMProvider });
+      const dilemma = await engine.generateDilemma(profile);
+
+      return c.json({
+        ok: true,
+        scenario: dilemma.scenario,
+        conflictingValues: dilemma.conflictingValues,
+      });
+    } catch (error) {
+      console.error('Dilemma scenario generation error:', error);
+      return c.json({ ok: false, error: 'Failed to generate dilemma scenario' }, 500);
+    }
+  });
+
+  // POST /studio/dilemma - Generate a moral dilemma (legacy - full flow)
   app.post('/studio/dilemma', async (c) => {
     try {
       const body: unknown = await c.req.json();
@@ -467,6 +667,11 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       }
 
       const { sessionId, profile } = parsed.data;
+
+      console.log('[DilemmaAPI] Request received:', {
+        sessionId,
+        profileName: profile['name'],
+      });
 
       let actor = actorCache.get(sessionId);
       if (!actor) {
@@ -502,8 +707,37 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       actor.updateProfile(profile as Partial<CharacterProfile>);
       const response = await actor.requestDilemma();
 
-      // Persist
+      // Extract the dilemma scenario from conversation (it was added before the response)
       const state = actor.exportState();
+
+      console.log('[DilemmaAPI] Conversation messages:', state.conversation.map(m => ({
+        role: m.role,
+        contentPreview: m.content.slice(0, 80),
+      })));
+
+      // Find the dilemma message - look for [DILEMMA] prefix (with or without colon)
+      const dilemmaMessage = state.conversation.find(
+        m => m.role === 'system' && m.content.includes('[DILEMMA]')
+      );
+
+      // Extract scenario more robustly
+      let dilemmaScenario: string | null = null;
+      if (dilemmaMessage) {
+        // Handle both "[DILEMMA]: scenario" and "[DILEMMA]:scenario" formats
+        const regex = /\[DILEMMA\]:\s*(.*)/s;
+        const match = regex.exec(dilemmaMessage.content);
+        dilemmaScenario = match?.[1]?.trim() ?? null;
+      }
+
+      console.log('[DilemmaAPI] Response generated:', {
+        foundDilemmaMessage: !!dilemmaMessage,
+        dilemmaScenario: dilemmaScenario?.slice(0, 100),
+        responseLength: response.response?.length ?? 0,
+        responsePreview: response.response?.slice(0, 200),
+        hasInferredTraits: response.inferredTraits?.length ?? 0,
+      });
+
+      // Persist
       await updateStudioSession(sessionId, {
         conversation: state.conversation.map(m => ({
           role: m.role,
@@ -516,6 +750,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
 
       return c.json({
         ok: true,
+        dilemmaScenario,
         response: response.response,
         inferredTraits: response.inferredTraits,
         meta: response.meta,

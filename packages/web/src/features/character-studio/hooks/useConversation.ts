@@ -10,7 +10,7 @@ import {
   exploredTopics,
   addMessage,
 } from '../signals.js';
-import { studioConversation, suggestPrompts, generateDilemma as generateDilemmaService } from '../services/llm.js';
+import { studioConversationStream, suggestPrompts, generateDilemmaScenario } from '../services/llm.js';
 
 export interface UseConversationResult {
   messages: typeof conversationHistory.value;
@@ -25,83 +25,101 @@ export interface UseConversationResult {
 export function useConversation(): UseConversationResult {
   useSignals();
 
-  const handleStudioResponse = (response: any) => {
-    // Add character response or dilemma
-    addMessage({
-      role: response.response.startsWith('[DILEMMA]') ? 'system' : 'character',
-      content: response.response,
-    });
-
-    // Handle inferred traits
-    if (response.inferredTraits.length > 0) {
-      pendingTraits.value = [
-        ...pendingTraits.value,
-        ...response.inferredTraits.map((t: any) => ({
-          ...t,
-          status: 'pending' as const,
-        })),
-      ];
-    }
-
-    // Update suggested prompts
-    suggestedPrompts.value = response.suggestedPrompts || [];
-
-    // Update explored topics
-    exploredTopics.value = response.meta.exploredTopics;
-  };
-
   const sendMessage = useCallback(async (content: string) => {
     // Add user message immediately for UI
     addMessage({ role: 'user', content });
     isGenerating.value = true;
 
+    // Add placeholder message for streaming response
+    addMessage({ role: 'character', content: '' });
+
     try {
       const profile = characterProfile.value;
 
-      // Call new conversation API
-      const response = await studioConversation({
-        ...(studioSessionId.value ? { sessionId: studioSessionId.value } : {}),
-        profile,
-        message: content,
-      });
-
-      // Store session ID for future requests
-      studioSessionId.value = response.sessionId;
-
-      handleStudioResponse(response);
+      // Call streaming conversation API
+      await studioConversationStream(
+        {
+          ...(studioSessionId.value ? { sessionId: studioSessionId.value } : {}),
+          profile,
+          message: content,
+        },
+        {
+          onSessionId: (sessionId) => {
+            studioSessionId.value = sessionId;
+          },
+          onContent: (chunk) => {
+            // Update the last message (streaming placeholder) with new content
+            const messages = conversationHistory.value;
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg?.role === 'character') {
+              conversationHistory.value = [
+                ...messages.slice(0, -1),
+                { ...lastMsg, content: lastMsg.content + chunk },
+              ];
+            }
+          },
+          onDone: (response) => {
+            // Update explored topics and suggested prompts from final response
+            if (response.meta?.exploredTopics) {
+              exploredTopics.value = response.meta.exploredTopics;
+            }
+            if (response.inferredTraits && response.inferredTraits.length > 0) {
+              pendingTraits.value = [
+                ...pendingTraits.value,
+                ...response.inferredTraits.map((t, index) => ({
+                  ...t,
+                  id: `trait-${Date.now()}-${index}`,
+                  status: 'pending' as const,
+                })),
+              ];
+            }
+          },
+          onError: (error) => {
+            console.error('Stream error:', error);
+            // Replace streaming message with error using addMessage after removing placeholder
+            conversationHistory.value = conversationHistory.value.slice(0, -1);
+            addMessage({ role: 'system', content: 'Failed to generate response. Please try again.' });
+          },
+        }
+      );
 
     } catch (err) {
       console.error('Conversation error:', err);
-      addMessage({
-        role: 'system',
-        content: 'Failed to generate response. Please try again.',
-      });
+      // Replace streaming message with error using addMessage after removing placeholder
+      conversationHistory.value = conversationHistory.value.slice(0, -1);
+      addMessage({ role: 'system', content: 'Failed to generate response. Please try again.' });
     } finally {
       isGenerating.value = false;
     }
   }, []);
 
   const generateDilemma = useCallback(async () => {
-    if (!studioSessionId.value) return;
     isGenerating.value = true;
 
     try {
-      const response = await generateDilemmaService({
-        sessionId: studioSessionId.value,
+      // Step 1: Generate the dilemma scenario
+      const dilemmaResponse = await generateDilemmaScenario({
         profile: characterProfile.value,
       });
 
-      handleStudioResponse(response);
+      if (!dilemmaResponse.scenario) {
+        throw new Error('No dilemma scenario generated');
+      }
+
+      // Step 2: Format the dilemma as a user message and send through regular streaming
+      const dilemmaPrompt = `⚖️ **Moral Dilemma**\n\n${dilemmaResponse.scenario}\n\nHow do you respond to this situation?`;
+
+      // This will show the dilemma as a "user" message and get streaming response
+      await sendMessage(dilemmaPrompt);
     } catch (err) {
       console.error('Dilemma generation error:', err);
       addMessage({
         role: 'system',
         content: 'Failed to generate dilemma. Please try again.',
       });
-    } finally {
       isGenerating.value = false;
     }
-  }, []);
+  }, [sendMessage]);
 
   const clearConversation = useCallback(() => {
     conversationHistory.value = [];

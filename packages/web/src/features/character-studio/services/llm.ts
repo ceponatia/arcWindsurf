@@ -10,21 +10,22 @@ export interface StudioConversationInput {
 
 export interface StudioConversationResponse {
   ok: boolean;
-  sessionId: string;
+  sessionId?: string;
+  dilemmaScenario?: string | null;
   response: string;
   thought?: string;
-  inferredTraits: Array<{
+  inferredTraits: {
     path: string;
     value: unknown;
     confidence: number;
     evidence: string;
-  }>;
-  suggestedPrompts: Array<{
+  }[];
+  suggestedPrompts?: {
     prompt: string;
     topic: string;
     rationale: string;
-  }>;
-  meta: {
+  }[];
+  meta?: {
     messageCount: number;
     summarized: boolean;
     exploredTopics: string[];
@@ -57,6 +58,96 @@ export async function studioConversation(
   return response.json() as Promise<StudioConversationResponse>;
 }
 
+export interface StreamCallbacks {
+  onSessionId?: (sessionId: string) => void;
+  onContent?: (content: string) => void;
+  onDone?: (response: StudioConversationResponse) => void;
+  onError?: (error: string) => void;
+}
+
+export async function studioConversationStream(
+  input: StudioConversationInput,
+  callbacks: StreamCallbacks
+): Promise<void> {
+  const token = await getAccessToken();
+
+  const response = await fetch(`${API_BASE_URL}/studio/conversation/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      sessionId: input.sessionId,
+      profile: input.profile,
+      message: input.message,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error ?? `Request failed: ${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Process complete SSE messages (separated by double newlines)
+    const messages = buffer.split('\n\n');
+    buffer = messages.pop() ?? '';
+
+    for (const message of messages) {
+      if (!message.trim()) continue;
+
+      const lines = message.split('\n');
+      let eventType = '';
+      let dataStr = '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          dataStr = line.slice(6);
+        }
+      }
+
+      if (eventType && dataStr) {
+        try {
+          const data = JSON.parse(dataStr) as Record<string, unknown>;
+
+          switch (eventType) {
+            case 'session':
+              callbacks.onSessionId?.(data.sessionId as string);
+              break;
+            case 'content':
+              callbacks.onContent?.(data.content as string);
+              break;
+            case 'done':
+              callbacks.onDone?.(data as unknown as StudioConversationResponse);
+              break;
+            case 'error':
+              callbacks.onError?.(data.message as string);
+              break;
+          }
+        } catch (e) {
+          console.error('Failed to parse SSE data:', dataStr, e);
+        }
+      }
+    }
+  }
+}
+
 export interface SuggestPromptInput {
   profile: Partial<CharacterProfile>;
   exploredTopics?: string[];
@@ -65,11 +156,11 @@ export interface SuggestPromptInput {
 export interface SuggestPromptResponse {
   ok: boolean;
   topic: string;
-  prompts: Array<{
+  prompts: {
     prompt: string;
     topic: string;
     rationale: string;
-  }>;
+  }[];
   unexploredTopics: string[];
 }
 
@@ -94,17 +185,22 @@ export async function suggestPrompts(
   return response.json() as Promise<SuggestPromptResponse>;
 }
 
-export interface DilemmaInput {
-  sessionId: string;
+export interface DilemmaScenarioInput {
   profile: Partial<CharacterProfile>;
 }
 
-export async function generateDilemma(
-  input: DilemmaInput
-): Promise<StudioConversationResponse> {
+export interface DilemmaScenarioResponse {
+  ok: boolean;
+  scenario: string;
+  conflictingValues: string[];
+}
+
+export async function generateDilemmaScenario(
+  input: DilemmaScenarioInput
+): Promise<DilemmaScenarioResponse> {
   const token = await getAccessToken();
 
-  const response = await fetch(`${API_BASE_URL}/studio/dilemma`, {
+  const response = await fetch(`${API_BASE_URL}/studio/dilemma/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -114,11 +210,11 @@ export async function generateDilemma(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    const error = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
     throw new Error(error.error ?? `Request failed: ${response.status}`);
   }
 
-  return response.json() as Promise<StudioConversationResponse>;
+  return response.json() as Promise<DilemmaScenarioResponse>;
 }
 
 export async function deleteStudioSession(sessionId: string): Promise<void> {

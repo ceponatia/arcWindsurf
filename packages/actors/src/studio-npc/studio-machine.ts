@@ -22,6 +22,7 @@ import { MemoryExcavator } from './memory-excavation.js';
 import { FirstImpressionGenerator } from './first-impression.js';
 import { InternalMonologueGenerator } from './internal-monologue.js';
 import { VoiceFingerprintAnalyzer } from './voice-fingerprint.js';
+import { validateCharacterResponse } from './validation.js';
 import type {
   Dilemma,
   EmotionalRangeResponse,
@@ -31,6 +32,33 @@ import type {
   FirstImpressionResponse,
   VoiceFingerprint
 } from './types.js';
+
+/**
+ * Fallback messages when LLM response validation fails.
+ */
+const DILEMMA_FALLBACKS = [
+  "*pauses, staring into the distance* This is... not a simple choice. I need a moment to think.",
+  "*closes eyes, taking a deep breath* There's no easy answer here. Both paths have their costs.",
+  "*runs a hand through their hair* I... I don't know. Part of me says one thing, part says another.",
+  "*voice quiet* Some choices leave scars no matter which way you go.",
+  "*looks away* If I knew the right answer, it wouldn't be a dilemma, would it?",
+];
+
+const GENERIC_FALLBACKS = [
+  "*seems lost in thought for a moment* ...I'm sorry, where were we?",
+  "*blinks, refocusing* Forgive me, my mind wandered. Could you ask that again?",
+  "*hesitates* I... let me gather my thoughts.",
+];
+
+function generateDilemmaFallback(): string {
+  const index = Math.floor(Math.random() * DILEMMA_FALLBACKS.length);
+  return DILEMMA_FALLBACKS[index] ?? "*pauses* This is... not a simple choice.";
+}
+
+function generateGenericFallback(): string {
+  const index = Math.floor(Math.random() * GENERIC_FALLBACKS.length);
+  return GENERIC_FALLBACKS[index] ?? "*hesitates* Let me gather my thoughts.";
+}
 
 /**
  * Create the studio NPC state machine.
@@ -251,6 +279,9 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
         setDilemmaResponse: assign({
           conversation: ({ context, event }) => {
             const dilemma = (event as unknown as { output: Dilemma }).output;
+
+            console.log('[DilemmaDebug] Generated dilemma:', JSON.stringify(dilemma, null, 2));
+
             const newMessage: ConversationMessage = {
               id: crypto.randomUUID(),
               role: 'system',
@@ -365,6 +396,7 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
       actors: {
         generateResponse: fromPromise(async ({ input }) => {
           const ctx = input as StudioMachineContext;
+          const actorStart = performance.now();
 
           const manager = new ConversationManager({
             llmProvider: ctx.llmProvider,
@@ -379,6 +411,7 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
             console.log(`[StudioMachine] Summarization recommended for session ${ctx.sessionId}`);
           }
 
+          const promptStart = performance.now();
           const systemPrompt = buildStudioSystemPrompt(ctx.profile, manager.getSummary());
           const contextWindow = manager.getContextWindow();
 
@@ -388,8 +421,11 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
 
           // Special case: if last message is a dilemma, use buildDilemmaPrompt to help character live it
           const lastMsg = ctx.conversation[ctx.conversation.length - 1];
-          if (lastMsg && lastMsg.role === 'system' && lastMsg.content.startsWith('[DILEMMA]')) {
+          const isDilemmaResponse = lastMsg?.role === 'system' && lastMsg.content.startsWith('[DILEMMA]');
+
+          if (isDilemmaResponse) {
             const scenario = lastMsg.content.replace('[DILEMMA]: ', '');
+            console.log('[DilemmaDebug] Dilemma scenario detected:', scenario);
             messages.push({
               role: 'system',
               content: buildDilemmaPrompt(scenario, ['your core values', 'the situation at hand'])
@@ -401,8 +437,50 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
             content: m.content,
           })));
 
+          // Log full message array for debugging
+          if (isDilemmaResponse) {
+            console.log('[DilemmaDebug] Full messages array:', JSON.stringify(messages.map(m => ({
+              role: m.role,
+              contentLength: (m.content ?? '').length,
+              contentPreview: (m.content ?? '').slice(0, 200) + ((m.content ?? '').length > 200 ? '...' : '')
+            })), null, 2));
+          }
+
+          const promptMs = performance.now() - promptStart;
+          const llmStart = performance.now();
           const result = await Effect.runPromise(ctx.llmProvider.chat(messages));
-          return { content: result.content ?? '', thought: undefined };
+          const llmMs = performance.now() - llmStart;
+          const responseContent = result.content ?? '';
+
+          // Log timing for all requests
+          const totalActorMs = performance.now() - actorStart;
+          console.log(`[StudioTiming] generateResponse: total=${totalActorMs.toFixed(0)}ms prompt=${promptMs.toFixed(0)}ms llm=${llmMs.toFixed(0)}ms tokens=${messages.reduce((acc, m) => acc + (m.content ?? '').length, 0)} responseLen=${responseContent.length}`);
+
+          // Log response for debugging
+          if (isDilemmaResponse) {
+            console.log('[DilemmaDebug] LLM response length:', responseContent.length);
+            console.log('[DilemmaDebug] LLM response preview:', responseContent.slice(0, 500));
+          }
+
+          // Validate the response
+          const validation = validateCharacterResponse(responseContent);
+
+          if (!validation.valid) {
+            console.error('[StudioMachine] Invalid LLM response detected:', validation);
+            console.error('[StudioMachine] Response preview:', responseContent.slice(0, 500));
+
+            // Return fallback message based on context
+            const fallbackMessage = isDilemmaResponse
+              ? generateDilemmaFallback()
+              : generateGenericFallback();
+
+            return {
+              content: fallbackMessage,
+              thought: undefined,
+            };
+          }
+
+          return { content: responseContent, thought: undefined };
         }),
         inferTraits: fromPromise(async ({ input }) => {
           const ctx = input as StudioMachineContext;

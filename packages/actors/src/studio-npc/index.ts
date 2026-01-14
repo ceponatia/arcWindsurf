@@ -31,3 +31,4 @@ export { MemoryExcavator } from './memory-excavation.js';
 export { FirstImpressionGenerator } from './first-impression.js';
 export { InternalMonologueGenerator } from './internal-monologue.js';
 export { VoiceFingerprintAnalyzer } from './voice-fingerprint.js';
+export { isValidCharacterResponse, validateCharacterResponse, type ValidationResult } from './validation.js';

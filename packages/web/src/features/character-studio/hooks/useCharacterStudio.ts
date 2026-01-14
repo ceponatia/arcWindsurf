@@ -7,6 +7,7 @@ import {
   saveStatus,
   isStudioLoading,
   resetStudio,
+  resetStudioSession,
   updateProfile,
   validateProfile,
   clearAllFieldErrors,
@@ -41,6 +42,10 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
 
   // Load character on mount if editing
   useEffect(() => {
+    // Always reset conversation session on mount to ensure fresh start
+    // Old sessions remain in DB for debugging (24h TTL)
+    resetStudioSession();
+
     if (id) {
       isStudioLoading.value = true;
       characterId.value = id;

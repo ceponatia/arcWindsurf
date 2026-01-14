@@ -20,7 +20,7 @@ export const TraitSuggestions: React.FC = () => {
       <div className="space-y-2">
         {pending.map((trait) => (
           <div
-            key={`${trait.path}:${trait.evidence}:${Math.round(trait.confidence * 1000)}`}
+            key={trait.id}
             className="flex items-center justify-between gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700"
           >
             <div className="flex-1 min-w-0">

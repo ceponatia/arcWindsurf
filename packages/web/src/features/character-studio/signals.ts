@@ -39,6 +39,7 @@ export interface ConversationMessage {
 }
 
 export interface InferredTrait {
+  id: string;             // Unique identifier for React keys
   path: string;           // e.g., 'personalityMap.social.strangerDefault'
   value: unknown;         // e.g., 'guarded'
   confidence: number;     // 0-1

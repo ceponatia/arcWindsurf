@@ -210,6 +210,7 @@ export class StudioNpcActor {
 
   /**
    * Export state for persistence.
+   * Uses machine context as source of truth (includes system messages like dilemmas).
    */
   exportState(): {
     conversation: ConversationMessage[];
@@ -218,10 +219,9 @@ export class StudioNpcActor {
     exploredTopics: DiscoveryTopic[];
   } {
     const snapshot = this.machine.getSnapshot();
-    const exported = this.conversationManager.export();
     return {
-      conversation: exported.messages,
-      summary: exported.summary,
+      conversation: snapshot.context.conversation,
+      summary: snapshot.context.summary,
       inferredTraits: snapshot.context.inferredTraits,
       exploredTopics: Array.from(snapshot.context.exploredTopics),
     };
