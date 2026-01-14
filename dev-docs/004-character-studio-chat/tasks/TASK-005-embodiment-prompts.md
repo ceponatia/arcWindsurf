@@ -376,11 +376,11 @@ export {
 
 ## Acceptance Criteria
 
-- [ ] `prompts.ts` created with all prompt builders
-- [ ] `buildStudioSystemPrompt()` creates embodiment-style prompt
-- [ ] Identity, story, personality, voice blocks generated from profile
-- [ ] Conversation context included when summary provided
-- [ ] Engagement block encourages authentic interaction
-- [ ] Helper prompts for advanced features (dilemma, vignette, etc.)
-- [ ] All prompt builders exported from index
-- [ ] Prompts are warm and immersive, not instructional
+- [x] `prompts.ts` created with all prompt builders
+- [x] `buildStudioSystemPrompt()` creates embodiment-style prompt
+- [x] Identity, story, personality, voice blocks generated from profile
+- [x] Conversation context included when summary provided
+- [x] Engagement block encourages authentic interaction
+- [x] Helper prompts for advanced features (dilemma, vignette, etc.)
+- [x] All prompt builders exported from index
+- [x] Prompts are warm and immersive, not instructional

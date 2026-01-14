@@ -64,35 +64,37 @@ export const TORSO_HYGIENE_MODIFIERS = flattenHygieneData(TORSO_HYGIENE_CONFIG, 
  * Grouped defaults for torso regions.
  */
 export const TORSO_SCENT_DATA = {
-  main: {
-    torso: { ...CLEAN_SKIN, intensity: 0.25 },
-    abdomen: CLEAN_SKIN,
-  },
-  navel: {
-    navel: CLEAN_SKIN,
-  },
-  sides: {
-    leftSide: CLEAN_SKIN,
-    rightSide: CLEAN_SKIN,
-  },
-  waist: {
-    waist: CLEAN_SKIN,
-  },
-  hips: {
-    hips: CLEAN_SKIN,
-    leftHip: CLEAN_SKIN,
-    rightHip: CLEAN_SKIN,
-  },
-  pelvis: {
-    pelvis: CLEAN_SKIN,
+  torso: {
+    main: {
+      torso: { ...CLEAN_SKIN, intensity: 0.25 },
+      abdomen: CLEAN_SKIN,
+    },
+    navel: {
+      navel: CLEAN_SKIN,
+    },
+    sides: {
+      leftSide: CLEAN_SKIN,
+      rightSide: CLEAN_SKIN,
+    },
+    waist: {
+      waist: CLEAN_SKIN,
+    },
+    hips: {
+      hips: CLEAN_SKIN,
+      leftHip: CLEAN_SKIN,
+      rightHip: CLEAN_SKIN,
+    },
+    pelvis: {
+      pelvis: CLEAN_SKIN,
+    },
   },
 };
 
 export const TORSO_DEFAULT_SCENTS: Partial<Record<TorsoRegion, RegionScent>> = {
-  ...TORSO_SCENT_DATA.main,
-  ...TORSO_SCENT_DATA.navel,
-  ...TORSO_SCENT_DATA.sides,
-  ...TORSO_SCENT_DATA.waist,
-  ...TORSO_SCENT_DATA.hips,
-  ...TORSO_SCENT_DATA.pelvis,
+  ...TORSO_SCENT_DATA.torso.main,
+  ...TORSO_SCENT_DATA.torso.navel,
+  ...TORSO_SCENT_DATA.torso.sides,
+  ...TORSO_SCENT_DATA.torso.waist,
+  ...TORSO_SCENT_DATA.torso.hips,
+  ...TORSO_SCENT_DATA.torso.pelvis,
 };

@@ -7,4 +7,5 @@ export * from './world.js';
 export * from './prompt-tags.js';
 export * from './users.js';
 export * from './admin.js';
+export * from './studio-sessions.js';
 export * from './types.js';

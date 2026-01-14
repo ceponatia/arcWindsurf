@@ -11,19 +11,31 @@ import { StudioHeader } from './components/StudioHeader.js';
 export interface CharacterStudioProps {
   id?: string | null;
   onSave?: () => void;
+  onDelete?: (id: string) => void;
   onCancel?: () => void;
 }
 
-export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, onCancel }) => {
+export const CharacterStudio: React.FC<CharacterStudioProps> = ({
+  id,
+  onSave,
+  onDelete,
+  onCancel,
+}) => {
   useSignals();
 
-  const { profile, isDirty, saveStatus, isLoading, save, isEditing } = useCharacterStudio({
-    id: id ?? null,
-    onSave,
-  });
+  const { profile, isDirty, saveStatus, isLoading, isDeleting, save, deleteCharacter, isEditing } =
+    useCharacterStudio({
+      id: id ?? null,
+      onSave,
+      onDelete,
+    });
 
   const handleSave = () => {
     void save();
+  };
+
+  const handleDelete = () => {
+    void deleteCharacter();
   };
 
   const handleCancel = () => {
@@ -47,7 +59,9 @@ export const CharacterStudio: React.FC<CharacterStudioProps> = ({ id, onSave, on
         characterName={profile.name ?? 'New Character'}
         isDirty={isDirty}
         saveStatus={saveStatus}
+        isDeleting={isDeleting}
         onSave={handleSave}
+        onDelete={handleDelete}
         onCancel={handleCancel}
         isEditing={isEditing}
         hasErrors={Object.keys(fieldErrors.value).length > 0}

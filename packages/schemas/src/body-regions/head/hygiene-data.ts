@@ -93,45 +93,47 @@ export const HEAD_HYGIENE_MODIFIERS = flattenHygieneData(HEAD_HYGIENE_CONFIG, [.
  * Grouped defaults for head regions.
  */
 export const HEAD_SCENT_DATA = {
-  main: {
-    head: { ...NEUTRAL, intensity: 0.2 },
-    face: CLEAN_SKIN,
-    forehead: CLEAN_SKIN,
-  },
-  eyes: {
-    leftEye: CLEAN_SKIN,
-    rightEye: CLEAN_SKIN,
-  },
-  nose: {
-    nose: CLEAN_SKIN,
-  },
-  cheeks: {
-    leftCheek: CLEAN_SKIN,
-    rightCheek: CLEAN_SKIN,
-  },
-  chin: {
-    chin: CLEAN_SKIN,
-  },
-  mouth: {
-    mouth: { primary: 'neutral', intensity: 0.15 },
-  },
-  hair: {
-    hair: { primary: 'clean hair', notes: ['shampoo'], intensity: 0.3 },
-  },
-  ears: {
-    ears: { ...CLEAN_SKIN, intensity: 0.15 },
-    leftEar: { ...CLEAN_SKIN, intensity: 0.15 },
-    rightEar: { ...CLEAN_SKIN, intensity: 0.15 },
+  head: {
+    main: {
+      head: { ...NEUTRAL, intensity: 0.2 },
+      face: CLEAN_SKIN,
+      forehead: CLEAN_SKIN,
+    },
+    eyes: {
+      leftEye: CLEAN_SKIN,
+      rightEye: CLEAN_SKIN,
+    },
+    nose: {
+      nose: CLEAN_SKIN,
+    },
+    cheeks: {
+      leftCheek: CLEAN_SKIN,
+      rightCheek: CLEAN_SKIN,
+    },
+    chin: {
+      chin: CLEAN_SKIN,
+    },
+    mouth: {
+      mouth: { primary: 'neutral', intensity: 0.15 },
+    },
+    hair: {
+      hair: { primary: 'clean hair', notes: ['shampoo'], intensity: 0.3 },
+    },
+    ears: {
+      ears: { ...CLEAN_SKIN, intensity: 0.15 },
+      leftEar: { ...CLEAN_SKIN, intensity: 0.15 },
+      rightEar: { ...CLEAN_SKIN, intensity: 0.15 },
+    },
   },
 };
 
 export const HEAD_DEFAULT_SCENTS: Partial<Record<HeadRegion, RegionScent>> = {
-  ...HEAD_SCENT_DATA.main,
-  ...HEAD_SCENT_DATA.eyes,
-  ...HEAD_SCENT_DATA.nose,
-  ...HEAD_SCENT_DATA.cheeks,
-  ...HEAD_SCENT_DATA.chin,
-  ...HEAD_SCENT_DATA.mouth,
-  ...HEAD_SCENT_DATA.hair,
-  ...HEAD_SCENT_DATA.ears,
+  ...HEAD_SCENT_DATA.head.main,
+  ...HEAD_SCENT_DATA.head.eyes,
+  ...HEAD_SCENT_DATA.head.nose,
+  ...HEAD_SCENT_DATA.head.cheeks,
+  ...HEAD_SCENT_DATA.head.chin,
+  ...HEAD_SCENT_DATA.head.mouth,
+  ...HEAD_SCENT_DATA.head.hair,
+  ...HEAD_SCENT_DATA.head.ears,
 };

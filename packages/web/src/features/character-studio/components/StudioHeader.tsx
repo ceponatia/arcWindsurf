@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { completionScore, requiredFieldsCompletion } from '../signals.js';
 
@@ -7,7 +7,9 @@ export interface StudioHeaderProps {
   characterName: string;
   isDirty: boolean;
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  isDeleting?: boolean;
   onSave: () => void;
+  onDelete?: () => void;
   onCancel?: () => void;
   isEditing: boolean;
   hasErrors?: boolean;
@@ -17,7 +19,9 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   characterName,
   isDirty,
   saveStatus,
+  isDeleting,
   onSave,
+  onDelete,
   onCancel,
   isEditing,
   hasErrors,
@@ -107,6 +111,21 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
           >
             Cancel
+          </button>
+        )}
+
+        {isEditing && onDelete && (
+          <button
+            onClick={onDelete}
+            disabled={isDeleting || saveStatus === 'saving'}
+            className="p-2 text-slate-400 hover:text-red-400 disabled:opacity-50 transition-colors"
+            title="Delete Character"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Trash2 className="h-5 w-5" />
+            )}
           </button>
         )}
 

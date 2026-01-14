@@ -299,13 +299,17 @@ describe('studio-sessions', () => {
 
 ## Acceptance Criteria
 
-- [ ] `studio_sessions` table created with all columns
-- [ ] Index on `expires_at` for efficient TTL queries
-- [ ] `createStudioSession()` creates session with 24-hour expiry
-- [ ] `getStudioSession()` retrieves and deserializes JSON fields
-- [ ] `updateStudioSession()` updates fields and extends TTL
-- [ ] `deleteStudioSession()` removes session
-- [ ] `cleanupExpiredSessions()` removes expired sessions
-- [ ] Table initialized on API server startup
-- [ ] All functions exported from `@minimal-rpg/db`
+- [x] `studio_sessions` table created with all columns
+- [x] Index on `expires_at` for efficient TTL queries
+- [x] `createStudioSession()` creates session with 24-hour expiry
+- [x] `getStudioSession()` retrieves and deserializes JSON fields
+- [x] `updateStudioSession()` updates fields and extends TTL
+- [x] `deleteStudioSession()` removes session
+- [x] `cleanupExpiredSessions()` removes expired sessions
+- [x] Table initialized on API server startup
+- [x] All functions exported from `@minimal-rpg/db`
 - [ ] Unit tests pass
+
+## Validation Notes
+
+- Could not run the package test `packages/db/test/studio-sessions.test.ts` via the `runTests` tool (`No tests found`), so unit test status is unverified.

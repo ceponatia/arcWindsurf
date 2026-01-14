@@ -20,14 +20,14 @@ export const TraitSuggestions: React.FC = () => {
       <div className="space-y-2">
         {pending.map((trait) => (
           <div
-            key={`${trait.path}:${trait.source}:${Math.round(trait.confidence * 1000)}`}
+            key={`${trait.path}:${trait.evidence}:${Math.round(trait.confidence * 1000)}`}
             className="flex items-center justify-between gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700"
           >
             <div className="flex-1 min-w-0">
               <div className="text-sm text-slate-200 font-medium">
                 {formatTraitPath(trait.path)}
               </div>
-              <div className="text-xs text-slate-400 truncate">"{trait.source}"</div>
+              <div className="text-xs text-slate-400 truncate">"{trait.evidence}"</div>
               <div className="text-xs text-violet-400 mt-1">
                 Confidence: {Math.round(trait.confidence * 100)}%
               </div>

@@ -280,13 +280,13 @@ interface SuggestPromptResponse {
 
 ## Acceptance Criteria
 
-- [ ] `POST /studio/conversation` creates session if needed
-- [ ] `POST /studio/conversation` reuses existing session by ID
-- [ ] `POST /studio/conversation` returns response with traits and prompts
-- [ ] Session state persisted to database after each message
-- [ ] Actor cache prevents recreating actors unnecessarily
-- [ ] `POST /studio/suggest-prompt` returns prompts based on gaps
-- [ ] `DELETE /studio/session/:id` removes session and stops actor
-- [ ] `GET /studio/session/:id` returns session state
-- [ ] Expired session cleanup on startup
-- [ ] Proper error handling and status codes
+- [x] `POST /studio/conversation` creates session if needed
+- [x] `POST /studio/conversation` reuses existing session by ID
+- [x] `POST /studio/conversation` returns response with traits and prompts
+- [x] Session state persisted to database after each message
+- [x] Actor cache prevents recreating actors unnecessarily
+- [x] `POST /studio/suggest-prompt` returns prompts based on gaps
+- [x] `DELETE /studio/session/:id` removes session and stops actor
+- [x] `GET /studio/session/:id` returns session state
+- [x] Expired session cleanup on startup
+- [x] Proper error handling and status codes

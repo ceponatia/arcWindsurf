@@ -314,13 +314,13 @@ export { DiscoveryGuide, type DiscoveryGuideConfig } from './discovery.js';
 
 ## Acceptance Criteria
 
-- [ ] `DiscoveryGuide` class created
-- [ ] `markExplored()` tracks explored topics
-- [ ] `getUnexploredTopics()` returns remaining topics
-- [ ] `suggestTopic()` prioritizes by profile gaps
-- [ ] `generatePrompts()` returns contextual prompts for a topic
-- [ ] `generateMixedPrompts()` returns prompts from multiple topics
-- [ ] `inferTopicFromMessage()` detects topic from user input
-- [ ] Profile gap scoring works correctly
-- [ ] All 9 discovery topics have prompt templates
-- [ ] Exported from package index
+- [x] `DiscoveryGuide` class created
+- [x] `markExplored()` tracks explored topics
+- [x] `getUnexploredTopics()` returns remaining topics
+- [x] `suggestTopic()` prioritizes by profile gaps
+- [x] `generatePrompts()` returns contextual prompts for a topic
+- [x] `generateMixedPrompts()` returns prompts from multiple topics
+- [x] `inferTopicFromMessage()` detects topic from user input
+- [x] Profile gap scoring works correctly
+- [x] All 9 discovery topics have prompt templates
+- [x] Exported from package index

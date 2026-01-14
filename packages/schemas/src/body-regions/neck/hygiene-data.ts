@@ -47,8 +47,19 @@ export const NECK_HYGIENE_CONFIG = {
 
 export const NECK_HYGIENE_MODIFIERS = flattenHygieneData(NECK_HYGIENE_CONFIG, [...NECK_REGIONS]);
 
+/**
+ * Grouped defaults for neck regions.
+ */
+export const NECK_SCENT_DATA = {
+  neck: {
+    main: {
+      neck: CLEAN_SKIN,
+      nape: CLEAN_SKIN,
+      throat: CLEAN_SKIN,
+    },
+  },
+};
+
 export const NECK_DEFAULT_SCENTS: Partial<Record<NeckRegion, RegionScent>> = {
-  neck: CLEAN_SKIN,
-  nape: CLEAN_SKIN,
-  throat: CLEAN_SKIN,
+  ...NECK_SCENT_DATA.neck.main,
 };

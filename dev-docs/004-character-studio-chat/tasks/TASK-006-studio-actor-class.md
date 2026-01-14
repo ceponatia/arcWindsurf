@@ -317,15 +317,15 @@ export { StudioNpcActor, createStudioNpcActor } from './studio-actor.js';
 
 ## Acceptance Criteria
 
-- [ ] `StudioNpcActor` class created
-- [ ] `start()` and `stop()` manage machine lifecycle
-- [ ] `respond()` sends message and returns StudioResponse
-- [ ] `updateProfile()` updates character profile
-- [ ] `clearConversation()` resets state
-- [ ] `getConversationSummary()` returns current summary
-- [ ] `getAllMessages()` returns full history
-- [ ] `getInferredTraits()` returns traits from session
-- [ ] Advanced feature methods (requestDilemma, etc.) stubbed
-- [ ] `exportState()` and `restoreState()` for persistence
-- [ ] `createStudioNpcActor()` factory function
-- [ ] All exports in index.ts
+- [x] `StudioNpcActor` class created
+- [x] `start()` and `stop()` manage machine lifecycle
+- [x] `respond()` sends message and returns StudioResponse
+- [x] `updateProfile()` updates character profile
+- [x] `clearConversation()` resets state
+- [x] `getConversationSummary()` returns current summary
+- [x] `getAllMessages()` returns full history
+- [x] `getInferredTraits()` returns traits from session
+- [x] Advanced feature methods (requestDilemma, etc.) stubbed
+- [x] `exportState()` and `restoreState()` for persistence
+- [x] `createStudioNpcActor()` factory function
+- [x] All exports in index.ts

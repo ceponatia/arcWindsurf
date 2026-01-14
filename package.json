@@ -10,6 +10,8 @@
     "dev": "turbo run dev",
     "dev:kill": "node scripts/kill-ports.mjs 3001 5173",
     "lint": "turbo run lint",
+    "infra:up": "docker compose --env-file .env -f config/docker/docker-compose.yml up -d db redis",
+    "infra:down": "docker compose -f config/docker/docker-compose.yml stop db redis",
     "docker:up": "docker compose --env-file .env -f config/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f config/docker/docker-compose.yml down",
     "refs:check": "node scripts/sync-ts-references.mjs && git diff --exit-code",

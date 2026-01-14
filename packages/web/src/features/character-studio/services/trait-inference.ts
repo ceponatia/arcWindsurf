@@ -25,7 +25,7 @@ export function inferTraitsFromKeywords(
         path: 'personalityMap.fears',
         value: { category, specific: extractFearSpecific(message) },
         confidence: 0.6,
-        source: message.slice(0, 100),
+        evidence: message.slice(0, 100),
       });
       break;
     }
@@ -46,7 +46,7 @@ export function inferTraitsFromKeywords(
         path: 'personalityMap.values',
         value: { value, priority: 5 },
         confidence: 0.5,
-        source: message.slice(0, 100),
+        evidence: message.slice(0, 100),
       });
     }
   }
@@ -61,14 +61,14 @@ export function inferTraitsFromKeywords(
         path: 'personalityMap.social.strangerDefault',
         value: 'guarded',
         confidence: 0.7,
-        source: message.slice(0, 100),
+        evidence: message.slice(0, 100),
       });
     } else if (isFriendly) {
       traits.push({
         path: 'personalityMap.social.strangerDefault',
         value: 'open',
         confidence: 0.7,
-        source: message.slice(0, 100),
+        evidence: message.slice(0, 100),
       });
     }
   }

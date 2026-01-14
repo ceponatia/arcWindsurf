@@ -336,12 +336,12 @@ inferTraits: fromPromise(async ({ input }) => {
 
 ## Acceptance Criteria
 
-- [ ] `TraitInferenceEngine` class created
-- [ ] `inferFromExchange()` calls LLM and parses traits
-- [ ] `accumulateEvidence()` tracks traits across exchanges
-- [ ] `getHighConfidenceTraits()` returns traits with accumulated confidence
-- [ ] `detectContradiction()` identifies conflicts with existing profile
-- [ ] Confidence scoring matches calibration guidelines
-- [ ] All valid trait paths supported in prompt
-- [ ] Graceful error handling on LLM failure
-- [ ] Exported from package index
+- [x] `TraitInferenceEngine` class created
+- [x] `inferFromExchange()` calls LLM and parses traits
+- [x] `accumulateEvidence()` tracks traits across exchanges
+- [x] `getHighConfidenceTraits()` returns traits with accumulated confidence
+- [x] `detectContradiction()` identifies conflicts with existing profile
+- [x] Confidence scoring matches calibration guidelines
+- [x] All valid trait paths supported in prompt
+- [x] Graceful error handling on LLM failure
+- [x] Exported from package index

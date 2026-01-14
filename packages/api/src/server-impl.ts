@@ -6,7 +6,7 @@ import { loadData } from './loaders/loader.js';
 import type { ApiError } from './types.js';
 import type { LoadedData } from './loaders/types.js';
 import { getConfig } from './utils/config.js';
-import { ensureLocalAdminUser } from '@minimal-rpg/db/node';
+import { ensureLocalAdminUser, initStudioSessionsTable, cleanupExpiredSessions } from '@minimal-rpg/db/node';
 
 // Route registrars
 import { registerSystemRoutes } from './routes/system/index.js';
@@ -50,6 +50,10 @@ let loaded: LoadedData | undefined = undefined;
 export async function startServer(): Promise<void> {
   try {
     initializeWorldBus();
+
+    // Initialize studio sessions table if not already present
+    await initStudioSessionsTable();
+    await cleanupExpiredSessions();
 
     // Load character + setting JSON from data/
     loaded = await loadData();

@@ -352,15 +352,21 @@ Create a manual testing checklist at `packages/actors/src/studio-npc/__tests__/m
 
 ## Acceptance Criteria
 
-- [ ] All Big Five dimensions reflected in prompts
-- [ ] Values and fears included in character portrayal
+- [x] All Big Five dimensions reflected in prompts
+- [x] Values and fears included in character portrayal
 - [ ] Social patterns influence conversation behavior
-- [ ] Speech style observable in responses
+- [x] Speech style observable in responses
 - [ ] Stress response testable through scenarios
-- [ ] Trait inference returns valid paths and values
-- [ ] Contradiction detection works correctly
-- [ ] Discovery guide covers all profile areas
-- [ ] Conversation manager handles 20+ messages
-- [ ] Session persistence works across page refresh
+- [x] Trait inference returns valid paths and values
+- [x] Contradiction detection works correctly
+- [x] Discovery guide covers all profile areas
+- [x] Conversation manager handles 20+ messages
+- [x] Session persistence works across page refresh
 - [ ] Manual test script passes all checks
-- [ ] Integration tests pass
+- [x] Integration tests pass
+
+## Validation Notes
+
+- Social pattern influence and stress-response behaviors are not exercised beyond prompt text; no automated or manual checks confirm they affect conversation flow.
+- Manual checklist was not executed during validation.
+- Integration tests pass via `CI=true pnpm -C packages/actors test`. The `knowledge`/`wisdom` mismatch in the integration test has been fixed.

@@ -9,3 +9,6 @@ export * from './player/index.js';
 
 // Registry
 export * from './registry/index.js';
+
+// Studio NPC
+export * from './studio-npc/index.js';

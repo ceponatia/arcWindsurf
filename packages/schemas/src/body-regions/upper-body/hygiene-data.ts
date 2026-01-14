@@ -53,35 +53,37 @@ export const UPPER_BODY_HYGIENE_MODIFIERS = flattenHygieneData(UPPER_BODY_HYGIEN
  * Grouped defaults for upper body regions.
  */
 export const UPPER_BODY_SCENT_DATA = {
-  shoulders: {
-    shoulders: CLEAN_SKIN,
-    leftShoulder: CLEAN_SKIN,
-    rightShoulder: CLEAN_SKIN,
-  },
-  chest: {
-    chest: CLEAN_SKIN,
-    leftPectoral: CLEAN_SKIN,
-    rightPectoral: CLEAN_SKIN,
-  },
-  breasts: {
-    breasts: CLEAN_SKIN,
-    leftBreast: CLEAN_SKIN,
-    rightBreast: CLEAN_SKIN,
-    nipples: CLEAN_SKIN,
-    leftNipple: CLEAN_SKIN,
-    rightNipple: CLEAN_SKIN,
-  },
-  back: {
-    upperBack: CLEAN_SKIN,
-    back: CLEAN_SKIN,
-    spine: CLEAN_SKIN,
-    lowerBack: CLEAN_SKIN,
+  upperBody: {
+    shoulders: {
+      shoulders: CLEAN_SKIN,
+      leftShoulder: CLEAN_SKIN,
+      rightShoulder: CLEAN_SKIN,
+    },
+    chest: {
+      chest: CLEAN_SKIN,
+      leftPectoral: CLEAN_SKIN,
+      rightPectoral: CLEAN_SKIN,
+    },
+    breasts: {
+      breasts: CLEAN_SKIN,
+      leftBreast: CLEAN_SKIN,
+      rightBreast: CLEAN_SKIN,
+      nipples: CLEAN_SKIN,
+      leftNipple: CLEAN_SKIN,
+      rightNipple: CLEAN_SKIN,
+    },
+    back: {
+      upperBack: CLEAN_SKIN,
+      back: CLEAN_SKIN,
+      spine: CLEAN_SKIN,
+      lowerBack: CLEAN_SKIN,
+    },
   },
 };
 
 export const UPPER_BODY_DEFAULT_SCENTS: Partial<Record<UpperBodyRegion, RegionScent>> = {
-  ...UPPER_BODY_SCENT_DATA.shoulders,
-  ...UPPER_BODY_SCENT_DATA.chest,
-  ...UPPER_BODY_SCENT_DATA.breasts,
-  ...UPPER_BODY_SCENT_DATA.back,
+  ...UPPER_BODY_SCENT_DATA.upperBody.shoulders,
+  ...UPPER_BODY_SCENT_DATA.upperBody.chest,
+  ...UPPER_BODY_SCENT_DATA.upperBody.breasts,
+  ...UPPER_BODY_SCENT_DATA.upperBody.back,
 };

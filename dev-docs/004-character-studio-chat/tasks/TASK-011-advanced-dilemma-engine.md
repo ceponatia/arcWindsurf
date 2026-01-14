@@ -250,12 +250,12 @@ generateDilemma: fromPromise(async ({ input }) => {
 
 ## Acceptance Criteria
 
-- [ ] `DilemmaEngine` class created
-- [ ] `generateDilemma()` creates dilemma from templates
-- [ ] `generateCustomDilemma()` uses LLM for custom scenarios
-- [ ] `analyzeResponse()` extracts value signals from response
-- [ ] `buildCharacterPrompt()` formats dilemma for character
-- [ ] Pre-defined templates for common value conflicts
-- [ ] Template selection based on character's existing values
-- [ ] Graceful fallback on LLM failure
-- [ ] Exported from package index
+- [x] `DilemmaEngine` class created
+- [x] `generateDilemma()` creates dilemma from templates
+- [x] `generateCustomDilemma()` uses LLM for custom scenarios
+- [x] `analyzeResponse()` extracts value signals from response
+- [x] `buildCharacterPrompt()` formats dilemma for character
+- [x] Pre-defined templates for common value conflicts
+- [x] Template selection based on character's existing values
+- [x] Graceful fallback on LLM failure
+- [x] Exported from package index

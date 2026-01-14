@@ -236,12 +236,16 @@ const handleDeleteComplete = useCallback((deletedId: string) => {
 
 ## Acceptance Criteria
 
-- [ ] Delete button appears only when editing existing character
-- [ ] Delete button shows loading state during deletion
-- [ ] Confirmation dialog before deletion
-- [ ] Character removed from database on confirm
-- [ ] Studio state reset after deletion
-- [ ] Parent component notified via `onDelete` callback
-- [ ] Proper error handling with user feedback
-- [ ] Delete button has appropriate styling (red, warning appearance)
-- [ ] Button disabled during deletion operation
+- [x] Delete button appears only when editing existing character
+- [x] Delete button shows loading state during deletion
+- [x] Confirmation dialog before deletion
+- [x] Character removed from database on confirm
+- [x] Studio state reset after deletion
+- [x] Parent component notified via `onDelete` callback
+- [x] Proper error handling with user feedback
+- [x] Delete button has appropriate styling (red, warning appearance)
+- [x] Button disabled during deletion operation
+
+## Validation Notes
+
+- `onDelete` is now typed as `(id: string) => void` and receives the deleted id.

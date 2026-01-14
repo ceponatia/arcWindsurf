@@ -449,3 +449,27 @@ export const knowledgeEdges = pgTable(
     };
   }
 );
+
+// =============================================================================
+// 005_STUDIO
+// =============================================================================
+
+export const studioSessions = pgTable(
+  'studio_sessions',
+  {
+    id: text('id').primaryKey(),
+    profileSnapshot: jsonb('profile_snapshot').notNull(),
+    conversation: jsonb('conversation').notNull().default([]),
+    summary: text('summary'),
+    inferredTraits: jsonb('inferred_traits').notNull().default([]),
+    exploredTopics: jsonb('explored_topics').notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (table) => {
+    return {
+      expiresIdx: index('idx_studio_sessions_expires_at').on(table.expiresAt),
+    };
+  }
+);

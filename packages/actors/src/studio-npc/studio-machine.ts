@@ -1,0 +1,502 @@
+// packages/actors/src/studio-npc/studio-machine.ts
+import { createMachine, assign, fromPromise } from 'xstate';
+import type { LLMMessage } from '@minimal-rpg/llm';
+import { Effect } from 'effect';
+import type {
+  StudioMachineContext,
+  StudioMachineEvent,
+  ConversationMessage,
+  InferredTrait,
+  StudioResponse,
+  DiscoveryTopic,
+} from './types.js';
+import { buildStudioSystemPrompt, buildDilemmaPrompt } from './prompts.js';
+import { ConversationManager } from './conversation.js';
+import { TraitInferenceEngine } from './inference.js';
+import { DiscoveryGuide } from './discovery.js';
+import { DilemmaEngine } from './dilemma.js';
+import { EmotionalRangeGenerator } from './emotional-range.js';
+import { ContradictionMirror } from './contradiction.js';
+import { VignetteGenerator } from './vignettes.js';
+import { MemoryExcavator } from './memory-excavation.js';
+import { FirstImpressionGenerator } from './first-impression.js';
+import { InternalMonologueGenerator } from './internal-monologue.js';
+import { VoiceFingerprintAnalyzer } from './voice-fingerprint.js';
+import type {
+  Dilemma,
+  EmotionalRangeResponse,
+  VignetteResponse,
+  MemoryTopic,
+  BackstoryElement,
+  FirstImpressionResponse,
+  VoiceFingerprint
+} from './types.js';
+
+/**
+ * Create the studio NPC state machine.
+ */
+export function createStudioMachine(initialContext: StudioMachineContext) {
+  return createMachine(
+    {
+      id: 'studioNpc',
+      initial: 'idle',
+      context: initialContext,
+      types: {} as {
+        context: StudioMachineContext;
+        events: StudioMachineEvent;
+      },
+      states: {
+        idle: {
+          on: {
+            SEND_MESSAGE: {
+              target: 'responding',
+              actions: 'addUserMessage',
+            },
+            UPDATE_PROFILE: {
+              actions: 'updateProfile',
+            },
+            CLEAR_CONVERSATION: {
+              actions: 'clearConversation',
+            },
+            REQUEST_DILEMMA: { target: 'generatingDilemma' },
+            REQUEST_EMOTIONAL_RANGE: { target: 'generatingEmotionalRange' },
+            REQUEST_VIGNETTE: { target: 'generatingVignette' },
+            REQUEST_MEMORY: { target: 'excavatingMemory' },
+            REQUEST_FIRST_IMPRESSION: { target: 'generatingFirstImpression' },
+            REQUEST_VOICE_FINGERPRINT: { target: 'analyzingVoice' },
+          },
+        },
+        responding: {
+          invoke: {
+            src: 'generateResponse',
+            input: ({ context }) => context,
+            onDone: {
+              target: 'inferring',
+              actions: 'addCharacterMessage',
+            },
+            onError: {
+              target: 'idle',
+              actions: 'setError',
+            },
+          },
+        },
+        inferring: {
+          invoke: {
+            src: 'inferTraits',
+            input: ({ context }) => context,
+            onDone: {
+              target: 'suggesting',
+              actions: 'addInferredTraits',
+            },
+            onError: {
+              target: 'suggesting',
+            },
+          },
+        },
+        suggesting: {
+          invoke: {
+            src: 'suggestPrompts',
+            input: ({ context }) => context,
+            onDone: {
+              target: 'idle',
+              actions: 'setPendingResponse',
+            },
+            onError: {
+              target: 'idle',
+              actions: 'setPendingResponseWithoutSuggestions',
+            },
+          },
+        },
+        generatingDilemma: {
+          invoke: {
+            src: 'generateDilemma',
+            input: ({ context }) => context,
+            onDone: { target: 'responding', actions: 'setDilemmaResponse' },
+            onError: { target: 'idle', actions: 'setError' },
+          },
+        },
+        generatingEmotionalRange: {
+          invoke: {
+            src: 'generateEmotionalRange',
+            input: ({ context, event }) => ({ context, event }),
+            onDone: { target: 'idle', actions: 'setEmotionalRangeResponse' },
+            onError: { target: 'idle', actions: 'setError' },
+          },
+        },
+        generatingVignette: {
+          invoke: {
+            src: 'generateVignette',
+            input: ({ context, event }) => ({ context, event }),
+            onDone: { target: 'idle', actions: 'setVignetteResponse' },
+            onError: { target: 'idle', actions: 'setError' },
+          },
+        },
+        excavatingMemory: {
+          invoke: {
+            src: 'excavateMemory',
+            input: ({ context, event }) => ({ context, event }),
+            onDone: { target: 'idle', actions: 'setMemoryResponse' },
+            onError: { target: 'idle', actions: 'setError' },
+          },
+        },
+        generatingFirstImpression: {
+          invoke: {
+            src: 'generateFirstImpression',
+            input: ({ context, event }) => ({ context, event }),
+            onDone: { target: 'idle', actions: 'setFirstImpressionResponse' },
+            onError: { target: 'idle', actions: 'setError' },
+          },
+        },
+        analyzingVoice: {
+          invoke: {
+            src: 'analyzeVoice',
+            input: ({ context }) => context,
+            onDone: { target: 'idle', actions: 'setVoiceFingerprint' },
+            onError: { target: 'idle', actions: 'setError' },
+          },
+        },
+      },
+    },
+    {
+      actions: {
+        addUserMessage: assign({
+          conversation: ({ context, event }) => {
+            if (event.type !== 'SEND_MESSAGE') return context.conversation;
+            const newMessage: ConversationMessage = {
+              id: crypto.randomUUID(),
+              role: 'user',
+              content: event.content,
+              timestamp: new Date(),
+            };
+            return [...context.conversation, newMessage];
+          },
+          exploredTopics: ({ context, event }) => {
+            if (event.type !== 'SEND_MESSAGE') return context.exploredTopics;
+            const guide = new DiscoveryGuide({ profile: context.profile });
+            const inferredTopic = guide.inferTopicFromMessage(event.content);
+            if (inferredTopic) {
+              const newSet = new Set(context.exploredTopics);
+              newSet.add(inferredTopic);
+              return newSet;
+            }
+            return context.exploredTopics;
+          },
+        }),
+        addCharacterMessage: assign({
+          conversation: ({ context, event }) => {
+            const output = (event as unknown as { output: { content: string; thought?: string } }).output;
+            const newMessage: ConversationMessage = {
+              id: crypto.randomUUID(),
+              role: 'character',
+              content: output.content,
+              thought: output.thought,
+              timestamp: new Date(),
+            };
+            return [...context.conversation, newMessage];
+          },
+        }),
+        addInferredTraits: assign({
+          inferredTraits: ({ context, event }) => {
+            const newTraits = (event as unknown as { output: InferredTrait[] }).output;
+            return [...context.inferredTraits, ...newTraits];
+          },
+        }),
+        updateProfile: assign({
+          profile: ({ context, event }) => {
+            if (event.type !== 'UPDATE_PROFILE') return context.profile;
+            return { ...context.profile, ...event.profile };
+          },
+        }),
+        clearConversation: assign({
+          conversation: () => [],
+          summary: () => null,
+          inferredTraits: () => [],
+          exploredTopics: () => new Set<DiscoveryTopic>(),
+        }),
+        setError: assign({
+          error: ({ event }) => {
+            const e = event as { error?: { message?: string } };
+            return e.error?.message ?? 'Unknown error';
+          },
+        }),
+        setPendingResponse: assign({
+          pendingResponse: ({ context, event }) => {
+            const suggestions = (event as unknown as { output: { prompts: { prompt: string; topic: DiscoveryTopic; rationale: string }[] } }).output;
+            return {
+              response: context.conversation[context.conversation.length - 1]?.content ?? '',
+              thought: context.conversation[context.conversation.length - 1]?.thought,
+              inferredTraits: context.inferredTraits.slice(-5),
+              suggestedPrompts: suggestions.prompts,
+              meta: {
+                messageCount: context.conversation.length,
+                summarized: context.summary !== null,
+                exploredTopics: Array.from(context.exploredTopics),
+              },
+            } satisfies StudioResponse;
+          },
+        }),
+        setPendingResponseWithoutSuggestions: assign({
+          pendingResponse: ({ context }) => ({
+            response: context.conversation[context.conversation.length - 1]?.content ?? '',
+            thought: context.conversation[context.conversation.length - 1]?.thought,
+            inferredTraits: context.inferredTraits.slice(-5),
+            suggestedPrompts: [],
+            meta: {
+              messageCount: context.conversation.length,
+              summarized: context.summary !== null,
+              exploredTopics: Array.from(context.exploredTopics),
+            },
+          } satisfies StudioResponse),
+        }),
+        setDilemmaResponse: assign({
+          conversation: ({ context, event }) => {
+            const dilemma = (event as unknown as { output: Dilemma }).output;
+            const newMessage: ConversationMessage = {
+              id: crypto.randomUUID(),
+              role: 'system',
+              content: `[DILEMMA]: ${dilemma.scenario}`,
+              timestamp: new Date(),
+            };
+            return [...context.conversation, newMessage];
+          },
+        }),
+        setEmotionalRangeResponse: assign({
+          pendingResponse: ({ context, event }) => {
+            const output = (event as unknown as { output: EmotionalRangeResponse }).output;
+            return {
+              response: `[EMOTIONAL RANGE]: Generated ${output.variations.length} variations.`,
+              inferredTraits: [],
+              suggestedPrompts: [],
+              meta: {
+                messageCount: context.conversation.length,
+                summarized: context.summary !== null,
+                exploredTopics: Array.from(context.exploredTopics),
+              },
+            } satisfies StudioResponse;
+          },
+        }),
+        setVignetteResponse: assign({
+          conversation: ({ context, event }) => {
+            const output = (event as unknown as { output: VignetteResponse }).output;
+            const newMessage: ConversationMessage = {
+              id: crypto.randomUUID(),
+              role: 'system',
+              content: `[VIGNETTE]: ${output.dialogue}`,
+              timestamp: new Date(),
+            };
+            return [...context.conversation, newMessage];
+          },
+          pendingResponse: ({ context, event }) => {
+            const output = (event as unknown as { output: VignetteResponse }).output;
+            return {
+              response: `[VIGNETTE]: ${output.dialogue}`,
+              inferredTraits: [],
+              suggestedPrompts: [],
+              meta: {
+                messageCount: context.conversation.length + 1,
+                summarized: context.summary !== null,
+                exploredTopics: Array.from(context.exploredTopics),
+              },
+            } satisfies StudioResponse;
+          },
+        }),
+        setMemoryResponse: assign({
+          conversation: ({ context, event }) => {
+            const output = (event as unknown as { output: { memory: string } }).output;
+            const newMessage: ConversationMessage = {
+              id: crypto.randomUUID(),
+              role: 'system',
+              content: `[MEMORY]: ${output.memory}`,
+              timestamp: new Date(),
+            };
+            return [...context.conversation, newMessage];
+          },
+          pendingResponse: ({ context, event }) => {
+            const output = (event as unknown as { output: { memory: string; elements: BackstoryElement[] } }).output;
+            return {
+              response: `[MEMORY]: ${output.memory}`,
+              inferredTraits: output.elements.map(e => ({
+                path: 'backstory',
+                value: e.content,
+                confidence: e.confidence,
+                evidence: 'memory excavation',
+                reasoning: `Extracted from ${e.suggestedIntegration}`,
+              })),
+              suggestedPrompts: [],
+              meta: {
+                messageCount: context.conversation.length + 1,
+                summarized: context.summary !== null,
+                exploredTopics: Array.from(context.exploredTopics),
+              },
+            } satisfies StudioResponse;
+          },
+        }),
+        setFirstImpressionResponse: assign({
+          pendingResponse: ({ context, event }) => {
+            const output = (event as unknown as { output: FirstImpressionResponse }).output;
+            return {
+              response: `[FIRST IMPRESSION]\nPerception: ${output.externalPerception}\nReality: ${output.internalReaction}`,
+              inferredTraits: [],
+              suggestedPrompts: [],
+              meta: {
+                messageCount: context.conversation.length,
+                summarized: context.summary !== null,
+                exploredTopics: Array.from(context.exploredTopics),
+              },
+            } satisfies StudioResponse;
+          },
+        }),
+        setVoiceFingerprint: assign({
+          pendingResponse: ({ context, event }) => {
+            const output = (event as unknown as { output: VoiceFingerprint }).output;
+            return {
+              response: `[VOICE FINGERPRINT]: Level ${output.vocabulary.level}, rhythm ${output.rhythm.variability}.`,
+              inferredTraits: [],
+              suggestedPrompts: [],
+              meta: {
+                messageCount: context.conversation.length,
+                summarized: context.summary !== null,
+                exploredTopics: Array.from(context.exploredTopics),
+              },
+            } satisfies StudioResponse;
+          },
+        }),
+      },
+      actors: {
+        generateResponse: fromPromise(async ({ input }) => {
+          const ctx = input as StudioMachineContext;
+
+          const manager = new ConversationManager({
+            llmProvider: ctx.llmProvider,
+            characterName: ctx.profile.name,
+          });
+          manager.restore({ messages: ctx.conversation, summary: ctx.summary });
+
+          // Check if summarization needed
+          if (manager.needsSummarization()) {
+            // Trigger summarization (handled separately in TASK-006/009)
+            // For now we just log it as a signal
+            console.log(`[StudioMachine] Summarization recommended for session ${ctx.sessionId}`);
+          }
+
+          const systemPrompt = buildStudioSystemPrompt(ctx.profile, manager.getSummary());
+          const contextWindow = manager.getContextWindow();
+
+          const messages: LLMMessage[] = [
+            { role: 'system', content: systemPrompt },
+          ];
+
+          // Special case: if last message is a dilemma, use buildDilemmaPrompt to help character live it
+          const lastMsg = ctx.conversation[ctx.conversation.length - 1];
+          if (lastMsg && lastMsg.role === 'system' && lastMsg.content.startsWith('[DILEMMA]')) {
+            const scenario = lastMsg.content.replace('[DILEMMA]: ', '');
+            messages.push({
+              role: 'system',
+              content: buildDilemmaPrompt(scenario, ['your core values', 'the situation at hand'])
+            });
+          }
+
+          messages.push(...contextWindow.map(m => ({
+            role: (m.role === 'character' ? 'assistant' : 'user') as LLMMessage['role'],
+            content: m.content,
+          })));
+
+          const result = await Effect.runPromise(ctx.llmProvider.chat(messages));
+          return { content: result.content ?? '', thought: undefined };
+        }),
+        inferTraits: fromPromise(async ({ input }) => {
+          const ctx = input as StudioMachineContext;
+          const engine = new TraitInferenceEngine({
+            llmProvider: ctx.llmProvider,
+            initialEvidence: ctx.inferredTraits,
+          });
+
+          // Get last character message
+          const charMessages = [...ctx.conversation].reverse();
+          const lastCharIndex = charMessages.findIndex(m => m.role === 'character');
+          if (lastCharIndex === -1) return [];
+
+          const lastChar = charMessages[lastCharIndex];
+          const lastPrompt = charMessages[lastCharIndex + 1];
+
+          if (!lastChar || !lastPrompt) return [];
+
+          // If responding to a dilemma, use special analysis
+          if (lastPrompt.role === 'system' && lastPrompt.content.startsWith('[DILEMMA]')) {
+            const dilemmaEngine = new DilemmaEngine({ llmProvider: ctx.llmProvider });
+            const scenario = lastPrompt.content.replace('[DILEMMA]: ', '');
+
+            // Reconstruct dilemma object (we don't store the full object in conversation)
+            const dilemma: Dilemma = {
+              id: 'temp',
+              scenario,
+              conflictingValues: [], // DilemmaEngine.analyzeResponse uses this for prompt, but we might not have it anymore
+              targetTraits: ['personalityMap.values']
+            };
+
+            const signals = await dilemmaEngine.analyzeResponse(dilemma, lastChar.content);
+
+            // Map signals to InferredTraits
+            return signals.map(s => ({
+              path: `personalityMap.values`,
+              value: { value: s.value, priority: s.priority },
+              confidence: 0.8,
+              evidence: s.evidence,
+              reasoning: `Value signal detected from dilemma response: ${s.value} (priority ${s.priority})`,
+              resolution: 'stronger' as const
+            }));
+          }
+
+          // Default inference
+          return await engine.inferFromExchange(
+            lastPrompt.content,
+            lastChar.content,
+            ctx.profile
+          );
+        }),
+        suggestPrompts: fromPromise(({ input }) => {
+          const ctx = input as StudioMachineContext;
+          const guide = new DiscoveryGuide({ profile: ctx.profile });
+
+          // Sync explored topics
+          for (const topic of ctx.exploredTopics) {
+            guide.markExplored(topic);
+          }
+
+          const prompts = guide.generateMixedPrompts(3);
+          return Promise.resolve({ prompts });
+        }),
+        generateDilemma: fromPromise(async ({ input }) => {
+          const ctx = input as StudioMachineContext;
+          const engine = new DilemmaEngine({ llmProvider: ctx.llmProvider });
+          return await engine.generateDilemma(ctx.profile);
+        }),
+        generateEmotionalRange: fromPromise(async ({ input }) => {
+          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_EMOTIONAL_RANGE', request: any } };
+          const generator = new EmotionalRangeGenerator(context.llmProvider);
+          return await generator.generate(context.profile, event.request);
+        }),
+        generateVignette: fromPromise(async ({ input }) => {
+          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_VIGNETTE', request: any } };
+          const generator = new VignetteGenerator(context.llmProvider);
+          return await generator.generate(context.profile, event.request);
+        }),
+        excavateMemory: fromPromise(async ({ input }) => {
+          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_MEMORY', topic: MemoryTopic } };
+          const excavator = new MemoryExcavator(context.llmProvider);
+          return await excavator.excavate(context.profile, event.topic);
+        }),
+        generateFirstImpression: fromPromise(async ({ input }) => {
+          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_FIRST_IMPRESSION', context?: any } };
+          const generator = new FirstImpressionGenerator(context.llmProvider);
+          return await generator.generate(context.profile, event.context);
+        }),
+        analyzeVoice: fromPromise(async ({ input }) => {
+          const context = input as StudioMachineContext;
+          const analyzer = new VoiceFingerprintAnalyzer();
+          return await Promise.resolve(analyzer.analyze(context.conversation));
+        }),
+      },
+    }
+  );
+}

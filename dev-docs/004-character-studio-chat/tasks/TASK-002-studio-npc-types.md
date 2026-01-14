@@ -259,9 +259,13 @@ export * from './studio-npc/index.js';
 
 ## Acceptance Criteria
 
-- [ ] Directory `packages/actors/src/studio-npc/` created
-- [ ] `types.ts` contains all type definitions listed above
-- [ ] `index.ts` exports all types
-- [ ] Types exported from main `@minimal-rpg/actors` package
+- [x] Directory `packages/actors/src/studio-npc/` created
+- [x] `types.ts` contains all type definitions listed above
+- [x] `index.ts` exports all types
+- [x] Types exported from main `@minimal-rpg/actors` package
 - [ ] No TypeScript compilation errors
-- [ ] All types have JSDoc comments (add if missing)
+- [x] All types have JSDoc comments (add if missing)
+
+## Validation Notes
+
+- TypeScript compilation was not run during validation; compiler status is unconfirmed.

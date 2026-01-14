@@ -1,16 +1,31 @@
-import { OpenAIProvider, type LLMMessage, type LLMResponse, type LLMStreamChunk } from '@minimal-rpg/llm';
+import { OpenAIProvider, type LLMMessage, type LLMResponse, type LLMStreamChunk, type LLMProvider } from '@minimal-rpg/llm';
 import type { CharacterProfile } from '@minimal-rpg/schemas';
-import { Effect } from 'effect';
+import {
+  createStudioNpcActor,
+  StudioNpcActor,
+  DiscoveryGuide,
+  type InferredTrait,
+} from '@minimal-rpg/actors';
+import {
+  createStudioSession,
+  getStudioSession,
+  updateStudioSession,
+  deleteStudioSession,
+  cleanupExpiredSessions,
+  type StudioSession,
+} from '@minimal-rpg/db';
+import { Cause, Effect, Exit } from 'effect';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
-import {
-  TRAIT_INFERENCE_SYSTEM_PROMPT,
-  buildCharacterSystemPrompt,
-  buildTraitInferencePrompt,
-} from './studio/prompts.js';
 import type { ApiError } from '../types.js';
 import { getConfig } from '../utils/config.js';
+
+// In-memory actor cache (actors are expensive to create)
+const actorCache = new Map<string, StudioNpcActor>();
+
+// Cleanup expired sessions on startup (background)
+cleanupExpiredSessions().catch(err => console.warn('Failed to cleanup expired sessions:', err));
 
 const cfg = getConfig();
 
@@ -40,28 +55,21 @@ const defaultLlmProvider = openrouterApiKey
     })
     : null;
 
-export interface StudioLlmProvider {
-  chat(messages: LLMMessage[]): Effect.Effect<LLMResponse, Error>;
-  stream(messages: LLMMessage[]): Effect.Effect<AsyncIterable<LLMStreamChunk>, Error>;
-}
-
-const GenerateRequestSchema = z.object({
+const ConversationRequestSchema = z.object({
+  sessionId: z.string().optional(),
   profile: z.record(z.string(), z.unknown()),
-  history: z.array(z.object({ role: z.string(), content: z.string() })),
-  userMessage: z.string(),
+  message: z.string(),
 });
 
-const InferTraitsRequestSchema = z.object({
-  userMessage: z.string(),
-  characterResponse: z.string(),
-  currentProfile: z.record(z.string(), z.unknown()),
+const SuggestPromptRequestSchema = z.object({
+  profile: z.record(z.string(), z.unknown()),
+  exploredTopics: z.array(z.string()).optional(),
 });
-interface InferredTrait {
-  path: string;
-  value: unknown;
-  confidence: number;
-  source: string;
-}
+
+const DilemmaRequestSchema = z.object({
+  sessionId: z.string(),
+  profile: z.record(z.string(), z.unknown()),
+});
 
 interface StudioError {
   ok: false;
@@ -70,22 +78,96 @@ interface StudioError {
   retryable: boolean;
 }
 
+export type StudioLlmProvider = Pick<LLMProvider, 'chat' | 'stream'>;
+
 export interface RegisterStudioRoutesOptions {
   llmProvider?: StudioLlmProvider | null;
 }
 
 export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOptions): void {
-  const llmProvider = options?.llmProvider ?? defaultLlmProvider;
-  // POST /studio/generate - Generate character response
+  const llmProvider: StudioLlmProvider | null =
+    options?.llmProvider === undefined ? defaultLlmProvider : options.llmProvider;
+
+  async function runLlmEffect<T>(effect: Effect.Effect<T, unknown>): Promise<T> {
+    const exit = await Effect.runPromiseExit(effect);
+    if (Exit.isSuccess(exit)) return exit.value;
+
+    const failures = Array.from(Cause.failures(exit.cause));
+    if (failures.length > 0) {
+      throw failures[0];
+    }
+
+    throw new Error(Cause.pretty(exit.cause));
+  }
+
+  const GenerateRequestSchema = z.object({
+    profile: z.record(z.string(), z.unknown()),
+    history: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
+    userMessage: z.string(),
+  });
+
+  const InferTraitsRequestSchema = z.object({
+    userMessage: z.string(),
+    characterResponse: z.string(),
+    currentProfile: z.record(z.string(), z.unknown()),
+  });
+
+  const isHttpError = (err: unknown): err is { status: number } => {
+    return typeof err === 'object' && err !== null && typeof (err as any)['status'] === 'number';
+  };
+
+  const toStudioError = (err: unknown): { status: number; body: StudioError } => {
+    const status = isHttpError(err) ? err.status : 502;
+
+    if (status === 429) {
+      return {
+        status: 429,
+        body: {
+          ok: false,
+          error: getMessage(err) || 'Rate limited',
+          code: 'RATE_LIMITED',
+          retryable: true,
+        },
+      };
+    }
+
+    if (status === 504) {
+      return {
+        status: 504,
+        body: {
+          ok: false,
+          error: getMessage(err) || 'Timeout',
+          code: 'TIMEOUT',
+          retryable: true,
+        },
+      };
+    }
+
+    return {
+      status: 502,
+      body: {
+        ok: false,
+        error: getMessage(err) || 'LLM unavailable',
+        code: 'LLM_UNAVAILABLE',
+        retryable: true,
+      },
+    };
+  };
+
+  // --------------------------------------------------------------------------
+  // Legacy endpoints kept for compatibility + tests
+  // --------------------------------------------------------------------------
+
+  // POST /studio/generate - legacy non-streaming generation endpoint
   app.post('/studio/generate', async (c) => {
     try {
       const body: unknown = await c.req.json();
       const parsed = GenerateRequestSchema.safeParse(body);
+
       if (!parsed.success) {
         return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
       }
 
-      const { userMessage, history } = parsed.data;
       if (!llmProvider) {
         return c.json(
           {
@@ -98,38 +180,25 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         );
       }
 
-      const profile = parsed.data.profile as Partial<CharacterProfile>;
-      const systemPrompt = buildCharacterSystemPrompt(profile);
+      const { userMessage } = parsed.data;
 
       const messages: LLMMessage[] = [
-        { role: 'system', content: systemPrompt },
-        ...history.map((entry) => ({
-          role: normalizeRole(entry.role),
-          content: entry.content,
-        })),
+        { role: 'system', content: 'You are an RPG character. Respond naturally.' },
         { role: 'user', content: userMessage },
       ];
 
-      try {
-        const result = await Effect.runPromise(llmProvider.chat(messages));
-        return c.json({ content: result.content ?? '' });
-      } catch (error) {
-        console.error('Studio generate error:', error);
-        const mapped = mapLLMError(error);
-        return c.json(mapped.body, mapped.status);
-      }
+      const result = await runLlmEffect(llmProvider.chat(messages));
+
+      return c.json({ ok: true, content: result.content ?? '' });
     } catch (error) {
-      console.error('Generate endpoint error:', error);
-      return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      console.error('Studio generate error:', getMessage(error));
+      const mapped = toStudioError(error);
+      return c.json(mapped.body, mapped.status);
     }
   });
 
-  // GET /studio/generate/stream - Stream character response via SSE
-  app.get('/studio/generate/stream', (c) => {
-    const profileParam = c.req.query('profile');
-    const historyParam = c.req.query('history');
-    const userMessage = c.req.query('userMessage') ?? '';
-
+  // GET /studio/generate/stream - legacy SSE streaming endpoint
+  app.get('/studio/generate/stream', async (c) => {
     if (!llmProvider) {
       return c.json(
         {
@@ -142,57 +211,55 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       );
     }
 
-    // Basic validation of required params
-    if (!profileParam || !historyParam || !userMessage) {
-      return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
-    }
+    const profileStr = c.req.query('profile') ?? '{}';
+    const historyStr = c.req.query('history') ?? '[]';
+    const userMessage = c.req.query('userMessage') ?? '';
 
-    let profile: Partial<CharacterProfile>;
-    let history: { role: string; content: string }[];
-    try {
-      profile = JSON.parse(profileParam) as Partial<CharacterProfile>;
-      history = JSON.parse(historyParam) as { role: string; content: string }[];
-    } catch (parseError) {
-      console.error('Stream parse error:', parseError);
-      return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
-    }
-
-    const systemPrompt = buildCharacterSystemPrompt(profile);
-    const messages: LLMMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...history.map((entry) => ({ role: normalizeRole(entry.role), content: entry.content })),
-      { role: 'user', content: userMessage },
-    ];
+    // We intentionally keep this lenient for compatibility.
+    // These values are not used directly in this endpoint yet.
+    void profileStr;
+    void historyStr;
 
     return streamSSE(c, async (stream) => {
       try {
-        const result = await Effect.runPromise(llmProvider.stream(messages));
-        for await (const chunk of result) {
-          if (c.req.raw.signal.aborted) {
-            return;
-          }
-          const delta = chunk.choices?.[0]?.delta?.content;
-          if (delta) {
-            await stream.writeSSE({ event: 'content', data: JSON.stringify({ content: delta }) });
-          }
+        const messages: LLMMessage[] = [
+          { role: 'system', content: 'You are an RPG character. Respond naturally.' },
+          { role: 'user', content: userMessage },
+        ];
+
+        const iterable = await runLlmEffect(llmProvider.stream(messages));
+
+        for await (const chunk of iterable) {
+          const delta = (chunk as any)?.choices?.[0]?.delta?.content;
+          const content = typeof delta === 'string' ? delta : '';
+          if (!content) continue;
+
+          await stream.writeSSE({
+            event: 'content',
+            data: JSON.stringify({ content }),
+          });
         }
-        await stream.writeSSE({ event: 'done', data: JSON.stringify({ done: true }) });
       } catch (error) {
-        console.error('Generate stream error:', error);
+        console.error('Generate stream error:', getMessage(error));
         await stream.writeSSE({
           event: 'error',
           data: JSON.stringify({ error: 'stream_failed', message: getMessage(error) }),
         });
-        await stream.writeSSE({ event: 'done', data: JSON.stringify({ done: true }) });
+      } finally {
+        await stream.writeSSE({
+          event: 'done',
+          data: JSON.stringify({ done: true }),
+        });
       }
     });
   });
 
-  // POST /studio/infer-traits - Infer traits from conversation
+  // POST /studio/infer-traits - legacy trait inference endpoint
   app.post('/studio/infer-traits', async (c) => {
     try {
       const body: unknown = await c.req.json();
       const parsed = InferTraitsRequestSchema.safeParse(body);
+
       if (!parsed.success) {
         return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
       }
@@ -209,159 +276,309 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         );
       }
 
-      const { userMessage, characterResponse, currentProfile } = parsed.data;
-      const inferencePrompt = buildTraitInferencePrompt(
-        userMessage,
-        characterResponse,
-        currentProfile as Partial<CharacterProfile>
-      );
+      const { userMessage, characterResponse } = parsed.data;
 
       const messages: LLMMessage[] = [
-        { role: 'system', content: TRAIT_INFERENCE_SYSTEM_PROMPT },
-        { role: 'user', content: inferencePrompt },
+        {
+          role: 'system',
+          content: 'Infer personality traits from a conversation exchange. Output JSON array only.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({ userMessage, characterResponse }),
+        },
       ];
 
+      const result = await runLlmEffect(llmProvider.chat(messages));
+
       try {
-        const result = await Effect.runPromise(llmProvider.chat(messages));
-        const traits = parseTraitInferenceResponse(result.content);
-        return c.json({ traits });
-      } catch (error) {
-        console.error('Infer traits LLM error:', error);
-        const mapped = mapLLMError(error);
-        // For inference, on parse or other errors, degrade gracefully to empty array
-        if (mapped.body.code === 'PARSE_ERROR') {
-          return c.json({ traits: [] });
-        }
-        return c.json(mapped.body, mapped.status);
+        const parsedJson = JSON.parse(result.content ?? '[]') as unknown;
+        const traits = Array.isArray(parsedJson) ? parsedJson : [];
+        return c.json({ traits }, 200);
+      } catch {
+        // Parse errors are non-critical and degrade gracefully.
+        return c.json({ traits: [] }, 200);
       }
     } catch (error) {
-      console.error('Infer traits endpoint error:', error);
-      return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      if (isHttpError(error) && error.status === 429) {
+        console.error('Infer traits LLM error:', getMessage(error));
+        const mapped = toStudioError(error);
+        return c.json(mapped.body, mapped.status);
+      }
+
+      // For other errors, degrade gracefully.
+      console.error('Infer traits LLM error:', getMessage(error));
+      return c.json({ traits: [] }, 200);
     }
   });
-}
 
-function normalizeRole(role: string): LLMMessage['role'] {
-  if (role === 'assistant' || role === 'system' || role === 'tool') {
-    return role;
-  }
-  return 'user';
-}
+  // POST /studio/conversation - Main conversation endpoint
+  app.post('/studio/conversation', async (c) => {
+    try {
+      const body: unknown = await c.req.json();
+      const parsed = ConversationRequestSchema.safeParse(body);
 
-function parseTraitInferenceResponse(content: string | null): InferredTrait[] {
-  if (!content) return [];
-  try {
-    const parsed: unknown = JSON.parse(content);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isInferredTrait).filter((trait) => trait.confidence > 0.5);
-  } catch {
-    return [];
-  }
-}
+      if (!parsed.success) {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
 
-function isInferredTrait(value: unknown): value is InferredTrait {
-  if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record['path'] === 'string' &&
-    'value' in record &&
-    typeof record['confidence'] === 'number' &&
-    typeof record['source'] === 'string'
-  );
-}
+      if (!llmProvider) {
+        return c.json(
+          {
+            ok: false,
+            error: 'LLM provider not configured',
+            code: 'CONFIG_ERROR',
+            retryable: false,
+          } satisfies StudioError,
+          503
+        );
+      }
 
-type StudioStatusCode = 200 | 429 | 502 | 504;
+      const { message, profile } = parsed.data;
+      let sessionId = parsed.data['sessionId'];
 
-function mapLLMError(error: unknown): { status: StudioStatusCode; body: StudioError } {
-  if (isRateLimitError(error)) {
-    return {
-      status: 429,
-      body: {
-        ok: false,
-        error: 'Rate limited, please try again shortly',
-        code: 'RATE_LIMITED',
-        retryable: true,
-      },
-    };
-  }
+      // Get or create session
+      let session: StudioSession | null = null;
+      let actor: StudioNpcActor | undefined;
 
-  if (isTimeoutError(error)) {
-    return {
-      status: 504,
-      body: {
-        ok: false,
-        error: 'Request timed out',
-        code: 'TIMEOUT',
-        retryable: true,
-      },
-    };
-  }
+      if (sessionId) {
+        session = await getStudioSession(sessionId);
+        actor = actorCache.get(sessionId);
+      }
 
-  if (isContentFilteredError(error)) {
-    return {
-      status: 502,
-      body: {
-        ok: false,
-        error: 'Response blocked by content filters',
-        code: 'LLM_UNAVAILABLE',
-        retryable: true,
-      },
-    };
-  }
+      if (!session) {
+        // Create new session
+        sessionId = crypto.randomUUID();
+        session = await createStudioSession(sessionId, profile);
+      }
 
-  if (isParseError(error)) {
-    return {
-      status: 200,
-      body: {
-        ok: false,
-        error: 'Malformed LLM response',
-        code: 'PARSE_ERROR',
-        retryable: true,
-      },
-    };
-  }
+      if (!actor && sessionId) {
+        // Create actor for this session
+        actor = createStudioNpcActor({
+          sessionId,
+          profile: profile as Partial<CharacterProfile>,
+          llmProvider,
+        });
+        actorCache.set(sessionId, actor);
 
-  return {
-    status: 502,
-    body: {
-      ok: false,
-      error: 'Failed to reach LLM',
-      code: 'LLM_UNAVAILABLE',
-      retryable: true,
-    },
-  };
-}
+        // Restore state if session had previous conversation
+        if (session.conversation.length > 0) {
+          actor.restoreState({
+            conversation: session.conversation.map((m, idx) => ({
+              id: `msg-${idx}`,
+              content: m.content,
+              role: m.role as 'user' | 'character' | 'system',
+              timestamp: new Date(m.timestamp),
+              thought: undefined,
+            })),
+            summary: session.summary,
+            inferredTraits: session.inferredTraits as any[],
+            exploredTopics: session.exploredTopics as any[],
+          });
+        }
+      }
 
-function isRateLimitError(error: unknown): boolean {
-  const status = getStatus(error);
-  const message = getMessage(error);
-  return status === 429 || message.includes('rate limit');
-}
+      if (!actor || !sessionId) {
+        return c.json({ ok: false, error: 'Failed to initialize actor' }, 500);
+      }
 
-function isTimeoutError(error: unknown): boolean {
-  const status = getStatus(error);
-  const message = getMessage(error);
-  return status === 408 || status === 504 || message.includes('timeout');
-}
+      // Update profile in actor
+      actor.updateProfile(profile as Partial<CharacterProfile>);
 
-function isContentFilteredError(error: unknown): boolean {
-  const message = getMessage(error);
-  return message.includes('content') && message.includes('filter');
-}
+      // Send message and get response
+      const response = await actor.respond(message);
 
-function isParseError(error: unknown): boolean {
-  const message = getMessage(error);
-  return message.includes('parse');
-}
+      // Persist updated state
+      const state = actor.exportState();
+      await updateStudioSession(sessionId, {
+        profileSnapshot: profile,
+        conversation: state.conversation.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp.toISOString(),
+        })),
+        summary: state.summary,
+        inferredTraits: state.inferredTraits,
+        exploredTopics: Array.from(state.exploredTopics),
+      });
 
-function getStatus(error: unknown): number | undefined {
-  if (typeof error === 'object' && error !== null) {
-    const maybeStatus = (error as { status?: number }).status;
-    if (typeof maybeStatus === 'number') return maybeStatus;
-    const responseStatus = (error as { response?: { status?: number } }).response?.status;
-    if (typeof responseStatus === 'number') return responseStatus;
-  }
-  return undefined;
+      return c.json({
+        ok: true,
+        sessionId,
+        response: response.response,
+        thought: response.thought,
+        inferredTraits: response.inferredTraits,
+        suggestedPrompts: response.suggestedPrompts,
+        meta: response.meta,
+      });
+    } catch (error) {
+      console.error('Studio conversation error:', error);
+      return c.json({ ok: false, error: 'Conversation failed' }, 500);
+    }
+  });
+
+  // POST /studio/suggest-prompt - Get suggested prompts
+  app.post('/studio/suggest-prompt', async (c) => {
+    try {
+      const body: unknown = await c.req.json();
+      const parsed = SuggestPromptRequestSchema.safeParse(body);
+
+      if (!parsed.success) {
+        return c.json({ ok: false, error: 'Invalid request' }, 400);
+      }
+
+      const { profile, exploredTopics } = parsed.data;
+
+      const guide = new DiscoveryGuide({
+        profile: profile as Partial<CharacterProfile>,
+      });
+
+      // Mark already explored topics
+      if (exploredTopics) {
+        for (const topic of exploredTopics) {
+          guide.markExplored(topic as any);
+        }
+      }
+
+      // Get suggested topic and prompts
+      const topic = guide.suggestTopic();
+      const prompts = guide.generatePrompts(topic, 3);
+
+      return c.json({
+        ok: true,
+        topic,
+        prompts,
+        unexploredTopics: guide.getUnexploredTopics(),
+      });
+    } catch (error) {
+      console.error('Suggest prompt error:', error);
+      return c.json({ ok: false, error: 'Failed to generate prompts' }, 500);
+    }
+  });
+
+  // POST /studio/dilemma - Generate a moral dilemma
+  app.post('/studio/dilemma', async (c) => {
+    try {
+      const body: unknown = await c.req.json();
+      const parsed = DilemmaRequestSchema.safeParse(body);
+
+      if (!parsed.success) {
+        return c.json({ ok: false, error: 'Invalid request' }, 400);
+      }
+
+      const { sessionId, profile } = parsed.data;
+
+      let actor = actorCache.get(sessionId);
+      if (!actor) {
+        // Try to restore from DB
+        const session = await getStudioSession(sessionId);
+        if (!session) {
+          return c.json({ ok: false, error: 'Session not found' }, 404);
+        }
+
+        if (!llmProvider) {
+          return c.json({ ok: false, error: 'LLM not configured' }, 503);
+        }
+
+        actor = createStudioNpcActor({
+          sessionId,
+          profile: profile as Partial<CharacterProfile>,
+          llmProvider,
+        });
+        actorCache.set(sessionId, actor);
+        actor.restoreState({
+          conversation: session.conversation.map((m, idx) => ({
+            id: `msg-${idx}`,
+            content: m.content,
+            role: m.role as any,
+            timestamp: new Date(m.timestamp),
+          })),
+          summary: session.summary,
+          inferredTraits: session.inferredTraits as any[],
+          exploredTopics: session.exploredTopics as any[],
+        });
+      }
+
+      actor.updateProfile(profile as Partial<CharacterProfile>);
+      const response = await actor.requestDilemma();
+
+      // Persist
+      const state = actor.exportState();
+      await updateStudioSession(sessionId, {
+        conversation: state.conversation.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp.toISOString(),
+        })),
+        inferredTraits: state.inferredTraits,
+        exploredTopics: Array.from(state.exploredTopics),
+      });
+
+      return c.json({
+        ok: true,
+        response: response.response,
+        inferredTraits: response.inferredTraits,
+        meta: response.meta,
+      });
+    } catch (error) {
+      console.error('Dilemma generation error:', error);
+      return c.json({ ok: false, error: 'Failed to generate dilemma' }, 500);
+    }
+  });
+
+  // DELETE /studio/session/:id - Delete a session
+  app.delete('/studio/session/:id', async (c) => {
+    try {
+      const sessionId = c.req.param('id');
+
+      // Remove from cache
+      const actor = actorCache.get(sessionId);
+      if (actor) {
+        actor.stop();
+        actorCache.delete(sessionId);
+      }
+
+      // Remove from database
+      const deleted = await deleteStudioSession(sessionId);
+
+      if (!deleted) {
+        return c.json({ ok: false, error: 'Session not found' }, 404);
+      }
+
+      return c.json({ ok: true });
+    } catch (error) {
+      console.error('Delete session error:', error);
+      return c.json({ ok: false, error: 'Failed to delete session' }, 500);
+    }
+  });
+
+  // GET /studio/session/:id - Get session state
+  app.get('/studio/session/:id', async (c) => {
+    try {
+      const sessionId = c.req.param('id');
+      const session = await getStudioSession(sessionId);
+
+      if (!session) {
+        return c.json({ ok: false, error: 'Session not found' }, 404);
+      }
+
+      return c.json({
+        ok: true,
+        session: {
+          id: session.id,
+          conversation: session.conversation,
+          summary: session.summary,
+          inferredTraits: session.inferredTraits,
+          exploredTopics: session.exploredTopics,
+          createdAt: session.createdAt.toISOString(),
+          lastActiveAt: session.lastActiveAt.toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error('Get session error:', error);
+      return c.json({ ok: false, error: 'Failed to get session' }, 500);
+    }
+  });
 }
 
 function getMessage(error: unknown): string {

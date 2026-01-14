@@ -298,15 +298,19 @@ const prompts = suggestedPrompts.value.length > 0
 
 ## Acceptance Criteria
 
-- [ ] `studioSessionId` signal added
-- [ ] `suggestedPrompts` signal added
-- [ ] `exploredTopics` signal added
-- [ ] `resetStudioSession()` function added
-- [ ] `studioConversation()` API function created
-- [ ] `suggestPrompts()` API function created
-- [ ] `useConversation` hook uses new API
-- [ ] Session ID persisted across messages
-- [ ] Inferred traits added to pending traits
-- [ ] Suggested prompts updated after each response
-- [ ] Error handling preserved
+- [x] `studioSessionId` signal added
+- [x] `suggestedPrompts` signal added
+- [x] `exploredTopics` signal added
+- [x] `resetStudioSession()` function added
+- [x] `studioConversation()` API function created
+- [x] `suggestPrompts()` API function created
+- [x] `useConversation` hook uses new API
+- [x] Session ID persisted across messages
+- [x] Inferred traits added to pending traits
+- [x] Suggested prompts updated after each response
+- [x] Error handling preserved
 - [ ] No regression in existing chat functionality
+
+## Validation Notes
+
+- Regression testing was not executed; existing chat functionality is unverified beyond code inspection.

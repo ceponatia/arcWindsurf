@@ -451,10 +451,14 @@ export { VoiceFingerprintAnalyzer } from './voice-fingerprint.js';
 
 ## Acceptance Criteria
 
-- [ ] All 7 feature classes created
-- [ ] Each class has clear single responsibility
-- [ ] LLM-based features use proper prompts
-- [ ] Voice fingerprint works without LLM (client-side analysis)
-- [ ] All classes exported from index.ts
-- [ ] Graceful error handling in all LLM calls
-- [ ] Type-safe responses matching defined interfaces
+- [x] All 7 feature classes created
+- [x] Each class has clear single responsibility
+- [x] LLM-based features use proper prompts
+- [x] Voice fingerprint works without LLM (client-side analysis)
+- [x] All classes exported from index.ts
+- [x] Graceful error handling in all LLM calls
+- [x] Type-safe responses matching defined interfaces
+
+## Validation Notes
+
+- Added graceful fallbacks for LLM failures in: `vignettes.ts`, `memory-excavation.ts`, `first-impression.ts`, `internal-monologue.ts`.

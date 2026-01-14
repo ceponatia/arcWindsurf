@@ -257,13 +257,13 @@ generateResponse: fromPromise(async ({ input }) => {
 
 ## Acceptance Criteria
 
-- [ ] `ConversationManager` class created
-- [ ] `addMessage()` adds messages to history
-- [ ] `getContextWindow()` returns max 20 recent messages
-- [ ] `getFullContext()` returns summary + recent messages as string
-- [ ] `needsSummarization()` returns true when threshold reached
-- [ ] `summarize()` calls LLM and stores summary
-- [ ] `clear()` resets all state
-- [ ] `restore()` and `export()` work for persistence
-- [ ] Exported from package index
-- [ ] Graceful fallback if summarization LLM call fails
+- [x] `ConversationManager` class created
+- [x] `addMessage()` adds messages to history
+- [x] `getContextWindow()` returns max 20 recent messages
+- [x] `getFullContext()` returns summary + recent messages as string
+- [x] `needsSummarization()` returns true when threshold reached
+- [x] `summarize()` calls LLM and stores summary
+- [x] `clear()` resets all state
+- [x] `restore()` and `export()` work for persistence
+- [x] Exported from package index
+- [x] Graceful fallback if summarization LLM call fails

@@ -9,7 +9,7 @@ import { ConversationPrompts } from './ConversationPrompts.js';
 export const ConversationPane: React.FC = () => {
   useSignals();
 
-  const { messages, isGenerating, sendMessage } = useConversation();
+  const { messages, isGenerating, sendMessage, generateDilemma } = useConversation();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -82,11 +82,19 @@ export const ConversationPane: React.FC = () => {
           </div>
         )}
 
-        {messages.length === 0 && <ConversationPrompts onSelect={handlePromptSelect} />}
+        {messages.length === 0 && (
+          <ConversationPrompts onSelect={handlePromptSelect} onDilemma={generateDilemma} />
+        )}
 
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} characterName={characterName} />
         ))}
+
+        {messages.length > 0 && !isGenerating && (
+          <div className="pt-2">
+            <ConversationPrompts onSelect={handlePromptSelect} onDilemma={generateDilemma} />
+          </div>
+        )}
 
         {isGenerating && (
           <div className="flex items-center gap-3 text-slate-400 text-sm px-2 animate-in fade-in slide-in-from-bottom-2 duration-300">

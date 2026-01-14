@@ -315,10 +315,14 @@ export { createStudioMachine } from './studio-machine.js';
 
 ## Acceptance Criteria
 
-- [ ] `studio-machine.ts` created with XState machine definition
-- [ ] States: idle, responding, inferring, suggesting, and advanced feature states
-- [ ] Actions: addUserMessage, addCharacterMessage, addInferredTraits, etc.
-- [ ] Actors: generateResponse invokes LLM with proper prompt
-- [ ] Machine exported from index.ts
+- [x] `studio-machine.ts` created with XState machine definition
+- [x] States: idle, responding, inferring, suggesting, and advanced feature states
+- [x] Actions: addUserMessage, addCharacterMessage, addInferredTraits, etc.
+- [x] Actors: generateResponse invokes LLM with proper prompt
+- [x] Machine exported from index.ts
 - [ ] No TypeScript compilation errors
-- [ ] Placeholder actors for advanced features (to be implemented later)
+- [x] Placeholder actors for advanced features (to be implemented later)
+
+## Validation Notes
+
+- TypeScript compilation was not executed; compile status is unverified.

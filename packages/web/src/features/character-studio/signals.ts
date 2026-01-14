@@ -42,12 +42,27 @@ export interface InferredTrait {
   path: string;           // e.g., 'personalityMap.social.strangerDefault'
   value: unknown;         // e.g., 'guarded'
   confidence: number;     // 0-1
-  source: string;         // Quote from conversation that triggered inference
+  evidence: string;       // Quote from conversation that triggered inference
   status: 'pending' | 'accepted' | 'rejected' | 'dismissed';
 }
 
 /** Conversation history with the character */
 export const conversationHistory = signal<ConversationMessage[]>([]);
+
+/** Current studio session ID */
+export const studioSessionId = signal<string | null>(null);
+
+/** Suggested prompts from discovery guide */
+export const suggestedPrompts = signal<SuggestedPrompt[]>([]);
+
+/** Explored topics in current session */
+export const exploredTopics = signal<string[]>([]);
+
+export interface SuggestedPrompt {
+  prompt: string;
+  topic: string;
+  rationale: string;
+}
 
 /** Pending trait inferences from conversation */
 export const pendingTraits = signal<InferredTrait[]>([]);
@@ -66,6 +81,9 @@ export const activePanel = signal<StudioPanel>('conversation');
 
 /** Expanded identity cards */
 export const expandedCards = signal<Set<string>>(new Set(['core']));
+
+/** Is a deletion operation in progress */
+export const isDeleting = signal<boolean>(false);
 
 // ============================================================================
 // Computed Signals
@@ -217,4 +235,17 @@ export function resetStudio(): void {
   isGenerating.value = false;
   activePanel.value = 'conversation';
   expandedCards.value = new Set(['core']);
+  studioSessionId.value = null;
+  suggestedPrompts.value = [];
+  exploredTopics.value = [];
+  isDeleting.value = false;
+}
+
+/** Reset session state (call when starting new character) */
+export function resetStudioSession(): void {
+  studioSessionId.value = null;
+  suggestedPrompts.value = [];
+  exploredTopics.value = [];
+  conversationHistory.value = [];
+  pendingTraits.value = [];
 }
