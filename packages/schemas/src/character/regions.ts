@@ -248,16 +248,16 @@ export const BODY_REGION_ALIASES: Record<string, BodyRegion> = {
 
 function extractSide(normalized: string): { side: BodySide | undefined; value: string } {
   const cleaned = normalized.replace(/[_-]+/g, ' ').trim();
-
-  // Use non-greedy quantifiers to prevent ReDoS vulnerability (polynomial backtracking)
-  const prefix = /^(left|right)\s+(.+)$/.exec(cleaned);
-  if (prefix) {
-    return { side: prefix[1] as BodySide, value: prefix[2]! };
-  }
-
-  const suffix = /^(.+)\s+(left|right)$/.exec(cleaned);
-  if (suffix) {
-    return { side: suffix[2] as BodySide, value: suffix[1]! };
+  const parts = cleaned.split(/\s+/);
+  if (parts.length > 1) {
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    if (first === 'left' || first === 'right') {
+      return { side: first as BodySide, value: parts.slice(1).join(' ') };
+    }
+    if (last === 'left' || last === 'right') {
+      return { side: last as BodySide, value: parts.slice(0, -1).join(' ') };
+    }
   }
 
   return { side: undefined, value: cleaned };
@@ -326,6 +326,9 @@ export function resolveBodyRegion(
   }
 
   const normalized = reference.toLowerCase().trim();
+  if (normalized.length > 1000) {
+    return defaultRegion;
+  }
   const { side, value } = extractSide(normalized);
 
   // Check if it's already a canonical region
@@ -359,6 +362,9 @@ export function resolveBodyRegion(
  */
 export function isBodyReference(value: string): boolean {
   const normalized = value.toLowerCase().trim();
+  if (normalized.length > 1000) {
+    return false;
+  }
   const { value: stripped } = extractSide(normalized);
   return (
     BODY_REGIONS.includes(stripped as BodyRegion) ||
