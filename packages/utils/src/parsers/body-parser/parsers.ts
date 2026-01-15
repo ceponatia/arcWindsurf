@@ -203,8 +203,8 @@ export function parseBodyEntry(input: string): ParsedBodyEntry | null {
   if (trimmed.length > 1000) return null;
 
   // Normalize separators: convert " - " and " : " to ":"
-  const collapsedWhitespace = trimmed.replace(/\s+/g, ' ');
-  const normalized = collapsedWhitespace
+  const normalized = trimmed
+    .replace(/\s+/g, ' ')
     .replace(/ ?- ?/g, ':')
     .replace(/ ?: ?/g, ':')
     .toLowerCase();
