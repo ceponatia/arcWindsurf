@@ -2,7 +2,7 @@ import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { Loader2 } from 'lucide-react';
 import { useCharacterStudio } from './hooks/useCharacterStudio.js';
-import { completionScore, fieldErrors } from './signals.js';
+import { fieldErrors } from './signals.js';
 import { ConversationPane } from './components/conversation/ConversationPane.js';
 import { TraitSuggestions } from './components/traits/TraitSuggestions.js';
 import { IdentityPanel } from './components/IdentityPanel.js';

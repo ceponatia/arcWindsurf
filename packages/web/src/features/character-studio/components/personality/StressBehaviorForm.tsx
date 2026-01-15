@@ -9,7 +9,16 @@ export const StressBehaviorForm: React.FC = () => {
   useSignals();
 
   const stressRaw = characterProfile.value.personalityMap?.stress;
-  const stress = {
+  interface StressFormState {
+    primary: (typeof STRESS_RESPONSES)[number];
+    secondary?: (typeof STRESS_RESPONSES)[number] | undefined;
+    threshold: number;
+    recoveryRate: (typeof RECOVERY_RATES)[number];
+    soothingActivities: string[];
+    stressIndicators: string[];
+  }
+
+  const stress: StressFormState = {
     primary: stressRaw?.primary ?? STRESS_RESPONSES[2], // freeze
     secondary: stressRaw?.secondary,
     threshold: typeof stressRaw?.threshold === 'number' ? stressRaw.threshold : 0.5,
@@ -20,7 +29,7 @@ export const StressBehaviorForm: React.FC = () => {
     stressIndicators: Array.isArray(stressRaw?.stressIndicators) ? stressRaw.stressIndicators : [],
   };
 
-  const handleChange = (updates: Partial<typeof stress>) => {
+  const handleChange = (updates: Partial<StressFormState>) => {
     updatePersonalityMap({
       stress: {
         ...stress,
@@ -34,18 +43,18 @@ export const StressBehaviorForm: React.FC = () => {
     index: number,
     value: string
   ) => {
-    const newList = [...(stress[field] as string[])];
+    const newList = [...stress[field]];
     newList[index] = value;
     handleChange({ [field]: newList });
   };
 
-  const addListItem = (field: 'soothingActivities' | 'stressIndicators', value: string = '') => {
-    const newList = [...(stress[field] as string[]), value];
+  const addListItem = (field: 'soothingActivities' | 'stressIndicators', value = '') => {
+    const newList = [...stress[field], value];
     handleChange({ [field]: newList });
   };
 
   const removeListItem = (field: 'soothingActivities' | 'stressIndicators', index: number) => {
-    const newList = (stress[field] as string[]).filter((_, i) => i !== index);
+    const newList = stress[field].filter((_, i) => i !== index);
     handleChange({ [field]: newList });
   };
 

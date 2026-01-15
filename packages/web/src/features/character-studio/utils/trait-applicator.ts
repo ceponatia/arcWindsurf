@@ -15,12 +15,14 @@ import {
  */
 export function applyTrait(trait: { path: string; value: unknown }): void {
   const pathParts = trait.path.split('.');
+  const root = pathParts[0];
+  if (!root) return;
 
-  if (pathParts[0] === 'personalityMap') {
+  if (root === 'personalityMap') {
     applyPersonalityTrait(pathParts.slice(1), trait.value);
   } else {
     // Top-level profile field (name, backstory, etc.)
-    updateProfile(pathParts[0] as keyof CharacterProfile, trait.value as never);
+    updateProfile(root as keyof CharacterProfile, trait.value as CharacterProfile[keyof CharacterProfile]);
   }
 }
 
@@ -31,7 +33,7 @@ export function applyTrait(trait: { path: string; value: unknown }): void {
  * @param value - The value to apply
  */
 function applyPersonalityTrait(path: string[], value: unknown): void {
-  const current = characterProfile.value.personalityMap ?? {};
+  const current: Partial<PersonalityMap> = characterProfile.value.personalityMap ?? {};
   const head = path[0];
   if (!head) return;
 
@@ -49,25 +51,31 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
     updatePersonalityMap({ [head]: value } as Partial<PersonalityMap>);
   } else if (path.length === 2) {
     // Nested field: personalityMap.dimensions.openness, personalityMap.social.strangerDefault, etc.
-    const section = path[0] as string;
-    const field = path[1] as string;
-    const sectionData = (current as Record<string, unknown>)[section] ?? {};
+    const section = path[0];
+    const field = path[1];
+    if (!section || !field) return;
+    const sectionKey = section as keyof PersonalityMap;
+    const sectionData = current[sectionKey];
 
     // Stress list fields should append normalized string values.
     if (section === 'stress' && (field === 'soothingActivities' || field === 'stressIndicators')) {
-      const existing = normalizeStringList((sectionData as Record<string, unknown>)[field]);
+      const stressData = current.stress ?? {};
+      const existing = normalizeStringList(stressData[field]);
       const incoming = normalizeStringList(value);
       updatePersonalityMap({
         stress: {
-          ...(sectionData as any),
+          ...stressData,
           [field]: [...existing, ...incoming],
         },
-      } as any);
+      });
       return;
     }
 
     updatePersonalityMap({
-      [section]: { ...(sectionData as object), [field]: value },
+      [sectionKey]: {
+        ...(typeof sectionData === 'object' && sectionData !== null ? sectionData : {}),
+        [field]: value,
+      },
     } as Partial<PersonalityMap>);
   }
 }

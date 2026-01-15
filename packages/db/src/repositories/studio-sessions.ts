@@ -5,9 +5,9 @@ import { studioSessions } from '../schema/index.js';
 export interface StudioSession {
   id: string;
   profileSnapshot: Record<string, unknown>;
-  conversation: Array<{ role: string; content: string; timestamp: string }>;
+  conversation: { role: string; content: string; timestamp: string }[];
   summary: string | null;
-  inferredTraits: Array<{ path: string; value: unknown; confidence: number }>;
+  inferredTraits: { path: string; value: unknown; confidence: number }[];
   exploredTopics: string[];
   createdAt: Date;
   lastActiveAt: Date;
@@ -95,9 +95,9 @@ export async function updateStudioSession(
   id: string,
   updates: Partial<{
     profileSnapshot: Record<string, unknown>;
-    conversation: Array<{ role: string; content: string; timestamp: string }>;
+    conversation: { role: string; content: string; timestamp: string }[];
     summary: string | null;
-    inferredTraits: Array<{ path: string; value: unknown; confidence: number }>;
+    inferredTraits: { path: string; value: unknown; confidence: number }[];
     exploredTopics: string[];
   }>
 ): Promise<StudioSession | null> {

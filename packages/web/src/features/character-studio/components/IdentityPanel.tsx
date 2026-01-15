@@ -7,6 +7,7 @@ import {
   type Race,
   type Subrace,
   type Alignment,
+  type Gender,
 } from '@minimal-rpg/schemas';
 import {
   characterProfile,
@@ -48,10 +49,11 @@ export const IdentityPanel: React.FC = () => {
                 updateProfile('name', e.target.value);
                 clearFieldError('name');
               }}
-              className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${fieldErrors.value.name
-                ? 'ring-red-500 focus:ring-red-500'
-                : 'ring-slate-700 focus:ring-violet-500'
-                }`}
+              className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                fieldErrors.value.name
+                  ? 'ring-red-500 focus:ring-red-500'
+                  : 'ring-slate-700 focus:ring-violet-500'
+              }`}
               placeholder="Character name"
             />
             {fieldErrors.value.name && (
@@ -72,10 +74,11 @@ export const IdentityPanel: React.FC = () => {
                   updateProfile('age', parseInt(e.target.value, 10));
                   clearFieldError('age');
                 }}
-                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${fieldErrors.value.age
-                  ? 'ring-red-500 focus:ring-red-500'
-                  : 'ring-slate-700 focus:ring-violet-500'
-                  }`}
+                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                  fieldErrors.value.age
+                    ? 'ring-red-500 focus:ring-red-500'
+                    : 'ring-slate-700 focus:ring-violet-500'
+                }`}
                 placeholder="Age"
               />
               {fieldErrors.value.age && (
@@ -88,15 +91,19 @@ export const IdentityPanel: React.FC = () => {
                 Gender <span className="text-red-500">*</span>
               </span>
               <select
-                value={((profile as Record<string, unknown>)['gender'] as string) ?? ''}
+                value={profile.gender ?? ''}
                 onChange={(e) => {
-                  updateProfile('gender' as keyof typeof profile, e.target.value);
-                  clearFieldError('gender' as any);
+                  const value = e.target.value;
+                  if (value !== '') {
+                    updateProfile('gender', value as Gender);
+                  }
+                  clearFieldError('gender');
                 }}
-                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${fieldErrors.value.gender
-                  ? 'ring-red-500 focus:ring-red-500'
-                  : 'ring-slate-700 focus:ring-violet-500'
-                  }`}
+                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                  fieldErrors.value.gender
+                    ? 'ring-red-500 focus:ring-red-500'
+                    : 'ring-slate-700 focus:ring-violet-500'
+                }`}
               >
                 <option value="">Select...</option>
                 <option value="male">Male</option>
@@ -119,10 +126,11 @@ export const IdentityPanel: React.FC = () => {
                 updateProfile('summary', e.target.value);
                 clearFieldError('summary');
               }}
-              className={`mt-1 w-full min-h-[80px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${fieldErrors.value.summary
-                ? 'ring-red-500 focus:ring-red-500'
-                : 'ring-slate-700 focus:ring-violet-500'
-                }`}
+              className={`mt-1 w-full min-h-[80px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                fieldErrors.value.summary
+                  ? 'ring-red-500 focus:ring-red-500'
+                  : 'ring-slate-700 focus:ring-violet-500'
+              }`}
               placeholder="A brief description of who they are..."
             />
             {fieldErrors.value.summary && (
@@ -145,10 +153,11 @@ export const IdentityPanel: React.FC = () => {
                 updateProfile('backstory', e.target.value);
                 clearFieldError('backstory');
               }}
-              className={`mt-1 w-full min-h-[160px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${fieldErrors.value.backstory
-                ? 'ring-red-500 focus:ring-red-500'
-                : 'ring-slate-700 focus:ring-violet-500'
-                }`}
+              className={`mt-1 w-full min-h-[160px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                fieldErrors.value.backstory
+                  ? 'ring-red-500 focus:ring-red-500'
+                  : 'ring-slate-700 focus:ring-violet-500'
+              }`}
               placeholder="Describe the character's history and background..."
             />
             {fieldErrors.value.backstory && (
@@ -180,10 +189,11 @@ export const IdentityPanel: React.FC = () => {
                     }
                   }
                 }}
-                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${fieldErrors.value.race
-                  ? 'ring-red-500 focus:ring-red-500'
-                  : 'ring-slate-700 focus:ring-violet-500'
-                  }`}
+                className={`mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 focus:ring-2 ${
+                  fieldErrors.value.race
+                    ? 'ring-red-500 focus:ring-red-500'
+                    : 'ring-slate-700 focus:ring-violet-500'
+                }`}
               >
                 <option value="">Select...</option>
                 {RACES.map((race) => (
@@ -209,11 +219,12 @@ export const IdentityPanel: React.FC = () => {
                 className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">None</option>
-                {profile.race && RACE_SUBRACES[profile.race]?.map((subrace) => (
-                  <option key={subrace} value={subrace}>
-                    {subrace}
-                  </option>
-                ))}
+                {profile.race &&
+                  RACE_SUBRACES[profile.race]?.map((subrace) => (
+                    <option key={subrace} value={subrace}>
+                      {subrace}
+                    </option>
+                  ))}
               </select>
             </label>
           </div>

@@ -51,8 +51,14 @@ export async function studioConversation(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error ?? `Request failed: ${response.status}`);
+    const errorData = await response
+      .json()
+      .then((data: unknown) => (typeof data === 'object' && data !== null ? data : {}))
+      .catch(() => ({} as Record<string, unknown>));
+    const errorValue = (errorData as { error?: unknown }).error;
+    const message =
+      typeof errorValue === 'string' ? errorValue : `Request failed: ${response.status}`;
+    throw new Error(message);
   }
 
   return response.json() as Promise<StudioConversationResponse>;
@@ -85,8 +91,14 @@ export async function studioConversationStream(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error ?? `Request failed: ${response.status}`);
+    const errorData = await response
+      .json()
+      .then((data: unknown) => (typeof data === 'object' && data !== null ? data : {}))
+      .catch(() => ({} as Record<string, unknown>));
+    const errorValue = (errorData as { error?: unknown }).error;
+    const message =
+      typeof errorValue === 'string' ? errorValue : `Request failed: ${response.status}`;
+    throw new Error(message);
   }
 
   const reader = response.body?.getReader();

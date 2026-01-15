@@ -93,8 +93,8 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
   const age = getValue('age', existing.age, () =>
     randomInt(theme.basics.ageRange[0], theme.basics.ageRange[1])
   );
-  const race = getValue('race', (existing as any).race, () =>
-    theme.basics.races ? pickFromPool(theme.basics.races) : 'Human'
+  const race = getValue<Race>('race', existing.race, () =>
+    theme.basics.races ? pickFromPool(theme.basics.races) : pickFromPool(RACES)
   );
   const summary = getValue('summary', existing.summary, () => generateSummary(theme, name, age));
   const backstory = getValue('backstory', existing.backstory, () => generateBackstory(theme, name));
@@ -130,7 +130,7 @@ export function generateCharacter(options: CharacterGeneratorOptions): Character
     name,
     age,
     gender,
-    race: race as any,
+    race,
     summary,
     backstory,
     personality: personalityText,

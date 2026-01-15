@@ -38,7 +38,7 @@ export const ConversationPane: React.FC = () => {
     try {
       await sendMessage(input.trim());
       setInput('');
-    } catch (err) {
+    } catch {
       setError('Failed to send message. Please try again.');
     }
   }, [input, isGenerating, sendMessage]);
@@ -54,7 +54,7 @@ export const ConversationPane: React.FC = () => {
       } else {
         setSuccess('No new summary available.');
       }
-    } catch (err) {
+    } catch {
       setError('Summarization failed');
     } finally {
       setIsSummarizing(false);
@@ -76,7 +76,7 @@ export const ConversationPane: React.FC = () => {
       setError(null);
       try {
         await sendMessage(prompt);
-      } catch (err) {
+      } catch {
         setError('Failed to process prompt. Please try again.');
       }
     },
@@ -125,7 +125,10 @@ export const ConversationPane: React.FC = () => {
         )}
 
         {messages.length === 0 && (
-          <ConversationPrompts onSelect={handlePromptSelect} onDilemma={generateDilemma} />
+          <ConversationPrompts
+            onSelect={(prompt) => void handlePromptSelect(prompt)}
+            onDilemma={() => void generateDilemma()}
+          />
         )}
 
         {messages.map((msg) => (
@@ -134,7 +137,10 @@ export const ConversationPane: React.FC = () => {
 
         {messages.length > 0 && !isGenerating && (
           <div className="pt-2">
-            <ConversationPrompts onSelect={handlePromptSelect} onDilemma={generateDilemma} />
+            <ConversationPrompts
+              onSelect={(prompt) => void handlePromptSelect(prompt)}
+              onDilemma={() => void generateDilemma()}
+            />
           </div>
         )}
 
@@ -161,7 +167,7 @@ export const ConversationPane: React.FC = () => {
             disabled={isGenerating}
           />
           <button
-            onClick={handleSend}
+            onClick={() => void handleSend()}
             disabled={!input.trim() || isGenerating}
             className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -187,7 +193,7 @@ export const ConversationPane: React.FC = () => {
 
           {isDevMode && (
             <button
-              onClick={handleSummarize}
+              onClick={() => void handleSummarize()}
               disabled={!studioSessionId.value || isSummarizing || messages.length < 10}
               className="text-[10px] uppercase tracking-wider text-slate-500 hover:text-violet-400 transition-colors font-semibold disabled:opacity-30"
               title="Summarize conversation (dev only)"

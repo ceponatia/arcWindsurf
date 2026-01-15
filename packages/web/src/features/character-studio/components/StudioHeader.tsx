@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { completionScore, requiredFieldsCompletion } from '../signals.js';
 
@@ -32,7 +32,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   const fields = requiredFieldsCompletion.value;
 
   const missingFields = Object.entries(fields)
-    .filter(([_, filled]) => !filled)
+    .filter((entry) => !entry[1])
     .map(([field]) => field);
 
   const getStatusColor = () => {
@@ -117,7 +117,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         {isEditing && onDelete && (
           <button
             onClick={onDelete}
-            disabled={isDeleting || saveStatus === 'saving'}
+            disabled={(isDeleting ?? false) || saveStatus === 'saving'}
             className="p-2 text-slate-400 hover:text-red-400 disabled:opacity-50 transition-colors"
             title="Delete Character"
           >

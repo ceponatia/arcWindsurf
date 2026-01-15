@@ -1,10 +1,9 @@
 import { createMachine, assign, fromPromise } from 'xstate';
-import type { WorldEvent, CharacterProfile } from '@minimal-rpg/schemas';
-import type { NpcMachineContext } from './types.js';
+import type { WorldEvent, Intent } from '@minimal-rpg/schemas';
+import type { NpcMachineContext, NpcMachineEvent } from './types.js';
 import { PerceptionLayer } from './perception.js';
 import { CognitionLayer } from './cognition.js';
 import { worldBus } from '@minimal-rpg/bus';
-import type { LLMProvider } from '@minimal-rpg/llm';
 
 /**
  * NPC state machine definition.
@@ -22,6 +21,10 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
       id: 'npc',
       initial: 'idle',
       context: initialContext,
+      types: {} as {
+        context: NpcMachineContext;
+        events: NpcMachineEvent;
+      },
       states: {
         idle: {
           on: {
@@ -40,7 +43,9 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
         thinking: {
           invoke: {
             src: 'llmDecision',
-            input: ({ context }) => context,
+            input: ({ context }: { context: NpcMachineContext }): NpcMachineContext => ({
+              ...context,
+            }),
             onDone: {
               target: 'acting',
               actions: assign({
@@ -71,9 +76,8 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
       actions: {
         bufferEvent: assign({
           recentEvents: ({ context, event }) => {
-            const e = event as { type: string; event?: WorldEvent };
-            if (e.type === 'WORLD_EVENT' && e.event) {
-              return [...context.recentEvents, e.event].slice(-10);
+            if (event.type === 'WORLD_EVENT') {
+              return [...context.recentEvents, event.event].slice(-10);
             }
             return context.recentEvents;
           },
@@ -96,13 +100,21 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
         think: () => undefined,
         emitIntent: ({ context }) => {
           if (context.pendingIntent) {
-            const enriched = {
-              sessionId: context.sessionId,
-              actorId: context.actorId ?? context.npcId,
-              timestamp: new Date(),
-              ...context.pendingIntent,
-            };
-            void worldBus.emit(enriched as WorldEvent);
+            const isIntentEvent = (event: WorldEvent): event is Intent =>
+              event.type.endsWith('_INTENT');
+
+            if (isIntentEvent(context.pendingIntent)) {
+              const enriched: Intent = {
+                ...context.pendingIntent,
+                sessionId: context.sessionId,
+                actorId: context.actorId ?? context.npcId,
+                timestamp: new Date(),
+              };
+              void worldBus.emit(enriched);
+              return;
+            }
+
+            void worldBus.emit(context.pendingIntent);
           }
         },
         clearEvents: assign({
@@ -112,8 +124,8 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
         }),
       },
       actors: {
-        llmDecision: fromPromise(async ({ input }) => {
-          const context = input as NpcMachineContext;
+        llmDecision: fromPromise(async ({ input }: { input: NpcMachineContext }) => {
+          const context = input;
           if (!context.perception) return null;
 
           const cognitionContext = {
@@ -132,8 +144,8 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
             availableActions: ['SPEAK_INTENT', 'MOVE_INTENT'],
           };
 
-          const llmProvider = context.llmProvider as LLMProvider | undefined;
-          const profile = context.profile as CharacterProfile | undefined;
+          const llmProvider = context.llmProvider;
+          const profile = context.profile;
 
           if (llmProvider && profile) {
             const result = await CognitionLayer.decideLLM(cognitionContext, profile, llmProvider);

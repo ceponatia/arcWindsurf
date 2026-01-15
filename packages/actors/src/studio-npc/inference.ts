@@ -294,7 +294,7 @@ export class TraitInferenceEngine {
       const record = current as Record<string, unknown>;
       if (Object.prototype.hasOwnProperty.call(record, part)) {
         // Use Type Assertion for property access to satisfy compiler
-        current = (record as Record<string, unknown>)[part];
+        current = record[part];
       } else {
         return undefined;
       }

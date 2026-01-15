@@ -194,7 +194,8 @@ export function setFieldErrors(next: StudioFieldErrors): void {
 export function clearFieldError(key: StudioFieldKey): void {
   const current = fieldErrors.value;
   if (!current[key]) return;
-  const { [key]: _removed, ...rest } = current;
+  const { [key]: removed, ...rest } = current;
+  void removed;
   fieldErrors.value = rest;
 }
 

@@ -17,7 +17,7 @@ export class EmotionalRangeGenerator {
     profile: Partial<CharacterProfile>,
     request: EmotionalRangeRequest
   ): Promise<EmotionalRangeResponse> {
-    const variations: Array<{ emotion: EmotionState; response: string }> = [];
+    const variations: { emotion: EmotionState; response: string }[] = [];
     const systemPrompt = buildStudioSystemPrompt(profile, null);
 
     for (const emotion of request.emotions) {

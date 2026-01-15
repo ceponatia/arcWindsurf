@@ -5,8 +5,10 @@ import {
   type CharacterProfile,
   type PersonalityMap,
   type Gender,
+  type Race,
   BODY_REGIONS,
   PERSONALITY_DIMENSIONS,
+  RACES,
 } from '@minimal-rpg/schemas';
 import { splitList } from '../shared/stringLists.js';
 import {
@@ -234,6 +236,9 @@ export const buildProfile = (form: FormState): CharacterProfile => {
   const validGenders = ['male', 'female', 'other', 'unknown'] as const;
   const gender = validGenders.includes(genderValue as Gender) ? (genderValue as Gender) : undefined;
 
+  const raceValue = form.race.trim();
+  const race = RACES.includes(raceValue as Race) ? (raceValue as Race) : RACES[0];
+
   const profilePicTrimmed = form.profilePic?.trim();
 
   const profile: CharacterProfile = {
@@ -243,7 +248,7 @@ export const buildProfile = (form: FormState): CharacterProfile => {
     ...(gender ? { gender } : {}),
     summary: form.summary.trim(),
     backstory: form.backstory.trim(),
-    race: form.race as any,
+    race,
     tags,
     tier: 'minor', // Default tier for manually created characters
     personality: parsePersonality(form.personality),

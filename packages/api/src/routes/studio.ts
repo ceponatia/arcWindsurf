@@ -1,4 +1,4 @@
-import { OpenAIProvider, type LLMMessage, type LLMResponse, type LLMStreamChunk, type LLMProvider } from '@minimal-rpg/llm';
+import { OpenAIProvider, type LLMMessage, type LLMProvider } from '@minimal-rpg/llm';
 import type { CharacterProfile } from '@minimal-rpg/schemas';
 import {
   createStudioNpcActor,
@@ -9,6 +9,7 @@ import {
   KEEP_RECENT_COUNT,
   buildStudioSystemPrompt,
   type InferredTrait,
+  type DiscoveryTopic,
 } from '@minimal-rpg/actors';
 import {
   createStudioSession,
@@ -75,6 +76,38 @@ const DilemmaRequestSchema = z.object({
   profile: z.record(z.string(), z.unknown()),
 });
 
+const DISCOVERY_TOPICS: DiscoveryTopic[] = [
+  'values',
+  'fears',
+  'relationships',
+  'backstory',
+  'stress-response',
+  'social-behavior',
+  'communication-style',
+  'goals-motivations',
+  'emotional-range',
+];
+
+const isDiscoveryTopic = (value: unknown): value is DiscoveryTopic =>
+  DISCOVERY_TOPICS.includes(value as DiscoveryTopic);
+
+const normalizeRole = (role: string): 'user' | 'character' | 'system' =>
+  role === 'user' || role === 'character' || role === 'system' ? role : 'user';
+
+const normalizeInferredTraits = (
+  traits: StudioSession['inferredTraits']
+): InferredTrait[] =>
+  traits.map((trait) => {
+    const evidenceValue = (trait as { evidence?: unknown }).evidence;
+    return {
+      ...trait,
+      evidence: typeof evidenceValue === 'string' ? evidenceValue : '',
+    };
+  });
+
+const normalizeExploredTopics = (topics: StudioSession['exploredTopics']): DiscoveryTopic[] =>
+  topics.filter(isDiscoveryTopic);
+
 interface StudioError {
   ok: false;
   error: string;
@@ -118,7 +151,8 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   const isHttpError = (err: unknown): err is { status: number } => {
-    return typeof err === 'object' && err !== null && typeof (err as any).status === 'number';
+    const status = (err as { status?: unknown }).status;
+    return typeof status === 'number';
   };
 
   const toStudioError = (err: unknown): { status: number; body: StudioError } => {
@@ -198,12 +232,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     } catch (error) {
       console.error('Studio generate error:', getMessage(error));
       const mapped = toStudioError(error);
-      return c.json(mapped.body, mapped.status as any);
+      return c.json(mapped.body, mapped.status);
     }
   });
 
   // GET /studio/generate/stream - legacy SSE streaming endpoint
-  app.get('/studio/generate/stream', async (c) => {
+  app.get('/studio/generate/stream', (c) => {
     if (!llmProvider) {
       return c.json(
         {
@@ -235,7 +269,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         const iterable = await runLlmEffect(llmProvider.stream(messages));
 
         for await (const chunk of iterable) {
-          const delta = (chunk as any)?.choices?.[0]?.delta?.content;
+          const delta = chunk.choices?.[0]?.delta?.content;
           const content = typeof delta === 'string' ? delta : '';
           if (!content) continue;
 
@@ -303,14 +337,13 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         const updatedTraits = [...existingTraits, ...inferredTraits];
 
         await updateStudioSession(sessionId, {
-          inferredTraits: updatedTraits as any[],
+          inferredTraits: updatedTraits,
         });
       }
 
       return c.json({ ok: true, inferredTraits });
     } catch (error) {
       console.error('Studio infer-traits error:', getMessage(error));
-      const mapped = toStudioError(error);
       return c.json({ ok: false, error: 'Inference failed', inferredTraits: [] }, 500);
     }
   });
@@ -345,18 +378,26 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       }
 
       // Initialize manager and restore state
+      const profileSnapshot = session.profileSnapshot;
+      const characterName =
+        typeof profileSnapshot['name'] === 'string' ? profileSnapshot['name'] : 'Character';
+
       const manager = new ConversationManager({
         llmProvider: llmProvider,
-        characterName: (session.profileSnapshot as any)?.name ?? 'Character',
+        characterName,
       });
 
       manager.restore({
-        messages: session.conversation.map((m, idx) => ({
-          id: `msg-${idx}`,
-          content: m.content,
-          role: m.role as any,
-          timestamp: new Date(m.timestamp),
-        })),
+        messages: session.conversation.map((m, idx) => {
+          const role =
+            m.role === 'user' || m.role === 'character' || m.role === 'system' ? m.role : 'user';
+          return {
+            id: `msg-${idx}`,
+            content: m.content,
+            role,
+            timestamp: new Date(m.timestamp),
+          };
+        }),
         summary: session.summary,
       });
 
@@ -453,13 +494,13 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
             conversation: session.conversation.map((m, idx) => ({
               id: `msg-${idx}`,
               content: m.content,
-              role: m.role as 'user' | 'character' | 'system',
+              role: normalizeRole(m.role),
               timestamp: new Date(m.timestamp),
               thought: undefined,
             })),
             summary: session.summary,
-            inferredTraits: session.inferredTraits as any[],
-            exploredTopics: session.exploredTopics as any[],
+            inferredTraits: normalizeInferredTraits(session.inferredTraits),
+            exploredTopics: normalizeExploredTopics(session.exploredTopics),
           });
         }
       }
@@ -561,13 +602,13 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
           conversation: session.conversation.map((m, idx) => ({
             id: `msg-${idx}`,
             content: m.content,
-            role: m.role as 'user' | 'character' | 'system',
+            role: normalizeRole(m.role),
             timestamp: new Date(m.timestamp),
             thought: undefined,
           })),
           summary: session.summary,
-          inferredTraits: session.inferredTraits as any[],
-          exploredTopics: session.exploredTopics as any[],
+          inferredTraits: normalizeInferredTraits(session.inferredTraits),
+          exploredTopics: normalizeExploredTopics(session.exploredTopics),
         });
       }
     }
@@ -688,7 +729,9 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       // Mark already explored topics
       if (exploredTopics) {
         for (const topic of exploredTopics) {
-          guide.markExplored(topic as any);
+          if (isDiscoveryTopic(topic)) {
+            guide.markExplored(topic);
+          }
         }
       }
 
@@ -777,12 +820,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
           conversation: session.conversation.map((m, idx) => ({
             id: `msg-${idx}`,
             content: m.content,
-            role: m.role as any,
+            role: normalizeRole(m.role),
             timestamp: new Date(m.timestamp),
           })),
           summary: session.summary,
-          inferredTraits: session.inferredTraits as any[],
-          exploredTopics: session.exploredTopics as any[],
+          inferredTraits: normalizeInferredTraits(session.inferredTraits),
+          exploredTopics: normalizeExploredTopics(session.exploredTopics),
         });
       }
 

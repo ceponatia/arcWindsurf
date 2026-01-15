@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import type { CharacterProfile } from '@minimal-rpg/schemas';
 import { characterProfile, updateProfile } from '../signals.js';
 import { IdentityCard } from './IdentityCard.js';
 import { SelectInput } from '../../../shared/components/common.js';
@@ -29,9 +30,7 @@ export const AppearanceCard: React.FC<{ hasContent?: boolean }> = ({ hasContent 
 
   const updatePhysique = (field: keyof Physique, value: string) => {
     const nextPhysique = { ...physique, [field]: value };
-    // We cast to any here because the studio uses a flat object for draft editing
-    // which may be serialized to a string or mapped to PhysiqueSchema on final save.
-    updateProfile('physique', nextPhysique as any);
+    updateProfile('physique', nextPhysique as CharacterProfile['physique']);
   };
 
   return (

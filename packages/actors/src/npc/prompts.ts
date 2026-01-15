@@ -34,7 +34,9 @@ export function buildNpcCognitionPrompt(
     lines.push('- None');
   } else {
     perception.relevantEvents.slice(-5).forEach((event) => {
-      lines.push(`- ${event.type} from ${String((event as Record<string, unknown>)['actorId'] ?? 'unknown')}`);
+      const actorIdValue = (event as Record<string, unknown>)['actorId'];
+      const actorId = typeof actorIdValue === 'string' ? actorIdValue : 'unknown';
+      lines.push(`- ${event.type} from ${actorId}`);
     });
   }
 

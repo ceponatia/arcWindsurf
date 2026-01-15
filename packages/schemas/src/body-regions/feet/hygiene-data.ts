@@ -1,7 +1,7 @@
 import { setRecord } from '../../shared/record-helpers.js';
 import type { HygieneProfile } from '../../state/hygiene-types.js';
 import { flattenHygieneData } from '../../state/hygiene-types.js';
-import { CLEAN_SKIN, NEUTRAL_FAINT } from '../constants.js';
+import { NEUTRAL_FAINT } from '../constants.js';
 import { FEET_REGIONS } from './regions.js';
 import { TOE_REGIONS } from './toes.js';
 import type { RegionScent } from '../sensory-types.js';

@@ -16,17 +16,18 @@ import { TraitInferenceEngine } from './inference.js';
 import { DiscoveryGuide } from './discovery.js';
 import { DilemmaEngine } from './dilemma.js';
 import { EmotionalRangeGenerator } from './emotional-range.js';
-import { ContradictionMirror } from './contradiction.js';
 import { VignetteGenerator } from './vignettes.js';
 import { MemoryExcavator } from './memory-excavation.js';
 import { FirstImpressionGenerator } from './first-impression.js';
-import { InternalMonologueGenerator } from './internal-monologue.js';
 import { VoiceFingerprintAnalyzer } from './voice-fingerprint.js';
 import { validateCharacterResponse } from './validation.js';
 import type {
   Dilemma,
+  EmotionalRangeRequest,
   EmotionalRangeResponse,
+  FirstImpressionContext,
   VignetteResponse,
+  VignetteRequest,
   MemoryTopic,
   BackstoryElement,
   FirstImpressionResponse,
@@ -571,14 +572,22 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
           return await engine.generateDilemma(ctx.profile);
         }),
         generateEmotionalRange: fromPromise(async ({ input }) => {
-          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_EMOTIONAL_RANGE', request: any } };
+          const { context, event } = input as { context: StudioMachineContext; event: StudioMachineEvent };
+          if (event.type !== 'REQUEST_EMOTIONAL_RANGE') {
+            return { variations: [], inferredRange: { dimension: 'expressiveness', value: 0 } };
+          }
           const generator = new EmotionalRangeGenerator(context.llmProvider);
-          return await generator.generate(context.profile, event.request);
+          const request: EmotionalRangeRequest = event.request;
+          return await generator.generate(context.profile, request);
         }),
         generateVignette: fromPromise(async ({ input }) => {
-          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_VIGNETTE', request: any } };
+          const { context, event } = input as { context: StudioMachineContext; event: StudioMachineEvent };
+          if (event.type !== 'REQUEST_VIGNETTE') {
+            return { dialogue: '', inferredPatterns: {} };
+          }
           const generator = new VignetteGenerator(context.llmProvider);
-          return await generator.generate(context.profile, event.request);
+          const request: VignetteRequest = event.request;
+          return await generator.generate(context.profile, request);
         }),
         excavateMemory: fromPromise(async ({ input }) => {
           const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_MEMORY', topic: MemoryTopic } };
@@ -586,9 +595,17 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
           return await excavator.excavate(context.profile, event.topic);
         }),
         generateFirstImpression: fromPromise(async ({ input }) => {
-          const { context, event } = input as { context: StudioMachineContext, event: { type: 'REQUEST_FIRST_IMPRESSION', context?: any } };
+          const { context, event } = input as { context: StudioMachineContext; event: StudioMachineEvent };
+          if (event.type !== 'REQUEST_FIRST_IMPRESSION') {
+            return {
+              externalPerception: '',
+              internalReaction: '',
+              inferredGap: null,
+            } satisfies FirstImpressionResponse;
+          }
           const generator = new FirstImpressionGenerator(context.llmProvider);
-          return await generator.generate(context.profile, event.context);
+          const requestContext: FirstImpressionContext | undefined = event.context;
+          return await generator.generate(context.profile, requestContext);
         }),
         analyzeVoice: fromPromise(async ({ input }) => {
           const context = input as StudioMachineContext;

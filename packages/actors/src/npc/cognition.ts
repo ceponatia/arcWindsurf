@@ -20,7 +20,8 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
       })
       .catch((err: unknown) => {
         clearTimeout(timeout);
-        reject(err);
+        const error = err instanceof Error ? err : new Error(String(err));
+        reject(error);
       });
   });
 }
