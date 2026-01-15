@@ -128,16 +128,16 @@ export async function studioConversationStream(
 
           switch (eventType) {
             case 'session':
-              callbacks.onSessionId?.(data.sessionId as string);
+              callbacks.onSessionId?.(data['sessionId'] as string);
               break;
             case 'content':
-              callbacks.onContent?.(data.content as string);
+              callbacks.onContent?.(data['content'] as string);
               break;
             case 'done':
               callbacks.onDone?.(data as unknown as StudioConversationResponse);
               break;
             case 'error':
-              callbacks.onError?.(data.message as string);
+              callbacks.onError?.(data['message'] as string);
               break;
           }
         } catch (e) {
@@ -215,6 +215,78 @@ export async function generateDilemmaScenario(
   }
 
   return response.json() as Promise<DilemmaScenarioResponse>;
+}
+
+export interface InferTraitsInput {
+  sessionId: string;
+  userMessage: string;
+  characterResponse: string;
+  profile: Partial<CharacterProfile>;
+}
+
+export interface InferTraitsResponse {
+  ok: boolean;
+  inferredTraits: {
+    path: string;
+    value: unknown;
+    confidence: number;
+    evidence: string;
+    reasoning?: string;
+  }[];
+}
+
+export async function inferTraits(
+  input: InferTraitsInput
+): Promise<InferTraitsResponse> {
+  const token = await getAccessToken();
+
+  const response = await fetch(`${API_BASE_URL}/studio/infer-traits`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
+    throw new Error(error.error ?? `Trait inference failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<InferTraitsResponse>;
+}
+
+export interface SummarizeResponse {
+  ok: boolean;
+  summarized: boolean;
+  summary: string | null;
+  messageCount?: number;
+}
+
+/**
+ * Summarizes the conversation session.
+ */
+export async function summarizeConversation(
+  sessionId: string
+): Promise<SummarizeResponse> {
+  const token = await getAccessToken();
+
+  const response = await fetch(`${API_BASE_URL}/studio/summarize`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ sessionId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
+    throw new Error(error.error ?? `Summarization failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<SummarizeResponse>;
 }
 
 export async function deleteStudioSession(sessionId: string): Promise<void> {

@@ -14,7 +14,7 @@ import {
   isDeleting,
 } from '../signals.js';
 import { generateCharacterId, loadCharacter, persistCharacter, removeCharacter } from '../services/api.js';
-import type { CharacterProfile } from '@minimal-rpg/schemas';
+import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
 
 export interface UseCharacterStudioOptions {
   id?: string | null;
@@ -115,10 +115,29 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
         }
       }
 
+      // Sanitize personalityMap - filter out invalid entries (e.g., fears with empty specific)
+      // The signal stores data in PersonalityMap format, just need to clean up invalid entries
+      let personalityMapForApi: PersonalityMap | undefined = current.personalityMap;
+      if (personalityMapForApi) {
+        const sanitized: PersonalityMap = { ...personalityMapForApi };
+        // Filter fears with empty specific field (schema requires min 1 char)
+        if (sanitized.fears) {
+          sanitized.fears = sanitized.fears.filter(f => f.specific && f.specific.trim().length > 0);
+          if (sanitized.fears.length === 0) delete sanitized.fears;
+        }
+        // Filter values with invalid entries
+        if (sanitized.values?.length === 0) {
+          delete sanitized.values;
+        }
+        // Only include if there's actual data
+        personalityMapForApi = Object.keys(sanitized).length > 0 ? sanitized : undefined;
+      }
+
       const profile: CharacterProfile = {
         ...current,
         id: current.id ?? generateCharacterId(),
         physique: physiqueForApi,
+        personalityMap: personalityMapForApi,
         backstory: current.backstory && current.backstory.trim().length > 0
           ? current.backstory
           : 'Backstory not provided yet.',

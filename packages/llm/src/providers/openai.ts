@@ -9,11 +9,19 @@ import type {
 } from '../types.js';
 import type { ToolCall } from '../tools/types.js';
 
+export interface ProviderRouting {
+  order?: string[];
+  sort?: 'price' | 'throughput' | 'latency';
+  allow_fallbacks?: boolean;
+}
+
 export interface OpenAIProviderConfig {
   id: string;
   apiKey: string;
   baseURL?: string;
   model: string;
+  /** OpenRouter-specific provider routing preferences */
+  providerRouting?: ProviderRouting;
 }
 
 export interface OpenRouterEnvConfig {
@@ -27,6 +35,7 @@ export class OpenAIProvider implements LLMProvider {
   private client: OpenAI;
   public readonly id: string;
   private model: string;
+  private providerRouting: ProviderRouting | undefined;
 
   public readonly supportsTools = true;
   public readonly supportsFunctions = true;
@@ -34,6 +43,7 @@ export class OpenAIProvider implements LLMProvider {
   constructor(config: OpenAIProviderConfig) {
     this.id = config.id;
     this.model = config.model;
+    this.providerRouting = config.providerRouting;
     this.client = new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.baseURL,
@@ -91,7 +101,7 @@ export class OpenAIProvider implements LLMProvider {
         const toolChoice = options?.tool_choice;
         const responseFormat = options?.response_format;
 
-        const body: OpenAICreateParams = {
+        const body: OpenAICreateParams & { provider?: ProviderRouting } = {
           model: this.model,
           messages: openAIMessages,
           ...(temperature !== undefined ? { temperature } : {}),
@@ -101,9 +111,10 @@ export class OpenAIProvider implements LLMProvider {
           ...(tools !== undefined ? { tools } : {}),
           ...(toolChoice !== undefined ? { tool_choice: toolChoice } : {}),
           ...(responseFormat !== undefined ? { response_format: responseFormat } : {}),
+          ...(this.providerRouting ? { provider: this.providerRouting } : {}),
         };
 
-        const response = await this.client.chat.completions.create(body);
+        const response = await this.client.chat.completions.create(body as OpenAICreateParams);
 
         const choice = response.choices[0];
         if (!choice) {
@@ -193,7 +204,7 @@ export class OpenAIProvider implements LLMProvider {
         const toolChoice = options?.tool_choice;
         const responseFormat = options?.response_format;
 
-        const body: OpenAICreateParamsStreaming = {
+        const body: OpenAICreateParamsStreaming & { provider?: ProviderRouting } = {
           model: this.model,
           messages: openAIMessages,
           ...(temperature !== undefined ? { temperature } : {}),
@@ -203,10 +214,11 @@ export class OpenAIProvider implements LLMProvider {
           ...(tools !== undefined ? { tools } : {}),
           ...(toolChoice !== undefined ? { tool_choice: toolChoice } : {}),
           ...(responseFormat !== undefined ? { response_format: responseFormat } : {}),
+          ...(this.providerRouting ? { provider: this.providerRouting } : {}),
           stream: true,
         };
 
-        const stream = await this.client.chat.completions.create(body);
+        const stream = await this.client.chat.completions.create(body as OpenAICreateParamsStreaming);
         return stream as AsyncIterable<LLMStreamChunk>;
       },
       catch: (error) => (error instanceof Error ? error : new Error(String(error))),
@@ -217,6 +229,7 @@ export class OpenAIProvider implements LLMProvider {
 /**
  * Convenience factory to build an OpenRouter-backed provider using env vars.
  * Expects OPENROUTER_API_KEY and optional OPENROUTER_MODEL/OPENROUTER_BASE_URL.
+ * Optional OPENROUTER_PROVIDER_ORDER for provider routing (comma-separated).
  */
 export function createOpenRouterProviderFromEnv(
   config?: OpenRouterEnvConfig
@@ -229,5 +242,15 @@ export function createOpenRouterProviderFromEnv(
   const baseURL = process.env['OPENROUTER_BASE_URL'] ?? 'https://openrouter.ai/api/v1';
   const id = config?.id ?? 'openrouter';
 
-  return new OpenAIProvider({ id, apiKey, baseURL, model });
+  // Parse provider sorting preference from env
+  const providerSort = process.env['OPENROUTER_PROVIDER_SORT'] as 'price' | 'throughput' | 'latency' | undefined;
+  const providerRouting = providerSort ? { sort: providerSort } : undefined;
+
+  return new OpenAIProvider({
+    id,
+    apiKey,
+    baseURL,
+    model,
+    ...(providerRouting ? { providerRouting } : {}),
+  });
 }

@@ -50,6 +50,9 @@ export interface InferredTrait {
 /** Conversation history with the character */
 export const conversationHistory = signal<ConversationMessage[]>([]);
 
+/** Current conversation summary */
+export const conversationSummary = signal<string | null>(null);
+
 /** Current studio session ID */
 export const studioSessionId = signal<string | null>(null);
 
@@ -70,6 +73,11 @@ export const pendingTraits = signal<InferredTrait[]>([]);
 
 /** Is the character currently "thinking" (LLM generating) */
 export const isGenerating = signal<boolean>(false);
+
+/** Whether to perform trait inference on conversation exchanges */
+export const traitInferenceEnabled = signal<boolean>(
+  typeof localStorage !== 'undefined' ? localStorage.getItem('studio.traitInference') !== 'false' : true
+);
 
 // ============================================================================
 // UI State Signals
@@ -206,6 +214,13 @@ export function addMessage(message: Omit<ConversationMessage, 'id' | 'timestamp'
   conversationHistory.value = [...conversationHistory.value, newMessage];
 }
 
+export function setTraitInferenceEnabled(enabled: boolean): void {
+  traitInferenceEnabled.value = enabled;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('studio.traitInference', String(enabled));
+  }
+}
+
 export function acceptTrait(traitId: string): void {
   const trait = pendingTraits.value.find(t => t.path === traitId);
   if (!trait) return;
@@ -232,6 +247,7 @@ export function resetStudio(): void {
   saveStatus.value = 'idle';
   fieldErrors.value = {};
   conversationHistory.value = [];
+  conversationSummary.value = null;
   pendingTraits.value = [];
   isGenerating.value = false;
   activePanel.value = 'conversation';
@@ -248,5 +264,6 @@ export function resetStudioSession(): void {
   suggestedPrompts.value = [];
   exploredTopics.value = [];
   conversationHistory.value = [];
+  conversationSummary.value = null;
   pendingTraits.value = [];
 }

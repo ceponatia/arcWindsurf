@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { CoreIdentitySchema } from '../shared/basics.js';
 import { NpcTierSchema } from '../npc-tier/index.js';
+import { RACES, SUBRACES } from '../races/index.js';
+
+// Re-export race types for backwards compatibility
+export { RACES, SUBRACES, RACE_SUBRACES } from '../races/index.js';
+export type { Race, Subrace } from '../races/index.js';
 
 export const ALIGNMENTS = [
   'Chaotic Evil',
@@ -12,19 +17,6 @@ export const ALIGNMENTS = [
   'Lawful Good',
 ] as const;
 export type Alignment = (typeof ALIGNMENTS)[number];
-
-export const RACES = [
-  'Human',
-  'Elf',
-  'Dwarf',
-  'Hobbit',
-  'Orc',
-  'Half-Orc',
-  'Half-Troll',
-  'Faerie',
-  'Gnome',
-] as const;
-export type Race = (typeof RACES)[number];
 
 /**
  * Character basics schema - extends core identity with character-specific fields.
@@ -45,6 +37,11 @@ export const CharacterBasicsSchema = CoreIdentitySchema.extend({
    * Character race.
    */
   race: z.enum(RACES),
+
+  /**
+   * Character subrace (optional, depends on race).
+   */
+  subrace: z.enum(SUBRACES).optional(),
 
   /**
    * NPC tier classification.

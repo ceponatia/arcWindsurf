@@ -2,18 +2,27 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { Loader2, AlertCircle, X } from 'lucide-react';
 import { useConversation } from '../../hooks/useConversation.js';
-import { characterProfile } from '../../signals.js';
+import {
+  characterProfile,
+  traitInferenceEnabled,
+  setTraitInferenceEnabled,
+  studioSessionId,
+} from '../../signals.js';
 import { MessageBubble } from './MessageBubble.js';
 import { ConversationPrompts } from './ConversationPrompts.js';
 
 export const ConversationPane: React.FC = () => {
   useSignals();
 
-  const { messages, isGenerating, sendMessage, generateDilemma } = useConversation();
+  const { messages, isGenerating, sendMessage, generateDilemma, summarize } = useConversation();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const isDevMode = import.meta.env.DEV;
 
   const characterName = characterProfile.value.name ?? 'Character';
 
@@ -25,6 +34,7 @@ export const ConversationPane: React.FC = () => {
   const handleSend = useCallback(async () => {
     if (!input.trim() || isGenerating) return;
     setError(null);
+    setSuccess(null);
     try {
       await sendMessage(input.trim());
       setInput('');
@@ -32,6 +42,24 @@ export const ConversationPane: React.FC = () => {
       setError('Failed to send message. Please try again.');
     }
   }, [input, isGenerating, sendMessage]);
+
+  const handleSummarize = useCallback(async () => {
+    setIsSummarizing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const summarized = await summarize();
+      if (summarized) {
+        setSuccess('Conversation summarized.');
+      } else {
+        setSuccess('No new summary available.');
+      }
+    } catch (err) {
+      setError('Summarization failed');
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [summarize]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -82,6 +110,20 @@ export const ConversationPane: React.FC = () => {
           </div>
         )}
 
+        {success && (
+          <div className="bg-green-900/20 border border-green-800/50 text-green-400 p-3 rounded-lg flex items-start justify-between gap-2 text-xs">
+            <div className="flex gap-2">
+              <span>{success}</span>
+            </div>
+            <button
+              onClick={() => setSuccess(null)}
+              className="text-green-400 hover:text-green-300 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {messages.length === 0 && (
           <ConversationPrompts onSelect={handlePromptSelect} onDilemma={generateDilemma} />
         )}
@@ -125,6 +167,34 @@ export const ConversationPane: React.FC = () => {
           >
             Send
           </button>
+        </div>
+        <div className="mt-3 flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="trait-inference-toggle"
+              checked={traitInferenceEnabled.value}
+              onChange={(e) => setTraitInferenceEnabled(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 cursor-pointer"
+            />
+            <label
+              htmlFor="trait-inference-toggle"
+              className="text-[11px] text-slate-500 hover:text-slate-400 transition-colors cursor-pointer select-none"
+            >
+              Auto-detect personality traits
+            </label>
+          </div>
+
+          {isDevMode && (
+            <button
+              onClick={handleSummarize}
+              disabled={!studioSessionId.value || isSummarizing || messages.length < 10}
+              className="text-[10px] uppercase tracking-wider text-slate-500 hover:text-violet-400 transition-colors font-semibold disabled:opacity-30"
+              title="Summarize conversation (dev only)"
+            >
+              {isSummarizing ? 'Summarizing...' : '📋 Summarize'}
+            </button>
+          )}
         </div>
       </div>
     </div>

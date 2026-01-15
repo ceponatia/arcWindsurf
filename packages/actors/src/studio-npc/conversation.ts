@@ -4,7 +4,7 @@ import type { ConversationMessage } from './types.js';
 
 const MAX_CONTEXT_MESSAGES = 20;
 const SUMMARIZATION_THRESHOLD = 20;
-const KEEP_RECENT_COUNT = 10;
+export const KEEP_RECENT_COUNT = 5;
 
 const SUMMARIZATION_SYSTEM_PROMPT = `You summarize character creation conversations concisely.
 Focus on:

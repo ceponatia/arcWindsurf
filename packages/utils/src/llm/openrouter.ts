@@ -18,6 +18,11 @@ interface ChatMessage {
   content: string;
 }
 
+interface ProviderPreferences {
+  order?: string[];
+  allow_fallbacks?: boolean;
+}
+
 interface ChatWithOpenRouterOptions {
   apiKey: string;
   model: string;
@@ -28,6 +33,7 @@ interface ChatWithOpenRouterOptions {
     top_p?: number;
     max_tokens?: number;
   };
+  provider?: ProviderPreferences;
 }
 
 /**
@@ -75,7 +81,7 @@ interface OpenRouterResponse {
 export async function chatWithOpenRouter(
   opts: ChatWithOpenRouterOptions
 ): Promise<OpenRouterChatResponse> {
-  const { apiKey, model, messages, timeoutMs = 180_000, options = {} } = opts;
+  const { apiKey, model, messages, timeoutMs = 180_000, options = {}, provider } = opts;
 
   let lastError: string | undefined;
   const maxRetries = 2;
@@ -88,13 +94,18 @@ export async function chatWithOpenRouter(
       const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
 
       // Build request body (OpenAI-compatible format)
-      const body = {
+      const body: Record<string, unknown> = {
         model,
         messages,
         temperature: options.temperature,
         top_p: options.top_p,
         max_tokens: options.max_tokens,
       };
+
+      // Add provider routing preferences if specified
+      if (provider) {
+        body['provider'] = provider;
+      }
 
       const res = await fetch(endpoint, {
         method: 'POST',

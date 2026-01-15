@@ -86,6 +86,9 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
             CLEAR_CONVERSATION: {
               actions: 'clearConversation',
             },
+            RESTORE_STATE: {
+              actions: 'restoreState',
+            },
             REQUEST_DILEMMA: { target: 'generatingDilemma' },
             REQUEST_EMOTIONAL_RANGE: { target: 'generatingEmotionalRange' },
             REQUEST_VIGNETTE: { target: 'generatingVignette' },
@@ -227,6 +230,24 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
           inferredTraits: ({ context, event }) => {
             const newTraits = (event as unknown as { output: InferredTrait[] }).output;
             return [...context.inferredTraits, ...newTraits];
+          },
+        }),
+        restoreState: assign({
+          conversation: ({ event }) => {
+            if (event.type !== 'RESTORE_STATE') return [];
+            return event.conversation;
+          },
+          summary: ({ event }) => {
+            if (event.type !== 'RESTORE_STATE') return null;
+            return event.summary;
+          },
+          inferredTraits: ({ event }) => {
+            if (event.type !== 'RESTORE_STATE') return [];
+            return event.inferredTraits;
+          },
+          exploredTopics: ({ event }) => {
+            if (event.type !== 'RESTORE_STATE') return new Set<DiscoveryTopic>();
+            return new Set(event.exploredTopics);
           },
         }),
         updateProfile: assign({

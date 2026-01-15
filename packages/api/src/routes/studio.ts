@@ -4,6 +4,9 @@ import {
   createStudioNpcActor,
   StudioNpcActor,
   DiscoveryGuide,
+  TraitInferenceEngine,
+  ConversationManager,
+  KEEP_RECENT_COUNT,
   buildStudioSystemPrompt,
   type InferredTrait,
 } from '@minimal-rpg/actors';
@@ -79,7 +82,7 @@ interface StudioError {
   retryable: boolean;
 }
 
-export type StudioLlmProvider = Pick<LLMProvider, 'chat' | 'stream'>;
+export type StudioLlmProvider = LLMProvider;
 
 export interface RegisterStudioRoutesOptions {
   llmProvider?: StudioLlmProvider | null;
@@ -108,9 +111,10 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   const InferTraitsRequestSchema = z.object({
+    sessionId: z.string(),
     userMessage: z.string(),
     characterResponse: z.string(),
-    currentProfile: z.record(z.string(), z.unknown()),
+    profile: z.record(z.string(), z.unknown()),
   });
 
   const isHttpError = (err: unknown): err is { status: number } => {
@@ -194,7 +198,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     } catch (error) {
       console.error('Studio generate error:', getMessage(error));
       const mapped = toStudioError(error);
-      return c.json(mapped.body, mapped.status);
+      return c.json(mapped.body, mapped.status as any);
     }
   });
 
@@ -255,7 +259,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     });
   });
 
-  // POST /studio/infer-traits - legacy trait inference endpoint
+  // POST /studio/infer-traits - Endpoint to perform trait inference asynchronously
   app.post('/studio/infer-traits', async (c) => {
     try {
       const body: unknown = await c.req.json();
@@ -277,39 +281,117 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         );
       }
 
-      const { userMessage, characterResponse } = parsed.data;
+      const { sessionId, userMessage, characterResponse, profile } = parsed.data;
 
-      const messages: LLMMessage[] = [
-        {
-          role: 'system',
-          content: 'Infer personality traits from a conversation exchange. Output JSON array only.',
-        },
-        {
-          role: 'user',
-          content: JSON.stringify({ userMessage, characterResponse }),
-        },
-      ];
+      // Initialize engine
+      const engine = new TraitInferenceEngine({
+        llmProvider: llmProvider,
+      });
 
-      const result = await runLlmEffect(llmProvider.chat(messages));
+      // Infer traits from this specific exchange
+      const inferredTraits = await engine.inferFromExchange(
+        userMessage,
+        characterResponse,
+        profile as Partial<CharacterProfile>
+      );
 
-      try {
-        const parsedJson = JSON.parse(result.content ?? '[]') as unknown;
-        const traits = Array.isArray(parsedJson) ? parsedJson : [];
-        return c.json({ traits }, 200);
-      } catch {
-        // Parse errors are non-critical and degrade gracefully.
-        return c.json({ traits: [] }, 200);
+      // Persist to session
+      const session = await getStudioSession(sessionId);
+      if (session) {
+        const existingTraits = (session.inferredTraits as unknown as InferredTrait[]) || [];
+        // Append new traits to the history
+        const updatedTraits = [...existingTraits, ...inferredTraits];
+
+        await updateStudioSession(sessionId, {
+          inferredTraits: updatedTraits as any[],
+        });
       }
+
+      return c.json({ ok: true, inferredTraits });
     } catch (error) {
-      if (isHttpError(error) && error.status === 429) {
-        console.error('Infer traits LLM error:', getMessage(error));
-        const mapped = toStudioError(error);
-        return c.json(mapped.body, mapped.status);
+      console.error('Studio infer-traits error:', getMessage(error));
+      const mapped = toStudioError(error);
+      return c.json({ ok: false, error: 'Inference failed', inferredTraits: [] }, 500);
+    }
+  });
+
+  // POST /studio/summarize - Endpoint to summarize older messages
+  app.post('/studio/summarize', async (c) => {
+    try {
+      const body: unknown = await c.req.json();
+      const parsed = z.object({ sessionId: z.string() }).safeParse(body);
+
+      if (!parsed.success) {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
       }
 
-      // For other errors, degrade gracefully.
-      console.error('Infer traits LLM error:', getMessage(error));
-      return c.json({ traits: [] }, 200);
+      if (!llmProvider) {
+        return c.json(
+          {
+            ok: false,
+            error: 'LLM provider not configured',
+            code: 'CONFIG_ERROR',
+            retryable: false,
+          } satisfies StudioError,
+          503
+        );
+      }
+
+      const { sessionId } = parsed.data;
+      const session = await getStudioSession(sessionId);
+
+      if (!session) {
+        return c.json({ ok: false, error: 'Session not found' } satisfies ApiError, 404);
+      }
+
+      // Initialize manager and restore state
+      const manager = new ConversationManager({
+        llmProvider: llmProvider,
+        characterName: (session.profileSnapshot as any)?.name ?? 'Character',
+      });
+
+      manager.restore({
+        messages: session.conversation.map((m, idx) => ({
+          id: `msg-${idx}`,
+          content: m.content,
+          role: m.role as any,
+          timestamp: new Date(m.timestamp),
+        })),
+        summary: session.summary,
+      });
+
+      // Perform summarization
+      if (manager.needsSummarization()) {
+        await manager.summarize();
+
+        // Get updated state
+        const state = manager.export();
+
+        // Keep only recent messages in DB (ConversationManager.summarize doesn't prune its internal list, so we do it here)
+        // Keep the last few messages as per KEEP_RECENT_COUNT in ConversationManager
+        const recentMessages = state.messages.slice(-KEEP_RECENT_COUNT);
+
+        await updateStudioSession(sessionId, {
+          summary: state.summary,
+          conversation: recentMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp.toISOString(),
+          })),
+        });
+
+        return c.json({
+          ok: true,
+          summarized: true,
+          summary: state.summary,
+          messageCount: recentMessages.length
+        });
+      }
+
+      return c.json({ ok: true, summarized: false, summary: session.summary });
+    } catch (error) {
+      console.error('Studio summarize error:', getMessage(error));
+      return c.json({ ok: false, error: 'Summarization failed' }, 500);
     }
   });
 
@@ -506,7 +588,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
           data: JSON.stringify({ sessionId }),
         });
 
-        // Get current state for context
+        // Get current state for context (now properly synced via RESTORE_STATE event)
         const currentState = actor.exportState();
 
         // Build messages for streaming
@@ -557,7 +639,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
           conversation: newConversation,
           summary: currentState.summary,
           inferredTraits: currentState.inferredTraits,
-          exploredTopics: Array.from(currentState.exploredTopics),
+          exploredTopics: currentState.exploredTopics,
         });
 
         // Invalidate actor cache so next request gets fresh state
@@ -573,7 +655,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
             meta: {
               messageCount: newConversation.length,
               summarized: currentState.summary !== null,
-              exploredTopics: Array.from(currentState.exploredTopics),
+              exploredTopics: currentState.exploredTopics,
             },
           }),
         });
@@ -642,7 +724,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
 
       // Use the DilemmaEngine to generate just the scenario
       const { DilemmaEngine } = await import('@minimal-rpg/actors');
-      const engine = new DilemmaEngine({ llmProvider: llmProvider as LLMProvider });
+      const engine = new DilemmaEngine({ llmProvider: llmProvider });
       const dilemma = await engine.generateDilemma(profile);
 
       return c.json({

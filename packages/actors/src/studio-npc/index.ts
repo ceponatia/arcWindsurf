@@ -5,7 +5,7 @@ export * from './types.js';
 export { createStudioMachine } from './studio-machine.js';
 
 // Conversation
-export { ConversationManager, type ConversationManagerConfig } from './conversation.js';
+export { ConversationManager, type ConversationManagerConfig, KEEP_RECENT_COUNT } from './conversation.js';
 
 // Prompts
 export {

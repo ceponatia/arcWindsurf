@@ -343,5 +343,6 @@ export type StudioMachineEvent =
   | { type: 'REQUEST_VOICE_FINGERPRINT' }
   | { type: 'UPDATE_PROFILE'; profile: Partial<CharacterProfile> }
   | { type: 'CLEAR_CONVERSATION' }
+  | { type: 'RESTORE_STATE'; conversation: ConversationMessage[]; summary: string | null; inferredTraits: InferredTrait[]; exploredTopics: DiscoveryTopic[] }
   | { type: 'RESPONSE_COMPLETE'; response: StudioResponse }
   | { type: 'ERROR'; error: string };

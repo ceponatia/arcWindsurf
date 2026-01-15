@@ -8,9 +8,11 @@ import {
   studioSessionId,
   suggestedPrompts,
   exploredTopics,
+  traitInferenceEnabled,
+  conversationSummary,
   addMessage,
 } from '../signals.js';
-import { studioConversationStream, suggestPrompts, generateDilemmaScenario } from '../services/llm.js';
+import { studioConversationStream, inferTraits, suggestPrompts, generateDilemmaScenario, summarizeConversation } from '../services/llm.js';
 
 export interface UseConversationResult {
   messages: typeof conversationHistory.value;
@@ -18,6 +20,7 @@ export interface UseConversationResult {
   suggestedPrompts: typeof suggestedPrompts.value;
   sendMessage: (content: string) => Promise<void>;
   generateDilemma: () => Promise<void>;
+  summarize: () => Promise<boolean>;
   clearConversation: () => void;
   loadSuggestedPrompts: () => Promise<void>;
 }
@@ -63,6 +66,10 @@ export function useConversation(): UseConversationResult {
             if (response.meta?.exploredTopics) {
               exploredTopics.value = response.meta.exploredTopics;
             }
+
+            const currentHistory = conversationHistory.value;
+            const lastResponse = currentHistory[currentHistory.length - 1]?.content ?? '';
+
             if (response.inferredTraits && response.inferredTraits.length > 0) {
               pendingTraits.value = [
                 ...pendingTraits.value,
@@ -72,6 +79,44 @@ export function useConversation(): UseConversationResult {
                   status: 'pending' as const,
                 })),
               ];
+            }
+
+            // Fire async trait inference (non-blocking)
+            if (traitInferenceEnabled.value && studioSessionId.value) {
+              inferTraits({
+                sessionId: studioSessionId.value,
+                userMessage: content,
+                characterResponse: lastResponse,
+                profile,
+              }).then((result) => {
+                if (result.inferredTraits && result.inferredTraits.length > 0) {
+                  pendingTraits.value = [
+                    ...pendingTraits.value,
+                    ...result.inferredTraits.map((t, i) => ({
+                      ...t,
+                      id: `trait-async-${Date.now()}-${i}`,
+                      status: 'pending' as const,
+                    })),
+                  ];
+                }
+              }).catch(err => {
+                console.error('Async trait inference failed:', err);
+              });
+            }
+
+            // Fire async summarization (non-blocking) if threshold reached and no summary exists
+            const messageCount = response.meta?.messageCount ?? currentHistory.length;
+            if (messageCount >= 20 && !conversationSummary.value && studioSessionId.value) {
+              summarizeConversation(studioSessionId.value)
+                .then(result => {
+                  if (result.summarized) {
+                    console.log('Conversation summarized', result.summary);
+                    conversationSummary.value = result.summary;
+                  }
+                })
+                .catch(err => {
+                  console.error('Async summarization failed:', err);
+                });
             }
           },
           onError: (error) => {
@@ -90,6 +135,21 @@ export function useConversation(): UseConversationResult {
       addMessage({ role: 'system', content: 'Failed to generate response. Please try again.' });
     } finally {
       isGenerating.value = false;
+    }
+  }, []);
+
+  const summarize = useCallback(async () => {
+    if (!studioSessionId.value) return false;
+
+    try {
+      const result = await summarizeConversation(studioSessionId.value);
+      if (result.summarized && result.summary) {
+        conversationSummary.value = result.summary;
+      }
+      return result.summarized;
+    } catch (err) {
+      console.error('Manual summarization failed:', err);
+      throw err;
     }
   }, []);
 
@@ -147,6 +207,7 @@ export function useConversation(): UseConversationResult {
     suggestedPrompts: suggestedPrompts.value,
     sendMessage,
     generateDilemma,
+    summarize,
     clearConversation,
     loadSuggestedPrompts,
   };

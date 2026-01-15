@@ -236,13 +236,20 @@ export class StudioNpcActor {
     inferredTraits: InferredTrait[];
     exploredTopics: DiscoveryTopic[];
   }): void {
+    // Restore conversation manager
     this.conversationManager.restore({
       messages: state.conversation,
       summary: state.summary,
     });
 
-    // Update machine context (would need machine to support this)
-    // For now, traits and topics are managed separately
+    // Sync to machine context via RESTORE_STATE event
+    this.machine.send({
+      type: 'RESTORE_STATE',
+      conversation: state.conversation,
+      summary: state.summary,
+      inferredTraits: state.inferredTraits,
+      exploredTopics: state.exploredTopics,
+    });
   }
 
   /**
