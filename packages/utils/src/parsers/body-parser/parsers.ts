@@ -200,12 +200,13 @@ export function parseFlavor(description: string): RegionFlavor | undefined {
 export function parseBodyEntry(input: string): ParsedBodyEntry | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
+  if (trimmed.length > 1000) return null;
 
   // Normalize separators: convert " - " and " : " to ":"
-  // Use \s instead of [\s] to prevent ReDoS vulnerability
-  const normalized = trimmed
-    .replace(/\s*-\s*/g, ':')
-    .replace(/\s*:\s*/g, ':')
+  const collapsedWhitespace = trimmed.replace(/\s+/g, ' ');
+  const normalized = collapsedWhitespace
+    .replace(/ ?- ?/g, ':')
+    .replace(/ ?: ?/g, ':')
     .toLowerCase();
 
   // Split by first colon to get region
