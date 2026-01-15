@@ -11,6 +11,16 @@ describe('character/regions side parsing', () => {
   });
 
   test('keeps non-sided references intact', () => {
-    expect(isBodyReference('torso-center')).toBe(true);
+    expect(isBodyReference('torso')).toBe(true);
+  });
+
+  test('returns default for overlong references', () => {
+    const long = 'x'.repeat(1001);
+    expect(resolveBodyRegion(long)).toBe('torso');
+  });
+
+  test('rejects overlong references', () => {
+    const long = 'x'.repeat(1001);
+    expect(isBodyReference(long)).toBe(false);
   });
 });
