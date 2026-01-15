@@ -250,8 +250,8 @@ function extractSide(normalized: string): { side: BodySide | undefined; value: s
   const cleaned = normalized.replace(/[_-]+/g, ' ').trim();
   const parts = cleaned.split(/\s+/);
   if (parts.length > 1) {
-    const first = parts[0];
-    const last = parts[parts.length - 1];
+    const first = parts[0]!;
+    const last = parts[parts.length - 1]!;
     if (first === 'left' || first === 'right') {
       return { side: first as BodySide, value: parts.slice(1).join(' ') };
     }
