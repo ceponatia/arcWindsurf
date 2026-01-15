@@ -9,11 +9,63 @@ export interface SupabaseAuthConfig {
   jwksUrl: string;
   issuers: string[];
   audience?: string | undefined;
+  algorithms: string[];
 }
 
-function readStringEnv(name: string): string | null {
-  // eslint-disable-next-line security/detect-object-injection -- controlled lookup of environment variable
-  const v = process.env[name];
+const DEFAULT_SUPABASE_JWT_ALGORITHMS: string[] = [
+  // Common asymmetric JWS algorithms. Intentionally excludes HS* to prevent
+  // "public key as HMAC secret" style JWT algorithm confusion.
+  'RS256',
+  'RS384',
+  'RS512',
+  'PS256',
+  'PS384',
+  'PS512',
+  'ES256',
+  'ES384',
+  'ES512',
+  'EdDSA',
+];
+
+/**
+ * Reads SUPABASE_JWT_ALGS as a comma-separated allowlist.
+ *
+ * If unspecified, defaults to a safe asymmetric-only allowlist.
+ */
+function readSupabaseJwtAlgorithmsFromEnv(): string[] {
+  const raw = readStringEnv('SUPABASE_JWT_ALGS');
+  if (!raw) return DEFAULT_SUPABASE_JWT_ALGORITHMS;
+
+  const parsed = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return parsed.length > 0 ? parsed : DEFAULT_SUPABASE_JWT_ALGORITHMS;
+}
+
+type SupabaseEnvVar =
+  | 'SUPABASE_JWT_ISSUER'
+  | 'SUPABASE_JWKS_URL'
+  | 'SUPABASE_PROJECT_URL'
+  | 'SUPABASE_JWT_AUDIENCE'
+  | 'SUPABASE_JWT_ALGS';
+
+/**
+ * Reads a supported Supabase environment variable, trimmed.
+ */
+function readStringEnv(name: SupabaseEnvVar): string | null {
+  const v =
+    name === 'SUPABASE_JWT_ISSUER'
+      ? process.env.SUPABASE_JWT_ISSUER
+      : name === 'SUPABASE_JWKS_URL'
+        ? process.env.SUPABASE_JWKS_URL
+        : name === 'SUPABASE_PROJECT_URL'
+          ? process.env.SUPABASE_PROJECT_URL
+          : name === 'SUPABASE_JWT_AUDIENCE'
+            ? process.env.SUPABASE_JWT_AUDIENCE
+            : process.env.SUPABASE_JWT_ALGS;
+
   if (!v) return null;
   const t = v.trim();
   return t.length > 0 ? t : null;
@@ -53,7 +105,9 @@ export function getSupabaseAuthConfig(): SupabaseAuthConfig | null {
 
   const audience = readStringEnv('SUPABASE_JWT_AUDIENCE') ?? undefined;
 
-  return { jwksUrl, issuers, audience };
+  const algorithms = readSupabaseJwtAlgorithmsFromEnv();
+
+  return { jwksUrl, issuers, audience, algorithms };
 }
 
 function readEmailFromPayload(payload: JWTPayload): string | null {
@@ -84,6 +138,7 @@ export async function verifySupabaseJwt(
         const { payload } = await jwtVerify(token, jwks, {
           issuer,
           ...(cfg.audience ? { audience: cfg.audience } : {}),
+          algorithms: cfg.algorithms,
         });
 
         const sub = typeof payload.sub === 'string' ? payload.sub : null;
@@ -108,9 +163,9 @@ export async function verifySupabaseJwt(
       }
     }
 
-    const issuerInfo = lastIssuer ? `issuer=${lastIssuer}` : 'issuer=<none>';
-    const audienceInfo = cfg.audience ? `audience=${cfg.audience}` : 'audience=<none>';
-    const contextInfo = `${issuerInfo} ${audienceInfo} jwksUrl=${cfg.jwksUrl}`;
+    const issuerContext = lastIssuer ? `issuer=${lastIssuer}` : 'issuer=<none>';
+    const audienceContext = cfg.audience ? `audience=${cfg.audience}` : 'audience=<none>';
+    const contextInfo = `${issuerContext} ${audienceContext} jwksUrl=${cfg.jwksUrl}`;
 
     if (lastError instanceof Error) {
       throw new Error(`${contextInfo} err=${lastError.message}`);
