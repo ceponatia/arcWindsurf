@@ -8,6 +8,7 @@ import {
   type Subrace,
   type Alignment,
   type Gender,
+  getRecordOptional,
 } from '@minimal-rpg/schemas';
 import {
   characterProfile,
@@ -183,7 +184,7 @@ export const IdentityPanel: React.FC = () => {
                   clearFieldError('race');
                   // Clear subrace if not valid for new race
                   if (profile.subrace && newRace) {
-                    const validSubraces = RACE_SUBRACES[newRace] ?? [];
+                    const validSubraces = getRecordOptional(RACE_SUBRACES, newRace) ?? [];
                     if (!validSubraces.includes(profile.subrace)) {
                       updateProfile('subrace', undefined);
                     }
@@ -215,12 +216,15 @@ export const IdentityPanel: React.FC = () => {
                   const value = e.target.value as Subrace | '';
                   updateProfile('subrace', value === '' ? undefined : value);
                 }}
-                disabled={!profile.race || (RACE_SUBRACES[profile.race]?.length ?? 0) === 0}
+                disabled={
+                  !profile.race ||
+                  (getRecordOptional(RACE_SUBRACES, profile.race)?.length ?? 0) === 0
+                }
                 className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">None</option>
                 {profile.race &&
-                  RACE_SUBRACES[profile.race]?.map((subrace) => (
+                  getRecordOptional(RACE_SUBRACES, profile.race)?.map((subrace) => (
                     <option key={subrace} value={subrace}>
                       {subrace}
                     </option>

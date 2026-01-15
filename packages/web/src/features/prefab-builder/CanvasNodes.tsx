@@ -71,31 +71,28 @@ function getTypeColors(type: LocationType): {
 /** Small indicator showing exits in each direction */
 function ExitIndicators({ ports }: { ports: LocationPort[] }) {
   // Group exits by direction
-  const exitsByDir = ports.reduce(
-    (acc, port) => {
-      if (port.direction) {
-        const dir = port.direction;
-        acc[dir] ??= [];
-        acc[dir]?.push(port);
-      }
-      return acc;
-    },
-    {} as Record<string, LocationPort[]>
-  );
+  const exitsByDir = ports.reduce((acc, port) => {
+    if (port.direction) {
+      const dir = port.direction;
+      const existing = acc.get(dir) ?? [];
+      acc.set(dir, [...existing, port]);
+    }
+    return acc;
+  }, new Map<string, LocationPort[]>());
 
-  const dirPositions: Record<string, string> = {
-    north: 'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2',
-    south: 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2',
-    east: 'right-0 top-1/2 translate-x-1/2 -translate-y-1/2',
-    west: 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2',
-    up: 'top-0 right-2 -translate-y-1/2',
-    down: 'bottom-0 right-2 translate-y-1/2',
-  };
+  const dirPositions = new Map<string, string>([
+    ['north', 'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2'],
+    ['south', 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2'],
+    ['east', 'right-0 top-1/2 translate-x-1/2 -translate-y-1/2'],
+    ['west', 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2'],
+    ['up', 'top-0 right-2 -translate-y-1/2'],
+    ['down', 'bottom-0 right-2 translate-y-1/2'],
+  ]);
 
   return (
     <>
-      {Object.entries(exitsByDir).map(([dir, exits]) => {
-        const pos = dirPositions[dir];
+      {Array.from(exitsByDir.entries()).map(([dir, exits]) => {
+        const pos = dirPositions.get(dir);
         if (!pos) return null;
         const hasLocked = exits.some((e) => e.locked);
         return (

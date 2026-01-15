@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
-import { type BodyMap, type BodyRegion } from '@minimal-rpg/schemas';
+import { getRecordOptional, setRecord, type BodyMap, type BodyRegion } from '@minimal-rpg/schemas';
 import { characterProfile, updateProfile } from '../signals.js';
 import { IdentityCard } from './IdentityCard.js';
 
@@ -14,12 +14,17 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
   /** Current body map from signal */
   const body: BodyMap = characterProfile.value.body ?? {};
 
+  const HAIR_REGION: BodyRegion = 'hair';
+  const FACE_REGION: BodyRegion = 'face';
+  const TORSO_REGION: BodyRegion = 'torso';
+  const HANDS_REGION: BodyRegion = 'hands';
+
   /**
    * Helper to get visual description for a region.
    * Defaults to empty string if not set.
    */
   const getRegionDescription = (region: BodyRegion): string => {
-    const data = body[region];
+    const data = getRecordOptional(body, region);
     return data?.visual?.description ?? '';
   };
 
@@ -27,17 +32,15 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
    * Helper to update visual description for a region while preserving other sensory data.
    */
   const updateBodyRegion = (region: BodyRegion, description: string) => {
-    const currentRegionData = body[region] ?? {};
-    const updatedBody: BodyMap = {
-      ...body,
-      [region]: {
-        ...currentRegionData,
-        visual: {
-          ...currentRegionData.visual,
-          description,
-        },
+    const currentRegionData = getRecordOptional(body, region) ?? {};
+    const updatedBody: BodyMap = { ...body };
+    setRecord(updatedBody, region, {
+      ...currentRegionData,
+      visual: {
+        ...currentRegionData.visual,
+        description,
       },
-    };
+    });
     updateProfile('body', updatedBody);
   };
 
@@ -50,8 +53,8 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
             type="text"
             className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 text-sm"
             placeholder="Color, style, length..."
-            value={getRegionDescription('hair' as BodyRegion)}
-            onChange={(e) => updateBodyRegion('hair' as BodyRegion, e.target.value)}
+            value={getRegionDescription(HAIR_REGION)}
+            onChange={(e) => updateBodyRegion(HAIR_REGION, e.target.value)}
           />
         </label>
 
@@ -60,8 +63,8 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
           <textarea
             className="mt-1 w-full min-h-[80px] bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 text-sm"
             placeholder="Describe facial features, eye color, uniquely shaped nose..."
-            value={getRegionDescription('face' as BodyRegion)}
-            onChange={(e) => updateBodyRegion('face' as BodyRegion, e.target.value)}
+            value={getRegionDescription(FACE_REGION)}
+            onChange={(e) => updateBodyRegion(FACE_REGION, e.target.value)}
           />
         </label>
 
@@ -71,8 +74,8 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
             type="text"
             className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 text-sm"
             placeholder="Build, musculature, posture, notable birthmarks..."
-            value={getRegionDescription('torso' as BodyRegion)}
-            onChange={(e) => updateBodyRegion('torso' as BodyRegion, e.target.value)}
+            value={getRegionDescription(TORSO_REGION)}
+            onChange={(e) => updateBodyRegion(TORSO_REGION, e.target.value)}
           />
         </label>
 
@@ -82,8 +85,8 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
             type="text"
             className="mt-1 w-full bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 text-sm"
             placeholder="Description, calluses, scars, ring marks..."
-            value={getRegionDescription('hands' as BodyRegion)}
-            onChange={(e) => updateBodyRegion('hands' as BodyRegion, e.target.value)}
+            value={getRegionDescription(HANDS_REGION)}
+            onChange={(e) => updateBodyRegion(HANDS_REGION, e.target.value)}
           />
         </label>
       </div>

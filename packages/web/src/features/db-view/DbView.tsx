@@ -19,6 +19,11 @@ function toDisplay(v: unknown): string {
   }
 }
 
+function getRowValue(row: DbRow, key: string): unknown {
+  const entry = Object.getOwnPropertyDescriptor(row, key);
+  return entry?.value as unknown;
+}
+
 // DB row type with common id variants plus index signature
 interface DbRow {
   id?: unknown;
@@ -100,9 +105,9 @@ const TablePanel: React.FC<{
   deleting: string | null;
   onDelete: (tableName: string, id: string) => void;
 }> = ({ table, deleting, onDelete }) => {
-  const sampleRows = table.sample ?? [];
+  const sampleRows = (table.sample ?? []) as DbRow[];
   const columns: string[] = sampleRows.length
-    ? Object.keys(sampleRows[0]!)
+    ? Object.keys(sampleRows[0] ?? {})
     : table.columns.map((c) => c.name);
 
   return (
@@ -146,9 +151,13 @@ const TablePanel: React.FC<{
               </tr>
             </thead>
             <tbody>
-              {sampleRows.map((row: unknown, i: number) => {
-                const rec = row as DbRow;
-                const idVal = rec.id ?? rec.ID ?? rec.Id ?? rec[columns[0]!];
+              {sampleRows.map((rec, i: number) => {
+                const firstColumn = columns.at(0);
+                const idVal =
+                  rec.id ??
+                  rec.ID ??
+                  rec.Id ??
+                  (firstColumn ? getRowValue(rec, firstColumn) : undefined);
                 const idStr =
                   typeof idVal === 'string' || typeof idVal === 'number'
                     ? String(idVal)
@@ -164,7 +173,7 @@ const TablePanel: React.FC<{
                       {i + 1}
                     </td>
                     {columns.map((k) => {
-                      const val = rec[k];
+                      const val = getRowValue(rec, k);
                       const display = toDisplay(val);
                       const isLong = display.length > 100;
                       return (
@@ -234,7 +243,9 @@ export const DbView: React.FC = () => {
         if (e instanceof Error && e.name === 'AbortError') return;
         setError(e instanceof Error ? e.message : 'Failed to load DB overview');
       })
-      .finally(() => { setLoading(false); });
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {

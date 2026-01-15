@@ -35,8 +35,8 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   let normB = 0;
 
   for (let i = 0; i < a.length; i++) {
-    const aVal = a[i] ?? 0;
-    const bVal = b[i] ?? 0;
+    const aVal = a.at(i) ?? 0;
+    const bVal = b.at(i) ?? 0;
     dotProduct += aVal * bVal;
     normA += aVal * aVal;
     normB += bVal * bVal;

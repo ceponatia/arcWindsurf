@@ -3,6 +3,7 @@ import {
   BODY_REGIONS,
   APPEARANCE_REGIONS,
   APPEARANCE_REGION_ATTRIBUTES,
+  getRecordOptional,
   PERSONALITY_DIMENSIONS,
   CORE_EMOTIONS,
   EMOTION_INTENSITIES,
@@ -473,7 +474,7 @@ export function findNextAvailableAppearanceEntry(
     // Skip if region isn't available for this gender
     if (!availableRegions.includes(region)) continue;
 
-    const regionAttrs = APPEARANCE_REGION_ATTRIBUTES[region];
+    const regionAttrs = getRecordOptional(APPEARANCE_REGION_ATTRIBUTES, region);
     if (!regionAttrs) continue;
 
     // Iterate through attributes in order

@@ -5,6 +5,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function getRecordValue<T>(
+  record: Record<string, unknown> | undefined,
+  key: string
+): T | undefined {
+  if (!record) return undefined;
+  const entry = Object.getOwnPropertyDescriptor(record, key);
+  return entry?.value as T | undefined;
+}
+
+function getStringValue(
+  record: Record<string, unknown> | undefined,
+  key: string
+): string | undefined {
+  const value = getRecordValue<unknown>(record, key);
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getBooleanValue(record: Record<string, boolean>, key: number): boolean {
+  const entry = Object.getOwnPropertyDescriptor(record, String(key));
+  return entry?.value === true;
+}
+
+function setBooleanValue(
+  record: Record<string, boolean>,
+  key: number,
+  value: boolean
+): Record<string, boolean> {
+  const next = { ...record };
+  Object.defineProperty(next, String(key), {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  return next;
+}
+
 // Types for turn events from the API
 interface TurnEvent {
   type: string;
@@ -97,7 +134,9 @@ const ToolCallsSection: React.FC<ToolCallsSectionProps> = ({ events }) => {
       <button
         type="button"
         className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
-        onClick={() => { setExpanded((prev) => !prev); }}
+        onClick={() => {
+          setExpanded((prev) => !prev);
+        }}
       >
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-blue-300">🔧 Tools</span>
@@ -116,10 +155,11 @@ const ToolCallsSection: React.FC<ToolCallsSectionProps> = ({ events }) => {
       {expanded && (
         <div className="px-3 py-2 border-t border-slate-700/50 space-y-2">
           {toolCalls.map((call, idx) => {
-            const toolName = String(call.payload['tool']);
-            const args = call.payload['args'] as string | undefined;
-            const result = toolResults[idx];
-            const success = result?.payload?.['success'] as boolean | undefined;
+            const toolName = String(getStringValue(call.payload, 'tool') ?? 'unknown');
+            const args = getStringValue(call.payload, 'args');
+            const result = toolResults.at(idx);
+            const payload = isRecord(result?.payload) ? result.payload : undefined;
+            const success = getRecordValue<boolean>(payload, 'success');
 
             let parsedArgs: Record<string, unknown> | null = null;
             if (args) {
@@ -234,7 +274,9 @@ const StateChangesSection: React.FC<StateChangesSectionProps> = ({ stateChanges 
               <button
                 type="button"
                 className="text-[10px] text-slate-400 hover:text-slate-200 underline"
-                onClick={() => { setShowPatches((p) => !p); }}
+                onClick={() => {
+                  setShowPatches((p) => !p);
+                }}
               >
                 {showPatches ? 'Hide patches' : 'Show patches'}
               </button>
@@ -311,7 +353,9 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
           {/* Agent badges */}
           <div className="flex flex-wrap gap-1">
             {agentsInvoked.map((agent) => {
-              const config = AGENT_CONFIG[agent] ?? AGENT_CONFIG['custom'];
+              const config =
+                getRecordValue<(typeof AGENT_CONFIG)[string]>(AGENT_CONFIG, agent) ??
+                getRecordValue<(typeof AGENT_CONFIG)[string]>(AGENT_CONFIG, 'custom');
               if (!config) return null;
               return (
                 <span
@@ -330,9 +374,10 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
               <div className="text-[10px] font-medium text-slate-400">NPC Agent Outputs</div>
               {npcOutputs.map((out, idx) => {
                 const diag = out.output.diagnostics;
-                const npcId =
-                  typeof diag?.debug?.['npcId'] === 'string' ? diag.debug['npcId'] : null;
+                const debugRecord = isRecord(diag?.debug) ? diag.debug : undefined;
+                const npcId = getStringValue(debugRecord, 'npcId') ?? null;
                 const execTime = diag?.executionTimeMs;
+                const isNarrativeShown = getBooleanValue(showNarratives, idx);
 
                 return (
                   <div
@@ -353,11 +398,13 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
                       <button
                         type="button"
                         className="text-[10px] text-slate-400 hover:text-slate-200"
-                        onClick={() =>
-                          { setShowNarratives((prev) => ({ ...prev, [idx]: !prev[idx] })); }
-                        }
+                        onClick={() => {
+                          setShowNarratives((prev) =>
+                            setBooleanValue(prev, idx, !getBooleanValue(prev, idx))
+                          );
+                        }}
                       >
-                        {showNarratives[idx] ? 'Hide' : 'Show'} narrative
+                        {isNarrativeShown ? 'Hide' : 'Show'} narrative
                       </button>
                     </div>
 
@@ -369,7 +416,7 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
                     )}
 
                     {/* Narrative preview */}
-                    {showNarratives[idx] && out.output.narrative && (
+                    {isNarrativeShown && out.output.narrative && (
                       <div className="text-xs text-slate-300 bg-slate-950/50 rounded p-2 max-h-32 overflow-y-auto">
                         {out.output.narrative}
                       </div>
@@ -408,7 +455,12 @@ const TimingSection: React.FC<TimingSectionProps> = ({ timing, totalMs }) => {
     { key: 'stateUpdateMs', label: 'State', color: 'bg-green-500' },
   ] as const;
 
-  const knownMs = phases.reduce((sum, p) => sum + (timing[p.key] ?? 0), 0);
+  const getTimingValue = (key: string): number => {
+    const value = getRecordValue<number>(timing as Record<string, unknown>, key);
+    return typeof value === 'number' ? value : 0;
+  };
+
+  const knownMs = phases.reduce((sum, p) => sum + getTimingValue(p.key), 0);
   const otherMs = Math.max(0, totalMs - knownMs);
 
   return (
@@ -421,7 +473,7 @@ const TimingSection: React.FC<TimingSectionProps> = ({ timing, totalMs }) => {
       {/* Bar visualization */}
       <div className="h-2 rounded-full bg-slate-800 overflow-hidden flex">
         {phases.map(({ key, color }) => {
-          const ms = timing[key] ?? 0;
+          const ms = getTimingValue(key);
           const pct = totalMs > 0 ? (ms / totalMs) * 100 : 0;
           if (pct < 1) return null;
           return <div key={key} className={`${color}`} style={{ width: `${pct}%` }} />;
@@ -434,8 +486,8 @@ const TimingSection: React.FC<TimingSectionProps> = ({ timing, totalMs }) => {
       {/* Legend */}
       <div className="flex flex-wrap gap-2 text-[10px]">
         {phases.map(({ key, label, color }) => {
-          const ms = timing[key];
-          if (ms === undefined) return null;
+          const ms = getRecordValue<number>(timing as Record<string, unknown>, key);
+          if (typeof ms !== 'number') return null;
           return (
             <span key={key} className="flex items-center gap-1 text-slate-400">
               <span className={`w-2 h-2 rounded-full ${color}`} />

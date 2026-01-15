@@ -6,6 +6,7 @@
  */
 
 import type { Race, Subrace } from './types.js';
+import { getRecord } from '../shared/record-helpers.js';
 
 /**
  * Brief descriptions of each race for prompt injection.
@@ -89,14 +90,14 @@ export const SUBRACE_DESCRIPTIONS: Record<Subrace, string> = {
  * Get a race description for prompt injection.
  */
 export function getRaceDescription(race: Race): string {
-  return RACE_DESCRIPTIONS[race];
+  return getRecord(RACE_DESCRIPTIONS, race);
 }
 
 /**
  * Get a subrace description for prompt injection.
  */
 export function getSubraceDescription(subrace: Subrace): string {
-  return SUBRACE_DESCRIPTIONS[subrace];
+  return getRecord(SUBRACE_DESCRIPTIONS, subrace);
 }
 
 /**
@@ -104,10 +105,10 @@ export function getSubraceDescription(subrace: Subrace): string {
  * If subrace is provided, both descriptions are included.
  */
 export function getFullRaceDescription(race: Race, subrace?: Subrace): string {
-  const raceDesc = RACE_DESCRIPTIONS[race];
+  const raceDesc = getRecord(RACE_DESCRIPTIONS, race);
   if (!subrace) {
     return raceDesc;
   }
-  const subraceDesc = SUBRACE_DESCRIPTIONS[subrace];
+  const subraceDesc = getRecord(SUBRACE_DESCRIPTIONS, subrace);
   return `${raceDesc} ${subraceDesc}`;
 }

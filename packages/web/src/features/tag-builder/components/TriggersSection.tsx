@@ -61,7 +61,9 @@ interface TriggerEntryProps {
 function TriggerEntry({ index, trigger, onRemove, onUpdate }: TriggerEntryProps) {
   // Get the value field based on condition type
   const valueField = getValueField(trigger.condition);
-  const currentValue = trigger[valueField] as string;
+  const currentValue = Object.getOwnPropertyDescriptor(trigger, valueField)?.value as
+    | string
+    | undefined;
 
   return (
     <div className="p-3 bg-gray-700/50 rounded border border-gray-600 space-y-3">

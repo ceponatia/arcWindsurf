@@ -38,24 +38,40 @@ export const StressBehaviorForm: React.FC = () => {
     });
   };
 
+  const updateStressList = (
+    field: 'soothingActivities' | 'stressIndicators',
+    nextList: string[]
+  ) => {
+    if (field === 'soothingActivities') {
+      handleChange({ soothingActivities: nextList });
+    } else {
+      handleChange({ stressIndicators: nextList });
+    }
+  };
+
+  const getStressList = (field: 'soothingActivities' | 'stressIndicators'): string[] =>
+    field === 'soothingActivities' ? stress.soothingActivities : stress.stressIndicators;
+
   const handleListUpdate = (
     field: 'soothingActivities' | 'stressIndicators',
     index: number,
     value: string
   ) => {
-    const newList = [...stress[field]];
-    newList[index] = value;
-    handleChange({ [field]: newList });
+    const currentList = getStressList(field);
+    const newList = currentList.map((item, idx) => (idx === index ? value : item));
+    updateStressList(field, newList);
   };
 
   const addListItem = (field: 'soothingActivities' | 'stressIndicators', value = '') => {
-    const newList = [...stress[field], value];
-    handleChange({ [field]: newList });
+    const currentList = getStressList(field);
+    const newList = [...currentList, value];
+    updateStressList(field, newList);
   };
 
   const removeListItem = (field: 'soothingActivities' | 'stressIndicators', index: number) => {
-    const newList = stress[field].filter((_, i) => i !== index);
-    handleChange({ [field]: newList });
+    const currentList = getStressList(field);
+    const newList = currentList.filter((_, i) => i !== index);
+    updateStressList(field, newList);
   };
 
   return (

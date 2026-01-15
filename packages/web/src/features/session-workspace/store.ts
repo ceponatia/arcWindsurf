@@ -620,7 +620,12 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
             for (const step of steps) {
               const validation = get().validateStep(step);
-              stepErrors[step] = validation;
+              Object.defineProperty(stepErrors, step, {
+                value: validation,
+                writable: true,
+                enumerable: true,
+                configurable: true,
+              });
               if (!validation.valid && (step === 'setting' || step === 'npcs')) {
                 isValid = false;
               }

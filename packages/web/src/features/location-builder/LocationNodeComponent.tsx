@@ -78,7 +78,7 @@ function distributePortsAroundNode(ports: LocationPort[]): {
   // Simple distribution: place ports evenly around the node
   ports.forEach((port, index) => {
     const sideIndex = index % 4;
-    const side = sides[sideIndex] ?? 'top';
+    const side = sides.at(sideIndex) ?? 'top';
     const portsOnSide = ports.filter((_, i) => i % 4 === sideIndex);
     const indexOnSide = portsOnSide.indexOf(port);
     const { position, style } = getPortPosition(indexOnSide, portsOnSide.length, side);

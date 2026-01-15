@@ -100,12 +100,17 @@ export const getFilteredHierarchy = (
   const raceKey = race.toLowerCase();
   const genderKey = gender.toLowerCase();
 
-  const raceExclusions = RACE_EXCLUSIONS[raceKey] ?? [];
-  const genderExclusions = GENDER_EXCLUSIONS[genderKey] ?? [];
+  const getStringArrayValue = (record: Record<string, string[]>, key: string): string[] => {
+    const entry = Object.getOwnPropertyDescriptor(record, key);
+    const value: unknown = entry?.value;
+    return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];
+  };
+
+  const raceExclusions = getStringArrayValue(RACE_EXCLUSIONS, raceKey);
+  const genderExclusions = getStringArrayValue(GENDER_EXCLUSIONS, genderKey);
   const allExclusions = new Set([...raceExclusions, ...genderExclusions]);
 
-  const filtered: Record<string, string[]> = {};
-
+  const entries: [string, string[]][] = [];
   Object.entries(REGION_HIERARCHY).forEach(([region, subRegions]) => {
     // If the main region itself is excluded (e.g. 'legs' for slug)
     if (allExclusions.has(region)) return;
@@ -113,9 +118,9 @@ export const getFilteredHierarchy = (
     const filteredSubRegions = subRegions.filter((sub) => !allExclusions.has(sub));
 
     if (filteredSubRegions.length > 0) {
-      filtered[region] = filteredSubRegions;
+      entries.push([region, filteredSubRegions]);
     }
   });
 
-  return filtered;
+  return Object.fromEntries(entries);
 };

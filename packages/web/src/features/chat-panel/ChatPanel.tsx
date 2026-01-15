@@ -214,7 +214,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     const text = editDraft.trim();
     if (!text) return;
 
-    const message = session?.messages[idx];
+    const message = session?.messages.at(idx);
     const sequence = message?.idx;
 
     if (sequence === undefined) {
@@ -225,11 +225,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     // Optimistic update
     setSession((prev) => {
       if (!prev) return prev;
-      const newMessages = [...prev.messages];
       const targetIndex = Number(idx);
-      if (targetIndex >= 0 && targetIndex < newMessages.length && newMessages[targetIndex]) {
-        newMessages[targetIndex] = { ...newMessages[targetIndex], content: text };
-      }
+      const newMessages = prev.messages.map((msg, index) =>
+        index === targetIndex ? { ...msg, content: text } : msg
+      );
       return { ...prev, messages: newMessages };
     });
     setEditingIdx(null);
@@ -245,7 +244,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
 
   const onDeleteMessage = async (idx: number) => {
     if (!effectiveSessionId) return;
-    const message = session?.messages[idx];
+    const message = session?.messages.at(idx);
     const sequence = message?.idx;
 
     if (sequence === undefined) {
@@ -278,8 +277,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
 
     const messages = session?.messages;
     const targetIdx = Number(idx);
-    const userMessage =
-      messages && targetIdx >= 0 && targetIdx < messages.length ? messages[targetIdx] : null;
+    const userMessage = messages?.at(targetIdx) ?? null;
 
     if (userMessage?.role !== 'user') return;
 
@@ -292,7 +290,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     }
 
     // Find the assistant message that follows this user message (if any)
-    const nextMessage = messages?.[idx + 1];
+    const nextMessage = messages?.at(idx + 1);
     const hasAssistantResponse = nextMessage?.role === 'assistant';
     const assistantSequence = hasAssistantResponse ? nextMessage.idx : null;
 

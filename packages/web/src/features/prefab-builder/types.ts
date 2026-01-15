@@ -251,17 +251,26 @@ export function calculateDirection(fromPos: XYPosition, toPos: XYPosition): Conn
 
 /** Get the opposite direction */
 export function getOppositeDirection(dir: ConnectionDirection): ConnectionDirection {
-  const opposites: Record<ConnectionDirection, ConnectionDirection> = {
-    north: 'south',
-    south: 'north',
-    east: 'west',
-    west: 'east',
-    up: 'down',
-    down: 'up',
-    horizontal: 'horizontal',
-    vertical: 'vertical',
-  };
-  return opposites[dir] ?? dir;
+  switch (dir) {
+    case 'north':
+      return 'south';
+    case 'south':
+      return 'north';
+    case 'east':
+      return 'west';
+    case 'west':
+      return 'east';
+    case 'up':
+      return 'down';
+    case 'down':
+      return 'up';
+    case 'horizontal':
+      return 'horizontal';
+    case 'vertical':
+      return 'vertical';
+    default:
+      return dir;
+  }
 }
 
 /** Convert connection direction to exit direction (cardinal only) */
@@ -272,17 +281,26 @@ export function toExitDirection(dir: ConnectionDirection): ExitDirection | undef
 
 /** Get opposite exit direction */
 export function getOppositeExitDirection(dir: ExitDirection): ExitDirection {
-  const opposites: Record<ExitDirection, ExitDirection> = {
-    north: 'south',
-    south: 'north',
-    east: 'west',
-    west: 'east',
-    up: 'down',
-    down: 'up',
-    in: 'out',
-    out: 'in',
-  };
-  return opposites[dir];
+  switch (dir) {
+    case 'north':
+      return 'south';
+    case 'south':
+      return 'north';
+    case 'east':
+      return 'west';
+    case 'west':
+      return 'east';
+    case 'up':
+      return 'down';
+    case 'down':
+      return 'up';
+    case 'in':
+      return 'out';
+    case 'out':
+      return 'in';
+    default:
+      return dir;
+  }
 }
 
 /** Check if a direction is vertical (uses top/bottom handles) */

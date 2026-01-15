@@ -4,7 +4,7 @@
  * Generates narrative descriptions for NPC encounters.
  * Migrated from packages/api/src/services/encounter-service.ts
  */
-import type { CrowdLevel, NpcActivity } from '@minimal-rpg/schemas';
+import { getRecord, getRecordOptional, type CrowdLevel, type NpcActivity } from '@minimal-rpg/schemas';
 
 // =============================================================================
 // Types
@@ -179,7 +179,8 @@ function generateSceneDescription(
  * Get atmosphere phrase based on crowd and time.
  */
 function getAtmospherePhrase(crowdLevel: CrowdLevel, timeOfDay?: string): string {
-  const timePhrases: Record<string, string> = {
+  type TimeOfDay = NonNullable<EncounterNarrationOptions['timeOfDay']>;
+  const timePhrases: Record<TimeOfDay, string> = {
     dawn: 'The early morning light filters in.',
     morning: 'Morning activity fills the air.',
     midday: 'The midday bustle is in full swing.',
@@ -196,8 +197,8 @@ function getAtmospherePhrase(crowdLevel: CrowdLevel, timeOfDay?: string): string
     packed: 'People fill every available space.',
   };
 
-  const timePhrase = timeOfDay ? (timePhrases[timeOfDay] ?? '') : '';
-  const crowdPhrase = crowdPhrases[crowdLevel];
+  const timePhrase = timeOfDay ? (getRecordOptional(timePhrases, timeOfDay as TimeOfDay) ?? '') : '';
+  const crowdPhrase = getRecord(crowdPhrases, crowdLevel);
 
   return [timePhrase, crowdPhrase].filter(Boolean).join(' ');
 }
@@ -273,7 +274,8 @@ function generateCrowdDescription(
     packed: 'a crowd of',
   };
 
-  return `${crowdDescriptors[crowdLevel] ?? 'Some'} people go about their business.`;
+  const descriptor = getRecord(crowdDescriptors, crowdLevel);
+  return `${descriptor ?? 'Some'} people go about their business.`;
 }
 
 /**

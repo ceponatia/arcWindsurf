@@ -53,12 +53,12 @@ const GENERIC_FALLBACKS = [
 
 function generateDilemmaFallback(): string {
   const index = Math.floor(Math.random() * DILEMMA_FALLBACKS.length);
-  return DILEMMA_FALLBACKS[index] ?? "*pauses* This is... not a simple choice.";
+  return DILEMMA_FALLBACKS.at(index) ?? "*pauses* This is... not a simple choice.";
 }
 
 function generateGenericFallback(): string {
   const index = Math.floor(Math.random() * GENERIC_FALLBACKS.length);
-  return GENERIC_FALLBACKS[index] ?? "*hesitates* Let me gather my thoughts.";
+  return GENERIC_FALLBACKS.at(index) ?? "*hesitates* Let me gather my thoughts.";
 }
 
 /**
@@ -516,8 +516,8 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
           const lastCharIndex = charMessages.findIndex(m => m.role === 'character');
           if (lastCharIndex === -1) return [];
 
-          const lastChar = charMessages[lastCharIndex];
-          const lastPrompt = charMessages[lastCharIndex + 1];
+          const lastChar = charMessages.at(lastCharIndex);
+          const lastPrompt = charMessages.at(lastCharIndex + 1);
 
           if (!lastChar || !lastPrompt) return [];
 

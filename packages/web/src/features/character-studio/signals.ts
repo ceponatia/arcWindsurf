@@ -193,7 +193,7 @@ export function setFieldErrors(next: StudioFieldErrors): void {
  */
 export function clearFieldError(key: StudioFieldKey): void {
   const current = fieldErrors.value;
-  if (!current[key]) return;
+  if (!Object.prototype.hasOwnProperty.call(current, key)) return;
   const { [key]: removed, ...rest } = current;
   void removed;
   fieldErrors.value = rest;

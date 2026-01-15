@@ -177,17 +177,14 @@ function PrefabListView({ onCreateNew, onEdit }: PrefabListViewProps) {
   };
 
   // Group prefabs by category
-  const groupedPrefabs = prefabs.reduce(
-    (acc, prefab) => {
-      const cat = prefab.category ?? 'Uncategorized';
-      acc[cat] ??= [];
-      acc[cat].push(prefab);
-      return acc;
-    },
-    {} as Record<string, LocationPrefab[]>
-  );
+  const groupedPrefabs = prefabs.reduce((acc, prefab) => {
+    const cat = prefab.category ?? 'Uncategorized';
+    const existing = acc.get(cat) ?? [];
+    acc.set(cat, [...existing, prefab]);
+    return acc;
+  }, new Map<string, LocationPrefab[]>());
 
-  const categories = Object.keys(groupedPrefabs).sort();
+  const categories = Array.from(groupedPrefabs.keys()).sort();
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -278,7 +275,9 @@ function PrefabListView({ onCreateNew, onEdit }: PrefabListViewProps) {
             <div key={category} className="rounded-lg border border-slate-700 overflow-hidden">
               {/* Category Header */}
               <button
-                onClick={() => { toggleCategory(category); }}
+                onClick={() => {
+                  toggleCategory(category);
+                }}
                 className="w-full flex items-center gap-2 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 transition-colors"
               >
                 {expandedCategories.has(category) ? (
@@ -288,18 +287,20 @@ function PrefabListView({ onCreateNew, onEdit }: PrefabListViewProps) {
                 )}
                 <span className="font-medium text-slate-200 capitalize">{category}</span>
                 <span className="ml-auto text-xs text-slate-500">
-                  {(groupedPrefabs[category] ?? []).length} prefab
-                  {(groupedPrefabs[category] ?? []).length === 1 ? '' : 's'}
+                  {(groupedPrefabs.get(category) ?? []).length} prefab
+                  {(groupedPrefabs.get(category) ?? []).length === 1 ? '' : 's'}
                 </span>
               </button>
 
               {/* Prefab Items */}
               {expandedCategories.has(category) && (
                 <div className="divide-y divide-slate-700/50">
-                  {(groupedPrefabs[category] ?? []).map((prefab) => (
+                  {(groupedPrefabs.get(category) ?? []).map((prefab) => (
                     <div
                       key={prefab.id}
-                      onClick={() => { onEdit(prefab.id); }}
+                      onClick={() => {
+                        onEdit(prefab.id);
+                      }}
                       className="flex items-start gap-4 p-4 hover:bg-slate-800/30 transition-colors group cursor-pointer"
                     >
                       <div className="p-2 rounded-lg bg-violet-500/10 text-violet-400">

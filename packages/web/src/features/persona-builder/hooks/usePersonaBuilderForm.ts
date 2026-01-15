@@ -20,10 +20,29 @@ export function usePersonaBuilderForm(initialProfile?: PersonaProfile) {
   const [errors, setErrors] = useState<FormFieldErrors>({});
 
   const updateField = <K extends FormKey>(key: K, value: FormState[K]) => {
-    setFormState((prev) => ({ ...prev, [key]: value }));
+    setFormState((prev) => {
+      const next = { ...prev };
+      Object.defineProperty(next, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      return next;
+    });
     // Clear error for this field
-    if (errors[key]) {
-      setErrors((prev) => ({ ...prev, [key]: undefined }));
+    const currentError = Object.getOwnPropertyDescriptor(errors, key)?.value as string | undefined;
+    if (currentError) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        Object.defineProperty(next, key, {
+          value: undefined,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+        return next;
+      });
     }
   };
 

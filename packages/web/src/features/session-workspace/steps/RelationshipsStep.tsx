@@ -239,7 +239,9 @@ function ListView({
           >
             {/* Actor header */}
             <button
-              onClick={() => { toggleExpanded(actorId); }}
+              onClick={() => {
+                toggleExpanded(actorId);
+              }}
               className="w-full px-4 py-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
             >
               <div className="flex items-center gap-2">
@@ -289,7 +291,9 @@ function ListView({
                       ))}
                     </select>
                     <button
-                      onClick={() => { onRemove(actorId, rel.toActorId); }}
+                      onClick={() => {
+                        onRemove(actorId, rel.toActorId);
+                      }}
                       className="p-1 text-slate-500 hover:text-red-400 transition-colors"
                       title="Remove relationship"
                     >
@@ -322,7 +326,9 @@ function ListView({
                           ))}
                         </select>
                         <button
-                          onClick={() => { setAddingFor(null); }}
+                          onClick={() => {
+                            setAddingFor(null);
+                          }}
                           className="p-1 text-slate-500 hover:text-slate-300"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -330,7 +336,9 @@ function ListView({
                       </div>
                     ) : (
                       <button
-                        onClick={() => { setAddingFor(actorId); }}
+                        onClick={() => {
+                          setAddingFor(actorId);
+                        }}
                         className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 px-2 py-1"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -401,7 +409,8 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
     handleUpdate(fromId, toId, type, affinity);
 
     // Update reverse relationship with inverse type
-    const inverseType = RELATIONSHIP_INVERSES[type] ?? type;
+    const inverseEntry = Object.getOwnPropertyDescriptor(RELATIONSHIP_INVERSES, type);
+    const inverseType = typeof inverseEntry?.value === 'string' ? inverseEntry.value : type;
     const inversePreset = RELATIONSHIP_PRESETS.find((p) => p.value === inverseType);
     handleUpdate(toId, fromId, inverseType, inversePreset?.affinity);
   };
@@ -442,7 +451,9 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
         <div className="flex items-center gap-4">
           {/* Legend Toggle */}
           <button
-            onClick={() => { setShowLegend(!showLegend); }}
+            onClick={() => {
+              setShowLegend(!showLegend);
+            }}
             className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
               showLegend
                 ? 'bg-violet-900/50 text-violet-300'
@@ -458,7 +469,9 @@ export function RelationshipsStep({ characters }: RelationshipsStepProps) {
             <span className="text-xs text-slate-500">View:</span>
             <select
               value={viewMode}
-              onChange={(e) => { setViewMode(e.target.value as 'auto' | 'matrix' | 'list'); }}
+              onChange={(e) => {
+                setViewMode(e.target.value as 'auto' | 'matrix' | 'list');
+              }}
               className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs"
             >
               <option value="auto">Auto ({actorIds.length <= 6 ? 'Matrix' : 'List'})</option>

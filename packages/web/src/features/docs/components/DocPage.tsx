@@ -48,7 +48,11 @@ export const DocPage: React.FC<DocPageProps> = ({ path }) => {
     }
 
     // Get the loader safely using Object.hasOwn validated key
-    const loader = mdxModules[moduleKey];
+    const loaderEntry = Object.getOwnPropertyDescriptor(mdxModules, moduleKey);
+    const loader =
+      typeof loaderEntry?.value === 'function'
+        ? (loaderEntry.value as () => Promise<DocModule>)
+        : undefined;
 
     // Additional safety check: ensure loader is a function
     if (typeof loader !== 'function') {

@@ -44,14 +44,19 @@ interface GraphViewProps {
 function filterByZoomLevel(nodes: LocationNode[], level: SemanticZoomLevel): LocationNode[] {
   if (level === 'all') return nodes;
 
-  const depthMap: Record<SemanticZoomLevel, number> = {
-    all: -1,
-    region: 0,
-    building: 1,
-    room: 2,
-  };
-
-  const maxDepth = depthMap[level];
+  const maxDepth = (() => {
+    switch (level) {
+      case 'region':
+        return 0;
+      case 'building':
+        return 1;
+      case 'room':
+        return 2;
+      case 'all':
+      default:
+        return -1;
+    }
+  })();
   return nodes.filter((n) => n.depth <= maxDepth);
 }
 

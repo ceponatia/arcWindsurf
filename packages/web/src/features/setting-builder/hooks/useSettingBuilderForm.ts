@@ -34,12 +34,22 @@ export const useSettingBuilderForm = (id?: string | null) => {
 
   const updateField = useCallback(
     <K extends FormKey>(key: K, value: SettingFormState[K]) => {
-      setForm((prev) => ({ ...prev, [key]: value }));
+      setForm((prev) => {
+        const next = { ...prev };
+        Object.defineProperty(next, key, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+        return next;
+      });
       // Clear error for this field if it exists
-      if (fieldErrors[key]) {
+      const currentError = Object.getOwnPropertyDescriptor(fieldErrors, key)?.value as string | undefined;
+      if (currentError) {
         setFieldErrors((prev) => {
           const next = { ...prev };
-          delete next[key];
+          Reflect.deleteProperty(next, key);
           return next;
         });
       }

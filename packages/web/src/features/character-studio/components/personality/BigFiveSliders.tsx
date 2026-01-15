@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
-import { PERSONALITY_DIMENSIONS } from '@minimal-rpg/schemas';
+import { PERSONALITY_DIMENSIONS, getRecordOptional } from '@minimal-rpg/schemas';
 import { characterProfile, updatePersonalityMap } from '../../signals.js';
 import { RadarChart } from '../RadarChart.js';
 import { SliderInput } from '../../../../shared/components/common.js';
@@ -39,13 +39,13 @@ export const BigFiveSliders: React.FC = () => {
         <RadarChart
           data={PERSONALITY_DIMENSIONS.map((dim) => ({
             label: dim.charAt(0).toUpperCase() + dim.slice(1),
-            value: dimensions[dim] ?? 0.5,
+            value: getRecordOptional(dimensions, dim) ?? 0.5,
           }))}
           size={240}
         />
       </div>
       {PERSONALITY_DIMENSIONS.map((dim) => {
-        const score = dimensions[dim] ?? 0.5;
+        const score = getRecordOptional(dimensions, dim) ?? 0.5;
         return (
           <SliderInput
             key={dim}

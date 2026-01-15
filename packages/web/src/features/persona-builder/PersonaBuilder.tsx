@@ -105,7 +105,8 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
             };
             const key = p[0];
             if (!key) return undefined;
-            return Object.hasOwn(top, key) ? top[key] : undefined;
+            const entry = Object.getOwnPropertyDescriptor(top, key);
+            return typeof entry?.value === 'string' ? (entry.value as FormKey) : undefined;
           },
         });
         setErrors(fieldMap as FormFieldErrors);

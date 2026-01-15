@@ -3,6 +3,7 @@ import {
   APPEARANCE_REGIONS,
   APPEARANCE_REGION_ATTRIBUTES,
   BODY_REGIONS,
+  getRecordOptional,
   type AppearanceRegion,
   type BodyRegion,
 } from '@minimal-rpg/schemas';
@@ -48,7 +49,7 @@ export function findNextAvailableAppearanceEntry(
     // Skip if region isn't available for this gender
     if (!availableRegions.includes(region)) continue;
 
-    const regionAttrs = APPEARANCE_REGION_ATTRIBUTES[region];
+    const regionAttrs = getRecordOptional(APPEARANCE_REGION_ATTRIBUTES, region);
     if (!regionAttrs) continue;
 
     // Iterate through attributes in order

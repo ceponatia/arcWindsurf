@@ -221,18 +221,31 @@ export const ItemBuilder: React.FC<{
           if (key === 'tags') return 'tags';
           if (key === 'properties') {
             const sub = path.slice(1).join('.');
-            const map: Record<string, FormKey> = {
-              slot: 'clothingSlot',
-              style: 'clothingStyle',
-              material: 'clothingMaterial',
-              color: 'clothingColor',
-              condition: 'clothingCondition',
-              warmth: 'clothingWarmth',
-              handedness: 'weaponHandedness',
-              damageTypes: 'weaponDamageTypes',
-              reach: 'weaponReach',
-            };
-            return map[sub] ?? undefined;
+            const mapped = (() => {
+              switch (sub) {
+                case 'slot':
+                  return 'clothingSlot';
+                case 'style':
+                  return 'clothingStyle';
+                case 'material':
+                  return 'clothingMaterial';
+                case 'color':
+                  return 'clothingColor';
+                case 'condition':
+                  return 'clothingCondition';
+                case 'warmth':
+                  return 'clothingWarmth';
+                case 'handedness':
+                  return 'weaponHandedness';
+                case 'damageTypes':
+                  return 'weaponDamageTypes';
+                case 'reach':
+                  return 'weaponReach';
+                default:
+                  return undefined;
+              }
+            })();
+            return mapped;
           }
           return undefined as unknown as FormKey;
         },

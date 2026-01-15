@@ -285,6 +285,11 @@ export function buildVignettePrompt(
   archetype: string,
   scenario: string
 ): string {
+  const getStringMapValue = (record: Record<string, string>, key: string): string | undefined => {
+    const entry = Object.getOwnPropertyDescriptor(record, key);
+    return typeof entry?.value === 'string' ? entry.value : undefined;
+  };
+
   const archetypeDescriptions: Record<string, string> = {
     'authority-figure': 'someone with power over you - a lord, a master, a parent',
     'romantic-interest': 'someone you find attractive or who finds you attractive',
@@ -301,8 +306,11 @@ export function buildVignettePrompt(
     'casual': 'Nothing urgent. Just a moment between you.',
   };
 
-  return `Imagine you encounter ${archetypeDescriptions[archetype] ?? archetype}.
-${scenarioDescriptions[scenario] ?? scenario}
+  const archetypeDescription = getStringMapValue(archetypeDescriptions, archetype) ?? archetype;
+  const scenarioDescription = getStringMapValue(scenarioDescriptions, scenario) ?? scenario;
+
+  return `Imagine you encounter ${archetypeDescription}.
+${scenarioDescription}
 
 Show me this interaction. Speak as yourself.
 How do you approach them? What do you say? What do you hold back?`;
@@ -320,7 +328,9 @@ export function buildMemoryPrompt(topic: string): string {
     'defining-choice': 'Was there a moment that made you who you are? A choice that set your path?',
   };
 
-  return topicPrompts[topic] ?? `Tell me about ${topic}. What comes to mind?`;
+  const entry = Object.getOwnPropertyDescriptor(topicPrompts, topic);
+  const prompt = typeof entry?.value === 'string' ? entry.value : undefined;
+  return prompt ?? `Tell me about ${topic}. What comes to mind?`;
 }
 
 /**

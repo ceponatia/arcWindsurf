@@ -1,5 +1,5 @@
 // packages/actors/src/studio-npc/discovery.ts
-import type { CharacterProfile } from '@minimal-rpg/schemas';
+import { getRecordOptional, type CharacterProfile } from '@minimal-rpg/schemas';
 import type { DiscoveryTopic, SuggestedPrompt } from './types.js';
 
 /**
@@ -140,7 +140,8 @@ export class DiscoveryGuide {
     if (unexplored.length === 0) {
       // All explored, return random for continued conversation
       const allTopics = Object.keys(TOPIC_PROMPTS) as DiscoveryTopic[];
-      const randomTopic = allTopics[Math.floor(Math.random() * allTopics.length)];
+      const randomIndex = Math.floor(Math.random() * allTopics.length);
+      const randomTopic = allTopics.at(randomIndex);
       return randomTopic ?? 'backstory';
     }
 
@@ -153,9 +154,7 @@ export class DiscoveryGuide {
    * Generate suggested prompts for a topic.
    */
   generatePrompts(topic: DiscoveryTopic, count = 3): SuggestedPrompt[] {
-    const prompts = Object.prototype.hasOwnProperty.call(TOPIC_PROMPTS, topic)
-      ? TOPIC_PROMPTS[topic]
-      : [];
+    const prompts = getRecordOptional(TOPIC_PROMPTS, topic) ?? [];
 
     // Shuffle and take requested count
     const shuffled = [...prompts].sort(() => Math.random() - 0.5);
@@ -243,9 +242,7 @@ export class DiscoveryGuide {
   }
 
   private calculateGapScore(topic: DiscoveryTopic): number {
-    const fields = Object.prototype.hasOwnProperty.call(TOPIC_TO_FIELDS, topic)
-      ? TOPIC_TO_FIELDS[topic]
-      : [];
+    const fields = getRecordOptional(TOPIC_TO_FIELDS, topic) ?? [];
     let emptyFields = 0;
 
     for (const field of fields) {
@@ -267,9 +264,12 @@ export class DiscoveryGuide {
         return undefined;
       }
       const record = current as Record<string, unknown>;
-      // Using bracket notation for strict property access
-      if (Object.prototype.hasOwnProperty.call(record, part) && part !== '__proto__' && part !== 'constructor') {
-        current = record[part];
+      if (Object.prototype.hasOwnProperty.call(record, part)) {
+        const entry = Object.getOwnPropertyDescriptor(record, part);
+        if (!entry || part === '__proto__' || part === 'constructor') {
+          return undefined;
+        }
+        current = entry.value;
       } else {
         return undefined;
       }
@@ -299,8 +299,6 @@ export class DiscoveryGuide {
       'emotional-range': 'Emotional depth creates compelling characters',
     };
 
-    return Object.prototype.hasOwnProperty.call(rationales, topic)
-      ? rationales[topic]
-      : defaultRationale;
+    return getRecordOptional(rationales, topic) ?? defaultRationale;
   }
 }

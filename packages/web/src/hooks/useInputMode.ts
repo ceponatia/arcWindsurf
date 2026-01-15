@@ -21,7 +21,7 @@ export function useInputMode() {
   const cycleMode = () => {
     const modes: InputMode[] = ['speech', 'thought', 'action'];
     const idx = modes.indexOf(mode);
-    const nextMode = modes[(idx + 1) % modes.length];
+    const nextMode = modes.at((idx + 1) % modes.length);
     if (nextMode) {
       setMode(nextMode);
     }
@@ -35,7 +35,17 @@ export function useInputMode() {
     text: string,
     cursorPos: number
   ): { newText: string; newCursor: number } => {
-    const config = MODE_CONFIG[mode];
+    const config = (() => {
+      switch (mode) {
+        case 'thought':
+          return MODE_CONFIG.thought;
+        case 'action':
+          return MODE_CONFIG.action;
+        case 'speech':
+        default:
+          return MODE_CONFIG.speech;
+      }
+    })();
     const before = text.slice(0, cursorPos);
     const after = text.slice(cursorPos);
     const newText = `${before}${config.prefix}${config.suffix}${after}`;
@@ -58,6 +68,16 @@ export function useInputMode() {
     cycleMode,
     insertModeMarkers,
     cleanupEmptyMarkers,
-    config: MODE_CONFIG[mode],
+    config: (() => {
+      switch (mode) {
+        case 'thought':
+          return MODE_CONFIG.thought;
+        case 'action':
+          return MODE_CONFIG.action;
+        case 'speech':
+        default:
+          return MODE_CONFIG.speech;
+      }
+    })(),
   };
 }

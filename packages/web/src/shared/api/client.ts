@@ -73,23 +73,35 @@ async function http<T>(path: string, init?: HttpOptions): Promise<T> {
   const token = await getAccessToken();
   const incomingHeaders = rest.headers;
   const mergedHeaders: Record<string, string> = {};
+  const setHeader = (key: string, value: string) => {
+    Object.defineProperty(mergedHeaders, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  };
+  const hasHeader = (key: string): boolean => {
+    const entry = Object.getOwnPropertyDescriptor(mergedHeaders, key);
+    return typeof entry?.value === 'string';
+  };
 
   if (incomingHeaders) {
     if (incomingHeaders instanceof Headers) {
       incomingHeaders.forEach((v, k) => {
-        mergedHeaders[k] = v;
+        setHeader(k, v);
       });
     } else if (Array.isArray(incomingHeaders)) {
       for (const [k, v] of incomingHeaders) {
-        mergedHeaders[k] = v;
+        setHeader(k, v);
       }
     } else {
       Object.assign(mergedHeaders, incomingHeaders);
     }
   }
 
-  if (token && !mergedHeaders['Authorization'] && !mergedHeaders['authorization']) {
-    mergedHeaders['Authorization'] = `Bearer ${token}`;
+  if (token && !hasHeader('Authorization') && !hasHeader('authorization')) {
+    setHeader('Authorization', `Bearer ${token}`);
   }
 
   const controller = new AbortController();

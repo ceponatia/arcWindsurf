@@ -13,6 +13,8 @@ import {
   type ProximityAction,
   makeEngagementKey,
   createDefaultProximityState,
+  getRecordOptional,
+  setRecord,
 } from '@minimal-rpg/schemas';
 
 // =============================================================================
@@ -79,7 +81,7 @@ export class SpatialIndex {
    */
   static getNpcProximityLevel(state: ProximityState, npcId: string): ProximityLevel | undefined {
     const proximity = state.npcProximity as Record<string, ProximityLevel | undefined>;
-    return proximity[npcId];
+    return getRecordOptional(proximity, npcId);
   }
 
   /**
@@ -91,7 +93,7 @@ export class SpatialIndex {
     level: ProximityLevel
   ): SpatialUpdateResult {
     const proximity = state.npcProximity as Record<string, ProximityLevel | undefined>;
-    const currentLevel = proximity[npcId];
+    const currentLevel = getRecordOptional(proximity, npcId);
     if (currentLevel === level) {
       return {
         success: true,
@@ -99,7 +101,7 @@ export class SpatialIndex {
       };
     }
 
-    proximity[npcId] = level;
+    setRecord(proximity, npcId, level);
     return {
       success: true,
       description: `Proximity to ${npcId} changed from ${currentLevel ?? 'none'} to ${level}`,
@@ -116,7 +118,7 @@ export class SpatialIndex {
     const { npcId, bodyPart, senseType, action, newIntensity, currentTick } = params;
     const key = makeEngagementKey(npcId, bodyPart, senseType);
     const engagements = state.engagements as Record<string, SensoryEngagement | undefined>;
-    const existing = engagements[key];
+    const existing = getRecordOptional(engagements, key);
 
     switch (action) {
       case 'engage':
@@ -169,7 +171,7 @@ export class SpatialIndex {
     };
 
     const engagements = state.engagements as Record<string, SensoryEngagement | undefined>;
-    engagements[key] = engagement;
+    setRecord(engagements, key, engagement);
     return {
       success: true,
       engagement,
@@ -203,7 +205,7 @@ export class SpatialIndex {
         startedAt: currentTick,
         lastActiveAt: currentTick,
       };
-      engagements[key] = engagement;
+      setRecord(engagements, key, engagement);
       return {
         success: true,
         engagement,
@@ -289,7 +291,7 @@ export class SpatialIndex {
     }
 
     const engagements = state.engagements as Record<string, SensoryEngagement | undefined>;
-    delete engagements[key];
+    Reflect.deleteProperty(engagements, key);
     return {
       success: true,
       description: `Ended engagement ${key}`,
@@ -305,7 +307,7 @@ export class SpatialIndex {
     currentTick: number
   ): SpatialUpdateResult {
     const engagements = state.engagements as Record<string, SensoryEngagement | undefined>;
-    const existing = engagements[key];
+    const existing = getRecordOptional(engagements, key);
     if (!existing) {
       return {
         success: false,
@@ -330,9 +332,9 @@ export class SpatialIndex {
     const keys = Object.keys(engagements);
     const count = keys.length;
     for (const key of keys) {
-      const engagement = engagements[key];
+      const engagement = getRecordOptional(engagements, key);
       if (engagement?.npcId === npcId) {
-        delete engagements[key];
+        Reflect.deleteProperty(engagements, key);
       }
     }
     const newCount = Object.keys(engagements).length;

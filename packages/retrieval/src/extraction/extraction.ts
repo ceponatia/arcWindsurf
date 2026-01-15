@@ -110,8 +110,9 @@ const DEFAULT_IMPORTANCE = 0.5;
  */
 export function getPathImportance(path: string): number {
   // Check for exact match first
-  if (path in PATH_IMPORTANCE_MAP) {
-    return PATH_IMPORTANCE_MAP[path] ?? DEFAULT_IMPORTANCE;
+  const directEntry = Object.getOwnPropertyDescriptor(PATH_IMPORTANCE_MAP, path);
+  if (typeof directEntry?.value === 'number') {
+    return directEntry.value;
   }
 
   // Check for prefix matches (e.g., 'appearance.hair.color' matches 'appearance.hair')
@@ -142,7 +143,12 @@ export function getValueAtPath(obj: unknown, path: string): unknown {
     if (typeof current !== 'object') {
       return undefined;
     }
-    current = (current as Record<string, unknown>)[part];
+    const record = current as Record<string, unknown>;
+    const entry = Object.getOwnPropertyDescriptor(record, part);
+    if (!entry) {
+      return undefined;
+    }
+    current = entry.value;
   }
 
   return current;

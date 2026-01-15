@@ -33,12 +33,20 @@ export const EntityUsagePanel: React.FC<EntityUsagePanelProps> = ({
     }
   };
 
-  const entityTypeLabel = {
-    character: 'Character',
-    setting: 'Setting',
-    persona: 'Persona',
-    location: 'Location',
-  }[entityType];
+  const entityTypeLabel = (() => {
+    switch (entityType) {
+      case 'character':
+        return 'Character';
+      case 'setting':
+        return 'Setting';
+      case 'persona':
+        return 'Persona';
+      case 'location':
+        return 'Location';
+      default:
+        return 'Entity';
+    }
+  })();
 
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700">

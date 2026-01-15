@@ -9,6 +9,8 @@ import {
   BODY_REGIONS,
   PERSONALITY_DIMENSIONS,
   RACES,
+  getRecordOptional,
+  setRecord,
 } from '@minimal-rpg/schemas';
 import { splitList } from '../shared/stringLists.js';
 import {
@@ -46,7 +48,7 @@ export const buildPersonalityMap = (pm: PersonalityFormState): PersonalityMap | 
   if (dimensionScores.length > 0) {
     result.dimensions = {};
     for (const d of dimensionScores) {
-      result.dimensions[d.dimension] = d.score;
+      setRecord(result.dimensions, d.dimension, d.score);
     }
   }
 
@@ -194,7 +196,7 @@ export function filterBodyMapByGender(body: BodyMap, gender: string): BodyMap {
       if (normalizedGender !== 'male' && normalizedGender !== 'other' && normalizedGender) continue;
     }
 
-    filtered[r] = data;
+    setRecord(filtered, r, data);
   }
   return filtered;
 }
@@ -277,7 +279,7 @@ export function personalityMapToFormState(pm: PersonalityMap | undefined): Perso
   if (pm.dimensions) {
     base.dimensions = PERSONALITY_DIMENSIONS.map((dim) => ({
       dimension: dim,
-      score: pm.dimensions?.[dim] ?? 0.5,
+      score: getRecordOptional(pm.dimensions, dim) ?? 0.5,
     }));
   }
 
@@ -388,11 +390,31 @@ export function mapProfileToForm(profile: CharacterProfile): FormState {
   // Map physique to body map if present
   const p = profile.physique;
   if (p && typeof p === 'object') {
+    const setAppearanceValue = (
+      appearance: Record<string, string | undefined>,
+      key: string,
+      value: string
+    ): void => {
+      Object.defineProperty(appearance, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    };
+
     const setApp = (region: BodyRegion, key: string, value: string | undefined) => {
       if (!value) return;
-      next.body[region] ??= {};
-      next.body[region].appearance ??= {};
-      next.body[region].appearance[key] = value;
+      const regionData = getRecordOptional(next.body, region) ?? {};
+      const appearance = {
+        ...(regionData.appearance ?? {}),
+      } as Record<string, string | undefined>;
+      setAppearanceValue(appearance, key, value);
+      const updatedRegion = {
+        ...regionData,
+        appearance,
+      };
+      setRecord(next.body, region, updatedRegion);
     };
 
     // Hair
@@ -494,8 +516,10 @@ export function mergeGeneratedIntoForm(current: FormState, generated: FormState)
 
   // Body map - merge regions
   for (const region of BODY_REGIONS) {
-    if (!merged.body[region] && generated.body[region]) {
-      merged.body[region] = generated.body[region];
+    const existing = getRecordOptional(merged.body, region);
+    const generatedRegion = getRecordOptional(generated.body, region);
+    if (!existing && generatedRegion) {
+      setRecord(merged.body, region, generatedRegion);
     }
   }
 

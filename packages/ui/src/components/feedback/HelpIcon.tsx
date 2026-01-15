@@ -13,10 +13,15 @@ export const HelpIcon: React.FC<HelpIconProps> = ({
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const sizeClasses = {
-    sm: 'w-4 h-4 text-xs',
-    md: 'w-5 h-5 text-sm',
-  };
+  const sizeClasses = (() => {
+    switch (size) {
+      case 'md':
+        return 'w-5 h-5 text-sm';
+      case 'sm':
+      default:
+        return 'w-4 h-4 text-xs';
+    }
+  })();
 
   const handleClick = (e: React.MouseEvent) => {
     if (docLink) {
@@ -30,7 +35,7 @@ export const HelpIcon: React.FC<HelpIconProps> = ({
     <div className={`relative inline-flex items-center ${className}`}>
       <button
         type="button"
-        className={`${sizeClasses[size]} rounded-full border border-slate-600 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 hover:border-slate-500 transition-colors inline-flex items-center justify-center ${docLink ? 'cursor-pointer' : 'cursor-help'}`}
+        className={`${sizeClasses} rounded-full border border-slate-600 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 hover:border-slate-500 transition-colors inline-flex items-center justify-center ${docLink ? 'cursor-pointer' : 'cursor-help'}`}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={handleClick}

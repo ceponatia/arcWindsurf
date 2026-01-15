@@ -3,6 +3,14 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { activeActors, actorStates } from '../../signals/actors.js';
 import { currentTick } from '../../signals/session.js';
 
+function getActorState<T extends Record<string, unknown>>(
+  record: T,
+  actorId: string
+): T[string] | undefined {
+  const entry = Object.getOwnPropertyDescriptor(record, actorId);
+  return entry?.value as T[string] | undefined;
+}
+
 export const WorldMap: React.FC = () => {
   useSignals();
   const actors = activeActors.value;
@@ -36,7 +44,7 @@ export const WorldMap: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {actors.map((actorId) => {
-              const state = states[actorId];
+              const state = getActorState(states, actorId);
               return (
                 <div
                   key={actorId}

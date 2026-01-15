@@ -12,6 +12,7 @@ import {
   type BodyPartHygieneConfig,
   type BodyPartSensoryModifiers,
   type HygieneLevel,
+  type SensoryModifierLevels,
   type SensoryModifiersData,
 } from '@minimal-rpg/schemas';
 
@@ -31,6 +32,31 @@ export interface LoadedSensoryModifiers {
     senseType: 'smell' | 'touch' | 'taste',
     level: HygieneLevel
   ) => string;
+}
+
+function getBodyPartModifiers(
+  bodyParts: Record<string, BodyPartSensoryModifiers>,
+  bodyPart: string
+): BodyPartSensoryModifiers | undefined {
+  const entry = Object.getOwnPropertyDescriptor(bodyParts, bodyPart);
+  return entry?.value as BodyPartSensoryModifiers | undefined;
+}
+
+function getSenseModifiers(
+  part: BodyPartSensoryModifiers | undefined,
+  senseType: 'smell' | 'touch' | 'taste'
+): SensoryModifierLevels | undefined {
+  if (!part) return undefined;
+  switch (senseType) {
+    case 'smell':
+      return part.smell;
+    case 'touch':
+      return part.touch;
+    case 'taste':
+      return part.taste;
+    default:
+      return undefined;
+  }
 }
 
 function resolveDataDir(dataDir?: string): string {
@@ -63,8 +89,8 @@ export async function loadSensoryModifiers(dataDir?: string): Promise<LoadedSens
     bodyParts: data.bodyParts,
     decayRates: data.decayRates,
     getModifier: (bodyPart, senseType, level) => {
-      const part = data.bodyParts[bodyPart];
-      const sense = part?.[senseType];
+      const part = getBodyPartModifiers(data.bodyParts, bodyPart);
+      const sense = getSenseModifiers(part, senseType);
       return sense ? getSensoryModifierByLevel(sense, level) : '';
     },
   };
