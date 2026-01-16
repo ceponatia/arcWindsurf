@@ -57,14 +57,14 @@ type SupabaseEnvVar =
 function readStringEnv(name: SupabaseEnvVar): string | null {
   const v =
     name === 'SUPABASE_JWT_ISSUER'
-      ? process.env.SUPABASE_JWT_ISSUER
+      ? process.env['SUPABASE_JWT_ISSUER']
       : name === 'SUPABASE_JWKS_URL'
-        ? process.env.SUPABASE_JWKS_URL
+        ? process.env['SUPABASE_JWKS_URL']
         : name === 'SUPABASE_PROJECT_URL'
-          ? process.env.SUPABASE_PROJECT_URL
+          ? process.env['SUPABASE_PROJECT_URL']
           : name === 'SUPABASE_JWT_AUDIENCE'
-            ? process.env.SUPABASE_JWT_AUDIENCE
-            : process.env.SUPABASE_JWT_ALGS;
+            ? process.env['SUPABASE_JWT_AUDIENCE']
+            : process.env['SUPABASE_JWT_ALGS'];
 
   if (!v) return null;
   const t = v.trim();

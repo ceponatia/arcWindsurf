@@ -4,7 +4,7 @@ import {
   VOCABULARY_LEVELS,
   SENTENCE_STRUCTURES,
   FORMALITY_LEVELS,
-  HUMOR_FREQUENCIES,
+  HUMOR_LEVELS,
   HUMOR_TYPES,
   EXPRESSIVENESS_LEVELS,
   DIRECTNESS_LEVELS,
@@ -20,7 +20,7 @@ export const SpeechStyleForm: React.FC = () => {
     vocabulary: VOCABULARY_LEVELS[1],
     sentenceStructure: SENTENCE_STRUCTURES[2],
     formality: FORMALITY_LEVELS[1],
-    humor: HUMOR_FREQUENCIES[2],
+    humor: HUMOR_LEVELS[2],
     expressiveness: EXPRESSIVENESS_LEVELS[2],
     directness: DIRECTNESS_LEVELS[1],
     pace: PACE_LEVELS[2],
@@ -56,10 +56,10 @@ export const SpeechStyleForm: React.FC = () => {
         options={FORMALITY_LEVELS}
       />
       <SelectInput
-        label="Humor Frequency"
+        label="Humor Level"
         value={speech.humor}
         onChange={(v) => handleChange('humor', v)}
-        options={HUMOR_FREQUENCIES}
+        options={HUMOR_LEVELS}
       />
       {speech.humor !== 'none' && (
         <SelectInput

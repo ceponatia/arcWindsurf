@@ -155,7 +155,9 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     return typeof status === 'number';
   };
 
-  const toStudioError = (err: unknown): { status: number; body: StudioError } => {
+  type StudioErrorStatus = 429 | 502 | 504;
+
+  const toStudioError = (err: unknown): { status: StudioErrorStatus; body: StudioError } => {
     const status = isHttpError(err) ? err.status : 502;
 
     if (status === 429) {

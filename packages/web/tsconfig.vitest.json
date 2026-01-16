@@ -4,5 +4,16 @@
     "types": ["vitest/globals"],
     "noEmit": true
   },
-  "include": ["test/**/*.ts", "src/**/*.ts"]
+  "include": [
+    "test/**/*.ts",
+    "test/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/**/__tests__/**/*.ts",
+    "src/**/__tests__/**/*.tsx"
+  ],
+  "exclude": ["dist"]
 }

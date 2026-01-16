@@ -14,10 +14,10 @@ import {
   HUMOR_LEVELS,
   HUMOR_TYPES,
   PERSONALITY_DIMENSIONS,
+  PACE_LEVELS,
   RECOVERY_RATES,
   SENTENCE_STRUCTURES,
   SOCIAL_ROLES,
-  SPEECH_PACES,
   STRESS_RESPONSES,
   STRANGER_DEFAULTS,
   VOCABULARY_LEVELS,
@@ -173,7 +173,7 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
         if (!isAllowedValue(DIRECTNESS_LEVELS, value)) return;
         setStringValue(speech, field, value);
       } else if (field === 'pace' && typeof value === 'string') {
-        if (!isAllowedValue(SPEECH_PACES, value)) return;
+        if (!isAllowedValue(PACE_LEVELS, value)) return;
         setStringValue(speech, field, value);
       } else {
         return;

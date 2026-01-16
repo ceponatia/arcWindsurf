@@ -4,7 +4,6 @@ import { useAppController } from './hooks/useAppController.js';
 import { DevNews } from '../features/dev-news/index.js';
 import { useTags } from '../shared/hooks/useTags.js';
 import { useItems } from '../shared/hooks/useItems.js';
-import { useAuth } from '../shared/hooks/useAuth.js';
 import { ResponsiveShell } from './ResponsiveShell.js';
 import type { AppControllerValue, ViewMode } from '../types.js';
 import type { CharacterStudioProps } from '../features/character-studio/index.js';

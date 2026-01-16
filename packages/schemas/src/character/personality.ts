@@ -348,7 +348,7 @@ export type SocialPattern = z.infer<typeof SocialPatternSchema>;
 export const VOCABULARY_LEVELS = ['simple', 'average', 'educated', 'erudite', 'archaic'] as const;
 export const SENTENCE_STRUCTURES = ['terse', 'simple', 'moderate', 'complex', 'elaborate'] as const;
 export const FORMALITY_LEVELS = ['casual', 'neutral', 'formal', 'ritualistic'] as const;
-export const HUMOR_FREQUENCIES = ['none', 'rare', 'occasional', 'frequent', 'constant'] as const;
+export const HUMOR_LEVELS = ['none', 'rare', 'occasional', 'frequent', 'constant'] as const;;
 export const HUMOR_TYPES = [
   'dry',
   'sarcastic',
@@ -375,7 +375,7 @@ export const SpeechStyleSchema = z.object({
   /** Formality default */
   formality: z.enum(FORMALITY_LEVELS).default('neutral'),
   /** Use of humor */
-  humor: z.enum(HUMOR_FREQUENCIES).default('occasional'),
+  humor: z.enum(HUMOR_LEVELS).default('occasional'),
   /** Humor type when used */
   humorType: z.enum(HUMOR_TYPES).optional(),
   /** Emotional expressiveness in speech */

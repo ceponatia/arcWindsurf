@@ -18,7 +18,7 @@ import {
   VOCABULARY_LEVELS,
   SENTENCE_STRUCTURES,
   FORMALITY_LEVELS,
-  HUMOR_FREQUENCIES,
+  HUMOR_LEVELS,
   HUMOR_TYPES,
   EXPRESSIVENESS_LEVELS,
   DIRECTNESS_LEVELS,
@@ -200,7 +200,7 @@ export interface SpeechStyleEntry {
   vocabulary: (typeof VOCABULARY_LEVELS)[number];
   sentenceStructure: (typeof SENTENCE_STRUCTURES)[number];
   formality: (typeof FORMALITY_LEVELS)[number];
-  humor: (typeof HUMOR_FREQUENCIES)[number];
+  humor: (typeof HUMOR_LEVELS)[number];
   humorType?: (typeof HUMOR_TYPES)[number];
   expressiveness: (typeof EXPRESSIVENESS_LEVELS)[number];
   directness: (typeof DIRECTNESS_LEVELS)[number];
@@ -314,7 +314,7 @@ export const createSpeechStyleEntry = (): SpeechStyleEntry => ({
   vocabulary: VOCABULARY_LEVELS[1], // average
   sentenceStructure: SENTENCE_STRUCTURES[2], // moderate
   formality: FORMALITY_LEVELS[1], // neutral
-  humor: HUMOR_FREQUENCIES[2], // occasional
+  humor: HUMOR_LEVELS[2], // occasional
   expressiveness: EXPRESSIVENESS_LEVELS[2], // moderate
   directness: DIRECTNESS_LEVELS[1], // direct
   pace: PACE_LEVELS[2], // moderate
