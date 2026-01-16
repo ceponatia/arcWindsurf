@@ -235,7 +235,9 @@ const StateChangesSection: React.FC<StateChangesSectionProps> = ({ stateChanges 
       <button
         type="button"
         className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={() => {
+          setExpanded((prev) => !prev);
+        }}
       >
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-green-300">💾 State</span>
@@ -332,7 +334,9 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
       <button
         type="button"
         className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={() => {
+          setExpanded((prev) => !prev);
+        }}
       >
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-violet-300">🤖 Agents</span>
@@ -356,7 +360,6 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
               const config =
                 getRecordValue<(typeof AGENT_CONFIG)[string]>(AGENT_CONFIG, agent) ??
                 getRecordValue<(typeof AGENT_CONFIG)[string]>(AGENT_CONFIG, 'custom');
-              if (!config) return null;
               return (
                 <span
                   key={agent}

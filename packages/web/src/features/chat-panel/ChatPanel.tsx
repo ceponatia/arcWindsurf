@@ -121,7 +121,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
           if (!results.length) return null;
           if (prev && results.some((npc) => npc.id === prev)) return prev;
           const primary = results.find((npc) => npc.role === 'primary') ?? results[0];
-          return primary?.id ?? null;
+          return primary.id;
         });
       } catch (err) {
         if (!active || isAbortError(err)) return;

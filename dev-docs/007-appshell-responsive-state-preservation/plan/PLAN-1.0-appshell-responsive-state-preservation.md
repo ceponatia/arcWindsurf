@@ -280,3 +280,24 @@ Keep intermediate commits small:
 - Move `MainContent` to be single-rendered
 - Convert sidebar/drawer behavior
 - Remove legacy MobileLayout/DesktopLayout
+
+---
+
+## Mount-Reset Audit
+
+The following table identifies features that currently reset state on mount or view render. These are the primary targets for risk during the layout refactor.
+
+| Feature | File + Function | What Resets | Why It Exists | When It Should Actually Trigger |
+|---------|-----------------|-------------|---------------|----------------------------------|
+| **Character Studio** | `useCharacterStudio.ts` (useEffect) | `resetStudioSession()`, `resetStudio()` | Ensure fresh start for conversation or new character creation. | On entry to feature with a *different* `id`, or explicit "New" button click. |
+| **Chat Panel** | `ChatPanel.tsx` (useEffect) | `session`, `draft`, `editingIdx` | Clear message list and input when switching sessions. | Only when `sessionId` actually changes to a different non-null value. |
+| **Location Builder** | `LocationBuilder.tsx` (useEffect) | `clearMap()`, then `loadMap`/`createMap` | Clear builder store on exit; initialize on entry. | Only when `mapId` or `settingId` changes. Guard `clearMap()` against layout remounts. |
+| **Persona Builder** | `PersonaBuilder.tsx` (useEffect) | `existingPersona` | Initialize form state for specific persona or new. | Only when `id` changes. |
+| **Session Workspace** | `SessionWorkspace.tsx` (useEffect) | `maps` (fetch) | Sync available maps with selected setting. | On `settingId` change (correctly handles now, but fetch is duplicate on mount). |
+
+### Recommendations for De-risking
+
+- **Stabilize Keys**: Ensure that `MainContent` and feature components have stable `key` props (eg, `key={viewMode + (entityId ?? '')}`) so that React can track if the component *actually* needs to be replaced.
+- **Move to Persistent Stores**: Continue using Signals/Zustand for state that should survive layout reflows.
+- **Selective Id Change**: In `useEffect` hooks, use refs to track "previous ID" and only perform destructive resets if the ID has *materially changed*, not just because the component remounted.
+- **Explicit Cleanup**: Be cautious with `useEffect` cleanup functions that `reset()` or `clear()` global stores. If the component remounts immediately (layout swap), the cleanup will happen and then the new mount will re-init, possibly losing unsaved work between the two.

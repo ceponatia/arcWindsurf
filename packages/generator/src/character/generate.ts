@@ -290,21 +290,17 @@ function generateBodyMap(
     const regionData: BodyRegionData = {};
 
     // Scent (most regions)
-    if (scentPrimaries) {
-      regionData.scent = {
-        primary: pickFromPool(scentPrimaries),
-        intensity: randomFloatRounded(0.2, 0.7),
-      };
-    }
+    regionData.scent = {
+      primary: pickFromPool(scentPrimaries),
+      intensity: randomFloatRounded(0.2, 0.7),
+    };
 
     // Texture (most regions)
-    if (texturePrimaries) {
-      regionData.texture = {
-        primary: pickFromPool(texturePrimaries),
-        temperature: randomBool(0.7) ? 'warm' : 'neutral',
-        moisture: 'normal',
-      };
-    }
+    regionData.texture = {
+      primary: pickFromPool(texturePrimaries),
+      temperature: randomBool(0.7) ? 'warm' : 'neutral',
+      moisture: 'normal',
+    };
 
     // Visual data is handled by the physique/appearance section, not body sensory
 

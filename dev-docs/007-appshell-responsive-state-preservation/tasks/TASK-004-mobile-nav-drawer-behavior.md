@@ -1,7 +1,7 @@
 # TASK-004: Mobile Navigation Drawer as Behavior (Not a Separate Layout)
 
 **Priority**: P2
-**Status**: 🔲 TODO
+**Status**: ✅ COMPLETED
 **Estimate**: 2-3h
 **Plan**: PLAN-1.0
 **Depends On**: TASK-003

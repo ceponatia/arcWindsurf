@@ -1,7 +1,7 @@
 # TASK-006: Remove Legacy DesktopLayout/MobileLayout (Cleanup)
 
 **Priority**: P3
-**Status**: 🔲 TODO
+**Status**: ✅ COMPLETED
 **Estimate**: 1-2h
 **Plan**: PLAN-1.0
 **Depends On**: TASK-004, TASK-005

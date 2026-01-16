@@ -1,7 +1,7 @@
 # TASK-005: Consolidate AppShell Chrome (Header/Footer/Nav) into Shared Components
 
 **Priority**: P2
-**Status**: 🔲 TODO
+**Status**: ✅ COMPLETED
 **Estimate**: 2-4h
 **Plan**: PLAN-1.0
 **Depends On**: TASK-003

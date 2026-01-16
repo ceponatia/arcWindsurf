@@ -156,7 +156,16 @@ export function useAppController(): AppControllerValue {
     currentSessionIdSignal.value = nextValue;
   };
 
-  const [viewMode, setViewMode] = useState<ViewMode>(() => parseHashRoute().viewMode);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const fromHash = parseHashRoute().viewMode;
+    if (fromHash !== 'home') return fromHash;
+
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('app.viewMode') as ViewMode | null;
+      if (saved) return saved;
+    }
+    return 'home';
+  });
   const [builderId, setBuilderId] = useState<string | null>(() => parseHashRoute().builderId);
   const [locationMapId, setLocationMapId] = useState<string | null>(
     () => parseHashRoute().locationMapId
@@ -164,6 +173,12 @@ export function useAppController(): AppControllerValue {
   const [locationSettingId, setLocationSettingId] = useState<string | null>(
     () => parseHashRoute().locationSettingId
   );
+
+  useEffect(() => {
+    if (viewMode !== 'home') {
+      sessionStorage.setItem('app.viewMode', viewMode);
+    }
+  }, [viewMode]);
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
