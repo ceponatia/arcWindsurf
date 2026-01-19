@@ -26,52 +26,29 @@ return c.json({ traits: [] });
 
 ## Implementation Steps
 
-1. Import `TRAIT_INFERENCE_SYSTEM_PROMPT` and `buildTraitInferencePrompt` from `./studio/prompts.js`
-2. Build inference prompt from conversation data
-3. Call LLM with structured output expectation
-4. Parse JSON response from LLM
-5. Validate and filter traits by confidence threshold
-6. Return parsed traits array
+1. Import `TraitInferenceEngine` from `@minimal-rpg/actors`
+2. Instantiate the engine with the configured `llmProvider`
+3. Call `engine.inferFromExchange(userMessage, characterResponse, profile)`
+4. Persist inferred traits to the session
+5. Return inferred traits to the client
 
 ## Code Structure
 
 ```typescript
-import {
-  TRAIT_INFERENCE_SYSTEM_PROMPT,
-  buildTraitInferencePrompt
-} from './studio/prompts.js';
+import { TraitInferenceEngine } from '@minimal-rpg/actors';
 
 app.post('/studio/infer-traits', async (c) => {
   // ... validation ...
 
-  const inferencePrompt = buildTraitInferencePrompt(
+  const engine = new TraitInferenceEngine({ llmProvider });
+  const inferredTraits = await engine.inferFromExchange(
     userMessage,
     characterResponse,
-    currentProfile
+    profile
   );
 
-  const messages = [
-    { role: 'system', content: TRAIT_INFERENCE_SYSTEM_PROMPT },
-    { role: 'user', content: inferencePrompt },
-  ];
-
-  const result = await Effect.runPromise(llmProvider.chat(messages));
-  const traits = parseTraitInferenceResponse(result.content);
-
-  return c.json({ traits });
+  return c.json({ inferredTraits });
 });
-
-function parseTraitInferenceResponse(content: string | null): InferredTrait[] {
-  if (!content) return [];
-  try {
-    const parsed = JSON.parse(content);
-    return Array.isArray(parsed)
-      ? parsed.filter(t => t.confidence > 0.5)
-      : [];
-  } catch {
-    return [];
-  }
-}
 ```
 
 ## Expected Response Format

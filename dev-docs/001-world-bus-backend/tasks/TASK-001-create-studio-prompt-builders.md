@@ -11,16 +11,22 @@
 
 Create the prompt builder functions needed for Character Studio LLM integration.
 
-## File to Create
+## Where These Live Now
 
-`packages/api/src/routes/studio/prompts.ts`
+This task was implemented in `@minimal-rpg/actors` instead of `@minimal-rpg/api`.
 
-## Functions to Implement
+- `packages/actors/src/studio-npc/prompts.ts` (system prompt: `buildStudioSystemPrompt`)
+- `packages/actors/src/studio-npc/inference.ts` (trait inference: `TraitInferenceEngine` + its system prompt)
 
-### 1. buildCharacterSystemPrompt
+## Functions to Implement (Current)
+
+### 1. buildStudioSystemPrompt
 
 ```typescript
-export function buildCharacterSystemPrompt(profile: Partial<CharacterProfile>): string
+export function buildStudioSystemPrompt(
+  profile: Partial<CharacterProfile>,
+  conversationSummary?: string | null
+): string
 ```
 
 Build a system prompt from character profile data including:
@@ -31,25 +37,15 @@ Build a system prompt from character profile data including:
 - Values, fears, social patterns
 - Speech style and stress responses
 
-### 2. buildTraitInferencePrompt
+### 2. TraitInferenceEngine
 
-```typescript
-export function buildTraitInferencePrompt(
-  userMessage: string,
-  characterResponse: string,
-  currentProfile: Partial<CharacterProfile>
-): string
-```
+Trait inference is handled by `TraitInferenceEngine.inferFromExchange(...)`.
 
 Build a prompt for the LLM to analyze conversation and extract personality traits.
 
-### 3. TRAIT_INFERENCE_SYSTEM_PROMPT
+### 3. Trait Inference System Prompt
 
-```typescript
-export const TRAIT_INFERENCE_SYSTEM_PROMPT: string
-```
-
-System prompt instructing the LLM how to:
+Trait inference uses an internal system prompt to instruct the LLM how to:
 
 - Analyze conversations for personality traits
 - Return structured JSON with trait paths, values, confidence scores
@@ -57,8 +53,8 @@ System prompt instructing the LLM how to:
 
 ## Acceptance Criteria
 
-- [x] File exists at `packages/api/src/routes/studio/prompts.ts`
-- [x] All three exports are implemented
+- [x] System prompt builder exists in `packages/actors/src/studio-npc/prompts.ts`
+- [x] Trait inference engine exists in `packages/actors/src/studio-npc/inference.ts`
 - [x] TypeScript compiles without errors
 - [x] Prompt output is well-formatted for LLM consumption
 - [x] Trait inference returns parseable JSON schema

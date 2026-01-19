@@ -79,7 +79,7 @@ You are roleplaying as the character described below. Stay consistent with these
 
 **File to modify:**
 
-- `packages/api/src/routes/studio/prompts.ts` - Expand `buildCharacterSystemPrompt()`
+- `packages/actors/src/studio-npc/prompts.ts` - Expand `buildStudioSystemPrompt()`
 
 ### Feature 4: Character Deletion (Side Task)
 
@@ -131,7 +131,7 @@ packages/llm/
 packages/api/src/routes/
 ├── studio.ts                     # Add /studio/summarize endpoint
 └── studio/
-    └── prompts.ts                # Enhance buildCharacterSystemPrompt()
+    # Prompt building lives in @minimal-rpg/actors
 
 packages/web/src/features/character-studio/
 ├── signals.ts                    # Add conversationSummary signal

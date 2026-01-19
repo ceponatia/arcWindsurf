@@ -27,7 +27,7 @@ const response = `[Character response to: "${userMessage.slice(0, 50)}..."]`;
 ## Implementation Steps
 
 1. Import OpenAI provider from `@minimal-rpg/llm`
-2. Import `buildCharacterSystemPrompt` from `./studio/prompts.js`
+2. Import `buildStudioSystemPrompt` from `@minimal-rpg/actors`
 3. Create or access LLM provider instance
 4. Build system prompt from profile
 5. Format conversation history as LLM messages
@@ -38,7 +38,7 @@ const response = `[Character response to: "${userMessage.slice(0, 50)}..."]`;
 
 ```typescript
 import { OpenAIProvider } from '@minimal-rpg/llm';
-import { buildCharacterSystemPrompt } from './studio/prompts.js';
+import { buildStudioSystemPrompt } from '@minimal-rpg/actors';
 
 // Provider initialization using OpenRouter (OpenAI-compatible API)
 const llmProvider = new OpenAIProvider({
@@ -51,7 +51,7 @@ const llmProvider = new OpenAIProvider({
 app.post('/studio/generate', async (c) => {
   // ... validation ...
 
-  const systemPrompt = buildCharacterSystemPrompt(profile);
+  const systemPrompt = buildStudioSystemPrompt(profile, null);
   const messages = [
     { role: 'system', content: systemPrompt },
     ...history.map(m => ({ role: m.role, content: m.content })),

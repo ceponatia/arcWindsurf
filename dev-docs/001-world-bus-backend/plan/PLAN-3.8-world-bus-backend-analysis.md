@@ -220,7 +220,7 @@ WORLD_BUS_STATUS.md claims Phase 4 is pending, but the LLM package is substantia
 |-----|----------|--------|-------------|
 | **Wire LLM to `/studio/generate`** | P0 | 2-4h | Import LLM provider, build system prompt from profile, call chat() |
 | **Wire LLM to `/studio/infer-traits`** | P0 | 2-4h | Create trait inference prompt, parse structured response |
-| **Create prompt builders** | P0 | 2h | `buildCharacterSystemPrompt()`, `buildTraitInferencePrompt()` |
+| **Create prompt builders** | P0 | 2h | Implement in `@minimal-rpg/actors` (studio-npc prompt + inference engine) |
 | **Add streaming support** | P1 | 2h | Use LLM streaming for better UX |
 | **Add error handling** | P1 | 1h | Handle LLM failures gracefully |
 
@@ -249,10 +249,9 @@ WORLD_BUS_STATUS.md claims Phase 4 is pending, but the LLM package is substantia
 
 ### For Character Studio 1.0 (Immediate)
 
-1. **Create `packages/api/src/routes/studio/prompts.ts`**
-   - `buildCharacterSystemPrompt(profile: CharacterProfile): string`
-   - `TRAIT_INFERENCE_SYSTEM_PROMPT: string`
-   - `buildTraitInferencePrompt(userMessage, characterResponse, profile): string`
+1. **Use the prompt + inference utilities in `@minimal-rpg/actors`**
+   - `packages/actors/src/studio-npc/prompts.ts` (`buildStudioSystemPrompt(...)`)
+   - `packages/actors/src/studio-npc/inference.ts` (`TraitInferenceEngine`)
 
 2. **Update `packages/api/src/routes/studio.ts`**
    - Import and instantiate OpenAI provider

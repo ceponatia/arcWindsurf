@@ -32,7 +32,7 @@ app.get('/studio/generate/stream', async (c) => {
   // Parse query params or use POST body
   const { profile, history, userMessage } = /* ... */;
 
-  const systemPrompt = buildCharacterSystemPrompt(profile);
+  const systemPrompt = buildStudioSystemPrompt(profile, null);
   const messages = [
     { role: 'system', content: systemPrompt },
     ...history,
