@@ -44,6 +44,7 @@ interface SensoryFragment {
   scent?: Partial<Record<BodyRegion, Partial<RegionScent>>>;
   texture?: Partial<Record<BodyRegion, Partial<RegionTexture>>>;
   flavor?: Partial<Record<BodyRegion, Partial<RegionFlavor>>>;
+  visual?: Partial<Record<BodyRegion, Partial<RegionVisual>>>;
 
   // Modifiers (applied after base values)
   modifiers?: {
@@ -99,7 +100,7 @@ type MergeStrategy = 'replace' | 'blend' | 'augment';
 interface MergeConfig {
   scent: {
     primary: 'replace'; // Later layer wins
-    notes: 'augment';   // Combine arrays, dedupe
+    notes: 'augment'; // Combine arrays, dedupe
     intensity: 'blend'; // Average values
   };
   texture: {
@@ -113,8 +114,260 @@ interface MergeConfig {
     notes: 'augment';
     intensity: 'blend';
   };
+  visual: {
+    primary: 'replace';
+    notes: 'augment';
+    intensity: 'blend';
+  };
 }
 ```
+
+### Conditional Augmentation (Trait Interactions)
+
+The merge strategy above is great for predictable defaults, but it can still feel static. A "living" sensory profile needs _interaction_: how one trait changes the expression of another.
+
+Instead of treating augmentation as "just append notes", introduce a dedicated **augmentation pass** that runs after the base merge and applies **conditional transformations** based on multiple traits at once (race + age + activity level, occupation + climate, alignment expression + ritual practice, etc.).
+
+This keeps the system deterministic and inspectable, but makes results feel more contextual for NPCs.
+
+#### Key idea
+
+- **Fragments** provide baseline contributions (race, gender, age, physique, occupation).
+- **Augmentation rules** transform the _already-merged_ result based on overall character context.
+
+This enables effects like:
+
+- Elf baseline "earthy" scent -> becomes "fresh pine needles" for young elves, "aged roots" for elders.
+- Athletic/exertion context adds salt/heat and changes texture/visual too (damp skin, flushed tone).
+- Devout/ritualistic alignment expression adds incense notes or ash/soot traces as a learned practice.
+
+#### Augment Notes from PM (expanded)
+
+One way we could augment is by having definitions for how some scents change when another variable is added. Using your example of Elf above: Earthy scents. If the age is young, the earthy scents value could be augmented to be 'fresh pine needles', 'cocoa', and so on. If the age is old (>60), the earthy scent could be augmented to be 'aged roots', 'late spring moss', etc. This would require a more complex fragment definition that includes conditional augmentations based on other traits. If an athletic trait was added to that elf, the scent would be augmented to make the earth scent values more musky and heady. Think 'salty loam', 'ripe mushrooms', etc.
+
+#### What "augmentation" can mean (beyond scent)
+
+Augmentation is a transformation, not just a merge. Examples across modalities:
+
+- **Scent**: swap primary based on context, inject notes, scale intensity, add edge notes (salt, smoke).
+- **Texture**: shift moisture/temperature after exertion, add callouses/scars from occupation, soften with wealth.
+- **Flavor**: add bitterness from herbs/tobacco, sweetness from diet, metallic tang from ironwork.
+- **Visual**: add sheen (sweat/oil), dullness (dust/ash), redness (heat), pallor (cold), stains (ink/soot).
+
+#### Data model: augmentation rules
+
+Model augmentations explicitly so they are testable and deterministic.
+
+```typescript
+type SensoryModality = 'scent' | 'texture' | 'flavor' | 'visual';
+
+type RegionSelector =
+  | { kind: 'region'; region: BodyRegion }
+  | { kind: 'regions'; regions: BodyRegion[] }
+  | { kind: 'tag'; tag: 'exposed-skin' | 'contact-hands' | 'breath-adjacent' | 'hair-adjacent' };
+
+type ConditionOp = 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'contains';
+
+interface TraitCondition {
+  key:
+    | 'race'
+    | 'gender'
+    | 'age'
+    | 'ageCategory'
+    | 'physique'
+    | 'occupation'
+    | 'activityLevel'
+    | 'alignment'
+    | 'environment'
+    | 'hygieneLevel'
+    | 'timeSinceBathMinutes';
+  op: ConditionOp;
+  value: unknown;
+}
+
+type AugmentOperation =
+  | {
+      kind: 'scent.addNotes';
+      notes: string[];
+      dedupe?: boolean;
+    }
+  | {
+      kind: 'scent.replacePrimaryIf';
+      ifPrimaryIn: string[];
+      replaceWith: string;
+    }
+  | {
+      kind: 'intensity.scale';
+      modality: Extract<SensoryModality, 'scent' | 'flavor' | 'visual'>;
+      factor: number;
+      clamp?: { min: number; max: number };
+    }
+  | {
+      kind: 'texture.shift';
+      temperature?: RegionTexture['temperature'];
+      moisture?: RegionTexture['moisture'];
+      addNotes?: string[];
+    }
+  | {
+      kind: 'visual.addNotes';
+      notes: string[];
+      dedupe?: boolean;
+    };
+
+interface SensoryAugmentRule {
+  id: string;
+  description: string;
+  priority: number; // Like fragments: later wins when rules conflict
+  when: TraitCondition[]; // AND; add anyOf/nested logic later if needed
+  target: {
+    modality: SensoryModality;
+    regions: RegionSelector;
+  };
+  operations: AugmentOperation[];
+}
+```
+
+Notes:
+
+- This rule system is intentionally not tied to scent strings alone.
+- Region selectors can be semantic ("exposed-skin") so we do not have to enumerate 20+ regions in every rule.
+- Start with AND-only conditions; add `anyOf` when the fragment library grows.
+
+#### Resolution pipeline (updated)
+
+```text
+1. Collect base fragments from traits (race, gender, age, physique, occupation, etc.)
+2. Merge fragments by priority using MergeConfig (replace/blend/augment)
+3. Build TraitContext (derived features like ageCategory, activityLevel)
+4. Apply augmentation rules by priority (transform the merged result)
+5. Apply custom overrides last (always highest priority)
+```
+
+#### Example augmentation rules
+
+These examples show the multi-modality benefit: texture and visual shift too.
+
+```typescript
+const AUGMENT_RULES: SensoryAugmentRule[] = [
+  {
+    id: 'elf-earthy-young',
+    description: 'Young elf earthy notes read fresher and sweeter',
+    priority: 1000,
+    when: [
+      { key: 'race', op: 'eq', value: 'Elf' },
+      { key: 'ageCategory', op: 'eq', value: 'young' },
+    ],
+    target: {
+      modality: 'scent',
+      regions: { kind: 'tag', tag: 'exposed-skin' },
+    },
+    operations: [
+      {
+        kind: 'scent.replacePrimaryIf',
+        ifPrimaryIn: ['petrichor', 'forest loam', 'earth', 'earthy'],
+        replaceWith: 'fresh pine needles',
+      },
+      { kind: 'scent.addNotes', notes: ['cocoa', 'morning sap'], dedupe: true },
+      { kind: 'intensity.scale', modality: 'scent', factor: 0.9, clamp: { min: 0, max: 1 } },
+    ],
+  },
+  {
+    id: 'elf-earthy-elder',
+    description: 'Elder elf earthy notes skew mossy and root-aged',
+    priority: 1000,
+    when: [
+      { key: 'race', op: 'eq', value: 'Elf' },
+      { key: 'age', op: 'gt', value: 60 },
+    ],
+    target: {
+      modality: 'scent',
+      regions: { kind: 'tag', tag: 'exposed-skin' },
+    },
+    operations: [
+      {
+        kind: 'scent.replacePrimaryIf',
+        ifPrimaryIn: ['petrichor', 'forest loam', 'earth', 'earthy'],
+        replaceWith: 'aged roots',
+      },
+      { kind: 'scent.addNotes', notes: ['late spring moss', 'dried bark'], dedupe: true },
+      { kind: 'intensity.scale', modality: 'scent', factor: 1.1, clamp: { min: 0, max: 1 } },
+    ],
+  },
+  {
+    id: 'recent-exertion-scent',
+    description: 'Recent exertion adds salt and warm-skin notes',
+    priority: 1100,
+    when: [
+      { key: 'activityLevel', op: 'in', value: ['high', 'extreme'] },
+      { key: 'timeSinceBathMinutes', op: 'gt', value: 30 },
+    ],
+    target: {
+      modality: 'scent',
+      regions: { kind: 'tag', tag: 'exposed-skin' },
+    },
+    operations: [
+      { kind: 'scent.addNotes', notes: ['salt', 'warm skin'], dedupe: true },
+      { kind: 'intensity.scale', modality: 'scent', factor: 1.2, clamp: { min: 0, max: 1 } },
+    ],
+  },
+  {
+    id: 'recent-exertion-texture',
+    description: 'Recent exertion makes skin warmer and slightly damp',
+    priority: 1100,
+    when: [
+      { key: 'activityLevel', op: 'in', value: ['high', 'extreme'] },
+      { key: 'timeSinceBathMinutes', op: 'gt', value: 30 },
+    ],
+    target: {
+      modality: 'texture',
+      regions: { kind: 'tag', tag: 'exposed-skin' },
+    },
+    operations: [
+      {
+        kind: 'texture.shift',
+        temperature: 'warm',
+        moisture: 'damp',
+        addNotes: ['post-exertion heat'],
+      },
+    ],
+  },
+  {
+    id: 'recent-exertion-visual',
+    description: 'Recent exertion adds a light sheen and mild flush',
+    priority: 1100,
+    when: [
+      { key: 'activityLevel', op: 'in', value: ['high', 'extreme'] },
+      { key: 'timeSinceBathMinutes', op: 'gt', value: 30 },
+    ],
+    target: {
+      modality: 'visual',
+      regions: { kind: 'tag', tag: 'exposed-skin' },
+    },
+    operations: [
+      { kind: 'visual.addNotes', notes: ['light sheen', 'mild flush'], dedupe: true },
+      { kind: 'intensity.scale', modality: 'visual', factor: 1.1, clamp: { min: 0, max: 1 } },
+    ],
+  },
+];
+```
+
+#### Why this helps NPCs specifically
+
+NPC sensory profiles often need to reflect what they have been doing lately, not just their archetype. The augmentation layer is a clean home for stateful signals like:
+
+- **Activity**: just fought, just traveled, just slept, just ate, just bathed.
+- **Environment**: rain, desert dust, smoke-filled tavern, sea air.
+- **Social context**: access to fragrance, clean clothes, lotions.
+- **Belief/alignment expression**: incense/oils/ritual ash as a learned practice rather than a moral label.
+
+This layer also supports gradual change: a rule can depend on `timeSinceBathMinutes` and apply different intensities over time.
+
+#### Guardrails
+
+- Keep augmentation rules curated (start with a small set of high-impact rules).
+- Prefer semantic tags ("exposed-skin") to reduce maintenance.
+- Ensure rule effects are deterministic and clamped (intensities stay in 0-1).
+- Avoid stereotypes as direct trait-to-sensory mappings; route sensitive cases through occupation, environment, and explicit user-authored fragments.
 
 ### Example Fragment Library
 
@@ -194,12 +447,12 @@ const AGE_FRAGMENTS: Record<AgeCategory, SensoryFragment> = {
 
 ### Pros & Cons
 
-| Pros | Cons |
-| ---- | ---- |
-| Predictable, rule-based | Requires extensive fragment library |
-| Easy to understand merge order | Can feel "formulaic" |
-| Power users can inspect/modify pipeline | Complex edge cases in merging |
-| Extensible via new fragment types | Maintenance burden for fragments |
+| Pros                                    | Cons                                |
+| --------------------------------------- | ----------------------------------- |
+| Predictable, rule-based                 | Requires extensive fragment library |
+| Easy to understand merge order          | Can feel "formulaic"                |
+| Power users can inspect/modify pipeline | Complex edge cases in merging       |
+| Extensible via new fragment types       | Maintenance burden for fragments    |
 
 ---
 
@@ -388,12 +641,12 @@ function blendTemplates(blend: TemplateBlend): BodyMap {
 
 ### Pros & Cons
 
-| Pros | Cons |
-| ---- | ---- |
-| Intuitive "vibe" selection | Less granular control |
-| Creative mixing possibilities | Templates may not fit all concepts |
-| Faster character creation | Blending can produce odd results |
-| Easy to add community templates | Requires good template library |
+| Pros                            | Cons                               |
+| ------------------------------- | ---------------------------------- |
+| Intuitive "vibe" selection      | Less granular control              |
+| Creative mixing possibilities   | Templates may not fit all concepts |
+| Faster character creation       | Blending can produce odd results   |
+| Easy to add community templates | Requires good template library     |
 
 ---
 
@@ -488,9 +741,7 @@ interface CachedSensoryProfile {
 // Store in database for reuse
 const sensoryProfileCache = new Map<string, CachedSensoryProfile>();
 
-async function getOrGenerateSensory(
-  request: SensoryGenerationRequest
-): Promise<BodyMap> {
+async function getOrGenerateSensory(request: SensoryGenerationRequest): Promise<BodyMap> {
   const hash = computeCharacterHash(request.character);
   const cached = sensoryProfileCache.get(hash);
 
@@ -547,12 +798,12 @@ async function getOrGenerateSensory(
 
 ### Pros & Cons
 
-| Pros | Cons |
-| ---- | ---- |
-| Highly contextual results | LLM latency and cost |
-| Handles unique combinations | Non-deterministic outputs |
-| Creative, varied descriptions | May require content filtering |
-| No manual fragment maintenance | Harder to ensure consistency |
+| Pros                           | Cons                          |
+| ------------------------------ | ----------------------------- |
+| Highly contextual results      | LLM latency and cost          |
+| Handles unique combinations    | Non-deterministic outputs     |
+| Creative, varied descriptions  | May require content filtering |
+| No manual fragment maintenance | Harder to ensure consistency  |
 
 ---
 
@@ -612,7 +863,7 @@ function crossover(dna1: SensoryDNA, dna2: SensoryDNA): SensoryDNA {
 
 // Mutation: randomly modify genes
 function mutate(dna: SensoryDNA, mutationRate: number = 0.1): SensoryDNA {
-  const mutatedGenes = dna.genes.map(gene => {
+  const mutatedGenes = dna.genes.map((gene) => {
     if (Math.random() < mutationRate) {
       return mutateGene(gene);
     }
@@ -697,12 +948,12 @@ function importDNA(encoded: string): SensoryDNA {
 
 ### Pros & Cons
 
-| Pros | Cons |
-| ---- | ---- |
-| Highly shareable/portable | Learning curve for users |
+| Pros                       | Cons                                |
+| -------------------------- | ----------------------------------- |
+| Highly shareable/portable  | Learning curve for users            |
 | Unique "breeding" mechanic | Abstracted from actual descriptions |
-| Encourages experimentation | Debugging bad DNA is hard |
-| Compact storage | May feel too "gamey" |
+| Encourages experimentation | Debugging bad DNA is hard           |
+| Compact storage            | May feel too "gamey"                |
 
 ---
 
