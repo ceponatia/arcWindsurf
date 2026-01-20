@@ -348,3 +348,161 @@ Notes:
 1. Should `CharacterProfile.body` become "overrides only" explicitly, or should we allow persisted resolved values?
 2. Do we want a "lock region" feature in v1 (prevent defaults from changing a user-edited region)?
 3. Should alignment affect sensory output directly, or should we route it through explicit cultural/ritual tags?
+
+---
+
+## Codebase Validation (January 20, 2026)
+
+This section documents findings from reviewing the actual codebase to verify plan compatibility.
+
+### Validated Alignments ✅
+
+1. **Schema structure matches plan assumptions**
+   - `CharacterProfile` already has `body?: BodyMap` and `hygiene?: NpcHygieneState`
+   - `BodyRegionData` supports all four modalities (scent, texture, flavor, visual)
+   - Existing `resolveRegionScent()` in `packages/schemas/src/character/scent/resolvers.ts` demonstrates the resolver pattern
+
+2. **Hygiene modifier patterns are reusable**
+   - `HygieneVisualModifier` in `packages/schemas/src/state/hygiene-types.ts` already implements `descriptionAppend`, `featuresAdd`, `skinConditionOverride`
+   - The augmentation operations proposed in this plan can follow the same patterns
+
+3. **Character Studio integration path is clear**
+   - Preact Signals pattern confirmed in `packages/web/src/features/character-studio/signals.ts`
+   - `updateProfile()` action function is the correct mutation path
+   - `BodyCard` currently only edits `visual.description` for 4 regions—new card can coexist
+
+4. **Race/gender/age available on CharacterProfile**
+   - `race: z.enum(RACES)` (required)
+   - `gender` (required via CoreIdentitySchema)
+   - `age` (required via CoreIdentitySchema)
+
+### Issues Requiring Changes ⚠️
+
+#### Issue 1: `occupation` field does not exist
+
+**Problem**: The plan lists `occupation` as a trait source, but `CharacterProfile` and `CharacterBasics` do not have this field.
+
+**Resolution options**:
+- A) Add `occupation?: z.string()` to `CharacterBasicsSchema`
+- B) Derive occupation from `tags` array (e.g., `tags.includes('blacksmith')`)
+- C) Remove `occupation` from v1 and add in a later phase
+
+**Recommendation**: Option A—add the field. It's a natural character attribute, and the UI can surface it in IdentityPanel. This also benefits NPC generation.
+
+**Files to change**:
+- `packages/schemas/src/character/basics.ts` — add `occupation` field
+- `packages/schemas/src/character/characterProfile.ts` — no change needed (extends basics)
+- `packages/web/src/features/character-studio/components/IdentityPanel.tsx` — add occupation input
+
+#### Issue 2: `physique` is a union type
+
+**Problem**: `physique` can be `string | Physique`. The resolver must handle both.
+
+**Resolution**: In the fragment resolver, normalize physique:
+```typescript
+function normalizePhysique(physique: string | Physique | undefined): string | undefined {
+  if (!physique) return undefined;
+  if (typeof physique === 'string') return physique;
+  // Extract build descriptor from structured physique
+  return physique.build ?? physique.appearance?.build ?? undefined;
+}
+```
+
+#### Issue 3: `ageCategory` derivation not specified
+
+**Problem**: The plan references `ageCategory` (`young`, `mature`, `elder`) but doesn't define the mapping.
+
+**Resolution**: Add a utility function:
+```typescript
+export type AgeCategory = 'child' | 'young' | 'adult' | 'mature' | 'elder';
+
+export function deriveAgeCategory(age: number, race: Race): AgeCategory {
+  // Race-aware thresholds (elves live longer)
+  const thresholds = RACE_AGE_THRESHOLDS[race] ?? DEFAULT_AGE_THRESHOLDS;
+  if (age < thresholds.young) return 'child';
+  if (age < thresholds.adult) return 'young';
+  if (age < thresholds.mature) return 'adult';
+  if (age < thresholds.elder) return 'mature';
+  return 'elder';
+}
+```
+
+**Files to add/change**:
+- `packages/schemas/src/character/age-category.ts` — new file with derivation logic
+- Include race-aware thresholds (e.g., Elf young=0-100, Dwarf young=0-50)
+
+#### Issue 4: Region selector tags not defined
+
+**Problem**: Plan references semantic tags like `'exposed-skin'`, `'contact-hands'`, `'breath-adjacent'` but these don't exist.
+
+**Resolution**: Add region tag definitions:
+
+**New file**: `packages/schemas/src/body-regions/region-tags.ts`
+```typescript
+export const REGION_TAGS = {
+  'exposed-skin': ['face', 'neck', 'hands', 'arms', 'chest', 'torso', ...],
+  'contact-hands': ['hands', 'leftHand', 'rightHand'],
+  'breath-adjacent': ['mouth', 'face', 'nose'],
+  'hair-adjacent': ['hair', 'head'],
+  'intimate': ['groin', 'breasts', 'buttocks', ...],
+} as const;
+
+export function getRegionsByTag(tag: keyof typeof REGION_TAGS): BodyRegion[] {
+  return REGION_TAGS[tag] as unknown as BodyRegion[];
+}
+```
+
+#### Issue 5: Resolution logic location
+
+**Problem**: Plan suggests `@minimal-rpg/characters` or `@minimal-rpg/services`, but existing `resolveRegionScent()` is in `@minimal-rpg/schemas`.
+
+**Resolution**: Place the sensory profile resolver in `@minimal-rpg/schemas` alongside existing resolvers for consistency. This ensures the web package can import it without circular dependencies.
+
+**New files**:
+- `packages/schemas/src/character/sensory-profile/index.ts`
+- `packages/schemas/src/character/sensory-profile/config.ts` — SensoryProfileConfigSchema
+- `packages/schemas/src/character/sensory-profile/fragments.ts` — fragment library
+- `packages/schemas/src/character/sensory-profile/resolver.ts` — resolution logic
+- `packages/schemas/src/character/sensory-profile/augment.ts` — augmentation rules
+
+#### Issue 6: Generator package conflict
+
+**Problem**: `packages/generator/src/character/generate.ts` has `generateBodyMap()` which randomly generates sensory data. The new deterministic system may conflict.
+
+**Resolution**: 
+- Keep `generateBodyMap()` for random NPC generation (useful for background NPCs)
+- The sensory profile system is for user-created characters in Character Studio
+- Document that these are two different use cases:
+  - **Generator**: Random/procedural NPCs with configurable theme pools
+  - **Sensory Profile**: Deterministic defaults from character traits
+
+### Dependency Graph
+
+```text
+@minimal-rpg/schemas (owns all types and resolution logic)
+    ├── sensory-profile/config.ts (SensoryProfileConfigSchema)
+    ├── sensory-profile/fragments.ts (fragment library data)
+    ├── sensory-profile/resolver.ts (resolveSensoryProfile)
+    └── sensory-profile/augment.ts (augmentation rules)
+
+@minimal-rpg/web (consumes schemas, computes preview)
+    └── character-studio/signals.ts
+        └── resolvedBodyMap = computed(() => resolveSensoryProfile(...))
+
+@minimal-rpg/characters (may wrap resolver for service layer)
+    └── body-map/service.ts (optional: add resolved map to persistence)
+```
+
+### Updated Phase 0 Tasks
+
+Based on validation, Phase 0 should include:
+
+1. **Add `occupation` field to CharacterBasicsSchema**
+2. **Add `AgeCategory` derivation utility**
+3. **Add region tag definitions**
+4. **Create `sensory-profile/` folder in schemas with:**
+   - `config.ts` (SensoryProfileConfigSchema)
+   - `types.ts` (fragment/rule types)
+   - `index.ts` (barrel export)
+5. **Add `sensoryProfile?: SensoryProfileConfig` to CharacterProfileSchema**
+6. **Unit tests for age category derivation and region tag lookups**
