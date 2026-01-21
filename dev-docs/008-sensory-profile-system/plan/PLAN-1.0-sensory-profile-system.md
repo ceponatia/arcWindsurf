@@ -325,6 +325,35 @@ Notes:
 - Add template library and weighting UI.
 - Implement blending behavior and conflict resolution rules.
 
+### Template library (v1)
+
+Templates are holistic overlays that feel like "select a vibe". They are not meant to replace trait fragments; they should be safe to layer on top.
+
+Rules of thumb:
+
+- Templates should touch 4-8 regions max (use tags/selectors) and 2-3 modalities.
+- Avoid hard binding templates to a race/gender; use `suggestedFor` as a hint only.
+- Treat templates as style overlays: they should rarely replace core identifiers like eye color or scars.
+
+| Template ID        | Name               | Tags                         | Suggested for (hints)         | What it adds (high-level)                                                                              |
+| ------------------ | ------------------ | ---------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `woodland-spirit`  | Woodland Spirit    | nature, forest, rain, herbal | Elf, ranger, druid, herbalist | Scent: wet leaves, moss, wildflowers; Visual: dew-kissed hair; Texture: cool, smooth                   |
+| `forge-worker`     | Forge Worker       | smoke, metal, heat, industry | Dwarf, blacksmith, armorer    | Scent: hot iron, coal, leather; Visual: soot traces on hands/face; Texture: tougher hands              |
+| `noble-refined`    | Noble Refinement   | perfume, silk, wealth        | noble, diplomat               | Scent: light perfume, polished wood; Visual: immaculate grooming; Texture: soft, well-kept             |
+| `road-worn`        | Road-Worn Traveler | dust, leather, sun           | traveler, mercenary           | Visual: dust/grit features; Scent: sun-warmed cloth/leather; Texture: dry skin notes                   |
+| `sea-touched`      | Sea Touched        | salt, wind, brine            | sailor, coastal               | Scent: salt air, brine; Visual: wind-tossed hair; Texture: cool dampness (light)                       |
+| `library-ink`      | Library & Ink      | parchment, ink, quiet        | scholar, scribe               | Visual: ink stains on fingers; Scent: paper, candle wax; Flavor: faint tea/herb bitterness             |
+| `temple-incense`   | Temple Incense     | incense, oils, ritual        | cleric, devotee               | Scent: incense/oils around hair/hands; Visual: ash trace features; Texture: oil-slicked hair (subtle)  |
+| `battle-ready`     | Battle Ready       | steel, sweat, adrenaline     | guard, soldier                | Scent: leather/steel; Visual: fresh scuffs; Texture: firm grip/callouses emphasis (no gore by default) |
+| `tavern-smoke`     | Tavern Smoke       | ale, smoke, hearth           | bartender, regular            | Scent: woodsmoke/ale; Visual: smoke haze traces; Flavor: yeast/bitter note (light)                     |
+| `apothecary-clean` | Apothecary Clean   | soap, alcohol, herbs         | healer, apothecary            | Scent: clean soap + medicinal alcohol; Visual: tidy hands; Texture: slightly dry from washing          |
+
+Notes:
+
+- Keep the v1 set small and distinct; add more only when UI/search needs it.
+- Make templates composable: `road-worn` + `sea-touched` should not fight.
+- Prefer additive notes and mild intensity scaling over replacing primaries.
+
 ### Phase 4: Expert Editor
 
 - Add region-level editor and import/export text integration using:
