@@ -1117,4 +1117,109 @@ sensoryConfig: SensoryProfileConfig;
 
 ---
 
+## Implementation Validation (January 20, 2026)
+
+After reviewing the codebase, the following updates are required to align with existing patterns:
+
+### Schema Integration Points ✅
+
+1. **Existing infrastructure confirmed**:
+   - `CharacterProfile` with `body?: BodyMap` and `hygiene?: NpcHygieneState` ✅
+   - `resolveRegionScent()` pattern in `packages/schemas/src/character/scent/resolvers.ts` ✅
+   - Hygiene modifier schemas with augmentation semantics ✅
+
+2. **Character Studio compatibility**:
+   - Preact Signals for state management ✅
+   - `updateProfile()` action pattern ✅
+   - `BodyCard` edits only visual descriptions—new card can coexist ✅
+
+### Required Schema Changes
+
+#### 1. Add `occupation` field
+
+**Current state**: `CharacterProfile` lacks occupation field referenced throughout the design.
+
+**Change**: Add to `CharacterBasicsSchema`:
+```typescript
+// In packages/schemas/src/character/basics.ts
+occupation: z.string().optional(),
+```
+
+This enables occupation-based fragments (blacksmith, sailor, herbalist, etc.) and benefits NPC generation.
+
+#### 2. Add `AgeCategory` derivation
+
+**Current state**: Design references `ageCategory` but CharacterProfile only has numeric `age`.
+
+**Change**: New utility in `packages/schemas/src/character/age-category.ts`:
+```typescript
+export type AgeCategory = 'child' | 'young' | 'adult' | 'mature' | 'elder';
+
+export function deriveAgeCategory(age: number, race: Race): AgeCategory {
+  const thresholds = RACE_AGE_THRESHOLDS[race] ?? DEFAULT_AGE_THRESHOLDS;
+  // Return appropriate category based on age and race lifespan
+}
+```
+
+Races like Elf have extended lifespans, so thresholds must be race-aware.
+
+#### 3. Add region semantic tags
+
+**Current state**: Design references `'exposed-skin'`, `'contact-hands'`, etc., but these tags don't exist.
+
+**Change**: New file `packages/schemas/src/body-regions/region-tags.ts`:
+```typescript
+export const REGION_TAGS = {
+  'exposed-skin': ['face', 'neck', 'hands', 'arms', ...],
+  'contact-hands': ['hands', 'leftHand', 'rightHand'],
+  'breath-adjacent': ['mouth', 'face', 'nose'],
+  'intimate': [...],
+} as const;
+```
+
+This enables fragment and augmentation rules to target groups of regions semantically.
+
+#### 4. Handle polymorphic `physique`
+
+**Current state**: `physique: string | Physique` union requires normalization.
+
+**Change**: Add helper in fragment resolver:
+```typescript
+function normalizePhysique(physique: string | Physique | undefined): string | undefined {
+  if (!physique) return undefined;
+  if (typeof physique === 'string') return physique;
+  return physique.build ?? physique.appearance?.build;
+}
+```
+
+### Package Architecture
+
+**Resolution logic location**: Place in `@minimal-rpg/schemas` (not `@minimal-rpg/characters`) to:
+- Match existing `resolveRegionScent()` pattern
+- Enable web package to import without circular dependencies
+- Keep schemas as single source of truth for type-driven resolution
+
+**New files**:
+```
+packages/schemas/src/character/sensory-profile/
+├── index.ts           # Barrel export
+├── config.ts          # SensoryProfileConfigSchema
+├── types.ts           # Fragment, rule, and context types
+├── fragments.ts       # Fragment library (race, age, gender, physique, occupation)
+├── augment.ts         # Augmentation rule engine
+└── resolver.ts        # resolveSensoryProfile() main entry point
+```
+
+### Generator Package Coexistence
+
+**Existing**: `packages/generator/src/character/generate.ts` has `generateBodyMap()` for random procedural NPCs.
+
+**Clarification**: The two systems serve different purposes:
+- **Generator**: Random/procedural generation with theme-based value pools (for background NPCs, testing)
+- **Sensory Profile System**: Deterministic trait-based defaults (for user-created characters in Character Studio)
+
+No conflict—both can coexist. Document use cases clearly in README files.
+
+---
+
 _This design prioritizes zero-friction defaults while preserving the deep customization that makes the system valuable._
