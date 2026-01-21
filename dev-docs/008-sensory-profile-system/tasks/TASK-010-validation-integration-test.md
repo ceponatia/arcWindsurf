@@ -130,13 +130,13 @@ This task should only be marked complete when all dependent tasks are done and t
 
 - [ ] `SensoryProfileConfig` schema validates correctly
 - [ ] `SensoryTemplate` schema validates correctly
-- [ ] At least 3 templates available (woodland-spirit, forge-worker, noble-refined)
+- [x] At least 3 templates available (woodland-spirit, forge-worker, noble-refined)
 - [ ] `resolveSensoryProfile()` produces correct output for all test cases
 - [ ] Attribution tracking works for all source types
 
 ### API
 
-- [ ] `GET /api/sensory/templates` returns template metadata
+- [x] `GET /api/sensory/templates` returns template metadata
 - [ ] Response time < 100ms
 - [ ] No authentication required
 
@@ -167,3 +167,9 @@ This task should only be marked complete when all dependent tasks are done and t
 - [ ] Occupation input affects template suggestions
 - [ ] No TypeScript errors in any package
 - [ ] No console errors during normal usage
+
+## Validation Notes
+
+- Manual UI scenarios, accessibility checks, and performance benchmarks were not executed because the app was not running in a browser session.
+- Only the resolveSensoryProfile unit test file was executed; full test, lint, and typecheck suites were not run.
+- API response timing and auth-free access were not validated at runtime.

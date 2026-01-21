@@ -125,6 +125,10 @@ updateProfile('occupation', value);
 - [ ] Input has placeholder text with examples
 - [ ] Datalist provides common occupation suggestions
 - [ ] Custom text input allowed (not restricted to datalist)
-- [ ] Value persists to `CharacterProfile.occupation`
-- [ ] Field is optional (no validation blocking save)
+- [x] Value persists to `CharacterProfile.occupation`
+- [x] Field is optional (no validation blocking save)
 - [ ] Input styling matches existing Classification card inputs
+
+## Validation Notes
+
+- UI placement, styling, and datalist interactions were not validated in a browser session.

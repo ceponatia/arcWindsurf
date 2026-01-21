@@ -197,5 +197,10 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
 - [ ] Weight slider allows 0-100% adjustment
 - [ ] Multiple templates can be selected simultaneously
 - [ ] Conflict warning icon shows when templates overlap on same regions
-- [ ] Templates fetched from API or imported from schemas
+- [x] Templates fetched from API or imported from schemas
 - [ ] Responsive grid layout (2 cols on mobile, 3-4 on desktop)
+
+## Validation Notes
+
+- UI rendering and interaction checks were not executed because the app was not running in a browser session.
+- Suggested badges, weight slider behavior, conflict warnings, and responsive layout require UI validation.

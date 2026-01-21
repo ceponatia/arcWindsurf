@@ -96,12 +96,17 @@ curl http://localhost:3000/api/sensory/templates
 
 ## Acceptance Criteria
 
-- [ ] `GET /api/sensory/templates` endpoint exists
-- [ ] Returns list of templates with metadata (id, name, description, tags, suggestedFor, affectedRegions)
-- [ ] Does NOT return full fragment data (keeps response lightweight)
-- [ ] Response matches `{ ok: true, templates: TemplateMetadata[] }`
+- [x] `GET /api/sensory/templates` endpoint exists
+- [x] Returns list of templates with metadata (id, name, description, tags, suggestedFor, affectedRegions)
+- [x] Does NOT return full fragment data (keeps response lightweight)
+- [x] Response matches `{ ok: true, templates: TemplateMetadata[] }`
 - [ ] Endpoint is publicly accessible (no auth required)
 - [ ] Response time < 50ms
+
+## Validation Notes
+
+- Auth middleware applies globally; the route is only public when auth is disabled. No explicit public-route exception was verified.
+- Response time was not measured during validation.
   "templates": [
     {
       "id": "woodland-spirit",

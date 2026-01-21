@@ -104,11 +104,11 @@ pnpm typecheck
 
 ## Acceptance Criteria
 
-- [ ] `SensoryTemplateSchema` Zod schema exists
-- [ ] Template includes: `id`, `name`, `description`, `tags`, `suggestedFor`, `affectedRegions`, `fragments`
-- [ ] At least 3 starter templates created: "woodland-spirit", "forge-worker", "noble-refined"
-- [ ] Templates stored in exportable data file
-- [ ] `getSensoryTemplates()` function returns all templates
-- [ ] `getSensoryTemplateById(id)` function returns single template
-- [ ] Template fragments use existing `BodyRegionData` structure
-- [ ] TypeScript types exported for frontend use
+- [x] `SensoryTemplateSchema` Zod schema exists
+- [x] Template includes: `id`, `name`, `description`, `tags`, `suggestedFor`, `affectedRegions`, `fragments`
+- [x] At least 3 starter templates created: "woodland-spirit", "forge-worker", "noble-refined"
+- [x] Templates stored in exportable data file
+- [x] `getSensoryTemplates()` function returns all templates
+- [x] `getSensoryTemplateById(id)` function returns single template
+- [x] Template fragments use existing `BodyRegionData` structure
+- [x] TypeScript types exported for frontend use

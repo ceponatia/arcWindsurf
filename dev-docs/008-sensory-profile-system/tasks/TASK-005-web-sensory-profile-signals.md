@@ -111,10 +111,14 @@ pnpm test -- signals
 
 ## Acceptance Criteria
 
-- [ ] `sensoryProfileConfig` signal exists with default value
-- [ ] `resolvedBodyMap` computed signal derives from profile + config
-- [ ] `updateSensoryProfileConfig()` function updates config and triggers recompute
-- [ ] Signal initializes from loaded character profile
-- [ ] Signal persists changes through `updateProfile()`
-- [ ] `sectionCompletion` signal updated to include sensory profile status
+- [x] `sensoryProfileConfig` signal exists with default value
+- [x] `resolvedBodyMap` computed signal derives from profile + config
+- [x] `updateSensoryProfileConfig()` function updates config and triggers recompute
+- [x] Signal initializes from loaded character profile
+- [x] Signal persists changes through `updateProfile()`
+- [x] `sectionCompletion` signal updated to include sensory profile status
 - [ ] No performance regression in Character Studio load time
+
+## Validation Notes
+
+- Character Studio load-time performance was not benchmarked during validation.

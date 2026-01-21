@@ -185,6 +185,10 @@ const AttributionBadge: React.FC<{ source: string }> = ({ source }) => {
 - [ ] Empty/missing values show placeholder text
 - [ ] Visual styling matches Character Studio theme
 
+## Validation Notes
+
+- UI rendering and interaction checks were not executed because the app was not running in a browser session.
+
 ## Notes
 
 - The preview omits a sound sense because the current BodyRegionData schema only supports visual, scent, texture, and flavor.

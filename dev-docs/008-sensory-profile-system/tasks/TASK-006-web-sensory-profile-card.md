@@ -148,9 +148,9 @@ function scrollToCard(cardId: string): void {
 
 ## Acceptance Criteria
 
-- [ ] `SensoryProfileCard` component renders in IdentityPanel
-- [ ] Card positioned after Classification, before BodyCard
-- [ ] Card defaults to collapsed state (reduce cognitive load)
+- [x] `SensoryProfileCard` component renders in IdentityPanel
+- [x] Card positioned after Classification, before BodyCard
+- [x] Card defaults to collapsed state (reduce cognitive load)
 - [ ] Auto-defaults toggle visible and functional
 - [ ] Template selection area displays available templates
 - [ ] Quick Start suggestions shown for new characters
@@ -158,6 +158,11 @@ function scrollToCard(cardId: string): void {
 - [ ] Link to BodyCard for manual overrides
 - [ ] Responsive layout works on mobile/tablet
 - [ ] No visual regression in Character Studio
+
+## Validation Notes
+
+- UI behavior and rendering checks were not executed because the app was not running in a browser session.
+- Template loading, quick start suggestions, preview updates, and scroll-to-body behavior require UI validation.
 
 ## Notes
 

@@ -85,10 +85,15 @@ pnpm typecheck
 
 ## Acceptance Criteria
 
-- [ ] `SensoryProfileConfigSchema` Zod schema exists with all required fields
-- [ ] `CharacterProfileSchema` includes optional `sensoryProfile` field
-- [ ] `CharacterBasicsSchema` includes optional `occupation` field
-- [ ] Schema exports types: `SensoryProfileConfig`, `TemplateBlendConfig`, `AutoDefaultsConfig`
-- [ ] Existing characters without `sensoryProfile` remain valid (no breaking changes)
+- [x] `SensoryProfileConfigSchema` Zod schema exists with all required fields
+- [x] `CharacterProfileSchema` includes optional `sensoryProfile` field
+- [x] `CharacterBasicsSchema` includes optional `occupation` field
+- [x] Schema exports types: `SensoryProfileConfig`, `TemplateBlendConfig`, `AutoDefaultsConfig`
+- [x] Existing characters without `sensoryProfile` remain valid (no breaking changes)
 - [ ] Unit tests pass for schema validation
 - [ ] TypeScript compilation succeeds across all packages
+
+## Validation Notes
+
+- Unit test coverage for the new schema changes was not executed during validation.
+- Full monorepo typecheck was not executed during validation.

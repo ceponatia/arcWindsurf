@@ -138,15 +138,22 @@ pnpm test -- resolveSensoryProfile
 
 ## Acceptance Criteria
 
-- [ ] `resolveSensoryProfile(profile, config)` function exists
+- [x] `resolveSensoryProfile(profile, config)` function exists
 - [ ] Returns `ResolvedBodyMap` with all body regions populated
-- [ ] Merge priority: auto-defaults → templates → augmentations → overrides
+- [x] Merge priority: auto-defaults → templates → augmentations → overrides
 - [ ] Template weights correctly blend multiple templates
-- [ ] Missing regions filled with sensible defaults
-- [ ] `_attribution` field tracks source of each sensory value
-- [ ] Function handles edge cases: empty config, missing templates, zero weights
+- [x] Missing regions filled with sensible defaults
+- [x] `_attribution` field tracks source of each sensory value
+- [x] Function handles edge cases: empty config, missing templates, zero weights
 - [ ] Unit tests cover all merge scenarios
 - [ ] Performance acceptable for real-time UI updates (<50ms)
+
+## Validation Notes
+
+- Template weights are currently used for filtering and ordering, but there is no weighted blending logic; later templates overwrite earlier values.
+- When auto-defaults are disabled and no templates or overrides are provided, the resolved body map can be empty rather than fully populated.
+- Test coverage does not include conditional augmentations, missing template handling beyond warnings, or performance assertions.
+- Performance of the resolver was not benchmarked during validation.
 
 ## Notes
 
