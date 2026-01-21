@@ -34,6 +34,7 @@ RUN mkdir -p /app/data
 RUN CI=true pnpm -r install --frozen-lockfile --prefer-offline
 
 # Build only what the API needs (the ... suffix includes dependencies)
+RUN node scripts/generate-sensory-templates.mjs
 RUN pnpm turbo run build --filter=@minimal-rpg/api...
 
 

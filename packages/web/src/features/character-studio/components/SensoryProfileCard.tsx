@@ -106,7 +106,7 @@ export const SensoryProfileCard: React.FC<{ hasContent?: boolean }> = ({ hasCont
           className="text-sm text-violet-400 hover:text-violet-300"
           onClick={() => scrollToCard('body')}
         >
-          Edit individual regions manually →
+          Edit region overrides →
         </button>
       </div>
     </IdentityCard>
@@ -116,5 +116,14 @@ export const SensoryProfileCard: React.FC<{ hasContent?: boolean }> = ({ hasCont
 function scrollToCard(cardId: string): void {
   const card = document.querySelector(`[data-card-id="${cardId}"]`);
   if (!card) return;
+
+  const isOpen = card.getAttribute('data-card-open') === 'true';
+  if (!isOpen) {
+    const headerButton = card.querySelector('button');
+    if (headerButton instanceof HTMLButtonElement) {
+      headerButton.click();
+    }
+  }
+
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

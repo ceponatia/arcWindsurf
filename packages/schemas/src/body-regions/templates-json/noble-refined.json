@@ -1,0 +1,118 @@
+{
+  "id": "noble-refined",
+  "name": "Noble Refined",
+  "description": "Polished grooming with soft perfumes and tailored fabrics.",
+  "tags": [
+    "refined",
+    "clean",
+    "luxury"
+  ],
+  "suggestedFor": {
+    "occupations": [
+      "noble",
+      "scholar",
+      "merchant"
+    ],
+    "alignments": [
+      "Lawful Good",
+      "Lawful Neutral"
+    ]
+  },
+  "affectedRegions": [
+    "hair",
+    "face",
+    "hands",
+    "torso",
+    "feet",
+    "groin"
+  ],
+  "fragments": {
+    "hair": {
+      "scent": {
+        "primary": "floral perfume",
+        "notes": [
+          "citrus"
+        ],
+        "intensity": 0.4
+      },
+      "texture": {
+        "primary": "smooth",
+        "moisture": "normal",
+        "temperature": "neutral"
+      },
+      "visual": {
+        "description": "Carefully styled hair with a subtle sheen."
+      }
+    },
+    "face": {
+      "scent": {
+        "primary": "powdered soap",
+        "notes": [
+          "rose"
+        ],
+        "intensity": 0.25
+      },
+      "visual": {
+        "description": "Immaculate features framed by light cosmetics."
+      }
+    },
+    "hands": {
+      "scent": {
+        "primary": "lavender soap",
+        "notes": [
+          "almond"
+        ],
+        "intensity": 0.3
+      },
+      "texture": {
+        "primary": "soft",
+        "moisture": "normal",
+        "temperature": "neutral"
+      },
+      "visual": {
+        "description": "Well-kept hands with immaculate grooming."
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "linen",
+        "notes": [
+          "spice"
+        ],
+        "intensity": 0.2
+      },
+      "visual": {
+        "description": "Pressed fabrics layered in luxurious textures."
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "powdered sandalwood",
+        "notes": [
+          "linen"
+        ],
+        "intensity": 0.2
+      },
+      "texture": {
+        "primary": "soft",
+        "moisture": "normal",
+        "temperature": "neutral"
+      },
+      "visual": {
+        "description": "Polished shoes with a gentle sheen."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "lavender linen",
+        "notes": [
+          "vanilla"
+        ],
+        "intensity": 0.15
+      },
+      "visual": {
+        "description": "Tailored layers kept neat and composed."
+      }
+    }
+  }
+}

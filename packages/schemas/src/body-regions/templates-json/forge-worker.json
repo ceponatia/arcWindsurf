@@ -1,0 +1,94 @@
+{
+  "id": "forge-worker",
+  "name": "Forge Worker",
+  "description": "Heat, metal, and honest labor etched into every motion.",
+  "tags": [
+    "forge",
+    "smoke",
+    "labor"
+  ],
+  "suggestedFor": {
+    "occupations": [
+      "blacksmith",
+      "miner",
+      "guard"
+    ]
+  },
+  "affectedRegions": [
+    "hands",
+    "arms",
+    "torso",
+    "feet",
+    "groin"
+  ],
+  "fragments": {
+    "hands": {
+      "scent": {
+        "primary": "coal smoke",
+        "notes": [
+          "oil"
+        ],
+        "intensity": 0.7
+      },
+      "texture": {
+        "primary": "calloused",
+        "moisture": "dry",
+        "temperature": "warm"
+      },
+      "visual": {
+        "description": "Soot-stained knuckles and heat-worn palms."
+      }
+    },
+    "arms": {
+      "texture": {
+        "primary": "corded",
+        "moisture": "normal",
+        "temperature": "warm"
+      },
+      "visual": {
+        "description": "Sleeves marked by ash and metal dust."
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "iron filings",
+        "notes": [
+          "smoke"
+        ],
+        "intensity": 0.5
+      },
+      "visual": {
+        "description": "Apron straps and smudged fabric from long shifts."
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "coal ash",
+        "notes": [
+          "iron"
+        ],
+        "intensity": 0.45
+      },
+      "texture": {
+        "primary": "rough",
+        "moisture": "dry",
+        "temperature": "warm"
+      },
+      "visual": {
+        "description": "Boots scuffed by cinders and workshop grit."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "fresh soap",
+        "notes": [
+          "leather"
+        ],
+        "intensity": 0.2
+      },
+      "visual": {
+        "description": "Practical layers kept tidy for long shifts."
+      }
+    }
+  }
+}

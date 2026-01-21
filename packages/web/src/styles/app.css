@@ -114,6 +114,15 @@ body {
   background-color: transparent;
 }
 
+/* Hide scrollbars while preserving scroll behavior */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge Legacy */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
 /* Prose styles for MDX documentation */
 .prose {
   color: rgb(203 213 225); /* slate-300 */

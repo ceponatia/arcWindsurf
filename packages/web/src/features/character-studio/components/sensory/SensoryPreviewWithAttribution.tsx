@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { ChevronDown, Eye, Hand, Utensils, Wind } from 'lucide-react';
-import type { ResolvedBodyMap, ResolvedRegionData } from '@minimal-rpg/schemas';
+import { getRecordOptional } from '@minimal-rpg/schemas';
+import type { BodyRegion, ResolvedBodyMap, ResolvedRegionData } from '@minimal-rpg/schemas';
 import { AttributionBadge } from './AttributionBadge.js';
 
 interface SensoryPreviewWithAttributionProps {
   resolved: ResolvedBodyMap;
-  regions: string[];
+  regions: BodyRegion[];
 }
 
 type SenseKey = 'scent' | 'visual' | 'texture' | 'flavor';
@@ -20,9 +21,7 @@ export const SensoryPreviewWithAttribution: React.FC<SensoryPreviewWithAttributi
   return (
     <div className="space-y-2 mt-2">
       {regions.map((regionKey) => {
-        const region = resolved[regionKey as keyof ResolvedBodyMap] as
-          | ResolvedRegionData
-          | undefined;
+        const region = getRecordOptional(resolved, regionKey) as ResolvedRegionData | undefined;
         if (!region) return null;
 
         const isExpanded = expandedRegion === regionKey;
@@ -50,7 +49,7 @@ interface RegionPreviewProps {
 
 const RegionPreview: React.FC<RegionPreviewProps> = ({ regionKey, region, expanded, onToggle }) => {
   const activeSenses = SENSE_ORDER.filter((sense) => {
-    const data = region[sense];
+    const data = getRecordOptional(region, sense);
     return Boolean(data && ('description' in data || 'primary' in data));
   });
 
@@ -73,7 +72,7 @@ const RegionPreview: React.FC<RegionPreviewProps> = ({ regionKey, region, expand
       {expanded && (
         <div className="p-3 space-y-2 bg-slate-900/50">
           {activeSenses.map((sense) => {
-            const data = region[sense];
+            const data = getRecordOptional(region, sense);
             if (!data) return null;
             return <SenseRow key={sense} sense={sense} data={data} />;
           })}

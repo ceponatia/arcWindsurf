@@ -1,0 +1,126 @@
+{
+  "id": "coastal-voyager",
+  "name": "Coastal Voyager",
+  "description": "Salt air, weathered canvas, and the steady pull of the tide.",
+  "tags": [
+    "coastal",
+    "salt",
+    "travel",
+    "sea"
+  ],
+  "suggestedFor": {
+    "occupations": [
+      "sailor",
+      "fisher",
+      "navigator"
+    ]
+  },
+  "affectedRegions": [
+    "hair",
+    "face",
+    "hands",
+    "torso",
+    "feet",
+    "groin",
+    "mouth"
+  ],
+  "fragments": {
+    "hair": {
+      "scent": {
+        "primary": "sea salt",
+        "notes": [
+          "kelp",
+          "spray"
+        ],
+        "intensity": 0.4
+      },
+      "texture": {
+        "primary": "windswept",
+        "moisture": "damp",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Sun-lightened strands tied back against the wind."
+      }
+    },
+    "face": {
+      "scent": {
+        "primary": "salt air",
+        "notes": [
+          "citrus"
+        ],
+        "intensity": 0.2
+      },
+      "visual": {
+        "description": "Wind-brushed cheeks with a bronze glow."
+      }
+    },
+    "hands": {
+      "scent": {
+        "primary": "tarred rope",
+        "notes": [
+          "brine"
+        ],
+        "intensity": 0.35
+      },
+      "texture": {
+        "primary": "rough",
+        "moisture": "dry",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Calluses marked with faint salt lines."
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "brine-soaked canvas",
+        "notes": [
+          "pine"
+        ],
+        "intensity": 0.3
+      },
+      "visual": {
+        "description": "Weathered layers with stitched repairs."
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "wet sand",
+        "notes": [
+          "driftwood"
+        ],
+        "intensity": 0.3
+      },
+      "texture": {
+        "primary": "rough",
+        "moisture": "damp",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Boots speckled with sand and salt."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "clean linen",
+        "notes": [
+          "sea breeze"
+        ],
+        "intensity": 0.15
+      },
+      "visual": {
+        "description": "Travel wraps kept fresh where possible."
+      }
+    },
+    "mouth": {
+      "scent": {
+        "primary": "minted tea",
+        "notes": [
+          "salt"
+        ],
+        "intensity": 0.15
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../../../config.js';
 
 export interface TemplateMetadata {
   id: string;
@@ -25,10 +26,15 @@ export function useSensoryTemplates(): {
 
   useEffect(() => {
     let isMounted = true;
+    const pollIntervalMs = 15000;
 
-    const loadTemplates = async (): Promise<void> => {
+    const loadTemplates = async (showLoading: boolean): Promise<void> => {
+      if (showLoading && isMounted) {
+        setIsLoading(true);
+      }
       try {
-        const response = await fetch('/api/sensory/templates');
+        const url = new URL('/api/sensory/templates', API_BASE_URL);
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Failed to load templates (${response.status})`);
         }
@@ -42,16 +48,20 @@ export function useSensoryTemplates(): {
           setError(message);
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && showLoading) {
           setIsLoading(false);
         }
       }
     };
 
-    loadTemplates();
+    void loadTemplates(true);
+    const intervalId = window.setInterval(() => {
+      void loadTemplates(false);
+    }, pollIntervalMs);
 
     return () => {
       isMounted = false;
+      window.clearInterval(intervalId);
     };
   }, []);
 

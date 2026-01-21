@@ -219,7 +219,7 @@ function getOccupationAugmentation(occupation: string): BodyMap | undefined {
     },
   };
 
-  return map[key];
+  return getRecordOptional(map, key);
 }
 
 function getAutoDefaultsAttribution(profile: Partial<CharacterProfile>): string {

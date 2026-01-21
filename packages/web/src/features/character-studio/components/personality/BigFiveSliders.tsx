@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
-import { PERSONALITY_DIMENSIONS, getRecordOptional } from '@minimal-rpg/schemas';
+import { PERSONALITY_DIMENSIONS, getRecordOptional, setRecord } from '@minimal-rpg/schemas';
 import { characterProfile, updatePersonalityMap } from '../../signals.js';
 import { RadarChart } from '../RadarChart.js';
 import { SliderInput } from '../../../../shared/components/common.js';
@@ -14,19 +14,21 @@ export const BigFiveSliders: React.FC = () => {
   type PersonalityDimension = (typeof PERSONALITY_DIMENSIONS)[number];
   const dimensions = PERSONALITY_DIMENSIONS.reduce(
     (acc, dimension) => {
-      acc[dimension] =
+      const score =
         getRecordOptional(characterProfile.value.personalityMap?.dimensions, dimension) ?? 0.5;
+      setRecord(acc, dimension, score);
       return acc;
     },
     {} as Record<PersonalityDimension, number>
   );
 
   const handleSliderChange = (dimension: PersonalityDimension, value: number) => {
+    const nextDimensions = {
+      ...(characterProfile.value.personalityMap?.dimensions ?? {}),
+    } as Record<PersonalityDimension, number>;
+    setRecord(nextDimensions, dimension, value);
     updatePersonalityMap({
-      dimensions: {
-        ...characterProfile.value.personalityMap?.dimensions,
-        [dimension]: value,
-      },
+      dimensions: nextDimensions,
     });
   };
 
@@ -36,13 +38,13 @@ export const BigFiveSliders: React.FC = () => {
         <RadarChart
           data={PERSONALITY_DIMENSIONS.map((dim) => ({
             label: dim.charAt(0).toUpperCase() + dim.slice(1),
-            value: dimensions[dim],
+            value: getRecordOptional(dimensions, dim) ?? 0.5,
           }))}
           size={240}
         />
       </div>
       {PERSONALITY_DIMENSIONS.map((dim) => {
-        const score = dimensions[dim];
+        const score = getRecordOptional(dimensions, dim) ?? 0.5;
         return (
           <SliderInput
             key={dim}

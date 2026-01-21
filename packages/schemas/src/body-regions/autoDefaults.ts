@@ -1,7 +1,7 @@
-import { setPartialRecord } from '../shared/record-helpers.js';
+import { getRecordOptional, setPartialRecord } from '../shared/record-helpers.js';
 import type { CharacterProfile } from '../character/characterProfile.js';
 import type { BodyMap } from '../character/sensory.js';
-import { BODY_REGIONS, type BodyRegion } from '../character/regions.js';
+import { BODY_REGIONS } from '../character/regions.js';
 import { DEFAULT_SCENTS } from '../character/scent/default-scents.js';
 
 const NEUTRAL_SCENT = {
@@ -21,9 +21,9 @@ export function buildAutoDefaults(
   for (const region of BODY_REGIONS) {
     if (excluded.has(region)) continue;
 
-    const scent = DEFAULT_SCENTS[region] ?? NEUTRAL_SCENT;
+    const scent = getRecordOptional(DEFAULT_SCENTS, region) ?? NEUTRAL_SCENT;
     const notes = 'notes' in scent ? scent.notes : undefined;
-    setPartialRecord(result, region as BodyRegion, {
+    setPartialRecord(result, region, {
       scent: {
         primary: scent.primary,
         intensity: scent.intensity,

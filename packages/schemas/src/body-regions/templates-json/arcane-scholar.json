@@ -1,0 +1,124 @@
+{
+  "id": "arcane-scholar",
+  "name": "Arcane Scholar",
+  "description": "Ink, parchment, and quiet candlelight from late study.",
+  "tags": [
+    "arcane",
+    "ink",
+    "study"
+  ],
+  "suggestedFor": {
+    "occupations": [
+      "mage",
+      "scholar",
+      "scribe"
+    ]
+  },
+  "affectedRegions": [
+    "hair",
+    "face",
+    "hands",
+    "torso",
+    "feet",
+    "groin",
+    "mouth"
+  ],
+  "fragments": {
+    "hair": {
+      "scent": {
+        "primary": "violet ink",
+        "notes": [
+          "lavender"
+        ],
+        "intensity": 0.25
+      },
+      "texture": {
+        "primary": "smooth",
+        "moisture": "normal",
+        "temperature": "neutral"
+      },
+      "visual": {
+        "description": "Neatly kept with a faint ink sheen."
+      }
+    },
+    "face": {
+      "scent": {
+        "primary": "powdered parchment",
+        "notes": [
+          "vanilla"
+        ],
+        "intensity": 0.2
+      },
+      "visual": {
+        "description": "Soft glow from late-night study."
+      }
+    },
+    "hands": {
+      "scent": {
+        "primary": "ink-stained vellum",
+        "notes": [
+          "wax"
+        ],
+        "intensity": 0.35
+      },
+      "texture": {
+        "primary": "delicate",
+        "moisture": "dry",
+        "temperature": "neutral"
+      },
+      "visual": {
+        "description": "Fingertips smudged with ink."
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "library dust",
+        "notes": [
+          "cedar"
+        ],
+        "intensity": 0.25
+      },
+      "visual": {
+        "description": "Robes lined with stitched sigils."
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "chalk dust",
+        "notes": [
+          "linen"
+        ],
+        "intensity": 0.2
+      },
+      "texture": {
+        "primary": "soft",
+        "moisture": "dry",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Soft-soled shoes dusted with chalk."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "pressed linen",
+        "notes": [
+          "sage"
+        ],
+        "intensity": 0.15
+      },
+      "visual": {
+        "description": "Layered garments kept orderly."
+      }
+    },
+    "mouth": {
+      "scent": {
+        "primary": "herbal tea",
+        "notes": [
+          "honey"
+        ],
+        "intensity": 0.2
+      }
+    }
+  }
+}

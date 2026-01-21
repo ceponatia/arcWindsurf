@@ -19,29 +19,46 @@ export const ConversationPane: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const isDevMode = import.meta.env.DEV;
 
   const characterName = characterProfile.value.name ?? 'Character';
 
-  // Auto-scroll to bottom
+  const focusInput = useCallback(() => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, []);
+
+  // Auto-scroll to bottom of the *message list* (not the full page).
+  // Using scrollIntoView can scroll outer ancestors and cause page jumps if layout constraints change.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const el = messagesScrollRef.current;
+    if (!el) return;
+
+    // Defer until after DOM paints to ensure scrollHeight is up to date.
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    });
+  }, [messages.length]);
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || isGenerating) return;
+    const message = input.trim();
+    if (!message || isGenerating) return;
     setError(null);
     setSuccess(null);
+    setInput('');
+    focusInput();
     try {
-      await sendMessage(input.trim());
-      setInput('');
+      await sendMessage(message);
     } catch {
       setError('Failed to send message. Please try again.');
+    } finally {
+      focusInput();
     }
-  }, [input, isGenerating, sendMessage]);
+  }, [input, isGenerating, sendMessage, focusInput]);
 
   const handleSummarize = useCallback(async () => {
     setIsSummarizing(true);
@@ -58,8 +75,9 @@ export const ConversationPane: React.FC = () => {
       setError('Summarization failed');
     } finally {
       setIsSummarizing(false);
+      focusInput();
     }
-  }, [summarize]);
+  }, [summarize, focusInput]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -73,18 +91,33 @@ export const ConversationPane: React.FC = () => {
 
   const handlePromptSelect = useCallback(
     async (prompt: string) => {
+      if (isGenerating) return;
       setError(null);
       try {
         await sendMessage(prompt);
       } catch {
         setError('Failed to process prompt. Please try again.');
+      } finally {
+        focusInput();
       }
     },
-    [sendMessage]
+    [sendMessage, focusInput, isGenerating]
   );
 
+  const handleDilemma = useCallback(async () => {
+    if (isGenerating) return;
+    setError(null);
+    try {
+      await generateDilemma();
+    } catch {
+      setError('Failed to generate dilemma. Please try again.');
+    } finally {
+      focusInput();
+    }
+  }, [generateDilemma, focusInput, isGenerating]);
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/50">
         <h3 className="text-sm font-medium text-slate-200">Conversation with {characterName}</h3>
@@ -94,7 +127,10 @@ export const ConversationPane: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+      <div
+        ref={messagesScrollRef}
+        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-4"
+      >
         {error && (
           <div className="bg-red-900/20 border border-red-800/50 text-red-400 p-3 rounded-lg flex items-start justify-between gap-2 text-xs">
             <div className="flex gap-2">
@@ -127,7 +163,7 @@ export const ConversationPane: React.FC = () => {
         {messages.length === 0 && (
           <ConversationPrompts
             onSelect={(prompt) => void handlePromptSelect(prompt)}
-            onDilemma={() => void generateDilemma()}
+            onDilemma={() => void handleDilemma()}
           />
         )}
 
@@ -139,7 +175,7 @@ export const ConversationPane: React.FC = () => {
           <div className="pt-2">
             <ConversationPrompts
               onSelect={(prompt) => void handlePromptSelect(prompt)}
-              onDilemma={() => void generateDilemma()}
+              onDilemma={() => void handleDilemma()}
             />
           </div>
         )}
@@ -150,8 +186,6 @@ export const ConversationPane: React.FC = () => {
             <span>{characterName} is thinking...</span>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
@@ -164,7 +198,6 @@ export const ConversationPane: React.FC = () => {
             onKeyDown={handleKeyDown}
             placeholder={`Ask ${characterName} something...`}
             className="flex-1 min-h-[44px] max-h-32 resize-none bg-slate-900 text-slate-200 rounded-lg px-4 py-3 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500"
-            disabled={isGenerating}
           />
           <button
             onClick={() => void handleSend()}

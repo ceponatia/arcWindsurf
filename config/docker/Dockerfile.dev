@@ -30,6 +30,7 @@ RUN corepack enable \
 COPY . .
 
 # 4. Build shared pieces you always want up to date
+RUN node scripts/generate-sensory-templates.mjs
 RUN pnpm -F @minimal-rpg/schemas build
 
 # 5. Default command is a no-op; docker-compose services will override it

@@ -152,7 +152,9 @@ export const sectionCompletion = computed(() => {
     sensoryProfile: {
       complete: true,
       hasContent: Boolean(
-        sensoryConfig.templateBlend?.templates.length || (p.body && Object.keys(p.body).length > 0)
+        (sensoryConfig.templateBlend?.templates.length ?? 0) > 0
+          ? true
+          : p.body && Object.keys(p.body).length > 0
       ),
     },
   };

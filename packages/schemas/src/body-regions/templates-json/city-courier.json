@@ -1,0 +1,125 @@
+{
+  "id": "city-courier",
+  "name": "City Courier",
+  "description": "Rain-slick streets, leather satchels, and quick footsteps.",
+  "tags": [
+    "city",
+    "rain",
+    "brisk",
+    "leather"
+  ],
+  "suggestedFor": {
+    "occupations": [
+      "courier",
+      "messenger",
+      "runner"
+    ]
+  },
+  "affectedRegions": [
+    "hair",
+    "face",
+    "hands",
+    "torso",
+    "feet",
+    "groin",
+    "mouth"
+  ],
+  "fragments": {
+    "hair": {
+      "scent": {
+        "primary": "rain mist",
+        "notes": [
+          "stone"
+        ],
+        "intensity": 0.25
+      },
+      "texture": {
+        "primary": "tousled",
+        "moisture": "damp",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Quick-dried and tucked back."
+      }
+    },
+    "face": {
+      "scent": {
+        "primary": "cool air",
+        "notes": [
+          "metal"
+        ],
+        "intensity": 0.2
+      },
+      "visual": {
+        "description": "Alert eyes with a quick smile."
+      }
+    },
+    "hands": {
+      "scent": {
+        "primary": "leather glove",
+        "notes": [
+          "ink"
+        ],
+        "intensity": 0.3
+      },
+      "texture": {
+        "primary": "calloused",
+        "moisture": "normal",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Ink-stained fingertips."
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "city rain",
+        "notes": [
+          "linen"
+        ],
+        "intensity": 0.25
+      },
+      "visual": {
+        "description": "Messenger jacket with worn edges."
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "street dust",
+        "notes": [
+          "rain"
+        ],
+        "intensity": 0.3
+      },
+      "texture": {
+        "primary": "rough",
+        "moisture": "damp",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Boots marked by cobblestones."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "fresh cotton",
+        "notes": [
+          "soap"
+        ],
+        "intensity": 0.15
+      },
+      "visual": {
+        "description": "Practical layers kept clean."
+      }
+    },
+    "mouth": {
+      "scent": {
+        "primary": "peppermint",
+        "notes": [
+          "citrus"
+        ],
+        "intensity": 0.15
+      }
+    }
+  }
+}

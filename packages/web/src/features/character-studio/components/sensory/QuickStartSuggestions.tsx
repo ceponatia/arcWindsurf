@@ -21,7 +21,7 @@ export const QuickStartSuggestions: React.FC<QuickStartSuggestionsProps> = ({
       const matchesOccupation = lowerOccupation
         ? template.suggestedFor?.occupations?.includes(lowerOccupation)
         : false;
-      return Boolean(matchesRace || matchesOccupation);
+      return matchesRace ? true : matchesOccupation;
     });
   }, [templates, race, occupation]);
 

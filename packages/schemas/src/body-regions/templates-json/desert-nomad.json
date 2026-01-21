@@ -1,0 +1,125 @@
+{
+  "id": "desert-nomad",
+  "name": "Desert Nomad",
+  "description": "Sun-baked sands, warm spice, and steady endurance.",
+  "tags": [
+    "desert",
+    "spice",
+    "sun",
+    "travel"
+  ],
+  "suggestedFor": {
+    "occupations": [
+      "scout",
+      "nomad",
+      "caravanner"
+    ]
+  },
+  "affectedRegions": [
+    "hair",
+    "face",
+    "hands",
+    "torso",
+    "feet",
+    "groin",
+    "mouth"
+  ],
+  "fragments": {
+    "hair": {
+      "scent": {
+        "primary": "sun-baked sand",
+        "notes": [
+          "amber"
+        ],
+        "intensity": 0.35
+      },
+      "texture": {
+        "primary": "coarse",
+        "moisture": "dry",
+        "temperature": "warm"
+      },
+      "visual": {
+        "description": "Braided to keep out grit."
+      }
+    },
+    "face": {
+      "scent": {
+        "primary": "warm spice",
+        "notes": [
+          "cumin"
+        ],
+        "intensity": 0.25
+      },
+      "visual": {
+        "description": "Sun-weathered with a steady gaze."
+      }
+    },
+    "hands": {
+      "scent": {
+        "primary": "leather and dust",
+        "notes": [
+          "sage"
+        ],
+        "intensity": 0.3
+      },
+      "texture": {
+        "primary": "calloused",
+        "moisture": "dry",
+        "temperature": "warm"
+      },
+      "visual": {
+        "description": "Wrapped in travel cloth."
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "spiced linen",
+        "notes": [
+          "cedar"
+        ],
+        "intensity": 0.3
+      },
+      "visual": {
+        "description": "Layered wraps in desert hues."
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "sun-warmed leather",
+        "notes": [
+          "sand"
+        ],
+        "intensity": 0.35
+      },
+      "texture": {
+        "primary": "rough",
+        "moisture": "dry",
+        "temperature": "warm"
+      },
+      "visual": {
+        "description": "Sand-scuffed sandals."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "cool cloth",
+        "notes": [
+          "mint"
+        ],
+        "intensity": 0.15
+      },
+      "visual": {
+        "description": "Breathable wraps tied tight for travel."
+      }
+    },
+    "mouth": {
+      "scent": {
+        "primary": "sweet tea",
+        "notes": [
+          "cardamom"
+        ],
+        "intensity": 0.2
+      }
+    }
+  }
+}

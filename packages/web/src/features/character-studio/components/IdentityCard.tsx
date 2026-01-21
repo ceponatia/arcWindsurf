@@ -28,6 +28,7 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({
   return (
     <div
       data-card-id={cardId}
+      data-card-open={isOpen ? 'true' : 'false'}
       className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900/20 shadow-sm transition-all duration-200"
     >
       <button

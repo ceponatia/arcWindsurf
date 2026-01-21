@@ -79,5 +79,13 @@ export {
   type EncounterNarrationOptions,
 } from './encounter-service.js';
 
+// Turn Orchestrator
+export {
+  TurnOrchestrator,
+  type TurnConfig,
+  type TurnInput,
+  type TurnResult,
+} from './turn-orchestrator.js';
+
 // Utilities (re-export for backward compatibility)
 export { deepMergeReplaceArrays } from '@minimal-rpg/utils';

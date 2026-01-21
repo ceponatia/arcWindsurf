@@ -1,0 +1,128 @@
+{
+  "id": "woodland-spirit",
+  "name": "Woodland Spirit",
+  "description": "Forest-dweller with earthy, natural notes.",
+  "tags": [
+    "nature",
+    "forest",
+    "earthy"
+  ],
+  "suggestedFor": {
+    "races": [
+      "Elf",
+      "Half-Elf",
+      "Firbolg"
+    ],
+    "occupations": [
+      "ranger",
+      "druid",
+      "herbalist"
+    ]
+  },
+  "affectedRegions": [
+    "hair",
+    "face",
+    "hands",
+    "torso",
+    "mouth",
+    "feet",
+    "groin"
+  ],
+  "fragments": {
+    "hair": {
+      "scent": {
+        "primary": "wildflowers",
+        "notes": [
+          "moss",
+          "rain"
+        ],
+        "intensity": 0.5
+      },
+      "texture": {
+        "primary": "silken",
+        "moisture": "normal",
+        "temperature": "neutral"
+      },
+      "visual": {
+        "description": "Loose strands threaded with tiny leaf specks."
+      }
+    },
+    "face": {
+      "scent": {
+        "primary": "forest loam",
+        "notes": [
+          "cedar"
+        ],
+        "intensity": 0.3
+      },
+      "visual": {
+        "description": "Dew-kissed features with a fresh, outdoors glow."
+      }
+    },
+    "hands": {
+      "texture": {
+        "primary": "supple",
+        "moisture": "normal",
+        "temperature": "neutral"
+      },
+      "scent": {
+        "primary": "crushed herbs",
+        "notes": [
+          "sage"
+        ],
+        "intensity": 0.4
+      }
+    },
+    "torso": {
+      "scent": {
+        "primary": "pine resin",
+        "notes": [
+          "earth"
+        ],
+        "intensity": 0.35
+      },
+      "visual": {
+        "description": "Woven fabrics scented with the forest floor."
+      }
+    },
+    "mouth": {
+      "scent": {
+        "primary": "minted herbs",
+        "notes": [
+          "sweet bark"
+        ],
+        "intensity": 0.2
+      }
+    },
+    "feet": {
+      "scent": {
+        "primary": "damp earth",
+        "notes": [
+          "pine",
+          "stone"
+        ],
+        "intensity": 0.25
+      },
+      "texture": {
+        "primary": "grounded",
+        "moisture": "damp",
+        "temperature": "cool"
+      },
+      "visual": {
+        "description": "Trail-worn soles dusted with forest loam."
+      }
+    },
+    "groin": {
+      "scent": {
+        "primary": "clean linen",
+        "notes": [
+          "wild herbs"
+        ],
+        "intensity": 0.15
+      },
+      "visual": {
+        "description": "Soft layers of travel-worn cloth."
+      }
+    }
+  }
+}
