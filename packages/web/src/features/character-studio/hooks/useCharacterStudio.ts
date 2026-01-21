@@ -6,6 +6,7 @@ import {
   isDirty,
   saveStatus,
   isStudioLoading,
+  sensoryProfileConfig,
   resetStudio,
   resetStudioSession,
   updateProfile,
@@ -13,7 +14,12 @@ import {
   clearAllFieldErrors,
   isDeleting,
 } from '../signals.js';
-import { generateCharacterId, loadCharacter, persistCharacter, removeCharacter } from '../services/api.js';
+import {
+  generateCharacterId,
+  loadCharacter,
+  persistCharacter,
+  removeCharacter,
+} from '../services/api.js';
 import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
 
 export interface UseCharacterStudioOptions {
@@ -35,7 +41,9 @@ export interface UseCharacterStudioResult {
   updateField: <K extends keyof CharacterProfile>(key: K, value: CharacterProfile[K]) => void;
 }
 
-export function useCharacterStudio(options: UseCharacterStudioOptions = {}): UseCharacterStudioResult {
+export function useCharacterStudio(
+  options: UseCharacterStudioOptions = {}
+): UseCharacterStudioResult {
   useSignals();
 
   const { id, onSave, onDelete } = options;
@@ -49,15 +57,21 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
     if (id) {
       isStudioLoading.value = true;
       characterId.value = id;
-      loadCharacter(id).then(profile => {
-        characterProfile.value = profile;
-        isDirty.value = false;
-        clearAllFieldErrors();
-      }).catch(err => {
-        console.error('Failed to load character:', err);
-      }).finally(() => {
-        isStudioLoading.value = false;
-      });
+      loadCharacter(id)
+        .then((profile) => {
+          characterProfile.value = profile;
+          sensoryProfileConfig.value = profile.sensoryProfile ?? {
+            autoDefaults: { enabled: true },
+          };
+          isDirty.value = false;
+          clearAllFieldErrors();
+        })
+        .catch((err) => {
+          console.error('Failed to load character:', err);
+        })
+        .finally(() => {
+          isStudioLoading.value = false;
+        });
     } else {
       resetStudio();
       characterProfile.value = {
@@ -66,6 +80,7 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
         personality: 'Unspecified',
         backstory: '',
       };
+      sensoryProfileConfig.value = { autoDefaults: { enabled: true } };
     }
 
     return () => {
@@ -87,13 +102,20 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
       // The AppearanceCard uses a flat object for editing, but the schema expects
       // either a string or nested PhysiqueSchema structure
       let physiqueForApi: CharacterProfile['physique'] = current.physique;
-      if (current.physique && typeof current.physique === 'object' && !Array.isArray(current.physique)) {
+      if (
+        current.physique &&
+        typeof current.physique === 'object' &&
+        !Array.isArray(current.physique)
+      ) {
         // Cast through unknown to handle both flat studio format and nested PhysiqueSchema
         const obj = current.physique as unknown as Record<string, unknown>;
         // Check if it's a flat studio format (has any of the AppearanceCard fields)
         // vs the nested PhysiqueSchema format (has build as object with height, etc.)
-        const isFlatFormat = 'height' in obj || 'ageAppearance' in obj ||
-          'notableFeatures' in obj || 'impression' in obj ||
+        const isFlatFormat =
+          'height' in obj ||
+          'ageAppearance' in obj ||
+          'notableFeatures' in obj ||
+          'impression' in obj ||
           ('build' in obj && typeof obj['build'] === 'string');
         const buildVal = obj['build'];
         const isNestedFormat = buildVal && typeof buildVal === 'object';
@@ -108,8 +130,10 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
           const impression = obj['impression'];
           if (typeof height === 'string' && height) parts.push(`Height: ${height}`);
           if (typeof build === 'string' && build) parts.push(`Build: ${build}`);
-          if (typeof ageAppearance === 'string' && ageAppearance) parts.push(`Appears: ${ageAppearance}`);
-          if (typeof notableFeatures === 'string' && notableFeatures) parts.push(`Notable features: ${notableFeatures}`);
+          if (typeof ageAppearance === 'string' && ageAppearance)
+            parts.push(`Appears: ${ageAppearance}`);
+          if (typeof notableFeatures === 'string' && notableFeatures)
+            parts.push(`Notable features: ${notableFeatures}`);
           if (typeof impression === 'string' && impression) parts.push(`Impression: ${impression}`);
           physiqueForApi = parts.length > 0 ? parts.join('. ') : undefined;
         }
@@ -122,7 +146,9 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
         const sanitized: PersonalityMap = { ...personalityMapForApi };
         // Filter fears with empty specific field (schema requires min 1 char)
         if (sanitized.fears) {
-          sanitized.fears = sanitized.fears.filter(f => f.specific && f.specific.trim().length > 0);
+          sanitized.fears = sanitized.fears.filter(
+            (f) => f.specific && f.specific.trim().length > 0
+          );
           if (sanitized.fears.length === 0) delete sanitized.fears;
         }
         // Filter values with invalid entries
@@ -138,14 +164,18 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
         id: current.id ?? generateCharacterId(),
         physique: physiqueForApi,
         personalityMap: personalityMapForApi,
-        backstory: current.backstory && current.backstory.trim().length > 0
-          ? current.backstory
-          : 'Backstory not provided yet.',
-        personality: current.personality && typeof current.personality === 'string'
-          ? current.personality
-          : Array.isArray(current.personality)
-            ? (current.personality.length > 0 ? current.personality : 'Unspecified')
-            : 'Unspecified',
+        backstory:
+          current.backstory && current.backstory.trim().length > 0
+            ? current.backstory
+            : 'Backstory not provided yet.',
+        personality:
+          current.personality && typeof current.personality === 'string'
+            ? current.personality
+            : Array.isArray(current.personality)
+              ? current.personality.length > 0
+                ? current.personality
+                : 'Unspecified'
+              : 'Unspecified',
         tags: current.tags ?? ['draft'],
       } as CharacterProfile;
 
@@ -174,7 +204,9 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
   const deleteCharacter = useCallback(async () => {
     if (!id) return;
 
-    const confirmed = window.confirm('Are you sure you want to delete this character? This action cannot be undone.');
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this character? This action cannot be undone.'
+    );
     if (!confirmed) return;
 
     isDeleting.value = true;
@@ -214,7 +246,10 @@ export function useCharacterStudio(options: UseCharacterStudioOptions = {}): Use
  * This prevents instant failures (eg, network error) from skipping the
  * intermediate 'saving' UI state entirely.
  */
-async function waitForMinSavingIndicator(startedAtMs: number, minDurationMs: number): Promise<void> {
+async function waitForMinSavingIndicator(
+  startedAtMs: number,
+  minDurationMs: number
+): Promise<void> {
   const elapsed = Date.now() - startedAtMs;
   const remaining = minDurationMs - elapsed;
   if (remaining <= 0) return;

@@ -29,6 +29,12 @@ export const CharacterBasicsSchema = CoreIdentitySchema.extend({
   tags: z.array(z.string().min(1)).default(['draft']),
 
   /**
+   * Character occupation (optional).
+   * Used for sensory template suggestions and future background rules.
+   */
+  occupation: z.string().optional(),
+
+  /**
    * Character alignment.
    */
   alignment: z.enum(ALIGNMENTS).optional(),

@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { PhysiqueSchema, type Physique } from './appearance.js';
 import { BodyMapSchema } from './sensory.js';
+import { SensoryProfileConfigSchema } from './sensoryProfileConfig.js';
 import { CharacterBasicsSchema, type CharacterBasics } from './basics.js';
 import { CharacterDetailSchema, type CharacterDetail } from './details.js';
 import { PersonalityMapSchema, type PersonalityMap } from './personality.js';
@@ -30,6 +31,11 @@ export const CharacterProfileSchema = CharacterBasicsSchema.extend({
    * Provides atomic access to body parts for detailed sensory descriptions.
    */
   body: BodyMapSchema.optional(),
+
+  /**
+   * Sensory profile configuration for auto-defaults and templates.
+   */
+  sensoryProfile: SensoryProfileConfigSchema.optional(),
 
   /**
    * Hygiene state tracking cleanliness levels per body part.

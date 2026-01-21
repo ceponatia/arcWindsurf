@@ -10,6 +10,8 @@ export * from './body-region-groups.js';
 
 // Sensory data schemas (scent, texture, visual, flavor)
 export * from './sensory.js';
+export * from './sensoryProfileConfig.js';
+export * from './occupations.js';
 
 // Other character facets
 export * from './basics.js';

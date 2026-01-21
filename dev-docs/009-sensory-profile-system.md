@@ -1140,6 +1140,7 @@ After reviewing the codebase, the following updates are required to align with e
 **Current state**: `CharacterProfile` lacks occupation field referenced throughout the design.
 
 **Change**: Add to `CharacterBasicsSchema`:
+
 ```typescript
 // In packages/schemas/src/character/basics.ts
 occupation: z.string().optional(),
@@ -1152,6 +1153,7 @@ This enables occupation-based fragments (blacksmith, sailor, herbalist, etc.) an
 **Current state**: Design references `ageCategory` but CharacterProfile only has numeric `age`.
 
 **Change**: New utility in `packages/schemas/src/character/age-category.ts`:
+
 ```typescript
 export type AgeCategory = 'child' | 'young' | 'adult' | 'mature' | 'elder';
 
@@ -1168,6 +1170,7 @@ Races like Elf have extended lifespans, so thresholds must be race-aware.
 **Current state**: Design references `'exposed-skin'`, `'contact-hands'`, etc., but these tags don't exist.
 
 **Change**: New file `packages/schemas/src/body-regions/region-tags.ts`:
+
 ```typescript
 export const REGION_TAGS = {
   'exposed-skin': ['face', 'neck', 'hands', 'arms', ...],
@@ -1184,6 +1187,7 @@ This enables fragment and augmentation rules to target groups of regions semanti
 **Current state**: `physique: string | Physique` union requires normalization.
 
 **Change**: Add helper in fragment resolver:
+
 ```typescript
 function normalizePhysique(physique: string | Physique | undefined): string | undefined {
   if (!physique) return undefined;
@@ -1195,12 +1199,14 @@ function normalizePhysique(physique: string | Physique | undefined): string | un
 ### Package Architecture
 
 **Resolution logic location**: Place in `@minimal-rpg/schemas` (not `@minimal-rpg/characters`) to:
+
 - Match existing `resolveRegionScent()` pattern
 - Enable web package to import without circular dependencies
 - Keep schemas as single source of truth for type-driven resolution
 
 **New files**:
-```
+
+```text
 packages/schemas/src/character/sensory-profile/
 ├── index.ts           # Barrel export
 ├── config.ts          # SensoryProfileConfigSchema
@@ -1215,6 +1221,7 @@ packages/schemas/src/character/sensory-profile/
 **Existing**: `packages/generator/src/character/generate.ts` has `generateBodyMap()` for random procedural NPCs.
 
 **Clarification**: The two systems serve different purposes:
+
 - **Generator**: Random/procedural generation with theme-based value pools (for background NPCs, testing)
 - **Sensory Profile System**: Deterministic trait-based defaults (for user-created characters in Character Studio)
 

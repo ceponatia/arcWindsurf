@@ -9,6 +9,8 @@ import { FEET_REGIONS } from './feet/regions.js';
 
 export * from './types.js';
 export * from './sensory-types.js';
+export * from './sensoryTemplate.js';
+export * from './sensoryTemplates.js';
 export * from './constants.js';
 export * from './head/index.js';
 export * from './neck/index.js';
@@ -21,6 +23,8 @@ export * from './feet/index.js';
 export * from './hygiene-data.js';
 export * from './hierarchy.js';
 export * from './utils.js';
+export * from './autoDefaults.js';
+export * from './resolveSensoryProfile.js';
 
 /**
  * Expanded canonical body regions (left/right + detailed toes).

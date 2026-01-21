@@ -12,5 +12,8 @@
 - Inside each folder is a plan, vision, and tasks folder
   - Plan contains design docs, architecture decisions, and research
   - Status contains progress reports, retrospectives, and meeting notes
-  - Tasks contains user stories, issues, and project management artifacts
+- Each task file should be named with a consistent pattern: `TASK-<three-digit-number>-<short-description>.md`
+  - Example: `TASK-001-setup-monorepo.md`
+    - Tasks contains one task file per deliverable in the plan documents
+    - A checklist of acceptance criteria should be included in each task as the last section in the file.
 - Other folders can exist for specific domains (e.g., `agents/`, `vision/`, `tutorials/`)

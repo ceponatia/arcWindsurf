@@ -52,7 +52,6 @@ function filterByZoomLevel(nodes: LocationNode[], level: SemanticZoomLevel): Loc
         return 1;
       case 'room':
         return 2;
-      case 'all':
       default:
         return -1;
     }

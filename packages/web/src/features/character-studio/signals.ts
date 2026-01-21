@@ -1,5 +1,11 @@
 import { signal, computed } from '@preact/signals-react';
-import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
+import {
+  resolveSensoryProfile,
+  type CharacterProfile,
+  type PersonalityMap,
+  type ResolvedBodyMap,
+  type SensoryProfileConfig,
+} from '@minimal-rpg/schemas';
 import type { StudioFieldErrors, StudioFieldKey } from './validation/types.js';
 import { applyTrait } from './utils/trait-applicator.js';
 import { validateCharacterProfileBeforeSave } from './validation/validateCharacterProfileBeforeSave.js';
@@ -10,6 +16,13 @@ import { validateCharacterProfileBeforeSave } from './validation/validateCharact
 
 /** Current character profile being created/edited */
 export const characterProfile = signal<Partial<CharacterProfile>>({});
+
+const DEFAULT_SENSORY_PROFILE_CONFIG: SensoryProfileConfig = {
+  autoDefaults: { enabled: true },
+};
+
+/** Sensory profile configuration for defaults and templates */
+export const sensoryProfileConfig = signal<SensoryProfileConfig>(DEFAULT_SENSORY_PROFILE_CONFIG);
 
 /** Character ID (null for new characters) */
 export const characterId = signal<string | null>(null);
@@ -39,11 +52,11 @@ export interface ConversationMessage {
 }
 
 export interface InferredTrait {
-  id: string;             // Unique identifier for React keys
-  path: string;           // e.g., 'personalityMap.social.strangerDefault'
-  value: unknown;         // e.g., 'guarded'
-  confidence: number;     // 0-1
-  evidence: string;       // Quote from conversation that triggered inference
+  id: string; // Unique identifier for React keys
+  path: string; // e.g., 'personalityMap.social.strangerDefault'
+  value: unknown; // e.g., 'guarded'
+  confidence: number; // 0-1
+  evidence: string; // Quote from conversation that triggered inference
   status: 'pending' | 'accepted' | 'rejected' | 'dismissed';
 }
 
@@ -76,7 +89,9 @@ export const isGenerating = signal<boolean>(false);
 
 /** Whether to perform trait inference on conversation exchanges */
 export const traitInferenceEnabled = signal<boolean>(
-  typeof localStorage !== 'undefined' ? localStorage.getItem('studio.traitInference') !== 'false' : true
+  typeof localStorage !== 'undefined'
+    ? localStorage.getItem('studio.traitInference') !== 'false'
+    : true
 );
 
 // ============================================================================
@@ -98,8 +113,17 @@ export const isDeleting = signal<boolean>(false);
 // Computed Signals
 // ============================================================================
 
+/**
+ * Resolved sensory body map computed from profile + sensory config.
+ */
+export const resolvedBodyMap = computed<ResolvedBodyMap>(() => {
+  const profile = characterProfile.value;
+  const config = sensoryProfileConfig.value;
+  return resolveSensoryProfile(profile, config);
+});
+
 export const REQUIRED_FIELDS = ['name', 'age', 'gender', 'summary', 'backstory', 'race'] as const;
-export type RequiredField = typeof REQUIRED_FIELDS[number];
+export type RequiredField = (typeof REQUIRED_FIELDS)[number];
 
 /**
  * Detailed completion status for each major section
@@ -107,6 +131,7 @@ export type RequiredField = typeof REQUIRED_FIELDS[number];
 export const sectionCompletion = computed(() => {
   const p = characterProfile.value;
   const pm = p.personalityMap;
+  const sensoryConfig = sensoryProfileConfig.value;
 
   return {
     name: !!p.name?.trim(),
@@ -117,8 +142,19 @@ export const sectionCompletion = computed(() => {
     social: !!(pm?.social && Object.keys(pm.social).length > 0),
     speech: !!(pm?.speech && Object.keys(pm.speech).length > 0),
     stress: !!(pm?.stress && Object.keys(pm.stress).length > 0),
-    physique: !!(p.physique && (typeof p.physique === 'string' ? p.physique.trim().length > 0 : Object.keys(p.physique).length > 0)),
+    physique: !!(
+      p.physique &&
+      (typeof p.physique === 'string'
+        ? p.physique.trim().length > 0
+        : Object.keys(p.physique).length > 0)
+    ),
     body: !!(p.body && Object.keys(p.body).length > 0),
+    sensoryProfile: {
+      complete: true,
+      hasContent: Boolean(
+        sensoryConfig.templateBlend?.templates.length || (p.body && Object.keys(p.body).length > 0)
+      ),
+    },
   };
 });
 
@@ -147,7 +183,7 @@ export const completionScore = computed(() => {
 
 /** All accepted traits from conversation */
 export const acceptedTraits = computed(() =>
-  pendingTraits.value.filter(t => t.status === 'accepted')
+  pendingTraits.value.filter((t) => t.status === 'accepted')
 );
 
 // ============================================================================
@@ -159,6 +195,10 @@ export function updateProfile<K extends keyof CharacterProfile>(
   value: CharacterProfile[K]
 ): void {
   characterProfile.value = { ...characterProfile.value, [key]: value };
+  if (key === 'sensoryProfile') {
+    const next = (value as SensoryProfileConfig | undefined) ?? DEFAULT_SENSORY_PROFILE_CONFIG;
+    sensoryProfileConfig.value = next;
+  }
   isDirty.value = true;
 }
 
@@ -169,6 +209,17 @@ export function updatePersonalityMap(updates: Partial<PersonalityMap>): void {
     personalityMap: { ...current, ...updates },
   };
   isDirty.value = true;
+}
+
+/**
+ * Update sensory profile config and persist to character profile.
+ */
+export function updateSensoryProfileConfig(updates: Partial<SensoryProfileConfig>): void {
+  sensoryProfileConfig.value = {
+    ...sensoryProfileConfig.value,
+    ...updates,
+  };
+  updateProfile('sensoryProfile', sensoryProfileConfig.value);
 }
 
 /**
@@ -223,26 +274,27 @@ export function setTraitInferenceEnabled(enabled: boolean): void {
 }
 
 export function acceptTrait(traitId: string): void {
-  const trait = pendingTraits.value.find(t => t.path === traitId);
+  const trait = pendingTraits.value.find((t) => t.path === traitId);
   if (!trait) return;
 
   // Apply the trait value to the profile
   applyTrait(trait);
 
   // Update trait status to 'accepted'
-  pendingTraits.value = pendingTraits.value.map(t =>
+  pendingTraits.value = pendingTraits.value.map((t) =>
     t.path === traitId ? { ...t, status: 'accepted' as const } : t
   );
 }
 
 export function rejectTrait(traitId: string): void {
-  pendingTraits.value = pendingTraits.value.map(t =>
+  pendingTraits.value = pendingTraits.value.map((t) =>
     t.path === traitId ? { ...t, status: 'rejected' } : t
   );
 }
 
 export function resetStudio(): void {
   characterProfile.value = {};
+  sensoryProfileConfig.value = DEFAULT_SENSORY_PROFILE_CONFIG;
   characterId.value = null;
   isDirty.value = false;
   saveStatus.value = 'idle';

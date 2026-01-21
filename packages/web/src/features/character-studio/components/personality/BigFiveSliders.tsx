@@ -12,17 +12,14 @@ export const BigFiveSliders: React.FC = () => {
   useSignals();
 
   type PersonalityDimension = (typeof PERSONALITY_DIMENSIONS)[number];
-  const defaultDimensions: Record<PersonalityDimension, number> = {
-    openness: 0.5,
-    conscientiousness: 0.5,
-    extraversion: 0.5,
-    agreeableness: 0.5,
-    neuroticism: 0.5,
-  };
-  const dimensions: Record<PersonalityDimension, number> = {
-    ...defaultDimensions,
-    ...(characterProfile.value.personalityMap?.dimensions ?? {}),
-  };
+  const dimensions = PERSONALITY_DIMENSIONS.reduce(
+    (acc, dimension) => {
+      acc[dimension] =
+        getRecordOptional(characterProfile.value.personalityMap?.dimensions, dimension) ?? 0.5;
+      return acc;
+    },
+    {} as Record<PersonalityDimension, number>
+  );
 
   const handleSliderChange = (dimension: PersonalityDimension, value: number) => {
     updatePersonalityMap({
@@ -39,13 +36,13 @@ export const BigFiveSliders: React.FC = () => {
         <RadarChart
           data={PERSONALITY_DIMENSIONS.map((dim) => ({
             label: dim.charAt(0).toUpperCase() + dim.slice(1),
-            value: getRecordOptional(dimensions, dim) ?? 0.5,
+            value: dimensions[dim],
           }))}
           size={240}
         />
       </div>
       {PERSONALITY_DIMENSIONS.map((dim) => {
-        const score = getRecordOptional(dimensions, dim) ?? 0.5;
+        const score = dimensions[dim];
         return (
           <SliderInput
             key={dim}

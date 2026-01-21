@@ -21,7 +21,7 @@ export function useInputMode() {
   const cycleMode = () => {
     const modes: InputMode[] = ['speech', 'thought', 'action'];
     const idx = modes.indexOf(mode);
-    const nextMode = modes[(idx + 1) % modes.length];
+    const nextMode = modes[(idx + 1) % modes.length] ?? 'speech';
     setMode(nextMode);
   };
 

@@ -357,9 +357,14 @@ const NpcAgentsSection: React.FC<NpcAgentsSectionProps> = ({ agentsInvoked, agen
           {/* Agent badges */}
           <div className="flex flex-wrap gap-1">
             {agentsInvoked.map((agent) => {
+              const fallbackConfig = AGENT_CONFIG['custom'] ?? {
+                label: 'Custom',
+                color: 'text-slate-300',
+                bgColor: 'bg-slate-800/40',
+              };
               const config =
                 getRecordValue<(typeof AGENT_CONFIG)[string]>(AGENT_CONFIG, agent) ??
-                getRecordValue<(typeof AGENT_CONFIG)[string]>(AGENT_CONFIG, 'custom');
+                fallbackConfig;
               return (
                 <span
                   key={agent}

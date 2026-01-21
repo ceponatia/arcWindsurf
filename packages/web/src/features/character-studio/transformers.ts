@@ -10,7 +10,7 @@ import {
   PERSONALITY_DIMENSIONS,
   RACES,
   getRecordOptional,
-  setRecord,
+  setPartialRecord,
 } from '@minimal-rpg/schemas';
 import { splitList } from '../shared/stringLists.js';
 import {
@@ -48,7 +48,7 @@ export const buildPersonalityMap = (pm: PersonalityFormState): PersonalityMap | 
   if (dimensionScores.length > 0) {
     result.dimensions = {};
     for (const d of dimensionScores) {
-      setRecord(result.dimensions, d.dimension, d.score);
+      setPartialRecord(result.dimensions, d.dimension, d.score);
     }
   }
 
@@ -196,7 +196,7 @@ export function filterBodyMapByGender(body: BodyMap, gender: string): BodyMap {
       if (normalizedGender !== 'male' && normalizedGender !== 'other' && normalizedGender) continue;
     }
 
-    setRecord(filtered, r, data);
+    setPartialRecord(filtered, r, data);
   }
   return filtered;
 }
@@ -391,7 +391,7 @@ export function mapProfileToForm(profile: CharacterProfile): FormState {
   const p = profile.physique;
   if (p && typeof p === 'object') {
     const setAppearanceValue = (
-      appearance: Record<string, string | undefined>,
+      appearance: Record<string, string>,
       key: string,
       value: string
     ): void => {
@@ -408,13 +408,13 @@ export function mapProfileToForm(profile: CharacterProfile): FormState {
       const regionData = getRecordOptional(next.body, region) ?? {};
       const appearance = {
         ...(regionData.appearance ?? {}),
-      } as Record<string, string | undefined>;
+      } as Record<string, string>;
       setAppearanceValue(appearance, key, value);
       const updatedRegion = {
         ...regionData,
         appearance,
       };
-      setRecord(next.body, region, updatedRegion);
+      setPartialRecord(next.body, region, updatedRegion);
     };
 
     // Hair
@@ -519,7 +519,7 @@ export function mergeGeneratedIntoForm(current: FormState, generated: FormState)
     const existing = getRecordOptional(merged.body, region);
     const generatedRegion = getRecordOptional(generated.body, region);
     if (!existing && generatedRegion) {
-      setRecord(merged.body, region, generatedRegion);
+      setPartialRecord(merged.body, region, generatedRegion);
     }
   }
 

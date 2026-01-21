@@ -6,7 +6,11 @@ import { loadData } from './loaders/loader.js';
 import type { ApiError } from './types.js';
 import type { LoadedData } from './loaders/types.js';
 import { getConfig } from './utils/config.js';
-import { ensureLocalAdminUser, initStudioSessionsTable, cleanupExpiredSessions } from '@minimal-rpg/db/node';
+import {
+  ensureLocalAdminUser,
+  initStudioSessionsTable,
+  cleanupExpiredSessions,
+} from '@minimal-rpg/db/node';
 
 // Route registrars
 import { registerSystemRoutes } from './routes/system/index.js';
@@ -15,6 +19,7 @@ import { registerGameRoutes } from './routes/game/index.js';
 import { registerUserRoutes } from './routes/users/index.js';
 import { registerResourceRoutes } from './routes/resources/index.js';
 import { registerStudioRoutes } from './routes/studio.js';
+import { registerSensoryRoutes } from './routes/sensory.js';
 import streamRouter from './routes/stream.js';
 import { attachAuthUser, requireAuthIfEnabled } from './auth/middleware.js';
 import {
@@ -110,6 +115,7 @@ export async function startServer(): Promise<void> {
   registerGameRoutes(app, { getLoaded: (): LoadedData | undefined => loaded });
   registerResourceRoutes(app);
   registerStudioRoutes(app);
+  registerSensoryRoutes(app);
   app.route('/stream', streamRouter);
 
   const port = cfg.port;

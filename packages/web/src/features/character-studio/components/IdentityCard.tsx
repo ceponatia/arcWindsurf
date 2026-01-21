@@ -3,9 +3,11 @@ import { ChevronDown, ChevronRight, Check } from 'lucide-react';
 
 interface IdentityCardProps {
   title: string;
+  subtitle?: string;
   defaultOpen?: boolean;
   completionPercent?: number; // 0-100, optional
   hasContent?: boolean | undefined;
+  cardId?: string;
   children: React.ReactNode;
 }
 
@@ -14,15 +16,20 @@ interface IdentityCardProps {
  */
 export const IdentityCard: React.FC<IdentityCardProps> = ({
   title,
+  subtitle,
   defaultOpen = false,
   completionPercent,
   hasContent,
+  cardId,
   children,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900/20 shadow-sm transition-all duration-200">
+    <div
+      data-card-id={cardId}
+      className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900/20 shadow-sm transition-all duration-200"
+    >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -40,6 +47,7 @@ export const IdentityCard: React.FC<IdentityCardProps> = ({
               />
             )}
           </div>
+          {subtitle && <span className="text-xs text-slate-400 truncate">{subtitle}</span>}
           {completionPercent !== undefined && (
             <div className="flex items-center gap-2 flex-1 max-w-[100px]" aria-hidden="true">
               <div className="h-1 flex-1 bg-slate-700 rounded-full overflow-hidden">

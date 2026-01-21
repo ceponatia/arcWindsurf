@@ -8,6 +8,7 @@ import {
   type Subrace,
   type Alignment,
   type Gender,
+  COMMON_OCCUPATIONS,
   getRecordOptional,
 } from '@minimal-rpg/schemas';
 import {
@@ -27,6 +28,7 @@ import { SpeechStyleForm } from './personality/SpeechStyleForm.js';
 import { StressBehaviorForm } from './personality/StressBehaviorForm.js';
 import { BodyCard } from './BodyCard.js';
 import { AppearanceCard } from './AppearanceCard.js';
+import { SensoryProfileCard } from './SensoryProfileCard.js';
 
 export const IdentityPanel: React.FC = () => {
   useSignals();
@@ -251,8 +253,32 @@ export const IdentityPanel: React.FC = () => {
               ))}
             </select>
           </label>
+
+          <div className="mt-4">
+            <label className="block">
+              <span className="text-xs text-slate-400">Occupation</span>
+              <input
+                type="text"
+                value={profile.occupation ?? ''}
+                onChange={(e) => updateProfile('occupation', e.target.value || undefined)}
+                placeholder="e.g., blacksmith, scholar, healer..."
+                list="occupation-suggestions"
+                className="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+              <datalist id="occupation-suggestions">
+                {COMMON_OCCUPATIONS.map((occupation) => (
+                  <option key={occupation} value={occupation} />
+                ))}
+              </datalist>
+            </label>
+            <p className="text-xs text-slate-500 mt-1">
+              Occupation influences suggested sensory templates.
+            </p>
+          </div>
         </div>
       </IdentityCard>
+
+      <SensoryProfileCard hasContent={completion.sensoryProfile?.hasContent} />
 
       {/* Personality Dimensions Card */}
       <IdentityCard

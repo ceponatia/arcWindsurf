@@ -1,6 +1,11 @@
 import React from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
-import { getRecordOptional, setRecord, type BodyMap, type BodyRegion } from '@minimal-rpg/schemas';
+import {
+  getRecordOptional,
+  setPartialRecord,
+  type BodyMap,
+  type BodyRegion,
+} from '@minimal-rpg/schemas';
 import { characterProfile, updateProfile } from '../signals.js';
 import { IdentityCard } from './IdentityCard.js';
 
@@ -34,7 +39,7 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
   const updateBodyRegion = (region: BodyRegion, description: string) => {
     const currentRegionData = getRecordOptional(body, region) ?? {};
     const updatedBody: BodyMap = { ...body };
-    setRecord(updatedBody, region, {
+    setPartialRecord(updatedBody, region, {
       ...currentRegionData,
       visual: {
         ...currentRegionData.visual,
@@ -45,7 +50,12 @@ export const BodyCard: React.FC<{ hasContent?: boolean }> = ({ hasContent }) => 
   };
 
   return (
-    <IdentityCard title="Body & Appearance" defaultOpen={false} hasContent={hasContent}>
+    <IdentityCard
+      title="Body & Appearance"
+      defaultOpen={false}
+      hasContent={hasContent}
+      cardId="body"
+    >
       <div className="space-y-4">
         <label className="block">
           <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Hair</span>

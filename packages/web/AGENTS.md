@@ -19,4 +19,12 @@ Vite-based React frontend for Minimal RPG. The player-facing web client that com
 - **utils**: Shared utility functions
 - **db**: Indirect dependency through API (web does not call db directly)
 
+## Code Standards
+
+- TypeScript with strict typing
+- React with functional components and hooks
+- Keep types in domain-level and shared types files where appropriate. Do not define types in-line.
+- Use utils from `@minimal-rpg/utils` instead of duplicating logic.
+- Prefer to add utils to `@minimal-rpg/utils` instead of scope-specific helpers when possible.
+
 This package is the frontend entry point. All backend communication goes through the API package.
