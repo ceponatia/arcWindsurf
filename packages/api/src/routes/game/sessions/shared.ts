@@ -11,7 +11,7 @@ import type { LoadedData } from '../../../loaders/types.js';
 import type { CreateSessionRequest, MessageRequest } from '../../../services/types.js';
 import { getEntityProfile } from '@minimal-rpg/db/node';
 import { extractJsonField } from '@minimal-rpg/utils';
-import { toId } from '../../../utils/uuid.js';
+import { isUuid, toId } from '../../../utils/uuid.js';
 
 // Type guards for request validation
 export function isMessageRequest(body: unknown): body is MessageRequest {
@@ -65,6 +65,10 @@ export async function findCharacter(
   const fsChar = loaded.characters.find((c) => c.id === id);
   if (fsChar) return fsChar;
 
+  if (!isUuid(id)) {
+    return null;
+  }
+
   const dbChar = await getEntityProfile(toId(id));
   if (dbChar?.entityType === 'character') {
     try {
@@ -82,6 +86,12 @@ export async function findCharacter(
 export async function findSetting(loaded: LoadedData, id: string): Promise<SettingProfile | null> {
   const fsSet = loaded.settings.find((s) => s.id === id);
   if (fsSet) return fsSet;
+
+  // `entity_profiles.id` is UUID. Avoid passing legacy/non-UUID ids into the DB layer,
+  // which would otherwise bubble up as a Postgres 22P02 and surface as a 500.
+  if (!isUuid(id)) {
+    return null;
+  }
 
   const dbSet = await getEntityProfile(toId(id));
   if (dbSet?.entityType === 'setting') {

@@ -80,9 +80,11 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
           audience: supabaseCfg.audience ?? null,
         });
       }
-    } else if (debugAuth) {
-      console.warn('[auth] Supabase auth NOT configured (SUPABASE_JWT_ISSUER or JWKS missing)');
     } else {
+      if (debugAuth) {
+        console.warn('[auth] Supabase auth NOT configured (SUPABASE_JWT_ISSUER or JWKS missing)');
+      }
+
       // Legacy local auth token verification.
       const secret = getAuthSecret();
       if (secret) {
@@ -147,7 +149,7 @@ function isPublicPath(path: string): boolean {
  *
  * Also optionally enforces invite-only access when INVITE_ONLY=true.
  */
-export async function requireAuthIfEnabled(c: Context, next: Next): Promise<void> {
+export async function requireAuthIfEnabled(c: Context, next: Next): Promise<void | Response> {
   if (!isAuthRequired()) {
     await next();
     return;
@@ -166,37 +168,29 @@ export async function requireAuthIfEnabled(c: Context, next: Next): Promise<void
 
   const user = getAuthUser(c);
   if (!user) {
-    c.status(401);
-    c.json({ ok: false, error: 'Unauthorized' } satisfies ApiError);
-    return;
+    return c.json({ ok: false, error: 'Unauthorized' } satisfies ApiError, 401);
   }
 
   if (isInviteOnly()) {
     const invited = getInviteEmails();
     const email = user.email ?? null;
     if (!email || !invited.has(email.toLowerCase())) {
-      c.status(403);
-      c.json({ ok: false, error: 'Forbidden' } satisfies ApiError);
-      return;
+      return c.json({ ok: false, error: 'Forbidden' } satisfies ApiError, 403);
     }
   }
 
   await next();
 }
 
-export async function requireAdmin(c: Context, next: Next): Promise<void> {
+export async function requireAdmin(c: Context, next: Next): Promise<void | Response> {
   const user = getAuthUser(c);
 
   if (!user) {
-    c.status(401);
-    c.json({ ok: false, error: 'Unauthorized' } satisfies ApiError);
-    return;
+    return c.json({ ok: false, error: 'Unauthorized' } satisfies ApiError, 401);
   }
 
   if (user.role !== 'admin') {
-    c.status(403);
-    c.json({ ok: false, error: 'Forbidden' } satisfies ApiError);
-    return;
+    return c.json({ ok: false, error: 'Forbidden' } satisfies ApiError, 403);
   }
 
   await next();

@@ -16,9 +16,8 @@ import {
   getStudioSession,
   updateStudioSession,
   deleteStudioSession,
-  cleanupExpiredSessions,
   type StudioSession,
-} from '@minimal-rpg/db';
+} from '@minimal-rpg/db/node';
 import { Cause, Effect, Exit } from 'effect';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
@@ -28,9 +27,6 @@ import { getConfig } from '../utils/config.js';
 
 // In-memory actor cache (actors are expensive to create)
 const actorCache = new Map<string, StudioNpcActor>();
-
-// Cleanup expired sessions on startup (background)
-cleanupExpiredSessions().catch(err => console.warn('Failed to cleanup expired sessions:', err));
 
 const cfg = getConfig();
 
@@ -148,6 +144,14 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     userMessage: z.string(),
     characterResponse: z.string(),
     profile: z.record(z.string(), z.unknown()),
+  });
+
+  // Legacy payload for older clients/tests.
+  // Note: no session persistence in this mode.
+  const LegacyInferTraitsRequestSchema = z.object({
+    userMessage: z.string(),
+    characterResponse: z.string(),
+    currentProfile: z.record(z.string(), z.unknown()),
   });
 
   const isHttpError = (err: unknown): err is { status: number } => {
@@ -299,8 +303,55 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   app.post('/studio/infer-traits', async (c) => {
     try {
       const body: unknown = await c.req.json();
-      const parsed = InferTraitsRequestSchema.safeParse(body);
 
+      const legacyParsed = LegacyInferTraitsRequestSchema.safeParse(body);
+      if (legacyParsed.success) {
+        if (!llmProvider) {
+          return c.json(
+            {
+              ok: false,
+              error: 'LLM provider not configured',
+              code: 'CONFIG_ERROR',
+              retryable: false,
+            } satisfies StudioError,
+            503
+          );
+        }
+
+        const { userMessage, characterResponse, currentProfile } = legacyParsed.data;
+
+        try {
+          const profile = currentProfile as Partial<CharacterProfile>;
+          const prompt = `Infer personality traits from the exchange and return strict JSON: {"traits": string[]}.\n\nUser: ${userMessage}\nCharacter: ${characterResponse}\n\nCurrent profile: ${JSON.stringify(profile)}`;
+
+          const res = await runLlmEffect(llmProvider.chat([{ role: 'user', content: prompt }]));
+          const content = typeof res.content === 'string' ? res.content : '';
+
+          try {
+            const parsedJson = JSON.parse(content) as unknown;
+            const obj = parsedJson as { traits?: unknown };
+            const traits = Array.isArray(obj?.traits)
+              ? obj.traits.filter((t): t is string => typeof t === 'string')
+              : [];
+            return c.json({ traits }, 200);
+          } catch {
+            return c.json({ traits: [] }, 200);
+          }
+        } catch (error) {
+          // Preserve legacy behavior: parse errors degrade gracefully to an empty list.
+          // But treat rate limits/timeouts as typed retryable errors.
+          const mapped = toStudioError(error);
+          if (mapped.status === 429 || mapped.status === 504) {
+            console.error('Infer traits LLM error:', getMessage(error));
+            return c.json(mapped.body, mapped.status);
+          }
+
+          console.error('Infer traits LLM error:', getMessage(error));
+          return c.json({ traits: [] }, 200);
+        }
+      }
+
+      const parsed = InferTraitsRequestSchema.safeParse(body);
       if (!parsed.success) {
         return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
       }

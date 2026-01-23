@@ -9,7 +9,10 @@ export default defineWorkspace([
   'packages/api/vitest.config.ts',
   'packages/db/vitest.config.ts',
   'packages/schemas/vitest.config.ts',
+  'packages/ui/vitest.config.ts',
+  'packages/utils/vitest.config.ts',
   'packages/web/vitest.config.ts',
+  'packages/workers/vitest.config.ts',
   {
     test: {
       globals: true,

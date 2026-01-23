@@ -44,6 +44,54 @@ All external input MUST be validated at boundaries before reaching internal logi
 
 See [record-helpers.ts](src/shared/record-helpers.ts) for detailed documentation and examples.
 
+## Folder Mental Model: World Spec vs Boundary Spec
+
+Inside this package, think in **two categories**. You don't have to move files — just **treat them differently**.
+
+### 🌍 "World Spec" — These Define Reality
+
+```text
+character/
+body-regions/
+items/
+location/
+persona/
+simulation/
+state/
+time/
+races/
+tags/
+```
+
+These change slowly and should be tested for **invariants**, not UI behavior.
+
+**Test focus:**
+
+- Schema shape stability
+- Default values
+- Domain rule enforcement (e.g., "personality array must be non-empty")
+
+### ✂️ "Boundary Spec" — These Cross Technical Seams
+
+```text
+api/
+events/
+shared/
+utils/schema-helpers.ts
+```
+
+These need:
+
+- **Strict parsing tests** (valid/invalid inputs)
+- **Backward compatibility tests** (old payloads still parse)
+- **Serialization tests** (JSON round-trip, date handling)
+
+**Why the distinction matters:**
+
+World Spec schemas define "what the game world is." Boundary Spec schemas define "how data moves between systems." When an LLM refactors a Boundary Spec schema and breaks serialization, routes fail at runtime even though TypeScript compiles. Testing boundaries catches this.
+
+> See also: [dev-docs/009-contracts-analysis/ANALYSIS-contracts-package-evaluation.md](../../dev-docs/009-contracts-analysis/ANALYSIS-contracts-package-evaluation.md)
+
 ## Package Connections
 
 This package has no internal workspace dependencies. It is imported by nearly every other package:

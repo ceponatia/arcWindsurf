@@ -8,20 +8,17 @@ import {
   upsertActorState,
   getSessionProjection,
   getEventsForSession,
-  getEntityProfile,
 } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import { notFound, badRequest, serverError } from '../../../utils/responses.js';
+import { jsonifyBigInts } from '../../../utils/json.js';
 import { generateId } from '@minimal-rpg/utils';
 import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
-import { toId, toSessionId } from '../../../utils/uuid.js';
+import { toSessionId } from '../../../utils/uuid.js';
 import { primeSessionSequence } from '../../../services/event-persistence.js';
-
-interface SpokePayload {
-  content?: string;
-  entityProfileId?: string;
-}
+import { mapSpokeEventsToMessages } from './message-mapping.js';
+import { createMessageMappingDeps } from './message-mapping-deps.js';
 
 type DbEvent = Awaited<ReturnType<typeof getEventsForSession>>[number];
 type SpokeEventRecord = DbEvent & { actorId: string; type: 'SPOKE' };
@@ -41,35 +38,10 @@ export async function handleGetSession(c: Context): Promise<Response> {
   const spokeEvents: SpokeEventRecord[] = allEvents.filter(
     (event): event is SpokeEventRecord => event.type === 'SPOKE' && typeof event.actorId === 'string'
   );
-  const messages = await Promise.all(
-    spokeEvents.map(async (event) => {
-      const payload = (event.payload ?? {}) as SpokePayload;
-      const rawTimestamp = (event as DbEvent).timestamp;
-      const createdAt = rawTimestamp instanceof Date ? rawTimestamp : new Date(rawTimestamp ?? Date.now());
-      const sequence = typeof event.sequence === 'bigint' ? event.sequence : BigInt(event.sequence ?? 0);
-      let speaker;
-      if (event.actorId && event.actorId !== 'player') {
-        const profileId = payload.entityProfileId ?? event.actorId;
-        const profile = profileId ? await getEntityProfile(toId(profileId)) : null;
-        if (profile) {
-          speaker = {
-            id: event.actorId,
-            name: profile.name,
-          };
-        }
-      }
 
-      return {
-        role: event.actorId === 'player' ? 'user' : 'assistant',
-        content: payload.content ?? '',
-        createdAt: createdAt.toISOString(),
-        idx: Number(sequence),
-        speaker,
-      };
-    })
-  );
+  const messages = await mapSpokeEventsToMessages(spokeEvents, createMessageMappingDeps(id));
 
-  return c.json({ ...session, projection, messages }, 200);
+  return c.json(jsonifyBigInts({ ...session, projection, messages }), 200);
 }
 
 export async function handleCreateSession(

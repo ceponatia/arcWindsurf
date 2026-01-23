@@ -33,6 +33,13 @@ export const initialFormState: SettingFormState = {
   factions: [],
 };
 
+export function createInitialFormState(): SettingFormState {
+  return {
+    ...initialFormState,
+    id: crypto.randomUUID(),
+  };
+}
+
 export const mapProfileToForm = (profile: SettingBackground): SettingFormState => {
   const p = profile as ExtendedSettingBackground;
   return {
@@ -64,10 +71,10 @@ export const buildProfile = (form: SettingFormState): SettingBackground => {
   const safety: SettingSafety | undefined =
     form.safetyRating || excludedTopics.length > 0 || contentWarnings.length > 0
       ? {
-          ...(form.safetyRating ? { rating: form.safetyRating as SafetyRating } : {}),
-          ...(excludedTopics.length > 0 ? { excludedTopics } : {}),
-          ...(contentWarnings.length > 0 ? { contentWarnings } : {}),
-        }
+        ...(form.safetyRating ? { rating: form.safetyRating as SafetyRating } : {}),
+        ...(excludedTopics.length > 0 ? { excludedTopics } : {}),
+        ...(contentWarnings.length > 0 ? { contentWarnings } : {}),
+      }
       : undefined;
 
   return {

@@ -29,7 +29,7 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 
 export function getAuthSecret(): string {
   const secret = process.env['AUTH_SECRET'];
-  if (secret && secret.trim().length >= 16) return secret;
+  if (secret && secret.trim().length > 0) return secret.trim();
 
   // Dev fallback: tokens are only as strong as this secret.
   // If you want stable tokens across restarts, set AUTH_SECRET in your environment.

@@ -1,0 +1,21 @@
+{
+  "_fixture_meta": {
+    "schema": "ParsedPlayerInputSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy parsed input payload"
+  },
+  "rawInput": "Hello there",
+  "segments": [
+    {
+      "id": "seg-1",
+      "type": "speech",
+      "content": "Hello there",
+      "observable": true,
+      "confidence": 0.8
+    }
+  ],
+  "warnings": [
+    "none"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "_fixture_meta": {
+    "schema": "CreateTagBindingRequestSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy tag binding request payload"
+  },
+  "tagId": "11111111-1111-1111-1111-111111111111",
+  "targetEntityId": null,
+  "enabled": true
+}

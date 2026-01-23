@@ -1,0 +1,13 @@
+{
+  "_fixture_meta": {
+    "schema": "WorldEventSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy world event payload"
+  },
+  "type": "MOVED",
+  "sessionId": "session-legacy",
+  "actorId": "npc-1",
+  "fromLocationId": "loc-1",
+  "toLocationId": "loc-2"
+}

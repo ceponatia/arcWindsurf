@@ -205,12 +205,15 @@ export class InMemoryRetrievalService implements RetrievalService {
     } else {
       // No embedding available - rank by importance only
       scoredNodes = candidates
-        .map((node) => ({
-          node,
-          similarity: 0,
-          totalImportance: node.baseImportance + node.narrativeImportance,
-          score: (node.baseImportance + node.narrativeImportance) * weights.importance,
-        }))
+        .map((node) => {
+          const totalImportance = node.baseImportance + node.narrativeImportance;
+          return {
+            node,
+            similarity: 0,
+            totalImportance,
+            score: totalImportance,
+          };
+        })
         .sort((a, b) => b.score - a.score);
     }
 
@@ -267,9 +270,9 @@ export class InMemoryRetrievalService implements RetrievalService {
     // Create new nodes - build options object properly for exactOptionalPropertyTypes
     for (const ext of diff.toCreate) {
       const nodeOptions: { id: string; characterInstanceId?: string; settingInstanceId?: string } =
-        {
-          id: this.store.generateId(),
-        };
+      {
+        id: this.store.generateId(),
+      };
       if (characterInstanceId) {
         nodeOptions.characterInstanceId = characterInstanceId;
       }

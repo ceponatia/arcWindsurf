@@ -1,0 +1,10 @@
+{
+  "_fixture_meta": {
+    "schema": "CreateTagRequestSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy tag create payload"
+  },
+  "name": "Strict Tone",
+  "promptText": "Be concise."
+}

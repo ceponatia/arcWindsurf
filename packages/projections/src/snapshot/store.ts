@@ -1,4 +1,4 @@
-import { drizzle as db, sessionProjections } from '@minimal-rpg/db';
+import { db, sessionProjections } from '@minimal-rpg/db';
 import { getRecordOptional } from '@minimal-rpg/schemas';
 
 type ProjectionColumnName = 'location' | 'inventory' | 'time' | 'npcs';

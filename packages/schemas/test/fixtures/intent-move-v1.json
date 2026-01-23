@@ -1,0 +1,11 @@
+{
+  "_fixture_meta": {
+    "schema": "IntentSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy move intent payload"
+  },
+  "type": "MOVE_INTENT",
+  "sessionId": "session-legacy",
+  "destinationId": "loc-1"
+}

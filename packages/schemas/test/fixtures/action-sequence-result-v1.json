@@ -1,0 +1,21 @@
+{
+  "_fixture_meta": {
+    "schema": "ActionSequenceResultSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy action sequence result payload"
+  },
+  "completedActions": [],
+  "pendingActions": [
+    {
+      "id": "action-1",
+      "order": 1,
+      "type": "move",
+      "description": "Move to the door"
+    }
+  ],
+  "accumulatedContext": {
+    "perAction": []
+  },
+  "finalState": {}
+}

@@ -16,6 +16,7 @@ import {
   promptTags,
   inArray,
 } from '@minimal-rpg/db/node';
+import { ensureUserByEmail } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import { badRequest, serverError, notFound } from '../../../utils/responses.js';
 import { generateId, generateInstanceId } from '@minimal-rpg/utils';
@@ -52,20 +53,22 @@ const CreateFullSessionRequestSchema = z.object({
   secondsPerTurn: z.number().min(1).optional(),
 
   /** Required: NPCs to include in the session */
-  npcs: z.array(
-    z.object({
-      /** Character template ID */
-      characterId: z.string().min(1),
-      /** Role in the session */
-      role: z.enum(['primary', 'supporting', 'background', 'antagonist']).default('supporting'),
-      /** NPC tier for detail level */
-      tier: z.enum(['major', 'minor', 'transient']).default('minor'),
-      /** Optional starting location for this NPC */
-      startLocationId: z.string().optional(),
-      /** Optional label for identifying this NPC instance */
-      label: z.string().optional(),
-    })
-  ),
+  npcs: z
+    .array(
+      z.object({
+        /** Character template ID */
+        characterId: z.string().min(1),
+        /** Role in the session */
+        role: z.enum(['primary', 'supporting', 'background', 'antagonist']).default('supporting'),
+        /** NPC tier for detail level */
+        tier: z.enum(['major', 'minor', 'transient']).default('minor'),
+        /** Optional starting location for this NPC */
+        startLocationId: z.string().optional(),
+        /** Optional label for identifying this NPC instance */
+        label: z.string().optional(),
+      })
+    )
+    .min(1, 'at least one npc is required'),
 
   /** Optional: Initial relationships between entities */
   relationships: z
@@ -158,6 +161,23 @@ export async function handleCreateFullSession(
     return badRequest(c, 'authenticated user required with email/identifier');
   }
 
+  // sessions.owner_email references user_accounts.email via FK.
+  // Ensure a matching user row exists to prevent FK violations.
+  try {
+    await ensureUserByEmail({
+      email: ownerEmail,
+      identifier: ownerEmail,
+      displayName: user?.identifier ?? null,
+      role: user?.role === 'admin' ? 'admin' : 'user',
+    });
+  } catch (err) {
+    console.error('[API] Failed to ensure user account for owner email', {
+      ownerEmail,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return serverError(c, 'failed to ensure user account');
+  }
+
   const loaded = getLoaded();
   if (!loaded) {
     console.error('[API] Data not loaded');
@@ -209,7 +229,9 @@ export async function handleCreateFullSession(
       return notFound(c, `persona not found: ${request.personaId}`);
     }
     const personaState = personaResult[0].state as Record<string, unknown>;
-    const profileFromState = (personaState['profile'] as CharacterProfile | Record<string, unknown> | undefined) ?? personaState;
+    const profileFromState =
+      (personaState['profile'] as CharacterProfile | Record<string, unknown> | undefined) ??
+      personaState;
     personaProfile = profileFromState;
   }
 
@@ -258,6 +280,10 @@ export async function handleCreateFullSession(
     }
   }
 
+  if (npcInstances.length === 0) {
+    return badRequest(c, 'at least one npc is required');
+  }
+
   // Determine primary NPC (first one with role 'primary', or first NPC)
   const primaryNpc = npcInstances.find((n) => n.role === 'primary') ?? npcInstances[0];
 
@@ -269,8 +295,11 @@ export async function handleCreateFullSession(
         id: toId(sessionId),
         ownerEmail,
         name: `Session ${sessionId.substring(0, 8)}`,
-        playerCharacterId: toId(primaryNpc?.characterId ?? ''),
-        settingId: toId(request.settingId),
+        // Note: many built-in/test profiles use non-UUID IDs (e.g. "test-setting-001").
+        // These session columns are UUID foreign keys, so we intentionally leave them null
+        // and rely on actor state + projections for runtime behavior.
+        playerCharacterId: null,
+        settingId: null,
         status: 'active',
       });
 
@@ -343,7 +372,7 @@ export async function handleCreateFullSession(
           sessionId: toSessionId(sessionId),
           actorType: 'npc',
           actorId: npc.id,
-          entityProfileId: toId(npc.characterId),
+          entityProfileId: null,
           state: {
             role: npc.role,
             tier: npc.tier,
@@ -366,7 +395,7 @@ export async function handleCreateFullSession(
           sessionId: toSessionId(sessionId),
           actorType: 'player',
           actorId: 'player',
-          entityProfileId: request.personaId ? toId(request.personaId) : undefined,
+          entityProfileId: null,
           state: {
             profile: personaProfile,
             status: 'active',
@@ -382,6 +411,8 @@ export async function handleCreateFullSession(
         targetType: string;
         targetEntityId: string | null;
       }[] = [];
+
+      const insertedTagIds = new Set<string>();
 
       if (request.tags) {
         for (const tag of request.tags) {
@@ -411,12 +442,18 @@ export async function handleCreateFullSession(
             targetEntityId = npcInstance?.id ?? targetEntityId;
           }
 
-          await tx.insert(sessionTags).values({
-            id: toId(bindingId),
-            sessionId: toSessionId(sessionId),
-            tagId: toId(normalized.tagId),
-            enabled: true,
-          });
+          // The current DB model stores tags at the session level (unique by sessionId+tagId).
+          // The UI may expand a single tag into multiple bindings (e.g. per-character targets),
+          // so we dedupe inserts to avoid unique constraint violations.
+          if (!insertedTagIds.has(normalized.tagId)) {
+            insertedTagIds.add(normalized.tagId);
+            await tx.insert(sessionTags).values({
+              id: toId(bindingId),
+              sessionId: toSessionId(sessionId),
+              tagId: toId(normalized.tagId),
+              enabled: true,
+            });
+          }
 
           tagBindings.push({
             id: bindingId,

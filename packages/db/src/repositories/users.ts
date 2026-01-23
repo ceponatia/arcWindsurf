@@ -26,6 +26,7 @@ import type { UserPreferences, UserRole, UserAccount } from './types.js';
  */
 interface UserAccountRow extends DbRow {
   id: string;
+  email?: string | null;
   identifier: string;
   display_name: string | null;
   role?: string;
@@ -214,6 +215,39 @@ export async function ensureUserRole(identifier: string, role: UserRole): Promis
      ON CONFLICT (identifier) DO UPDATE SET role = EXCLUDED.role`,
     [identifier, role]
   );
+}
+
+/**
+ * Ensure a user row exists for a given email.
+ *
+ * This is primarily used by multi-tenant tables that reference `user_accounts.email`
+ * via foreign keys (e.g. sessions.owner_email).
+ */
+export async function ensureUserByEmail(options: {
+  email: string;
+  identifier?: string;
+  displayName?: string | null;
+  role?: UserRole;
+}): Promise<UserAccount> {
+  const email = options.email.trim().toLowerCase();
+  const identifier = (options.identifier ?? email).trim();
+  const displayName = options.displayName ?? null;
+  const role = options.role ?? 'user';
+
+  const res = await pool.query(
+    `INSERT INTO user_accounts (email, identifier, display_name, preferences, role, auth_provider)
+     VALUES ($1, $2, $3, '{}'::jsonb, $4, 'local')
+     ON CONFLICT (email) DO UPDATE
+       SET identifier = EXCLUDED.identifier,
+           display_name = COALESCE(EXCLUDED.display_name, user_accounts.display_name),
+           role = EXCLUDED.role,
+           updated_at = NOW()
+     RETURNING *`,
+    [email, identifier, displayName, role]
+  );
+
+  const row = res.rows[0] as UserAccountRow;
+  return rowToUserAccount(row);
 }
 
 export async function ensureLocalAdminUser(options: {

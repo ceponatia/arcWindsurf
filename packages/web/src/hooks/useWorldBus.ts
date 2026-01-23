@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { connectStream } from '../services/stream.js';
+import { API_BASE_URL } from '../config.js';
 import {
   updateSessionStatus,
   addEvent,
@@ -27,7 +28,7 @@ export function useWorldBus(sessionId: string | null) {
   useEffect(() => {
     if (!sessionId) return;
 
-    const url = `/api/stream/${sessionId}`;
+    const url = new URL(`/stream/${sessionId}`, API_BASE_URL).toString();
 
     const disconnect = connectStream(url, {
       onStatusChange: (status) => {

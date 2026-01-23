@@ -1,0 +1,11 @@
+{
+  "_fixture_meta": {
+    "schema": "SystemPromptSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy prompt rules shape"
+  },
+  "rules": [
+    "always respond in character"
+  ]
+}

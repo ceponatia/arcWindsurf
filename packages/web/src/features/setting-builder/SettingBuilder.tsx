@@ -68,7 +68,14 @@ export const SettingBuilder: React.FC<{
     }
 
     try {
-      await saveSetting(profile);
+      const result = await saveSetting(profile);
+      const savedId = result.setting?.id;
+      if (savedId && savedId !== form.id) {
+        updateField('id', savedId);
+        if (!id) {
+          window.location.hash = `#/setting-builder?id=${encodeURIComponent(savedId)}`;
+        }
+      }
       setSuccess('Saved successfully');
       if (onSaveCallback) onSaveCallback();
     } catch (e: unknown) {

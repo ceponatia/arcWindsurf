@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { worldBus } from '@minimal-rpg/bus';
 import { type WorldEvent } from '@minimal-rpg/schemas';
+import { safeJsonStringify } from '../utils/json.js';
 
 const router = new Hono();
 
@@ -18,13 +19,13 @@ router.get('/:sessionId', (c) => {
       const rawEvent = event as Record<string, unknown>;
       const payload = rawEvent['payload'] as Record<string, unknown> | undefined;
       const eventSessionId = (rawEvent['sessionId'] as string | undefined) ?? (payload?.['sessionId'] as string | undefined);
-      
+
       if (eventSessionId && eventSessionId !== sessionId) {
         return;
       }
 
       await stream.writeSSE({
-        data: JSON.stringify(event),
+        data: safeJsonStringify(event),
         event: event.type,
         id: (rawEvent['id'] as string | number | undefined)?.toString() ?? Date.now().toString(),
       });

@@ -1,0 +1,23 @@
+{
+  "_fixture_meta": {
+    "schema": "SensoryContextForNpcSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy sensory context payload"
+  },
+  "available": {
+    "smell": [
+      {
+        "source": "air",
+        "description": "fresh",
+        "intensity": 0.4
+      }
+    ]
+  },
+  "narrativeHints": {
+    "playerIsSniffing": false,
+    "playerIsTouching": false,
+    "playerIsTasting": false,
+    "recentSensoryAction": false
+  }
+}

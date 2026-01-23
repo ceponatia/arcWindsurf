@@ -1,0 +1,20 @@
+{
+  "_fixture_meta": {
+    "schema": "ActionSequenceSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy action sequence payload"
+  },
+  "actions": [
+    {
+      "id": "action-1",
+      "order": 1,
+      "type": "move",
+      "description": "Move to the door",
+      "target": "door"
+    }
+  ],
+  "dependencies": {
+    "action-1": []
+  }
+}

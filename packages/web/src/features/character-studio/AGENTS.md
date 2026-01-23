@@ -200,6 +200,12 @@ Located in [validation/](validation/):
 - `generateCharacterResponse(input)` - Get AI response in character voice
 - `inferTraitsFromMessage(input)` - Extract personality traits from dialogue
 
+## Data Freshness (Views)
+
+Character Studio is navigated via hash routing and the app controller can remain mounted across view changes.
+
+If a new view or panel needs list data (characters/settings/etc) to be fresh when entered, wire that behavior through the shared `useRefreshOnViewEnter` hook in `useAppController` rather than adding inline refresh effects inside feature components.
+
 ### Trait Inference ([services/trait-inference.ts](services/trait-inference.ts))
 
 Client-side fallback for trait detection using keyword patterns. Used when API is unavailable.

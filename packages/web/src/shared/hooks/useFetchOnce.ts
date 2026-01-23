@@ -80,10 +80,10 @@ export function useFetchOnce<TData, TRaw = TData>({
     };
   }, [fetchOnce]);
 
-  const retry = () => {
+  const retry = useCallback((): void => {
     fetchedRef.current = false;
     fetchOnce();
-  };
+  }, [fetchOnce]);
 
   return { ...state, retry };
 }

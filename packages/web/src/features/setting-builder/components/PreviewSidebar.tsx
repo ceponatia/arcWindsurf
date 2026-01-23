@@ -52,7 +52,6 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
     <div className="space-y-4">
       <div>
         <div className="text-lg font-semibold text-slate-200">{form.name || 'Unnamed Setting'}</div>
-        <div className="text-xs text-slate-500">ID: {form.id || '—'}</div>
       </div>
 
       {form.tone && (

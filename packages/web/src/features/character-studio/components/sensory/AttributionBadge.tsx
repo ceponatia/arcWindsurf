@@ -18,7 +18,7 @@ const COLOR_MAP: Record<string, string> = {
 export const AttributionBadge: React.FC<AttributionBadgeProps> = ({ source }) => {
   const [type, value] = source.includes(':') ? source.split(':') : [source, null];
   const resolvedType = type ?? 'default';
-  const color = getRecordOptional(COLOR_MAP, resolvedType) ?? COLOR_MAP.default;
+  const color = getRecordOptional(COLOR_MAP, resolvedType) ?? COLOR_MAP['default'];
   const label = value ? `${resolvedType}: ${value}` : resolvedType;
 
   return <span className={`text-xs px-1.5 py-0.5 rounded border ${color}`}>{label}</span>;

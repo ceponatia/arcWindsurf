@@ -5,5 +5,6 @@ export * from './useSettings.js';
 export * from './useAuth.js';
 export * from './usePersonas.js';
 export * from './useFetchOnce.js';
+export * from './useRefreshOnViewEnter.js';
 export * from './useCharacters.js';
 export * from './useItems.js';

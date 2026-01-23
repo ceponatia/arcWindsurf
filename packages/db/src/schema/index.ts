@@ -1,5 +1,19 @@
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { pgTable, uuid, text, timestamp, jsonb, bigint, integer, real, boolean, doublePrecision, index, unique, customType } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  jsonb,
+  bigint,
+  integer,
+  real,
+  boolean,
+  doublePrecision,
+  index,
+  unique,
+  customType,
+} from 'drizzle-orm/pg-core';
 
 // Custom type for pgvector
 const vector = customType<{ data: number[] }>({
@@ -21,6 +35,26 @@ export const userAccounts = pgTable('user_accounts', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const workspaceDrafts = pgTable(
+  'workspace_drafts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    name: text('name'),
+    workspaceState: jsonb('workspace_state').notNull().default({}),
+    currentStep: text('current_step').notNull().default('setting'),
+    validationState: jsonb('validation_state'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      userIdx: index('idx_workspace_drafts_user').on(table.userId),
+      updatedIdx: index('idx_workspace_drafts_updated').on(table.updatedAt),
+    };
+  }
+);
 
 export const entityProfiles = pgTable(
   'entity_profiles',
@@ -147,9 +181,12 @@ export const prefabLocationInstances = pgTable(
       .references(() => locations.id, { onDelete: 'cascade' }),
     positionX: doublePrecision('position_x').notNull().default(0.5),
     positionY: doublePrecision('position_y').notNull().default(0.5),
-    parentInstanceId: uuid('parent_instance_id').references((): AnyPgColumn => prefabLocationInstances.id, {
-      onDelete: 'set null',
-    }),
+    parentInstanceId: uuid('parent_instance_id').references(
+      (): AnyPgColumn => prefabLocationInstances.id,
+      {
+        onDelete: 'set null',
+      }
+    ),
     depth: integer('depth').notNull().default(0),
     ports: jsonb('ports').default([]),
     overrides: jsonb('overrides').default({}),
@@ -318,6 +355,7 @@ export const sessionProjections = pgTable('session_projections', {
   location: jsonb('location').notNull().default({}),
   inventory: jsonb('inventory').notNull().default({}),
   time: jsonb('time').notNull().default({}),
+  npcs: jsonb('npcs').notNull().default({}),
   worldState: jsonb('world_state').notNull().default({}),
   lastEventSeq: bigint('last_event_seq', { mode: 'bigint' }).notNull().default(0n),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

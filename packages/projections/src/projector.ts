@@ -1,4 +1,4 @@
-import { drizzle as db, events, sessionProjections, eq, gt, and, asc } from '@minimal-rpg/db';
+import { db, events, sessionProjections, eq, gt, and, asc } from '@minimal-rpg/db';
 import { WorldEventSchema, type WorldEvent } from '@minimal-rpg/schemas';
 import type { Projection, ReplayOptions } from './types.js';
 

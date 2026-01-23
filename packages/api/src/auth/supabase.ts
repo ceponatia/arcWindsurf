@@ -113,7 +113,7 @@ export function getSupabaseAuthConfig(): SupabaseAuthConfig | null {
 function readEmailFromPayload(payload: JWTPayload): string | null {
   const recordPayload = payload as Record<string, unknown>;
   const claim = typeof recordPayload['email'] === 'string' ? recordPayload['email'] : null;
-  const email = claim?.trim() ?? '';
+  const email = claim?.trim().toLowerCase() ?? '';
   return email.length > 0 ? email : null;
 }
 

@@ -1,0 +1,13 @@
+{
+  "_fixture_meta": {
+    "schema": "SystemEventSchema",
+    "version": "1.0.0",
+    "created": "2026-01-23",
+    "note": "Legacy actor spawn system event payload"
+  },
+  "type": "ACTOR_SPAWN",
+  "sessionId": "session-legacy",
+  "actorId": "npc-1",
+  "actorType": "npc",
+  "locationId": "loc-1"
+}

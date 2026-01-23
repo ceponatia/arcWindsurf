@@ -11,17 +11,13 @@ import {
   eq,
   and,
   getEventsForSession,
-  getEntityProfile,
 } from '@minimal-rpg/db/node';
 import { notFound, badRequest } from '../../../utils/responses.js';
 import { isMessageRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
-import { toId, toSessionId } from '../../../utils/uuid.js';
-
-interface SpokePayload {
-  content?: string;
-  entityProfileId?: string;
-}
+import { toSessionId } from '../../../utils/uuid.js';
+import { mapSpokeEventsToMessages } from './message-mapping.js';
+import { createMessageMappingDeps } from './message-mapping-deps.js';
 
 type DbEvent = Awaited<ReturnType<typeof getEventsForSession>>[number];
 type SpokeEventRecord = DbEvent & { actorId: string; type: 'SPOKE' };
@@ -38,34 +34,7 @@ export async function handleListMessages(c: Context): Promise<Response> {
     (event): event is SpokeEventRecord => event.type === 'SPOKE' && typeof event.actorId === 'string'
   );
 
-  const messages = await Promise.all(
-    spokeEvents.map(async (event) => {
-      const payload = (event.payload ?? {}) as SpokePayload;
-      const rawTimestamp = (event as DbEvent).timestamp;
-      const createdAt = rawTimestamp instanceof Date ? rawTimestamp : new Date(rawTimestamp ?? Date.now());
-      const sequence = typeof event.sequence === 'bigint' ? event.sequence : BigInt(event.sequence ?? 0);
-      let speaker;
-      if (event.actorId && event.actorId !== 'player') {
-        // Try to find actor profile
-        const profileId = payload.entityProfileId ?? event.actorId;
-        const profile = profileId ? await getEntityProfile(toId(profileId)) : null;
-        if (profile) {
-          speaker = {
-            id: event.actorId,
-            name: profile.name,
-          };
-        }
-      }
-
-      return {
-        role: event.actorId === 'player' ? 'user' : 'assistant',
-        content: payload.content ?? '',
-        createdAt: createdAt.toISOString(),
-        idx: Number(sequence),
-        speaker,
-      };
-    })
-  );
+  const messages = await mapSpokeEventsToMessages(spokeEvents, createMessageMappingDeps(id));
 
   return c.json(messages, 200);
 }

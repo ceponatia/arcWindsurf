@@ -12,6 +12,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, devtools, subscribeWithSelector } from 'zustand/middleware';
+import { API_BASE_URL } from '../../config.js';
 import type {
   CharacterProfile,
   SettingProfile,
@@ -776,7 +777,7 @@ function setupServerSync(): void {
         });
 
         // Try sendBeacon first (most reliable for unload)
-        const url = `/api/workspace-drafts/${state.draftId}`;
+        const url = new URL(`/workspace-drafts/${state.draftId}`, API_BASE_URL).toString();
         const success = navigator.sendBeacon(
           url,
           new Blob([payload], { type: 'application/json' })

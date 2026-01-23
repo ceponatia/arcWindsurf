@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { SettingBackground } from '@minimal-rpg/schemas';
 import { getSetting } from '../../../shared/api/client.js';
-import { initialFormState, mapProfileToForm } from '../transformers.js';
+import { createInitialFormState, mapProfileToForm } from '../transformers.js';
 import type { SettingFormState, FormFieldErrors, FormKey } from '../types.js';
 
 export const useSettingBuilderForm = (id?: string | null) => {
-  const [form, setForm] = useState<SettingFormState>(initialFormState);
+  const [form, setForm] = useState<SettingFormState>(() => createInitialFormState());
   const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
-      setForm(initialFormState);
+      setForm(createInitialFormState());
       return;
     }
 

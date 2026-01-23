@@ -28,11 +28,21 @@ export class PerceptionLayer {
     }
 
     // Location-based relevance
-    const eventLocationId =
-      (rawEvent['locationId'] as string | undefined) ??
-      (payload?.['locationId'] as string | undefined);
-    if (eventLocationId && eventLocationId !== state.locationId) {
-      // Event is in a different location - not relevant unless it's a TICK or system event
+    const locationCandidates = [
+      rawEvent['locationId'],
+      rawEvent['toLocationId'],
+      rawEvent['fromLocationId'],
+      payload?.['locationId'],
+      payload?.['toLocationId'],
+      payload?.['fromLocationId'],
+    ].filter((value): value is string => typeof value === 'string');
+
+    const uniqueLocationIds = Array.from(new Set(locationCandidates));
+    const hasLocation = uniqueLocationIds.length > 0;
+    const isInNpcLocation = uniqueLocationIds.includes(state.locationId);
+
+    if (hasLocation && !isInNpcLocation) {
+      // Event is in a different location - not relevant unless it's a TICK or session-level event
       if (event.type !== 'TICK' && !event.type.includes('SESSION')) {
         return false;
       }

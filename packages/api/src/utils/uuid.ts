@@ -43,3 +43,14 @@ export function toId<T extends string>(id: T): T {
 export function toIds<T extends string>(ids: T[]): T[] {
   return ids;
 }
+
+/**
+ * Returns true if the value is a RFC4122-ish UUID string.
+ *
+ * Note: This is intentionally strict because DB-layer entity profile IDs are UUIDs.
+ */
+export function isUuid(value: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
+}

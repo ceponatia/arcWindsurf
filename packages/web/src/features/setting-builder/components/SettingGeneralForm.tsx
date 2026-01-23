@@ -21,17 +21,6 @@ export const SettingGeneralForm: React.FC<SettingGeneralFormProps> = ({
         </div>
         <div className="p-4 grid grid-cols-1 gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-slate-400">ID</span>
-            <input
-              className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
-              value={form.id}
-              onChange={(e) => updateField('id', e.target.value)}
-              {...getInlineErrorProps('id', fieldErrors.id)}
-            />
-            {fieldErrors.id && <span className="text-sm text-red-400">{fieldErrors.id}</span>}
-          </label>
-
-          <label className="flex flex-col gap-1">
             <span className="text-xs text-slate-400">Name</span>
             <input
               className="bg-slate-900 text-slate-200 rounded-md px-3 py-2 outline-none ring-1 ring-slate-800 focus:ring-2 focus:ring-violet-500"

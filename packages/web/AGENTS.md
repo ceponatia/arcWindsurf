@@ -27,4 +27,13 @@ Vite-based React frontend for Minimal RPG. The player-facing web client that com
 - Use utils from `@minimal-rpg/utils` instead of duplicating logic.
 - Prefer to add utils to `@minimal-rpg/utils` instead of scope-specific helpers when possible.
 
+## Data Freshness (Views)
+
+This app uses hash routing and a long-lived controller (`useAppController`) which means list-fetch hooks can stay mounted across navigation.
+
+To keep all views consistent (data is fresh when you enter a view), prefer the shared hook `useRefreshOnViewEnter` in the controller instead of adding per-view inline `useEffect` refresh logic.
+
+- Hook: `packages/web/src/shared/hooks/useRefreshOnViewEnter.ts`
+- Usage: `packages/web/src/layouts/hooks/useAppController.ts`
+
 This package is the frontend entry point. All backend communication goes through the API package.

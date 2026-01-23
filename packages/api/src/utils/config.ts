@@ -11,7 +11,9 @@ interface AppEnv extends NodeJS.ProcessEnv {
   DEBUG_LLM?: string;
 }
 
-const env = process.env as AppEnv;
+function readEnv(): AppEnv {
+  return process.env as AppEnv;
+}
 
 function num(value: string | undefined, fallback: number): number {
   const n = Number(value);
@@ -19,6 +21,7 @@ function num(value: string | undefined, fallback: number): number {
 }
 
 export function getConfig(): RuntimeConfig {
+  const env = readEnv();
   const port = num(env.PORT, 3001);
   const contextWindow = num(env.CONTEXT_WINDOW, 30);
 

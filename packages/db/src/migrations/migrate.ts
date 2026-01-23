@@ -2,24 +2,11 @@ import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveDatabaseUrl } from '../connection/resolve-database-url.js';
 import { isSupabaseUrl } from '../utils/url-validator.js';
 import type { FsPromisesLike, PathLike, SqlText } from '../types.js';
 import type { MigrationPool } from './types.js';
-
-// Load env vars for local/dev usage.
-// Source of truth: repo root `.env` (shared across the monorepo).
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
-
-// Create a plain pool without pgvector registration (since extension may not exist yet)
-const env: Record<string, string | undefined> =
-  (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
-    ?.env ?? {};
-const resolvedDb = resolveDatabaseUrl(env);
-const resolvedDbUrl = resolvedDb.url;
 
 function redactDbUrl(url: string): string {
   try {
@@ -32,17 +19,30 @@ function redactDbUrl(url: string): string {
   }
 }
 
-const isSupabase = isSupabaseUrl(resolvedDbUrl);
+export async function runMigrations(): Promise<void> {
+  // Load env vars for local/dev usage.
+  // Source of truth: repo root `.env` (shared across the monorepo).
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
-const pool = new Pool({
-  connectionString: resolvedDbUrl,
-  // Avoid hanging forever on bad networking/DNS.
-  connectionTimeoutMillis: 15_000,
-  // Supabase requires SSL; node-postgres does not reliably infer this from `sslmode=require`.
-  ...(isSupabase ? { ssl: { rejectUnauthorized: false } } : {}),
-}) as unknown as MigrationPool;
+  // Create a plain pool without pgvector registration (since extension may not exist yet)
+  const env: Record<string, string | undefined> =
+    (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
+      ?.env ?? {};
 
-async function run() {
+  const resolvedDb = resolveDatabaseUrl(env);
+  const resolvedDbUrl = resolvedDb.url;
+  const isSupabase = isSupabaseUrl(resolvedDbUrl);
+
+  const pool = new Pool({
+    connectionString: resolvedDbUrl,
+    // Avoid hanging forever on bad networking/DNS.
+    connectionTimeoutMillis: 15_000,
+    // Supabase requires SSL; node-postgres does not reliably infer this from `sslmode=require`.
+    ...(isSupabase ? { ssl: { rejectUnauthorized: false } } : {}),
+  }) as unknown as MigrationPool;
+
   const Path = path as unknown as PathLike;
   const FS = fs as unknown as FsPromisesLike;
 
@@ -168,10 +168,21 @@ async function run() {
   await pool.end();
 }
 
-run().catch((err: unknown) => {
-  const isError = err instanceof Error;
-  const message = isError ? err.message : String(err);
-  console.error('[db] Migration failed:', message);
-  // Re-throw to ensure non-zero exit without relying on global process typings
-  throw isError ? err : new Error(message);
-});
+function isMainModule(): boolean {
+  const argvPath = globalThis.process?.argv?.[1] ?? null;
+  if (!argvPath) return false;
+  try {
+    return pathToFileURL(argvPath).href === import.meta.url;
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
+  runMigrations().catch((err: unknown) => {
+    const isError = err instanceof Error;
+    const message = isError ? err.message : String(err);
+    console.error('[db] Migration failed:', message);
+    throw isError ? err : new Error(message);
+  });
+}

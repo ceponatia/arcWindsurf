@@ -3,3 +3,4 @@ import * as schema from '../schema/index.js';
 import { pool } from '../utils/client.js';
 
 export const drizzle = createDrizzle(pool, { schema });
+export const db = drizzle;

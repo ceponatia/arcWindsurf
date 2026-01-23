@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { getSession } from '../../db/sessionsClient.js';
+import { listActorStatesForSession } from '@minimal-rpg/db/node';
 import { notFound, serverError } from '../../utils/responses.js';
-import { worldProjectionService } from '../../services/projection-service.js';
 import { worldBus } from '@minimal-rpg/bus';
 import { actorRegistry } from '@minimal-rpg/actors';
 import {
@@ -69,21 +69,29 @@ export function registerTurnRoutes(app: Hono): void {
     socialEngine.start();
     rulesEngine.start();
 
-    // Hydrate projections to discover active NPCs and locations
-    const projectionManager = await worldProjectionService.getManager(sessionKey);
-    const npcProjection = projectionManager.npcs.getState();
-
-    // Spawn NPC actors for this session if missing
-    for (const [npcId, npcState] of Object.entries(npcProjection)) {
-      const actorId = npcId;
+    // Spawn NPC actors for this session if missing.
+    // NOTE: Projections only learn about NPCs via ACTOR_SPAWN events, so on a fresh
+    // session we must seed actors from the authoritative actor_states table.
+    const actorStates = await listActorStatesForSession(sessionKey);
+    for (const actorState of actorStates) {
+      if (actorState.actorType !== 'npc') continue;
+      const actorId = actorState.actorId;
       if (actorRegistry.has(actorId)) continue;
+
+      const rawState = actorState.state as Record<string, unknown>;
+      const location = rawState['location'];
+      const locationId =
+        location && typeof location === 'object'
+          ? (((location as Record<string, unknown>)['currentLocationId'] as string | undefined) ??
+            'unknown')
+          : 'unknown';
 
       actorRegistry.spawn({
         id: actorId,
         type: 'npc',
-        npcId,
+        npcId: actorId,
         sessionId: sessionKey,
-        locationId: npcState.location.locationId ?? 'unknown',
+        locationId,
       });
     }
 
@@ -98,21 +106,27 @@ export function registerTurnRoutes(app: Hono): void {
     await worldBus.subscribe(handler);
 
     const playerActorId = `player:${ownerEmail}`;
-    const playerSpoke: WorldEvent = {
-      type: 'SPOKE',
-      actorId: playerActorId,
-      content: input,
-      targetActorId: targetNpcId ?? undefined,
-      sessionId: sessionKey,
-      timestamp: new Date(),
-    };
+    try {
+      const playerSpoke: WorldEvent = {
+        type: 'SPOKE',
+        actorId: playerActorId,
+        content: input,
+        targetActorId: targetNpcId ?? undefined,
+        sessionId: sessionKey,
+        timestamp: new Date(),
+      };
 
-    await worldBus.emit(playerSpoke);
+      await worldBus.emit(playerSpoke);
 
-    // Wait briefly for NPC responses to propagate
-    await new Promise((resolve) => setTimeout(resolve, RESPONSE_TIMEOUT_MS));
-
-    worldBus.unsubscribe(handler);
+      // Wait briefly for NPC responses to propagate
+      await new Promise((resolve) => setTimeout(resolve, RESPONSE_TIMEOUT_MS));
+    } finally {
+      try {
+        worldBus.unsubscribe(handler);
+      } catch (error) {
+        console.warn('[API] Failed to unsubscribe world bus handler', error);
+      }
+    }
 
     // Derive NPC response (first non-player SPOKE)
     const npcSpoke = collected.find(

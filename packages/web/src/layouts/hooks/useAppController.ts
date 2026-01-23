@@ -11,6 +11,7 @@ import { useSessions } from '../../shared/hooks/useSessions.js';
 import { useSettings } from '../../shared/hooks/useSettings.js';
 import { useCharacters } from '../../shared/hooks/useCharacters.js';
 import { usePersonas } from '../../shared/hooks/usePersonas.js';
+import { useRefreshOnViewEnter } from '../../shared/hooks/useRefreshOnViewEnter.js';
 import { currentSessionId as currentSessionIdSignal } from '../../signals/session.js';
 import type { AppControllerValue, ViewMode } from '../../types.js';
 
@@ -211,6 +212,17 @@ export function useAppController(): AppControllerValue {
     data: personasData,
     retry: refreshPersonas,
   } = usePersonas();
+
+  useRefreshOnViewEnter<ViewMode>(viewMode, [
+    {
+      views: ['session-builder', 'setting-library', 'setting-builder'],
+      refresh: refreshSettings,
+    },
+    {
+      views: ['session-builder', 'character-library', 'character-studio'],
+      refresh: refreshCharacters,
+    },
+  ]);
 
   const sessions = sessionsData ?? [];
   const canStart = !!(selectedCharacterId && selectedSettingId);
