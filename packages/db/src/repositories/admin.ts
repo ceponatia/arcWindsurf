@@ -1,4 +1,4 @@
-import { db, resolvedDbUrl, pool } from '../utils/client.js';
+import { resolvedDbUrl, pool } from '../utils/client.js';
 import { getRecordOptional } from '@minimal-rpg/schemas';
 import type {
   DbColumn,
@@ -74,7 +74,7 @@ export async function getDbPathInfo(): Promise<DbPathInfo> {
   // For Postgres, there's no local file path; perform a simple connectivity check
   let exists = false;
   try {
-    await db.$queryRaw`SELECT 1`;
+    await pool.query('SELECT 1');
     exists = true;
   } catch {
     // Connectivity check failed; exists remains false

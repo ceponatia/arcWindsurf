@@ -5,7 +5,7 @@ import { incrementVersion, isConditionalTag, validateTrigger } from '../src/tags
 describe('tags schemas and helpers', () => {
   test('TagDefinitionSchema applies defaults', () => {
     const parsed = TagDefinitionSchema.parse({
-      id: '00000000-0000-0000-0000-000000000000',
+      id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
       name: 'Strict Tone',
       promptText: 'Be concise.',
     });
@@ -24,7 +24,7 @@ describe('tags schemas and helpers', () => {
 
   test('isConditionalTag requires activationMode and triggers', () => {
     const conditional = TagDefinitionSchema.parse({
-      id: '00000000-0000-0000-0000-000000000001',
+      id: 'f26a1c3d-7a1f-4b7c-8c9d-2f3c4b5a6d7e',
       name: 'Keyword check',
       promptText: 'React to keywords.',
       activationMode: 'conditional',
@@ -37,7 +37,7 @@ describe('tags schemas and helpers', () => {
     });
 
     const unconditional = TagDefinitionSchema.parse({
-      id: '00000000-0000-0000-0000-000000000002',
+      id: 'a5b2c3d4-6e7f-4a1b-9c2d-3e4f5a6b7c8d',
       name: 'Always on',
       promptText: 'Always active.',
       activationMode: 'conditional',

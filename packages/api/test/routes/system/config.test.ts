@@ -5,7 +5,7 @@ import { registerConfigRoutes } from '../../../src/routes/system/config.js';
 const configMocks = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getVersionMock: vi.fn(),
-  queryRawMock: vi.fn(),
+  poolQueryMock: vi.fn(),
 }));
 
 vi.mock('../../../src/utils/config.js', () => ({
@@ -17,8 +17,8 @@ vi.mock('../../../src/utils/version.js', () => ({
 }));
 
 vi.mock('@minimal-rpg/db/node', () => ({
-  db: {
-    $queryRaw: configMocks.queryRawMock,
+  pool: {
+    query: configMocks.poolQueryMock,
   },
 }));
 
@@ -44,7 +44,7 @@ describe('routes/system/config', () => {
       debugLlm: false,
     });
     configMocks.getVersionMock.mockResolvedValue('1.2.3');
-    configMocks.queryRawMock.mockResolvedValue([{ ok: true }]);
+    configMocks.poolQueryMock.mockResolvedValue({ rows: [{ ok: true }] });
   });
 
   afterEach(() => {
@@ -91,7 +91,7 @@ describe('routes/system/config', () => {
   });
 
   it('returns degraded health when db fails', async () => {
-    configMocks.queryRawMock.mockRejectedValue(new Error('db down'));
+    configMocks.poolQueryMock.mockRejectedValue(new Error('db down'));
 
     const app = makeApp();
     const res = await app.request('/health');

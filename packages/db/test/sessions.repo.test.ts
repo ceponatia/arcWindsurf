@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const tx = {
+const tx = vi.hoisted(() => ({
   insert: vi.fn().mockReturnThis(),
   values: vi.fn().mockReturnThis(),
   returning: vi.fn(),
-};
+}));
 
-const mockDb = {
+const mockDb = vi.hoisted(() => ({
   transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<unknown>) => fn(tx)),
   select: vi.fn().mockReturnThis(),
   from: vi.fn().mockReturnThis(),
@@ -14,7 +14,7 @@ const mockDb = {
   limit: vi.fn(),
   orderBy: vi.fn(),
   delete: vi.fn().mockReturnThis(),
-};
+}));
 
 vi.mock('../src/connection/index.js', () => ({
   drizzle: mockDb,

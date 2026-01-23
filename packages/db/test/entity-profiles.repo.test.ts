@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const query = {
+const query = vi.hoisted(() => ({
   where: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
   offset: vi.fn().mockResolvedValue([{ id: 'entity-1' }]),
-};
+}));
 
-const mockDb = {
+const mockDb = vi.hoisted(() => ({
   select: vi.fn().mockReturnThis(),
   from: vi.fn().mockReturnThis(),
   $dynamic: vi.fn(() => query),
@@ -17,7 +17,7 @@ const mockDb = {
   set: vi.fn().mockReturnThis(),
   where: vi.fn().mockReturnThis(),
   limit: vi.fn(),
-};
+}));
 
 vi.mock('../src/connection/index.js', () => ({
   drizzle: mockDb,

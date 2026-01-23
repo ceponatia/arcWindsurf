@@ -29,11 +29,9 @@ export function jsonifyBigInts<T>(value: T): T {
 
     if (v && typeof v === 'object') {
       const obj = v as Record<string, unknown>;
-      const out: Record<string, unknown> = {};
-      for (const [k, child] of Object.entries(obj)) {
-        out[k] = convert(child);
-      }
-      return out;
+      return Object.fromEntries(
+        Object.entries(obj).map(([k, child]) => [k, convert(child)])
+      );
     }
 
     return v;

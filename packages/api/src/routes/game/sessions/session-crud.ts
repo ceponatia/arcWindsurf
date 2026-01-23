@@ -15,7 +15,7 @@ import { jsonifyBigInts } from '../../../utils/json.js';
 import { generateId } from '@minimal-rpg/utils';
 import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
-import { toSessionId } from '../../../utils/uuid.js';
+import { toId, toSessionId } from '../../../utils/uuid.js';
 import { primeSessionSequence } from '../../../services/event-persistence.js';
 import { mapSpokeEventsToMessages } from './message-mapping.js';
 import { createMessageMappingDeps } from './message-mapping-deps.js';

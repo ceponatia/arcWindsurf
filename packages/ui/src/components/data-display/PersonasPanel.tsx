@@ -43,6 +43,7 @@ export const PersonasPanel: React.FC<PersonasPanelProps> = ({
                 } cursor-pointer`}
                 onClick={() => onSelect(p.id)}
                 role="button"
+                aria-label={p.name}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') onSelect(p.id);

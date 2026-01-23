@@ -18,6 +18,7 @@ import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toSessionId } from '../../../utils/uuid.js';
 import { mapSpokeEventsToMessages } from './message-mapping.js';
 import { createMessageMappingDeps } from './message-mapping-deps.js';
+import type { SpokePayload } from './types.js';
 
 type DbEvent = Awaited<ReturnType<typeof getEventsForSession>>[number];
 type SpokeEventRecord = DbEvent & { actorId: string; type: 'SPOKE' };

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockDb = {
+const mockDb = vi.hoisted(() => ({
   insert: vi.fn().mockReturnThis(),
   values: vi.fn().mockReturnThis(),
   returning: vi.fn(),
@@ -8,7 +8,7 @@ const mockDb = {
   from: vi.fn().mockReturnThis(),
   where: vi.fn().mockReturnThis(),
   orderBy: vi.fn().mockResolvedValue([{ id: 'event-1' }]),
-};
+}));
 
 vi.mock('../src/connection/drizzle.js', () => ({
   drizzle: mockDb,

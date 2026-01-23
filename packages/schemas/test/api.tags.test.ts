@@ -17,7 +17,7 @@ import createTagBindingRequestFixture from './fixtures/tag-binding-request-v1.js
 };
 
 const baseTagDefinition = {
-  id: '00000000-0000-0000-0000-000000000000',
+  id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
   name: 'Strict Tone',
   promptText: 'Be concise.',
 };
@@ -60,7 +60,7 @@ describe('api/tags schemas', () => {
 
   test('parses create tag binding requests', () => {
     const payload = {
-      tagId: '11111111-1111-1111-1111-111111111111',
+      tagId: 'b6f14c2b-5cb1-4d9a-9c8a-6c9c7f33e9d1',
       targetEntityId: null,
       enabled: true,
     };
@@ -87,9 +87,9 @@ describe('api/tags schemas', () => {
     const payload = {
       bindings: [
         {
-          id: '22222222-2222-2222-2222-222222222222',
-          sessionId: '33333333-3333-3333-3333-333333333333',
-          tagId: '11111111-1111-1111-1111-111111111111',
+          id: '7a0f88d1-6f6b-4b7a-8a2e-1f56c8f63c4e',
+          sessionId: 'c25f1f3a-0b7b-4e6c-9f8a-3a8d5fd1b27a',
+          tagId: 'b6f14c2b-5cb1-4d9a-9c8a-6c9c7f33e9d1',
           tag: baseTagDefinition,
         },
       ],

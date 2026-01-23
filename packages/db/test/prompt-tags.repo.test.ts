@@ -1,24 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const rows: Array<Record<string, unknown>> = [];
+const rows = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
-const query = {
+const query = vi.hoisted(() => ({
   from: vi.fn().mockReturnThis(),
-  where: vi.fn(async () => rows),
+  where: vi.fn().mockReturnThis(),
   innerJoin: vi.fn().mockReturnThis(),
   select: vi.fn().mockReturnThis(),
+  limit: vi.fn(async () => rows),
   then: (resolve: (value: unknown) => void) => Promise.resolve(rows).then(resolve),
-};
+}));
 
-const mockDb = {
+const mockDb = vi.hoisted(() => ({
   select: vi.fn(() => query),
   insert: vi.fn().mockReturnThis(),
   values: vi.fn().mockReturnThis(),
   returning: vi.fn(),
   update: vi.fn().mockReturnThis(),
   set: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
   delete: vi.fn().mockReturnThis(),
-};
+}));
 
 vi.mock('../src/connection/index.js', () => ({
   drizzle: mockDb,

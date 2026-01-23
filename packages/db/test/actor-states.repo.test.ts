@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockDb = {
+const mockDb = vi.hoisted(() => ({
   insert: vi.fn().mockReturnThis(),
   values: vi.fn().mockReturnThis(),
   onConflictDoUpdate: vi.fn().mockReturnThis(),
@@ -9,7 +9,7 @@ const mockDb = {
   from: vi.fn().mockReturnThis(),
   where: vi.fn().mockReturnThis(),
   limit: vi.fn(),
-};
+}));
 
 vi.mock('../src/connection/index.js', () => ({
   drizzle: mockDb,

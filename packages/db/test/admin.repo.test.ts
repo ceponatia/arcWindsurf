@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const poolQuery = vi.fn();
-const queryRaw = vi.fn();
+const poolQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../src/utils/client.js', () => ({
-  db: { $queryRaw: queryRaw },
   pool: { query: poolQuery },
   resolvedDbUrl: 'postgres://db',
 }));
@@ -17,7 +15,7 @@ describe('admin repository', () => {
   });
 
   it('returns db path info when connectivity works', async () => {
-    queryRaw.mockResolvedValueOnce([{ ok: true }]);
+    poolQuery.mockResolvedValueOnce({ rows: [{ ok: true }] });
 
     const info = await getDbPathInfo();
 
@@ -26,7 +24,7 @@ describe('admin repository', () => {
   });
 
   it('returns db path info when connectivity fails', async () => {
-    queryRaw.mockRejectedValueOnce(new Error('down'));
+    poolQuery.mockRejectedValueOnce(new Error('down'));
 
     const info = await getDbPathInfo();
 

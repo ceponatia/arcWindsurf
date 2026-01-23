@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const poolQuery = vi.fn();
+const poolQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../src/utils/client.js', () => ({
   pool: { query: poolQuery },
@@ -39,7 +39,7 @@ import {
 
 describe('users repository', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    poolQuery.mockReset();
   });
 
   it('gets users by identifier and role', async () => {
@@ -97,7 +97,7 @@ describe('users repository', () => {
       rows: [
         {
           id: 'user-2',
-          identifier: 'user-2',
+          identifier: 'user@example.com',
           email: 'user@example.com',
           display_name: 'User',
           role: 'user',
@@ -151,6 +151,10 @@ describe('users repository', () => {
   });
 
   it('verifies local user passwords', async () => {
+    const passwordHash = `scrypt:16384:8:1:${Buffer.alloc(16, 1).toString('base64')}:${Buffer.alloc(
+      64,
+      2
+    ).toString('base64')}`;
     poolQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -160,7 +164,7 @@ describe('users repository', () => {
           role: 'user',
           auth_provider: 'local',
           preferences: {},
-          password_hash: 'scrypt:16384:8:1:AAAA:AAAA',
+          password_hash: passwordHash,
           created_at: new Date('2026-01-22T00:00:00.000Z'),
           updated_at: new Date('2026-01-22T00:00:00.000Z'),
         },

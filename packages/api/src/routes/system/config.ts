@@ -32,8 +32,8 @@ export function registerConfigRoutes(app: Hono) {
     // DB check (lazy-import db client to avoid circular deps)
     let dbOk = false;
     try {
-      const { db } = await import('@minimal-rpg/db/node');
-      await db.$queryRaw`SELECT 1`;
+      const { pool } = await import('@minimal-rpg/db/node');
+      await pool.query('SELECT 1');
       dbOk = true;
     } catch (error) {
       console.warn('Database health check failed', error);

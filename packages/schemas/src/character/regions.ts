@@ -15,7 +15,8 @@
  */
 
 import { getRecordOptional } from '../shared/record-helpers.js';
-import { BODY_REGIONS, type BodyRegion, type BodySide } from '../body-regions/index.js';
+import { BODY_REGIONS, type BodyRegion } from '../body-regions/regions.js';
+import type { BodySide } from '../body-regions/types.js';
 
 export { BODY_REGIONS };
 export type { BodyRegion };

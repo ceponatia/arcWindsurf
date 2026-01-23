@@ -324,6 +324,13 @@ export function getIntensityKeywordsInRange(minIntensity: number, maxIntensity: 
 }
 
 /**
+ * Normalize a token by stripping common punctuation for keyword matching.
+ */
+function normalizeKeywordToken(token: string): string {
+  return token.replace(/[.,;:!?]/g, '').trim();
+}
+
+/**
  * Extract intensity from a phrase, returning both the value and cleaned phrase.
  */
 export function extractIntensity(phrase: string): { intensity: number; cleaned: string } {
@@ -332,13 +339,15 @@ export function extractIntensity(phrase: string): { intensity: number; cleaned: 
   const cleanedWords: string[] = [];
 
   for (const word of words) {
+    const normalized = normalizeKeywordToken(word);
+    if (!normalized) continue;
     // Check for explicit intensity like "intensity 0.6" or "0.6"
     // Limit input length to prevent ReDoS attacks
-    if (word.length > 1000) {
+    if (normalized.length > 1000) {
       continue; // Skip overly long inputs
     }
     const numPattern = /^(\d*\.?\d+)$/;
-    const numMatch = numPattern.exec(word);
+    const numMatch = numPattern.exec(normalized);
     if (numMatch?.[1]) {
       const parsed = parseFloat(numMatch[1]);
       if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
@@ -348,13 +357,13 @@ export function extractIntensity(phrase: string): { intensity: number; cleaned: 
     }
 
     // Check for keyword intensity
-    const keywordIntensity = getRecordOptional(INTENSITY_KEYWORDS, word);
+    const keywordIntensity = getRecordOptional(INTENSITY_KEYWORDS, normalized);
     if (keywordIntensity !== undefined) {
       intensity = keywordIntensity;
       continue; // Don't include intensity keywords in the cleaned output
     }
 
-    cleanedWords.push(word);
+    cleanedWords.push(normalized);
   }
 
   return { intensity, cleaned: cleanedWords.join(' ').trim() };
@@ -372,12 +381,14 @@ export function extractTemperature(phrase: string): {
   const cleanedWords: string[] = [];
 
   for (const word of words) {
-    const keywordTemp = getRecordOptional(TEMPERATURE_KEYWORDS, word);
+    const normalized = normalizeKeywordToken(word);
+    if (!normalized) continue;
+    const keywordTemp = getRecordOptional(TEMPERATURE_KEYWORDS, normalized);
     if (keywordTemp !== undefined) {
       temperature = keywordTemp;
       continue;
     }
-    cleanedWords.push(word);
+    cleanedWords.push(normalized);
   }
 
   return { temperature, cleaned: cleanedWords.join(' ').trim() };
@@ -395,12 +406,14 @@ export function extractMoisture(phrase: string): {
   const cleanedWords: string[] = [];
 
   for (const word of words) {
-    const keywordMoist = getRecordOptional(MOISTURE_KEYWORDS, word);
+    const normalized = normalizeKeywordToken(word);
+    if (!normalized) continue;
+    const keywordMoist = getRecordOptional(MOISTURE_KEYWORDS, normalized);
     if (keywordMoist !== undefined) {
       moisture = keywordMoist;
       continue;
     }
-    cleanedWords.push(word);
+    cleanedWords.push(normalized);
   }
 
   return { moisture, cleaned: cleanedWords.join(' ').trim() };

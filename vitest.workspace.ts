@@ -16,6 +16,7 @@ export default defineWorkspace([
   {
     test: {
       globals: true,
+      environment: 'jsdom',
       coverage: {
         enabled: true,
         reportsDirectory: resolve(__dirname, './.codacy/coverage'),

@@ -1,4 +1,4 @@
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { desc, eq, lt } from 'drizzle-orm';
 import { drizzle as db } from '../connection/index.js';
 import { workspaceDrafts } from '../schema/index.js';
 import type { UUID } from '../types.js';

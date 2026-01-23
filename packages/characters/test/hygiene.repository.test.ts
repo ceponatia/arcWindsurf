@@ -1,41 +1,57 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { BodyPartHygieneState } from '@minimal-rpg/schemas';
-import { DbHygieneRepository } from '../src/hygiene/repository.js';
+import { ActorStateHygieneRepository } from '../src/hygiene/actorStateRepository.js';
 
-function buildDb() {
+function buildStore(state?: {
+  actorType: string;
+  actorId: string;
+  entityProfileId: string | null;
+  lastEventSeq: bigint;
+  state: unknown;
+}) {
   return {
-    npcHygieneState: {
-      findMany: vi.fn(async () => [
-        {
-          npcId: 'npc-1',
-          bodyPart: 'head',
-          points: 10,
-          level: 2,
-          lastUpdatedAt: new Date('2026-01-22T00:00:00.000Z'),
-        },
-      ]),
-      upsert: vi.fn(async () => undefined),
-    },
+    getActorState: vi.fn(async () => state),
+    upsertActorState: vi.fn(async () => undefined),
   };
 }
 
-describe('DbHygieneRepository', () => {
-  it('maps rows to hygiene state', async () => {
-    const db = buildDb();
-    const repo = new DbHygieneRepository(db as never);
+describe('ActorStateHygieneRepository', () => {
+  it('reads hygiene from actor_states', async () => {
+    const store = buildStore({
+      actorType: 'npc',
+      actorId: 'npc-1',
+      entityProfileId: null,
+      lastEventSeq: 10n,
+      state: {
+        hygiene: {
+          head: {
+            points: 10,
+            level: 2,
+            lastUpdatedAt: '2026-01-22T00:00:00.000Z',
+          },
+        },
+      },
+    });
+    const repo = new ActorStateHygieneRepository(store as never);
 
-    const state = await repo.getState('session-1', 'npc-1');
+    const result = await repo.getState('session-1', 'npc-1');
 
-    expect(state.bodyParts.head).toEqual({
+    expect(result.bodyParts.head).toEqual({
       points: 10,
       level: 2,
       lastUpdatedAt: '2026-01-22T00:00:00.000Z',
     });
   });
 
-  it('upserts part with dates', async () => {
-    const db = buildDb();
-    const repo = new DbHygieneRepository(db as never);
+  it('upserts a single body part', async () => {
+    const store = buildStore({
+      actorType: 'npc',
+      actorId: 'npc-1',
+      entityProfileId: null,
+      lastEventSeq: 1n,
+      state: { hygiene: {} },
+    });
+    const repo = new ActorStateHygieneRepository(store as never);
 
     await repo.upsertPart('session-1', 'npc-1', 'head', {
       points: 5,
@@ -43,25 +59,51 @@ describe('DbHygieneRepository', () => {
       lastUpdatedAt: '2026-01-22T00:00:00.000Z',
     } as BodyPartHygieneState);
 
-    expect(db.npcHygieneState.upsert).toHaveBeenCalled();
+    expect(store.upsertActorState).toHaveBeenCalled();
   });
 
-  it('resetParts writes zeroed values', async () => {
-    const db = buildDb();
-    const repo = new DbHygieneRepository(db as never);
+  it('resetParts writes zeroed values in a single upsert', async () => {
+    const store = buildStore({
+      actorType: 'npc',
+      actorId: 'npc-1',
+      entityProfileId: null,
+      lastEventSeq: 1n,
+      state: { hygiene: { head: { points: 5, level: 1 } } },
+    });
+    const repo = new ActorStateHygieneRepository(store as never);
 
     await repo.resetParts('session-1', 'npc-1', ['head'], new Date('2026-01-22T00:00:00.000Z'));
 
-    expect(db.npcHygieneState.upsert).toHaveBeenCalled();
+    expect(store.upsertActorState).toHaveBeenCalledTimes(1);
   });
 
-  it('initializeAll writes all regions', async () => {
-    const db = buildDb();
-    const repo = new DbHygieneRepository(db as never);
+  it('initializeAll adds missing regions but preserves existing ones', async () => {
+    const store = buildStore({
+      actorType: 'npc',
+      actorId: 'npc-1',
+      entityProfileId: null,
+      lastEventSeq: 1n,
+      state: {
+        hygiene: {
+          head: {
+            points: 1,
+            level: 1,
+            lastUpdatedAt: '2026-01-22T00:00:00.000Z',
+          },
+        },
+      },
+    });
+    const repo = new ActorStateHygieneRepository(store as never);
 
-    const state = await repo.initializeAll('session-1', 'npc-1', new Date('2026-01-22T00:00:00.000Z'), ['head', 'torso']);
+    const state = await repo.initializeAll(
+      'session-1',
+      'npc-1',
+      new Date('2026-01-22T00:00:00.000Z'),
+      ['head', 'torso']
+    );
 
     expect(Object.keys(state.bodyParts)).toEqual(['head', 'torso']);
-    expect(db.npcHygieneState.upsert).toHaveBeenCalledTimes(2);
+    expect(state.bodyParts.head?.points).toBe(1);
+    expect(store.upsertActorState).toHaveBeenCalledTimes(1);
   });
 });

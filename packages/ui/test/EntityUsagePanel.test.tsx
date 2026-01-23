@@ -27,7 +27,7 @@ describe('EntityUsagePanel', () => {
     expect(screen.getByText(/sess-2/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
-    expect(screen.queryByText(/sess-2/i)).not.toBeNull();
+    expect(screen.queryByText(/sess-2/i)).not.toBeInTheDocument();
   });
 
   it('renders collapsed state', () => {

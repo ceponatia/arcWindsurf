@@ -1,7 +1,7 @@
 import { getRecordOptional, setPartialRecord } from '../shared/record-helpers.js';
 import type { CharacterProfile } from '../character/characterProfile.js';
 import type { BodyMap } from '../character/sensory.js';
-import { BODY_REGIONS } from '../character/regions.js';
+import { BODY_REGIONS } from './regions.js';
 import { DEFAULT_SCENTS } from '../character/scent/default-scents.js';
 
 const NEUTRAL_SCENT = {

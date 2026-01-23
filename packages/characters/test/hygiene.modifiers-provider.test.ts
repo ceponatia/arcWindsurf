@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const readFileMock = vi.fn();
+const readFileMock = vi.hoisted(() => vi.fn());
 
 vi.mock('node:fs', () => ({
   default: {
