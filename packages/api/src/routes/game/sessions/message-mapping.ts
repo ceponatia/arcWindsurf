@@ -11,6 +11,7 @@ export interface SpokeEventLike {
 export interface MessageMappingDeps {
   sessionId: string;
   getProfileName: (profileId: string) => Promise<string | null>;
+  getActorDisplayName: (actorId: string) => Promise<string | null>;
 }
 
 function isPlayerActorId(actorId: string): boolean {
@@ -43,7 +44,11 @@ export async function mapSpokeEventsToMessages(
   deps: MessageMappingDeps
 ): Promise<SessionMessageDto[]> {
   const profileNameCache = new Map<string, Promise<string | null>>();
+  const actorNameCache = new Map<string, Promise<string | null>>();
 
+  /**
+   * Load profile name with caching to avoid repeated DB calls.
+   */
   const loadProfileName = async (profileId: string): Promise<string | null> => {
     const existing = profileNameCache.get(profileId);
     if (existing) return existing;
@@ -61,6 +66,26 @@ export async function mapSpokeEventsToMessages(
     return promise;
   };
 
+  /**
+   * Load actor display name with caching to avoid repeated DB calls.
+   */
+  const loadActorName = async (actorId: string): Promise<string | null> => {
+    const existing = actorNameCache.get(actorId);
+    if (existing) return existing;
+
+    const promise = deps.getActorDisplayName(actorId).catch((err: unknown) => {
+      console.warn('[API] Failed to load actor display name for session message', {
+        sessionId: deps.sessionId,
+        actorId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    });
+
+    actorNameCache.set(actorId, promise);
+    return promise;
+  };
+
   return Promise.all(
     spokeEvents.map(async (event): Promise<SessionMessageDto> => {
       const payload = (event.payload ?? {}) as SpokePayload;
@@ -72,6 +97,11 @@ export async function mapSpokeEventsToMessages(
 
       let speaker: SessionMessageDto['speaker'];
       if (!isPlayer) {
+        const actorName = await loadActorName(actorId);
+        if (actorName) {
+          speaker = { id: actorId, name: actorName };
+        }
+
         const rawProfileId = typeof payload.entityProfileId === 'string' ? payload.entityProfileId : null;
         const candidateProfileId =
           rawProfileId && isUuid(rawProfileId)
@@ -80,7 +110,7 @@ export async function mapSpokeEventsToMessages(
               ? actorId
               : null;
 
-        if (candidateProfileId) {
+        if (!speaker && candidateProfileId) {
           const name = await loadProfileName(candidateProfileId);
           if (name) {
             speaker = { id: actorId, name };

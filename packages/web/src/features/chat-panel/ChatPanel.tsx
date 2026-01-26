@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getErrorMessage, isAbortError } from '@minimal-rpg/utils';
-import type { Message, Session, TurnMetadata } from '../../types.js';
+import type { Message, Session, TurnMetadata, StreamEvent } from '../../types.js';
 import {
   getSession,
   getSessionNpcs,
@@ -8,6 +8,7 @@ import {
   updateMessage,
   deleteMessage,
   getRuntimeConfig,
+  getSessionMessages,
 } from '../../shared/api/client.js';
 import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
 import { DebugSidebar } from '../chat/components/index.js';
@@ -63,11 +64,60 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     stateChanges: null,
   });
   const ctrlRef = useRef<AbortController | null>(null);
+  const messageCtrlRef = useRef<AbortController | null>(null);
+  const refreshTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
 
+  const clearRefreshTimers = useCallback(() => {
+    refreshTimersRef.current.forEach((timer) => {
+      clearTimeout(timer);
+    });
+    refreshTimersRef.current = [];
+  }, []);
+
+  const refreshMessages = useCallback(async () => {
+    if (!effectiveSessionId) return;
+    messageCtrlRef.current?.abort();
+    const ctrl = new AbortController();
+    messageCtrlRef.current = ctrl;
+
+    try {
+      const messages = await getSessionMessages(effectiveSessionId, ctrl.signal);
+      setSession((prev) => (prev ? { ...prev, messages } : prev));
+    } catch (e: unknown) {
+      if (isAbortError(e)) return;
+      console.warn('[ChatPanel] Failed to refresh session messages', e);
+    }
+  }, [effectiveSessionId]);
+
+  const scheduleMessageRefreshSequence = useCallback(
+    (delays: number[]) => {
+      clearRefreshTimers();
+      delays.forEach((delay) => {
+        refreshTimersRef.current.push(
+          setTimeout(() => {
+            void refreshMessages();
+          }, delay)
+        );
+      });
+    },
+    [clearRefreshTimers, refreshMessages]
+  );
+
+  const handleWorldBusEvent = useCallback(
+    (event: StreamEvent) => {
+      if (event.type === 'SPOKE') {
+        scheduleMessageRefreshSequence([200]);
+      }
+    },
+    [scheduleMessageRefreshSequence]
+  );
+
+  const worldBusOptions = useMemo(() => ({ onEvent: handleWorldBusEvent }), [handleWorldBusEvent]);
+
   // Connect to the World Bus SSE stream
-  useWorldBus(effectiveSessionId ?? null);
+  useWorldBus(effectiveSessionId ?? null, worldBusOptions);
 
   const refresh = () => {
     if (!effectiveSessionId) return;
@@ -99,6 +149,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
     refresh();
     return () => {
       ctrlRef.current?.abort();
+      messageCtrlRef.current?.abort();
+      clearRefreshTimers();
     };
   }, [effectiveSessionId]);
 
@@ -190,6 +242,22 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       });
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
+
+      const hasNpcSpoke = Array.isArray(res.events)
+        ? res.events.some((event) => {
+            if (typeof event !== 'object' || event === null) return false;
+            const record = event as Record<string, unknown>;
+            if (record['type'] !== 'SPOKE') return false;
+            const actorId = record['actorId'];
+            return typeof actorId === 'string' && !actorId.startsWith('player');
+          })
+        : false;
+
+      const isPlaceholder = assistant.content.trim() === 'The world is quiet.';
+
+      if (!hasNpcSpoke || isPlaceholder) {
+        scheduleMessageRefreshSequence([800, 2000, 3500]);
+      }
 
       // Capture turn debug data for the sidebar
       if (debugUiEnabled) {
@@ -333,6 +401,22 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       // But for UX, we append the response. Note: the sequence will be missing until refresh.
       const assistant = res.message;
       setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev));
+
+      const hasNpcSpoke = Array.isArray(res.events)
+        ? res.events.some((event) => {
+            if (typeof event !== 'object' || event === null) return false;
+            const record = event as Record<string, unknown>;
+            if (record['type'] !== 'SPOKE') return false;
+            const actorId = record['actorId'];
+            return typeof actorId === 'string' && !actorId.startsWith('player');
+          })
+        : false;
+
+      const isPlaceholder = assistant.content.trim() === 'The world is quiet.';
+
+      if (!hasNpcSpoke || isPlaceholder) {
+        scheduleMessageRefreshSequence([800, 2000, 3500]);
+      }
 
       // Capture turn debug data for the sidebar
       if (debugUiEnabled) {

@@ -21,10 +21,14 @@ function asStreamEvent(value: unknown): StreamEvent | null {
   return value as StreamEvent;
 }
 
+export interface UseWorldBusOptions {
+  onEvent?: (event: StreamEvent) => void;
+}
+
 /**
  * useWorldBus hook manages the SSE connection and dispatches events to signals.
  */
-export function useWorldBus(sessionId: string | null) {
+export function useWorldBus(sessionId: string | null, options?: UseWorldBusOptions) {
   useEffect(() => {
     if (!sessionId) return;
 
@@ -37,6 +41,8 @@ export function useWorldBus(sessionId: string | null) {
       onMessage: (data: unknown) => {
         const event = asStreamEvent(data);
         if (!event) return;
+
+        options?.onEvent?.(event);
 
         // Add all events to the log for transparency
         addEvent(event);
@@ -80,5 +86,5 @@ export function useWorldBus(sessionId: string | null) {
     return () => {
       disconnect();
     };
-  }, [sessionId]);
+  }, [sessionId, options]);
 }
