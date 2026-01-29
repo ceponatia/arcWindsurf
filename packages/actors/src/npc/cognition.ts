@@ -64,26 +64,6 @@ export class CognitionLayer {
       }
     }
 
-    // Simple rule: If someone moved into location, acknowledge
-    const moveEvents = perception.relevantEvents.filter((e) => e.type === 'MOVED');
-    if (moveEvents.length > 0) {
-      const lastMove = moveEvents[moveEvents.length - 1] as Record<string, unknown>;
-      const movedActorId = lastMove['actorId'] as string | undefined;
-      const toLocationId = lastMove['toLocationId'] as string | undefined;
-
-      if (movedActorId && movedActorId !== state.id && toLocationId === state.locationId) {
-        const intent: WorldEvent = {
-          type: 'SPEAK_INTENT',
-          content: `[NPC ${state.npcId} notices someone arrived]`,
-          actorId: state.id,
-          sessionId: state.sessionId,
-          timestamp: new Date(),
-        };
-
-        return { intent, delayMs: 1000 };
-      }
-    }
-
     // Default: No action
     return null;
   }

@@ -5,6 +5,8 @@ import { PerceptionLayer } from './perception.js';
 import { CognitionLayer } from './cognition.js';
 import { worldBus } from '@minimal-rpg/bus';
 
+const MEANINGFUL_EVENT_TYPES = new Set<WorldEvent['type']>(['SPOKE']);
+
 /**
  * NPC state machine definition.
  *
@@ -29,6 +31,7 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
         idle: {
           on: {
             WORLD_EVENT: {
+              guard: 'isMeaningfulEvent',
               actions: 'bufferEvent',
               target: 'perceiving',
             },
@@ -122,6 +125,12 @@ export const createNpcMachine = (initialContext: NpcMachineContext) => {
           perception: () => undefined,
           pendingIntent: () => undefined,
         }),
+      },
+      guards: {
+        isMeaningfulEvent: ({ event }) => {
+          if (event.type !== 'WORLD_EVENT') return false;
+          return MEANINGFUL_EVENT_TYPES.has(event.event.type);
+        },
       },
       actors: {
         llmDecision: fromPromise(async ({ input }: { input: NpcMachineContext }) => {

@@ -10,17 +10,64 @@ The Docker container runs continuous inference (thousands of OpenRouter API call
 
 ### Root Cause Analysis
 
-The current architecture has several components that can trigger inference:
+The current architecture has several components involved in the simulation loop:
 
-| Component | Location | Trigger |
-|-----------|----------|---------|
+| Component | Location | Role |
 | **Tick Scheduler** | `packages/workers/src/scheduler/index.ts` | BullMQ repeatable job every 1s |
 | **Tick Processor** | `packages/workers/src/processors/tick.ts` | Emits TICK events to WorldBus |
-| **NPC Actors** | `packages/actors/` | Respond to TICK/SPOKE events |
-| **Services** | `packages/services/` | dialogueService, physicsService, etc. |
+| **Backend Services** | `packages/services/` | Physics, time, social simulation (runs on tick) |
+| **NPC Actors** | `packages/actors/` | React to meaningful events (SPOKE, ARRIVED, etc.) |
+| **Cognition Workers** | `packages/workers/src/processors/cognition.ts` | LLM inference (triggered by events, NOT ticks) |
 | **Studio Endpoints** | `packages/api/src/routes/studio.ts` | Character conversation, trait inference |
 
 **The core issue**: Once `startWorldTick(sessionId)` is called, it continues indefinitely until explicitly stopped. There's no mechanism to detect when users leave.
+
+### Tick vs Inference Architecture
+
+**Important distinction**: Ticks drive backend simulation, but they should NOT directly trigger LLM inference.
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                        TICK EVENT                               │
+│                    (fires every 1s)                             │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Backend Services                              │
+│                                                                 │
+│   ✅ Time progression (advance game clock)                      │
+│   ✅ Physics updates (NPC movement, pathfinding)                │
+│   ✅ Schedule checks (NPC daily routines)                       │
+│   ✅ Ambient events (weather, day/night)                        │
+│   ✅ Proximity detection (who's near player)                    │
+│                                                                 │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ May produce meaningful events
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Meaningful Events                             │
+│                                                                 │
+│   • ARRIVED (NPC entered player's location)                     │
+│   • TIME_OF_DAY_CHANGED (morning → afternoon)                   │
+│   • PROXIMITY_ALERT (NPC now close to player)                   │
+│   • SCHEDULE_TRIGGERED (NPC's routine action)                   │
+│                                                                 │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ These can trigger inference
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   NPC Cognition (LLM)                           │
+│                                                                 │
+│   ❌ TICK alone → NO inference                                  │
+│   ✅ SPOKE (player said something) → inference                  │
+│   ✅ ARRIVED (NPC entered scene) → maybe greet                  │
+│   ✅ TIME_OF_DAY_CHANGED → comment on time                      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Current problem**: NPC actors treat TICK events as triggers for cognition, causing constant LLM calls even when nothing meaningful happened.
 
 ---
 

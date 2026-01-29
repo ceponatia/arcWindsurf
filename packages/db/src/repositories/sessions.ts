@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, lt, gt, isNull, isNotNull } from 'drizzle-orm';
 import { drizzle as db } from '../connection/index.js';
 import { sessions, sessionProjections } from '../schema/index.js';
 import type { UUID } from '../types.js';
@@ -77,6 +77,39 @@ export async function getSessionProjection(sessionId: UUID) {
     .where(eq(sessionProjections.sessionId, sessionId))
     .limit(1);
   return result[0];
+}
+
+/**
+ * Update the last heartbeat timestamp for a session.
+ */
+export async function updateSessionHeartbeat(sessionId: UUID, lastHeartbeatAt: Date) {
+  const [row] = await db
+    .update(sessions)
+    .set({ lastHeartbeatAt, updatedAt: new Date() })
+    .where(eq(sessions.id, sessionId))
+    .returning({ id: sessions.id, lastHeartbeatAt: sessions.lastHeartbeatAt });
+
+  return row ?? null;
+}
+
+/**
+ * List sessions that have no heartbeat or whose heartbeat is older than cutoff.
+ */
+export async function listStaleSessionsByHeartbeat(cutoff: Date) {
+  return await db
+    .select({ id: sessions.id, lastHeartbeatAt: sessions.lastHeartbeatAt })
+    .from(sessions)
+    .where(or(isNull(sessions.lastHeartbeatAt), lt(sessions.lastHeartbeatAt, cutoff)));
+}
+
+/**
+ * List sessions that have a recent heartbeat at or after the cutoff.
+ */
+export async function listRecentSessionsByHeartbeat(cutoff: Date) {
+  return await db
+    .select({ id: sessions.id, lastHeartbeatAt: sessions.lastHeartbeatAt })
+    .from(sessions)
+    .where(and(isNotNull(sessions.lastHeartbeatAt), gt(sessions.lastHeartbeatAt, cutoff)));
 }
 
 /**

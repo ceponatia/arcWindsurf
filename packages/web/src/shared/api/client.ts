@@ -532,6 +532,29 @@ export async function deleteMessage(
   });
 }
 
+export interface SessionHeartbeatResponse {
+  ok: true;
+  sessionId: string;
+  status: 'running' | 'resumed';
+  lastHeartbeat: string;
+}
+
+/**
+ * Send a session heartbeat to the API.
+ */
+export async function postSessionHeartbeat(
+  sessionId: string,
+  signal?: AbortSignal
+): Promise<SessionHeartbeatResponse> {
+  return http<SessionHeartbeatResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/heartbeat`,
+    {
+      method: 'POST',
+      ...(signal && { signal }),
+    }
+  );
+}
+
 export async function getSessionMessages(
   sessionId: string,
   signal?: AbortSignal

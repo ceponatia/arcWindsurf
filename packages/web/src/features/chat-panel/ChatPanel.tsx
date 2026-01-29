@@ -14,6 +14,7 @@ import { ChatView, type ChatViewMessage } from '@minimal-rpg/ui';
 import { DebugSidebar } from '../chat/components/index.js';
 import { WorldMap, EventLog } from '../game/index.js';
 import { useWorldBus } from '../../hooks/useWorldBus.js';
+import { useSessionHeartbeat } from '../../hooks/useSessionHeartbeat.js';
 import { GOVERNOR_DEV_MODE } from '../../config.js';
 import type { NpcInstanceSummary } from '../../types.js';
 
@@ -65,7 +66,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
   });
   const ctrlRef = useRef<AbortController | null>(null);
   const messageCtrlRef = useRef<AbortController | null>(null);
-  const refreshTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const refreshTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const effectiveSessionId = useMemo(() => sessionId ?? undefined, [sessionId]);
 
@@ -118,6 +119,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
 
   // Connect to the World Bus SSE stream
   useWorldBus(effectiveSessionId ?? null, worldBusOptions);
+  useSessionHeartbeat(effectiveSessionId ?? null);
 
   const refresh = () => {
     if (!effectiveSessionId) return;

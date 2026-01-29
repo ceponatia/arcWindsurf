@@ -11,6 +11,7 @@ CREATE TABLE sessions (
   mode TEXT DEFAULT 'solo',  -- 'solo', 'multiplayer'
   event_seq BIGINT NOT NULL DEFAULT 0,
   total_tokens_used BIGINT DEFAULT 0,
+  last_heartbeat_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

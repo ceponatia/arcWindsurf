@@ -44,15 +44,14 @@ describe('npc/cognition', () => {
     expect((result?.intent as Record<string, unknown>).targetActorId).toBe('player-1');
   });
 
-  it('responds to MOVED events into location', () => {
+  it('does not respond to MOVED events alone', () => {
     const context = buildContext([
       { type: 'MOVED', actorId: 'player-1', toLocationId: 'loc-1' } as unknown as WorldEvent,
     ]);
 
     const result = CognitionLayer.decideSync(context);
 
-    expect(result?.intent.type).toBe('SPEAK_INTENT');
-    expect(result?.delayMs).toBe(1000);
+    expect(result).toBeNull();
   });
 
   it('decide returns decideSync', async () => {

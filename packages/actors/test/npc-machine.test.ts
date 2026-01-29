@@ -43,6 +43,28 @@ describe('npc/npc-machine', () => {
     expect(vi.mocked(worldBus.emit)).toHaveBeenCalled();
   });
 
+  it('ignores non-meaningful events', () => {
+    const context: NpcMachineContext = {
+      actorId: 'npc-1',
+      npcId: 'npc-1',
+      sessionId: 'session-1',
+      locationId: 'loc-1',
+      recentEvents: [],
+    };
+
+    const machine = createNpcMachine(context);
+    const actor = createActor(machine).start();
+
+    actor.send({
+      type: 'WORLD_EVENT',
+      event: { type: 'TICK', tick: 1, timestamp: new Date() } as unknown as WorldEvent,
+    });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('idle');
+    expect(snapshot.context.recentEvents).toHaveLength(0);
+  });
+
   it('clears buffered events after cooldown', async () => {
     vi.useFakeTimers();
 

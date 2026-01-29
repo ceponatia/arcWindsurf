@@ -12,29 +12,30 @@ CREATE TABLE sessions (
   owner_email TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
-  
+
   -- Template references
   setting_id UUID REFERENCES entity_profiles(id) ON DELETE SET NULL,
   player_character_id UUID REFERENCES entity_profiles(id) ON DELETE SET NULL,
   location_map_id UUID REFERENCES location_maps(id) ON DELETE SET NULL,
-  
+
   -- Session state
   status TEXT DEFAULT 'active',  -- 'active', 'paused', 'ended'
   mode TEXT DEFAULT 'solo',  -- 'solo', 'multiplayer'
   current_location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
-  
+
   -- Event sourcing
   event_seq BIGINT NOT NULL DEFAULT 0,
-  
+
   -- Metrics
   total_tokens_used BIGINT DEFAULT 0,
   turn_count INTEGER DEFAULT 0,
-  
+
   -- Timestamps
   last_activity_at TIMESTAMPTZ,
+  last_heartbeat_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
+
   CONSTRAINT sessions_status_check CHECK (status IN ('active', 'paused', 'ended')),
   CONSTRAINT sessions_mode_check CHECK (mode IN ('solo', 'multiplayer'))
 );
@@ -52,21 +53,21 @@ CREATE TABLE events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
   sequence BIGINT NOT NULL,
-  
+
   -- Event metadata
   type TEXT NOT NULL,  -- 'SPOKE', 'MOVED', 'TICK', 'PLAYER_ACTION', etc.
   payload JSONB NOT NULL,
-  
+
   -- Actor tracking
   actor_id TEXT,  -- Which actor emitted this event (e.g., 'player', 'npc:barkeep')
   actor_type TEXT,  -- 'player', 'npc', 'system'
-  
+
   -- Causality
   caused_by_event_id UUID REFERENCES events(id) ON DELETE SET NULL,
-  
+
   -- Timing
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
+
   UNIQUE(session_id, sequence)
 );
 
@@ -84,14 +85,14 @@ CREATE INDEX idx_events_causality ON events(caused_by_event_id) WHERE caused_by_
 CREATE TABLE actor_states (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  
+
   -- Actor identification
   actor_type TEXT NOT NULL,  -- 'npc', 'player', 'system'
   actor_id TEXT NOT NULL,  -- Unique within session, e.g., 'barkeep', 'player_1'
-  
+
   -- Template reference (for NPCs)
   entity_profile_id UUID REFERENCES entity_profiles(id) ON DELETE SET NULL,
-  
+
   -- XState machine state + custom state
   state JSONB NOT NULL,
   -- Expected state structure:
@@ -104,14 +105,14 @@ CREATE TABLE actor_states (
   --   "schedule": { ... },
   --   "memory": { ... }
   -- }
-  
+
   -- Event tracking
   last_event_seq BIGINT NOT NULL DEFAULT 0,
-  
+
   -- Timestamps
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
+
   UNIQUE(session_id, actor_id),
   CONSTRAINT actor_states_type_check CHECK (actor_type IN ('npc', 'player', 'system'))
 );
@@ -126,23 +127,23 @@ CREATE INDEX idx_actor_states_session_type ON actor_states(session_id, actor_typ
 
 CREATE TABLE session_projections (
   session_id UUID PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
-  
+
   -- Projected state (computed from events)
   location JSONB NOT NULL DEFAULT '{}',
   -- { "currentLocationId": "uuid", "visitedLocations": [...], "discoveredExits": [...] }
-  
+
   inventory JSONB NOT NULL DEFAULT '{}',
   -- { "items": [...], "currency": 0, "capacity": 100 }
-  
+
   time JSONB NOT NULL DEFAULT '{}',
   -- { "worldTime": "2026-01-07T08:00:00Z", "daysPassed": 0, "timeOfDay": "morning" }
-  
+
   world_state JSONB NOT NULL DEFAULT '{}',
   -- Flexible container for additional state: weather, factions, quests, etc.
-  
+
   -- Event tracking
   last_event_seq BIGINT NOT NULL DEFAULT 0,
-  
+
   -- Timestamps
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -157,25 +158,25 @@ CREATE TABLE session_participants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
   user_email TEXT NOT NULL,
-  
+
   -- Display
   display_name TEXT,
-  
+
   -- Role and permissions
   role TEXT NOT NULL DEFAULT 'player',  -- 'player', 'gm', 'spectator'
   can_control_npcs BOOLEAN DEFAULT FALSE,
   can_edit_world BOOLEAN DEFAULT FALSE,
-  
+
   -- Actor link
   actor_id TEXT,  -- Links to actor_states.actor_id for this participant
-  
+
   -- Status
   status TEXT DEFAULT 'connected',  -- 'connected', 'disconnected', 'away'
-  
+
   -- Timestamps
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   UNIQUE(session_id, user_email),
   CONSTRAINT session_participants_role_check CHECK (role IN ('player', 'gm', 'spectator'))
 );

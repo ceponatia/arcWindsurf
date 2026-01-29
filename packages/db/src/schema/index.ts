@@ -284,6 +284,7 @@ export const sessions = pgTable(
     mode: text('mode').default('solo'), // 'solo', 'multiplayer'
     eventSeq: bigint('event_seq', { mode: 'bigint' }).notNull().default(0n),
     totalTokensUsed: bigint('total_tokens_used', { mode: 'bigint' }).default(0n),
+    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

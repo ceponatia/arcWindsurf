@@ -105,7 +105,9 @@ Plus the same ~5 recent events (mostly TICK events), resulting in constant token
 
 ### Issue 4: TICK Events Trigger Infinite Chatter
 
-The NPC state machine reacts to **every event**, including TICK:
+**Architectural clarification**: Ticks should drive **backend simulation** (time, physics, NPC schedules), NOT inference directly. Inference should only be triggered by **meaningful events** that arise from simulation or player actions.
+
+The NPC state machine currently reacts to **every event**, including TICK:
 
 ```typescript
 // packages/actors/src/npc/npc-machine.ts:29-35
@@ -130,6 +132,15 @@ if (context.perception.relevantEvents.length === 0) return null;
 ```
 
 The NPC thinks "I have events, I should act" - even if those events are just TICKs with no player activity.
+
+**Correct architecture**:
+
+```text
+TICK → Backend Services → May produce meaningful events → NPC Cognition
+       (physics, time)    (ARRIVED, TIME_CHANGED)        (LLM inference)
+
+TICK alone should NEVER trigger inference.
+```
 
 ---
 
@@ -298,37 +309,51 @@ export function buildNpcCognitionPrompt(
 }
 ```
 
-### Solution 4: Don't Act on Every TICK
+### Solution 4: Separate Tick Processing from Inference
 
-Add filtering for meaningful events:
+**Key principle**: Ticks drive backend simulation; inference is triggered by meaningful events only.
+
+```text
+Current (broken):
+  TICK → NPC Actor → Cognition (LLM) ← fires every second!
+
+Correct:
+  TICK → Backend Services → Meaningful Events → NPC Actor → Cognition (LLM)
+         (time, physics)   (ARRIVED, etc.)      (only on meaningful events)
+```
+
+**Implementation**: NPC actors should NOT subscribe to TICK events at all. Instead:
+
+1. **Backend services** process TICKs (time progression, physics, schedules)
+2. **Services emit meaningful events** when something noteworthy happens:
+   - `ARRIVED` - NPC entered player's location
+   - `TIME_OF_DAY_CHANGED` - Morning → afternoon
+   - `SCHEDULE_TRIGGERED` - NPC's routine action time
+   - `PROXIMITY_ALERT` - NPC now within conversation range
+3. **NPC actors subscribe to meaningful events only**
 
 ```typescript
-// packages/actors/src/npc/cognition.ts
+// packages/actors/src/npc/npc-machine.ts
 
-static shouldAct(context: CognitionContext): boolean {
-  const { relevantEvents } = context.perception;
-  const { hasActiveConversation } = context.state;
+// BEFORE: Reacts to ANY event
+WORLD_EVENT: { target: 'perceiving' }
 
-  // No events at all - don't act
-  if (relevantEvents.length === 0) return false;
+// AFTER: Only react to meaningful events
+WORLD_EVENT: {
+  guard: 'isMeaningfulEvent',
+  target: 'perceiving',
+}
 
-  // Filter out TICK-only scenarios
-  const nonTickEvents = relevantEvents.filter((e) => e.type !== 'TICK');
-
-  // If only TICK events, only act if:
-  // 1. We're in an active conversation AND
-  // 2. Enough ticks have passed to warrant a prompt
-  if (nonTickEvents.length === 0) {
-    if (!hasActiveConversation) return false;
-
-    // Only initiate every ~10 ticks at most
-    const tickCount = relevantEvents.filter((e) => e.type === 'TICK').length;
-    if (tickCount < 10) return false;
-  }
-
-  return true;
+// Guard implementation
+guards: {
+  isMeaningfulEvent: ({ event }) => {
+    const MEANINGFUL_TYPES = ['SPOKE', 'ARRIVED', 'DEPARTED', 'TIME_OF_DAY_CHANGED', 'SCHEDULE_TRIGGERED'];
+    return MEANINGFUL_TYPES.includes(event.data.type);
+  },
 }
 ```
+
+This ensures NPCs only think when something worth responding to happens.
 
 ### Solution 5: Conversation State Machine
 
@@ -372,19 +397,25 @@ Behaviors by state:
 
 ## Implementation Priority
 
-### Phase 1: Quick Wins (Low Effort, High Impact)
+### Phase 1: Architecture Fix (Critical)
 
-1. **Filter TICK-only cognition** - Stop responding when only TICKs are present
-2. **Track `turnsSincePlayerSpoke`** - Simple counter, no DB changes
-3. **Update system prompt** - Add instruction about player silence
+1. **Separate tick from inference** - NPC actors should NOT react to TICK events
+2. **Backend services emit meaningful events** - ARRIVED, TIME_OF_DAY_CHANGED, etc.
+3. **NPC actors subscribe to meaningful events only** - Guard on event type
 
-### Phase 2: Chat History Integration (Medium Effort)
+### Phase 2: Player Awareness (Medium Effort)
+
+1. **Track `turnsSincePlayerSpoke`** - Simple counter, no DB changes
+2. **Update system prompt** - Add instruction about player silence
+3. **Intelligent idle behavior** - NPCs wait instead of chattering
+
+### Phase 3: Chat History Integration (Medium Effort)
 
 1. **Fetch recent messages in cognition** - Query last N messages from `events` table
 2. **Include in prompt** - Format as conversation for LLM context
 3. **Implement sliding window** - Keep token count manageable
 
-### Phase 3: Conversation State Machine (Higher Effort)
+### Phase 4: Conversation State Machine (Higher Effort)
 
 1. **Add conversation state to NPC machine** - XState transitions
 2. **State-dependent behaviors** - Different prompts/actions per state
@@ -396,20 +427,68 @@ Behaviors by state:
 
 | Problem | Root Cause | Fix |
 |---------|------------|-----|
-| Random NPC chatter | Reacts to every TICK | Filter TICK-only scenarios |
+| Random NPC chatter | Reacts to every TICK | **Separate tick from inference** - NPCs only react to meaningful events |
 | No player awareness | No tracking of player activity | Add `turnsSincePlayerSpoke` |
 | Constant token count | No chat history fetched | Retrieve messages from DB |
 | Disconnected responses | No conversation context | Include chat history in prompt |
 | Doesn't feel alive | Reaction machine, no social awareness | Conversation state machine |
 
-The heartbeat-based idle detection (from the previous document) will prevent inference when the player isn't viewing the session. This document addresses making NPC behavior feel more natural **when the player IS present but quiet**.
+**Key architectural principle**: Ticks drive backend simulation (time, physics, schedules). Backend services emit meaningful events. NPCs react to meaningful events only, never to TICKs directly.
+
+The heartbeat-based idle detection (from the previous document) will prevent simulation when the player isn't viewing the session. This document addresses making NPC behavior feel more natural **when the player IS present**.
 
 ---
 
 ## Recommended Next Steps
 
 1. Review and discuss proposed solutions
-2. Implement Phase 1 quick wins (filter TICKs, track player activity)
-3. Test NPC behavior with player silence scenarios
-4. Implement Phase 2 (chat history) if Phase 1 isn't sufficient
-5. Consider Phase 3 for fully "alive" NPCs
+2. **Implement Phase 1 first** - Fix the tick/inference separation
+3. Test that NPCs stop chattering when nothing meaningful happens
+4. Implement Phase 2 (player awareness) for natural conversation flow
+5. Implement Phase 3 (chat history) for contextual responses
+
+---
+
+## Appendix: Location/Movement System Analysis
+
+### Current Flow (Problematic)
+
+```text
+MOVE_INTENT → PhysicsService → MOVED → NPC Cognition → SPEAK_INTENT (LLM call!)
+```
+
+**Problems found:**
+
+1. **MOVED triggers inference** - `cognition.ts:68-85` generates SPEAK_INTENT on arrivals
+2. **Location not in prompt** - `prompts.ts` doesn't include NPC's `locationId`
+3. **NPC location is static** - Never updated when NPC moves
+
+### Correct Architecture
+
+```text
+Movement: MOVE_INTENT → MOVED → State update only (no inference)
+                                 - Update NPC locationId
+                                 - Update projections
+                                 - NO LLM call
+
+Conversation: SPOKE → Inference (with location in prompt as context)
+```
+
+**Key principle**: Movement is simulation state. Location is context for conversation, not a trigger.
+
+### Implementation Changes
+
+1. **Remove MOVED → inference rule** in `cognition.ts:68-85`
+2. **Update NPC locationId** when they receive their own MOVED event
+3. **Include location in prompt** when inference IS triggered
+4. **Track recent arrivals as context** (not as inference trigger)
+
+### When Arrival SHOULD Trigger Something
+
+| Scenario | Wrong Approach | Right Approach |
+|----------|----------------|----------------|
+| Shopkeeper greets customer | MOVED → Inference | Schedule: "Greet during business hours" |
+| Guard notices intruder | MOVED → Inference | Security service emits `ALERT` event |
+| Friend bumps into friend | MOVED → Inference | Proximity service emits `ENCOUNTER` |
+
+Even "greeting" shouldn't be hardcoded to MOVED. Use **explicit meaningful events** from services that understand context.

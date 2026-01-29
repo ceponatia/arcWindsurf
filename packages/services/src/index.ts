@@ -25,3 +25,7 @@ export * from './rules/validators.js';
 // Simulation
 export * from './simulation/encounter.js';
 export * from './simulation/hooks.js';
+
+// Presence
+export * from './presence/presence-service.js';
+export * from './presence/types.js';

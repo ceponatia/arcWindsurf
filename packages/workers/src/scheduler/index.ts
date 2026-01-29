@@ -2,7 +2,7 @@ import { type Queue } from 'bullmq';
 import { type JobData, type TickTask, type JobResult } from '../types.js';
 
 export class Scheduler {
-  constructor(private tickQueue: Queue<JobData<TickTask>, JobResult>) {}
+  constructor(private tickQueue: Queue<JobData<TickTask>, JobResult>) { }
 
   /**
    * Start the recurring world tick job.
@@ -10,12 +10,14 @@ export class Scheduler {
   async startWorldTick(sessionId: string, intervalMs = 1000) {
     const jobName = `tick-${sessionId}`;
 
-    // Remove existing repeatable job for this session if any
     const repeatableJobs = await this.tickQueue.getRepeatableJobs();
-    for (const job of repeatableJobs) {
-      if (job.name === jobName) {
-        await this.tickQueue.removeRepeatableByKey(job.key);
-      }
+    const existingJob = repeatableJobs.find((job) => job.name === jobName);
+    if (existingJob && typeof existingJob.every === 'number' && existingJob.every === intervalMs) {
+      console.log(`[Scheduler] World tick already scheduled for session ${sessionId}`);
+      return;
+    }
+    if (existingJob) {
+      await this.tickQueue.removeRepeatableByKey(existingJob.key);
     }
 
     // Add new repeatable job

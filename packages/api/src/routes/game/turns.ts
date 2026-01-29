@@ -216,6 +216,7 @@ export function registerTurnRoutes(app: Hono): void {
     );
 
     const message = npcSpoke?.content ?? 'The world is quiet.';
+    const npcName = npcSpoke ? npcDisplayNames.get(npcSpoke.actorId) : undefined;
 
     const response: TurnResponseDto = {
       message,
@@ -225,9 +226,7 @@ export function registerTurnRoutes(app: Hono): void {
         ? {
           speaker: {
             actorId: npcSpoke.actorId,
-            ...(npcDisplayNames.get(npcSpoke.actorId)
-              ? { name: npcDisplayNames.get(npcSpoke.actorId) }
-              : {}),
+            ...(npcName ? { name: npcName } : {}),
           },
         }
         : {}),

@@ -11,6 +11,7 @@ import { handleListMessages, handlePatchMessage, handleDeleteMessage } from './s
 import { handleListNpcs, handleCreateNpc } from './session-npcs.js';
 import { handleGetEffective } from './session-effective.js';
 import { handlePutCharacterOverrides, handlePutSettingOverrides } from './session-overrides.js';
+import { handleSessionHeartbeat } from './session-heartbeat.js';
 
 interface SessionRouteDeps {
   getLoaded: LoadedDataGetter;
@@ -27,6 +28,7 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
   // Session CRUD (parameterized routes after specific routes)
   app.get('/sessions/:id', (c) => handleGetSession(c));
   app.delete('/sessions/:id', (c) => handleDeleteSession(c));
+  app.post('/sessions/:id/heartbeat', (c) => handleSessionHeartbeat(c));
 
   // Session messages
   app.get('/sessions/:id/messages', (c) => handleListMessages(c));

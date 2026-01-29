@@ -6,11 +6,44 @@ import { createTickProcessor } from './processors/tick.js';
 import { createEmbeddingProcessor } from './processors/embedding.js';
 import { cognitionQueue, tickQueue, embeddingQueue } from './queues/index.js';
 import { Scheduler } from './scheduler/index.js';
+import { HeartbeatMonitor } from './heartbeat-monitor.js';
+import { presenceService, PAUSE_THRESHOLD_MS } from '@minimal-rpg/services';
+import {
+  listRecentSessionsByHeartbeat,
+  listStaleSessionsByHeartbeat,
+} from '@minimal-rpg/db/node';
 
 /**
  * Main Worker Entry Point
  */
-function main(): { scheduler: Scheduler } {
+/**
+ * Seed presence tracking from persisted session heartbeats.
+ */
+async function hydratePresenceFromDatabase(scheduler: Scheduler): Promise<void> {
+  const cutoff = new Date(Date.now() - PAUSE_THRESHOLD_MS);
+  const staleSessions = await listStaleSessionsByHeartbeat(cutoff);
+  const recentSessions = await listRecentSessionsByHeartbeat(cutoff);
+
+  if (staleSessions.length > 0) {
+    console.info(`[Presence] Stopping ${staleSessions.length} stale session ticks`);
+  }
+
+  for (const session of staleSessions) {
+    await scheduler.stopWorldTick(session.id);
+  }
+
+  for (const session of recentSessions) {
+    const lastHeartbeatAt = session.lastHeartbeatAt;
+    if (lastHeartbeatAt) {
+      presenceService.seedSession(session.id, lastHeartbeatAt);
+    }
+  }
+}
+
+/**
+ * Main Worker Entry Point
+ */
+async function main(): Promise<{ scheduler: Scheduler; heartbeatMonitor: HeartbeatMonitor }> {
   console.log('Starting Minimal RPG Background Workers...');
 
   // 1. Initialize dependencies
@@ -46,12 +79,26 @@ function main(): { scheduler: Scheduler } {
 
   // 3. Initialize Scheduler
   const scheduler = new Scheduler(tickQueue);
+  presenceService.setScheduler(scheduler);
+
+  await hydratePresenceFromDatabase(scheduler).catch((error) => {
+    console.warn('[Presence] Failed to hydrate presence from database', error);
+  });
+
+  const heartbeatMonitor = new HeartbeatMonitor({
+    presence: presenceService,
+    scheduler,
+    pauseThresholdMs: PAUSE_THRESHOLD_MS,
+  });
+
+  heartbeatMonitor.start();
 
   console.log('Workers initialized and listening for jobs.');
 
   // Handle shutdown
   const shutdown = async () => {
     console.log('Shutting down workers...');
+    heartbeatMonitor.stop();
     await Promise.all([
       cognitionWorker.close(),
       tickWorker.close(),
@@ -70,17 +117,15 @@ function main(): { scheduler: Scheduler } {
     void shutdown();
   });
 
-  return { scheduler };
+  return { scheduler, heartbeatMonitor };
 }
 
 // Start if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  try {
-    main();
-  } catch (err) {
+  void main().catch((err) => {
     console.error('Failed to start workers:', err);
     process.exit(1);
-  }
+  });
 }
 
 export * from './types.js';
