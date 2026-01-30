@@ -23,11 +23,16 @@ export class PhysicsService {
       typeof raw['fromLocationId'] === 'string' ? raw['fromLocationId'] : 'unknown';
     const sessionId = typeof raw['sessionId'] === 'string' ? raw['sessionId'] : undefined;
 
+    const toLocationId =
+      typeof (move as { toLocationId?: unknown }).toLocationId === 'string'
+        ? (move as { toLocationId: string }).toLocationId
+        : move.destinationId;
+
     const effect: MovedEffect = {
       type: 'MOVED',
       actorId,
       fromLocationId,
-      toLocationId: move.destinationId,
+      toLocationId,
       sessionId: sessionId ?? 'unknown',
       timestamp: new Date(),
     };

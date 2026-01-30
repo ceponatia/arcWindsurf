@@ -410,6 +410,8 @@ export const sessionPluginState = pgTable(
   }
 );
 
+export * from './faction.js';
+
 export const sessionTags = pgTable(
   'session_tags',
   {
@@ -509,6 +511,50 @@ export const studioSessions = pgTable(
   (table) => {
     return {
       expiresIdx: index('idx_studio_sessions_expires_at').on(table.expiresAt),
+    };
+  }
+);
+
+// =============================================================================
+// 008_DIALOGUE
+// =============================================================================
+
+export const dialogueTrees = pgTable(
+  'dialogue_trees',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    npcId: text('npc_id').notNull(),
+    triggerType: text('trigger_type').notNull(),
+    triggerData: jsonb('trigger_data').notNull().default({}),
+    startNodeId: text('start_node_id').notNull(),
+    nodes: jsonb('nodes').notNull(),
+    priority: integer('priority').default(0),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => {
+    return {
+      npcIdx: index('idx_dialogue_trees_npc').on(table.npcId),
+    };
+  }
+);
+
+export const dialogueState = pgTable(
+  'dialogue_state',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').references(() => sessions.id),
+    npcId: text('npc_id').notNull(),
+    treeId: uuid('tree_id').references(() => dialogueTrees.id),
+    currentNodeId: text('current_node_id'),
+    visitedNodes: text('visited_nodes').array().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => {
+    return {
+      sessionNpcUnique: unique().on(table.sessionId, table.npcId),
     };
   }
 );

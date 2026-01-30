@@ -6,6 +6,7 @@ export const SystemEventTypeSchema = z.enum([
   'SESSION_END',
   'ACTOR_SPAWN',
   'ACTOR_DESPAWN',
+  'ACTION_REJECTED',
 ]);
 
 export type SystemEventType = z.infer<typeof SystemEventTypeSchema>;
@@ -44,6 +45,15 @@ export const SystemEventSchema = z.discriminatedUnion('type', [
     actorId: z.string(),
     sessionId: z.string(),
     timestamp: z.date().optional(),
+  }),
+  z.object({
+    type: z.literal('ACTION_REJECTED'),
+    originalEventType: z.string(),
+    actorId: z.string(),
+    reason: z.string(),
+    suggestion: z.string().optional(),
+    sessionId: z.string(),
+    timestamp: z.date(),
   }),
 ]);
 

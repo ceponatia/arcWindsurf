@@ -9,6 +9,8 @@ export const EffectTypeSchema = z.enum([
   'ITEM_USED',
   'HEALED',
   'DIED',
+  'NPC_ACTIVITY_CHANGED',
+  'OBJECT_EXAMINED',
 ]);
 
 export type EffectType = z.infer<typeof EffectTypeSchema>;
@@ -34,9 +36,26 @@ export const SpokeEffectSchema = z.object({
   ...baseEffectFields,
 });
 
+export const NpcActivityChangedEffectSchema = z.object({
+  type: z.literal('NPC_ACTIVITY_CHANGED'),
+  actorId: z.string(),
+  previousActivity: z.string().optional(),
+  newActivity: z.string(),
+  ...baseEffectFields,
+});
+
 export const EffectSchema = z.discriminatedUnion('type', [
   MovedEffectSchema,
   SpokeEffectSchema,
+  NpcActivityChangedEffectSchema,
+  z.object({
+    type: z.literal('OBJECT_EXAMINED'),
+    actorId: z.string(),
+    target: z.string(),
+    focus: z.string().optional(),
+    locationId: z.string().optional(),
+    ...baseEffectFields,
+  }),
   z.object({
     type: z.literal('DAMAGED'),
     actorId: z.string(),

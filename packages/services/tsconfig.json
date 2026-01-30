@@ -12,5 +12,10 @@
   },
   "include": ["src"],
   "exclude": ["dist"],
-  "references": [{ "path": "../bus" }, { "path": "../db" }, { "path": "../schemas" }]
+  "references": [
+    { "path": "../bus" },
+    { "path": "../db" },
+    { "path": "../llm" },
+    { "path": "../schemas" }
+  ]
 }

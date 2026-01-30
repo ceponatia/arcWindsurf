@@ -2,6 +2,7 @@ import { drizzle as db } from '../connection/index.js';
 import { entityProfiles } from '../schema/index.js';
 import { eq, and, or } from 'drizzle-orm';
 import type { UUID } from '../types.js';
+import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas';
 
 export interface CreateEntityProfileInput {
   id?: UUID;
@@ -13,6 +14,15 @@ export interface CreateEntityProfileInput {
   profileJson?: Record<string, unknown>;
   tags?: string[];
   embedding?: number[];
+}
+
+/**
+ * Returns true when a string is a UUID.
+ */
+function isUuid(value: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
 }
 
 export async function createEntityProfile(input: CreateEntityProfileInput) {
@@ -36,6 +46,28 @@ export async function createEntityProfile(input: CreateEntityProfileInput) {
 export async function getEntityProfile(id: UUID) {
   const [result] = await db.select().from(entityProfiles).where(eq(entityProfiles.id, id)).limit(1);
   return result;
+}
+
+/**
+ * Load a character profile by entity profile id.
+ */
+export async function getCharacterProfile(id: string): Promise<CharacterProfile | null> {
+  if (!isUuid(id)) {
+    return null;
+  }
+
+  const [result] = await db
+    .select()
+    .from(entityProfiles)
+    .where(and(eq(entityProfiles.id, id), eq(entityProfiles.entityType, 'character')))
+    .limit(1);
+
+  if (!result) {
+    return null;
+  }
+
+  const parsed = CharacterProfileSchema.safeParse(result.profileJson);
+  return parsed.success ? parsed.data : null;
 }
 
 export async function listEntityProfiles(options: {

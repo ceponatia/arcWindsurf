@@ -12,6 +12,7 @@ import {
   timeService,
   socialEngine,
   rulesEngine,
+  Scheduler,
 } from '@minimal-rpg/services';
 import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
 import { OpenAIProvider, createOpenRouterProviderFromEnv } from '@minimal-rpg/llm';
@@ -141,6 +142,7 @@ export function registerTurnRoutes(app: Hono): void {
     timeService.start();
     socialEngine.start();
     rulesEngine.start();
+    Scheduler.start();
 
     // Spawn NPC actors for this session if missing.
     // NOTE: Projections only learn about NPCs via ACTOR_SPAWN events, so on a fresh

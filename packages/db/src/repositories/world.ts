@@ -2,9 +2,12 @@ import { drizzle as db } from '../connection/index.js';
 import {
   locationMaps,
   locationPrefabs,
+  sessions,
 } from '../schema/index.js';
 import { eq } from 'drizzle-orm';
 import type { UUID } from '../types.js';
+import type { LocationConnectionSummary } from './types.js';
+import { LocationConnectionSchema, LocationNodeSchema } from '@minimal-rpg/schemas';
 
 // =============================================================================
 // Location Maps
@@ -66,6 +69,61 @@ export async function updateLocationMap(id: UUID, updates: Partial<CreateLocatio
 export async function deleteLocationMap(id: UUID) {
   const [deleted] = await db.delete(locationMaps).where(eq(locationMaps.id, id)).returning();
   return !!deleted;
+}
+
+/**
+ * Get outgoing location connections for a session and location.
+ */
+export async function getLocationConnections(
+  sessionId: UUID,
+  locationId: string
+): Promise<LocationConnectionSummary[]> {
+  const sessionRow = await db
+    .select({ locationMapId: sessions.locationMapId })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+
+  const mapId = sessionRow[0]?.locationMapId;
+  if (!mapId) return [];
+
+  const map = await getLocationMap(mapId);
+  if (!map) return [];
+
+  const nodesParse = LocationNodeSchema.array().safeParse(map.nodesJson ?? []);
+  const connectionsParse = LocationConnectionSchema.array().safeParse(
+    map.connectionsJson ?? []
+  );
+
+  const nodes = nodesParse.success ? nodesParse.data : [];
+  const connections = connectionsParse.success ? connectionsParse.data : [];
+  const nodeNames = new Map(nodes.map((node) => [node.id, node.name]));
+
+  const results: LocationConnectionSummary[] = [];
+
+  for (const connection of connections) {
+    if (connection.fromLocationId === locationId) {
+      results.push({
+        connectionId: connection.id,
+        targetLocationId: connection.toLocationId,
+        targetName: nodeNames.get(connection.toLocationId),
+        locked: connection.locked,
+        lockReason: connection.lockReason,
+      });
+    }
+
+    if (connection.bidirectional && connection.toLocationId === locationId) {
+      results.push({
+        connectionId: connection.id,
+        targetLocationId: connection.fromLocationId,
+        targetName: nodeNames.get(connection.fromLocationId),
+        locked: connection.locked,
+        lockReason: connection.lockReason,
+      });
+    }
+  }
+
+  return results;
 }
 
 // =============================================================================

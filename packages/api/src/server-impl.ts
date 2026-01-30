@@ -29,6 +29,7 @@ import {
   registerPersistenceHandler,
 } from '@minimal-rpg/bus';
 import { persistWorldEvent } from './services/event-persistence.js';
+import { rulesEngine, Scheduler, tickEmitter } from '@minimal-rpg/services';
 
 const app = new Hono();
 
@@ -55,6 +56,9 @@ let loaded: LoadedData | undefined = undefined;
 export async function startServer(): Promise<void> {
   try {
     initializeWorldBus();
+    rulesEngine.start();
+    Scheduler.start();
+    tickEmitter.start(5000);
 
     // Initialize studio sessions table if not already present
     await initStudioSessionsTable();

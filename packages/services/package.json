@@ -20,7 +20,9 @@
   "dependencies": {
     "@minimal-rpg/bus": "workspace:*",
     "@minimal-rpg/db": "workspace:*",
+    "@minimal-rpg/llm": "workspace:*",
     "@minimal-rpg/schemas": "workspace:*",
+    "effect": "3.10.13",
     "zod": "^3.23.8"
   },
   "devDependencies": {

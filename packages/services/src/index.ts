@@ -13,6 +13,8 @@ export * from './social/faction.js';
 export * from './time/time-service.js';
 export * from './time/scheduler.js';
 export * from './time/tick-emitter.js';
+export * from './time/schedule-service.js';
+export * from './time/types.js';
 
 // Location
 export * from './location/location-service.js';

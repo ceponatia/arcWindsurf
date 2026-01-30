@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Effect } from 'effect';
 import { worldBus } from '@minimal-rpg/bus';
 import { timeService } from '@minimal-rpg/services';
+import * as dbNode from '@minimal-rpg/db/node';
 import type { LLMProvider, LLMStreamChunk, LLMResponse, LLMMessage } from '@minimal-rpg/llm';
-import { TurnOrchestrator, type TurnConfig } from './turn-orchestrator.js';
+import { TurnOrchestrator, type TurnConfig } from '../../src/services/turn-orchestrator.js';
 
 /**
  * Build a minimal mock LLM provider for unit tests.
@@ -46,6 +47,9 @@ describe('services/turn-orchestrator', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    // Mock DB calls to avoid connection errors in unit tests
+    vi.spyOn(dbNode, 'getActorState').mockResolvedValue(undefined);
+    vi.spyOn(dbNode, 'getEntityProfile').mockResolvedValue(undefined);
   });
 
   it('should process a turn and return a result', async () => {

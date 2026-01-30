@@ -12,7 +12,15 @@ import type {
   GetSessionPersonaResult,
   QueryNpcListResult,
   GetNpcTranscriptResult,
+  ExamineObjectArgs,
+  NavigatePlayerArgs,
+  UseItemArgs,
 } from './types.js';
+import {
+  handleExamineObject,
+  handleNavigatePlayer,
+  handleUseItem,
+} from './gameplay-handlers.js';
 import {
   getSessionTagsWithDefinitions,
   drizzle,
@@ -115,6 +123,12 @@ export class SessionToolHandler {
         return this.executeQueryNpcList();
       case 'get_npc_transcript':
         return this.executeGetNpcTranscript(args as GetNpcTranscriptArgs);
+      case 'examine_object':
+        return handleExamineObject(args as ExamineObjectArgs, this.buildGameplayContext());
+      case 'navigate_player':
+        return handleNavigatePlayer(args as NavigatePlayerArgs, this.buildGameplayContext());
+      case 'use_item':
+        return handleUseItem(args as UseItemArgs, this.buildGameplayContext());
       default:
         // Not a session tool - return null so caller can try other handlers
         return null;
@@ -130,7 +144,20 @@ export class SessionToolHandler {
       'get_session_persona',
       'query_npc_list',
       'get_npc_transcript',
+      'examine_object',
+      'navigate_player',
+      'use_item',
     ].includes(toolName);
+  }
+
+  /**
+   * Build shared context for gameplay handlers.
+   */
+  private buildGameplayContext(): { ownerEmail: string; sessionId: string } {
+    return {
+      ownerEmail: this.ownerEmail,
+      sessionId: this.sessionId,
+    };
   }
 
   // ===========================================================================

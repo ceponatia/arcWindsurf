@@ -1,7 +1,24 @@
 import { eq, and, or, lt, gt, isNull, isNotNull } from 'drizzle-orm';
 import { drizzle as db } from '../connection/index.js';
 import { sessions, sessionProjections } from '../schema/index.js';
+import { DEFAULT_START_TIME, GameTimeSchema } from '@minimal-rpg/schemas';
 import type { UUID } from '../types.js';
+
+type SessionProjectionRecord = Record<string, unknown>;
+
+/**
+ * Check if a value is a plain record.
+ */
+function isRecord(value: unknown): value is SessionProjectionRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Normalize unknown input to a finite number if possible.
+ */
+function toNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
 
 /**
  * Creates a new session and its initial projection in a transaction.
@@ -61,6 +78,16 @@ export async function listSessions(ownerEmail: string) {
 }
 
 /**
+ * Get all active sessions.
+ */
+export async function getActiveSessions(): Promise<{ id: string }[]> {
+  return await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(eq(sessions.status, 'active'));
+}
+
+/**
  * Deletes a session (and its projections/events via cascade).
  */
 export async function deleteSession(id: UUID, ownerEmail: string) {
@@ -77,6 +104,37 @@ export async function getSessionProjection(sessionId: UUID) {
     .where(eq(sessionProjections.sessionId, sessionId))
     .limit(1);
   return result[0];
+}
+
+/**
+ * Get the current game time for a session.
+ */
+export async function getSessionGameTime(sessionId: UUID) {
+  const projection = await getSessionProjection(sessionId);
+  if (!projection) return null;
+
+  const timeState = projection.time;
+  if (!isRecord(timeState)) return null;
+
+  const currentState = isRecord(timeState['current']) ? timeState['current'] : null;
+  if (!currentState) return null;
+
+  const dayValue = toNumber(currentState['dayOfMonth']) ?? toNumber(currentState['day']);
+  const absoluteDay =
+    toNumber(currentState['absoluteDay']) ?? dayValue ?? DEFAULT_START_TIME.absoluteDay;
+
+  const candidate = {
+    year: toNumber(currentState['year']) ?? DEFAULT_START_TIME.year,
+    month: toNumber(currentState['month']) ?? DEFAULT_START_TIME.month,
+    dayOfMonth: dayValue ?? DEFAULT_START_TIME.dayOfMonth,
+    absoluteDay,
+    hour: toNumber(currentState['hour']) ?? DEFAULT_START_TIME.hour,
+    minute: toNumber(currentState['minute']) ?? DEFAULT_START_TIME.minute,
+    second: toNumber(currentState['second']) ?? DEFAULT_START_TIME.second,
+  };
+
+  const parsed = GameTimeSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : null;
 }
 
 /**

@@ -21,6 +21,9 @@ const baseIntentFields = {
 export const MoveIntentSchema = z.object({
   type: z.literal('MOVE_INTENT'),
   destinationId: z.string(),
+  fromLocationId: z.string().optional(),
+  toLocationId: z.string().optional(),
+  reason: z.enum(['schedule', 'player', 'ai']).optional(),
   ...baseIntentFields,
 });
 

@@ -18,6 +18,10 @@ export type {
   GetSessionPersonaArgs,
   QueryNpcListArgs,
   GetNpcTranscriptArgs,
+  // Gameplay tool argument types
+  ExamineObjectArgs,
+  NavigatePlayerArgs,
+  UseItemArgs,
   // Session tool result types
   SessionTagInfo,
   GetSessionTagsResult,
@@ -28,6 +32,11 @@ export type {
   NpcTranscriptMessage,
   GetNpcTranscriptResult,
   SessionToolResult,
+  // Gameplay tool result types
+  ExamineObjectResult,
+  NavigatePlayerResult,
+  UseItemResult,
+  GameplayToolResult,
 } from './types.js';
 
 // Tool definitions

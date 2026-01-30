@@ -1,7 +1,10 @@
-import type { Intent, WorldEvent } from '@minimal-rpg/schemas';
+import { CharacterProfileSchema, type CharacterProfile, type Intent, type WorldEvent } from '@minimal-rpg/schemas';
 import type { LLMProvider } from '@minimal-rpg/llm';
+import { CognitionLayer, type CognitionContext } from '@minimal-rpg/actors';
 import { worldBus } from '@minimal-rpg/bus';
 import { timeService } from '@minimal-rpg/services';
+import { getActorState, getEntityProfile } from '@minimal-rpg/db/node';
+import { isUuid, toId, toSessionId } from '../utils/uuid.js';
 
 /**
  * Configuration for turn handling.
@@ -85,7 +88,11 @@ export class TurnOrchestrator {
     const ambientNarration = this.collectAmbientNarration(input.sessionId);
 
     // Step 5: Generate focused NPC response
-    const npcResponse = this.generateNpcResponse(input.focusedNpcId, input.playerMessage);
+    const npcResponse = await this.generateNpcResponse(
+      input.focusedNpcId,
+      input.playerMessage,
+      input.sessionId
+    );
 
     // Step 6: Compose final response (TASK-016 dependency)
     const transitionNarration = null;
@@ -177,15 +184,110 @@ export class TurnOrchestrator {
   /**
    * Generate the focused NPC's response.
    */
-  private generateNpcResponse(focusedNpcId: string | null, playerMessage: string): string | null {
+  private async generateNpcResponse(
+    focusedNpcId: string | null,
+    playerMessage: string,
+    sessionId: string
+  ): Promise<string | null> {
     if (!focusedNpcId) {
       return null;
     }
 
-    // TODO: Wire to actor cognition or LLM call.
-    void playerMessage;
-    void this.llmProvider;
-    return '[NPC response placeholder]';
+    const actorState = await getActorState(toSessionId(sessionId), focusedNpcId);
+    if (!actorState) {
+      console.warn(`[TurnOrchestrator] Missing actor state for NPC ${focusedNpcId}`);
+      return null;
+    }
+
+    const profile = await this.loadNpcProfile(focusedNpcId, actorState.entityProfileId ?? null);
+    if (!profile) {
+      console.warn(`[TurnOrchestrator] Missing profile for NPC ${focusedNpcId}`);
+      return null;
+    }
+
+    const rawState =
+      actorState.state && typeof actorState.state === 'object'
+        ? (actorState.state as Record<string, unknown>)
+        : {};
+    const locationId =
+      typeof rawState['locationId'] === 'string' ? (rawState['locationId'] as string) : 'unknown';
+    const spawnedAt = actorState.createdAt ?? new Date();
+    const lastActiveAt = actorState.updatedAt ?? new Date();
+    const recentEvents = Array.isArray(rawState['recentEvents'])
+      ? (rawState['recentEvents'] as WorldEvent[])
+      : [];
+    const goals = Array.isArray(rawState['goals']) ? (rawState['goals'] as string[]) : [];
+
+    if (locationId === 'unknown') {
+      console.warn(`[TurnOrchestrator] Missing locationId for NPC ${focusedNpcId}`);
+    }
+
+    const context: CognitionContext = {
+      perception: {
+        relevantEvents: [
+          {
+            type: 'SPOKE',
+            content: playerMessage,
+            actorId: 'player',
+            sessionId,
+            timestamp: new Date(),
+          },
+        ],
+        nearbyActors: [],
+        locationState: locationId,
+      },
+      state: {
+        id: actorState.actorId,
+        type: 'npc',
+        npcId: focusedNpcId,
+        sessionId,
+        locationId,
+        spawnedAt,
+        lastActiveAt,
+        recentEvents,
+        goals,
+      },
+      availableActions: ['SPEAK_INTENT'],
+    };
+
+    const result = await CognitionLayer.decideLLM(context, profile, this.llmProvider);
+
+    if (result?.intent?.type === 'SPEAK_INTENT') {
+      const content = (result.intent as { content?: string }).content;
+      return content ?? null;
+    }
+
+    return null;
+  }
+
+  /**
+   * Load NPC character profile from entity profiles.
+   */
+  private async loadNpcProfile(
+    npcId: string,
+    entityProfileId: string | null
+  ): Promise<CharacterProfile | null> {
+    const candidateIds: string[] = [];
+    if (isUuid(npcId)) {
+      candidateIds.push(npcId);
+    }
+    if (entityProfileId && isUuid(entityProfileId)) {
+      candidateIds.push(entityProfileId);
+    }
+
+    for (const id of candidateIds) {
+      const profileRow = await getEntityProfile(toId(id));
+      if (!profileRow || profileRow.entityType !== 'character') {
+        continue;
+      }
+
+      const parsed = CharacterProfileSchema.safeParse(profileRow.profileJson);
+      if (parsed.success) {
+        return parsed.data;
+      }
+    }
+
+    return null;
   }
 
   /**

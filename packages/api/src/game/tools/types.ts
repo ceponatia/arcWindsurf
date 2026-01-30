@@ -42,6 +42,16 @@ export interface GetNpcTranscriptArgs {
 }
 
 // =============================================================================
+// Gameplay Tool Argument Types
+// =============================================================================
+
+export type {
+  ExamineObjectArgs,
+  NavigatePlayerArgs,
+  UseItemArgs,
+} from './tool-args.js';
+
+// =============================================================================
 // Session Tool Result Types
 // =============================================================================
 
@@ -112,9 +122,57 @@ export interface GetNpcTranscriptResult extends SuccessResultBase {
   count: number;
 }
 
+// =============================================================================
+// Gameplay Tool Result Types
+// =============================================================================
+
+/** Result from examine_object tool */
+export interface ExamineObjectResult extends SuccessResultBase {
+  success: true;
+  target: string;
+  kind: 'location' | 'actor' | 'item';
+  description: string;
+  focus?: string;
+}
+
+/** Result from navigate_player tool */
+export interface NavigatePlayerResult extends SuccessResultBase {
+  success: true;
+  previousLocation?: string;
+  newLocation?: string;
+  locationName?: string;
+  description?: string;
+  describe_only?: boolean;
+  exits?: {
+    direction: string;
+    destinationId: string;
+    destinationName?: string;
+    locked?: boolean;
+    lockReason?: string;
+  }[];
+  narrative?: string;
+  exit?: {
+    direction: string;
+    name: string;
+  };
+}
+
+/** Result from use_item tool */
+export interface UseItemResult extends SuccessResultBase {
+  success: true;
+  item: string;
+  itemId: string;
+  target: string | null;
+  action: string | null;
+  remainingQuantity: number | null;
+}
+
 /** Union of all session tool results */
 export type SessionToolResult =
   | GetSessionTagsResult
   | GetSessionPersonaResult
   | QueryNpcListResult
   | GetNpcTranscriptResult;
+
+/** Union of gameplay tool results */
+export type GameplayToolResult = ExamineObjectResult | NavigatePlayerResult | UseItemResult;

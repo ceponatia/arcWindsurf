@@ -143,6 +143,34 @@ export interface WorkspaceDraftRecord {
   updatedAt: string;
 }
 
+// =============================================================================
+// Dialogue Tree Records
+// =============================================================================
+
+export interface DialogueTreeRecord {
+  id: UUID;
+  npcId: string;
+  triggerType: string;
+  triggerData: Record<string, unknown>;
+  startNodeId: string;
+  nodes: Record<string, unknown>;
+  priority: number | null;
+  isActive: boolean | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export interface DialogueStateRecord {
+  id: UUID;
+  sessionId: UUID | null;
+  npcId: string;
+  treeId: UUID | null;
+  currentNodeId: string | null;
+  visitedNodes: string[];
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
 export interface SessionLocationMapRecord {
   id: UUID;
   sessionId: UUID;
@@ -161,6 +189,24 @@ export interface SessionLocationMapRecord {
     defaultStartLocationId: string | null;
     tags: string[];
   };
+}
+
+/**
+ * Actor IDs present at a location within a session.
+ */
+export interface ActorsAtLocationResult {
+  actorId: string;
+}
+
+/**
+ * Summary of a location connection for navigation.
+ */
+export interface LocationConnectionSummary {
+  connectionId: string;
+  targetLocationId: string;
+  targetName?: string;
+  locked?: boolean;
+  lockReason?: string;
 }
 
 // From tags.ts
