@@ -12,6 +12,8 @@ import { handleListNpcs, handleCreateNpc } from './session-npcs.js';
 import { handleGetEffective } from './session-effective.js';
 import { handlePutCharacterOverrides, handlePutSettingOverrides } from './session-overrides.js';
 import { handleSessionHeartbeat } from './session-heartbeat.js';
+import { handleSessionDisconnect } from './session-disconnect.js';
+import { heartbeatRateLimiter } from '../../../middleware/rate-limiter.js';
 
 interface SessionRouteDeps {
   getLoaded: LoadedDataGetter;
@@ -28,7 +30,10 @@ export function registerSessionRoutes(app: Hono, deps: SessionRouteDeps): void {
   // Session CRUD (parameterized routes after specific routes)
   app.get('/sessions/:id', (c) => handleGetSession(c));
   app.delete('/sessions/:id', (c) => handleDeleteSession(c));
-  app.post('/sessions/:id/heartbeat', (c) => handleSessionHeartbeat(c));
+
+  // Session presence (heartbeat + disconnect with rate limiting)
+  app.post('/sessions/:id/heartbeat', heartbeatRateLimiter, (c) => handleSessionHeartbeat(c));
+  app.post('/sessions/:id/disconnect', heartbeatRateLimiter, (c) => handleSessionDisconnect(c));
 
   // Session messages
   app.get('/sessions/:id/messages', (c) => handleListMessages(c));

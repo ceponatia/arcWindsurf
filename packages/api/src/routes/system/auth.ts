@@ -5,6 +5,7 @@ import type { ApiError } from '../../types.js';
 import type { AuthTokenPayload, AuthUser } from '../../auth/types.js';
 import { getAuthSecret, signAuthToken } from '../../auth/token.js';
 import { getAuthUser } from '../../auth/middleware.js';
+import { loginRateLimiter } from '../../middleware/rate-limiter.js';
 
 const LoginSchema = z.object({
   identifier: z.string().min(1),
@@ -22,7 +23,7 @@ function makeTokenPayload(user: AuthUser, ttlSeconds: number): AuthTokenPayload 
 }
 
 export function registerAuthRoutes(app: Hono): void {
-  app.post('/auth/login', async (c) => {
+  app.post('/auth/login', loginRateLimiter, async (c) => {
     let body: unknown;
     try {
       body = await c.req.json();

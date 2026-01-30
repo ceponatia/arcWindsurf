@@ -24,6 +24,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import type { ApiError } from '../types.js';
 import { getConfig } from '../utils/config.js';
+import { studioRateLimiter } from '../middleware/rate-limiter.js';
 
 // In-memory actor cache (actors are expensive to create)
 const actorCache = new Map<string, StudioNpcActor>();
@@ -204,7 +205,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // --------------------------------------------------------------------------
 
   // POST /studio/generate - legacy non-streaming generation endpoint
-  app.post('/studio/generate', async (c) => {
+  app.post('/studio/generate', studioRateLimiter, async (c) => {
     try {
       const body: unknown = await c.req.json();
       const parsed = GenerateRequestSchema.safeParse(body);
@@ -300,7 +301,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/infer-traits - Endpoint to perform trait inference asynchronously
-  app.post('/studio/infer-traits', async (c) => {
+  app.post('/studio/infer-traits', studioRateLimiter, async (c) => {
     try {
       const body: unknown = await c.req.json();
 
@@ -402,7 +403,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/summarize - Endpoint to summarize older messages
-  app.post('/studio/summarize', async (c) => {
+  app.post('/studio/summarize', studioRateLimiter, async (c) => {
     try {
       const body: unknown = await c.req.json();
       const parsed = z.object({ sessionId: z.string() }).safeParse(body);
@@ -490,7 +491,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/conversation - Main conversation endpoint
-  app.post('/studio/conversation', async (c) => {
+  app.post('/studio/conversation', studioRateLimiter, async (c) => {
     const requestStart = performance.now();
     try {
       const body: unknown = await c.req.json();
@@ -605,7 +606,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/conversation/stream - Streaming conversation endpoint
-  app.post('/studio/conversation/stream', async (c) => {
+  app.post('/studio/conversation/stream', studioRateLimiter, async (c) => {
     const body: unknown = await c.req.json();
     const parsed = ConversationRequestSchema.safeParse(body);
 
@@ -764,7 +765,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/suggest-prompt - Get suggested prompts
-  app.post('/studio/suggest-prompt', async (c) => {
+  app.post('/studio/suggest-prompt', studioRateLimiter, async (c) => {
     try {
       const body: unknown = await c.req.json();
       const parsed = SuggestPromptRequestSchema.safeParse(body);
@@ -805,7 +806,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/dilemma/generate - Generate just the dilemma scenario (no response)
-  app.post('/studio/dilemma/generate', async (c) => {
+  app.post('/studio/dilemma/generate', studioRateLimiter, async (c) => {
     try {
       const body: unknown = await c.req.json();
       const profile = (body as { profile?: Partial<CharacterProfile> })?.profile;
@@ -835,7 +836,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   });
 
   // POST /studio/dilemma - Generate a moral dilemma (legacy - full flow)
-  app.post('/studio/dilemma', async (c) => {
+  app.post('/studio/dilemma', studioRateLimiter, async (c) => {
     try {
       const body: unknown = await c.req.json();
       const parsed = DilemmaRequestSchema.safeParse(body);

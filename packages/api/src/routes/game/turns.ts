@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { getSession } from '../../db/sessionsClient.js';
 import { getEntityProfile, listActorStatesForSession } from '@minimal-rpg/db/node';
+import { turnRateLimiter } from '../../middleware/rate-limiter.js';
 import { notFound, serverError } from '../../utils/responses.js';
 import { worldBus } from '@minimal-rpg/bus';
 import { actorRegistry } from '@minimal-rpg/actors';
@@ -108,7 +109,7 @@ export function registerTurnRoutes(app: Hono): void {
    *
    * Execute a turn using the World Bus + Actors pipeline.
    */
-  app.post('/sessions/:id/turns', async (c) => {
+  app.post('/sessions/:id/turns', turnRateLimiter, async (c) => {
     const sessionId = c.req.param('id');
     const sessionKey = toSessionId(sessionId);
     const ownerEmail = getOwnerEmail(c);
