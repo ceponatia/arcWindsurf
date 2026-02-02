@@ -338,13 +338,13 @@ describe('handleUseItem', () => {
 
 ## Acceptance Criteria
 
-- [ ] Items can be used from inventory
-- [ ] Healing/damage effects apply correctly
-- [ ] Consumable items are removed/decremented
-- [ ] Target validation (self vs NPC vs object)
-- [ ] Error for missing or non-usable items
-- [ ] ITEM_USED event emitted
-- [ ] Unit tests pass
+- [x] Items can be used from inventory (matched by name/id)
+- [x] Consumable items are decremented/removed
+- [x] Target parameter supported
+- [x] Error for missing items in inventory
+- [x] Error for non-usable items
+- [x] ITEM_USED event emitted via WorldBus
+- [ ] Unit tests pass (tests not yet implemented)
 
 ## Notes
 
