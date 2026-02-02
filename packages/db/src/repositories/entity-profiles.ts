@@ -3,6 +3,7 @@ import { entityProfiles } from '../schema/index.js';
 import { eq, and, or } from 'drizzle-orm';
 import type { UUID } from '../types.js';
 import { CharacterProfileSchema, type CharacterProfile } from '@minimal-rpg/schemas';
+import { isUuid } from '@minimal-rpg/utils';
 
 export interface CreateEntityProfileInput {
   id?: UUID;
@@ -14,15 +15,6 @@ export interface CreateEntityProfileInput {
   profileJson?: Record<string, unknown>;
   tags?: string[];
   embedding?: number[];
-}
-
-/**
- * Returns true when a string is a UUID.
- */
-function isUuid(value: string): boolean {
-  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-    value
-  );
 }
 
 export async function createEntityProfile(input: CreateEntityProfileInput) {
