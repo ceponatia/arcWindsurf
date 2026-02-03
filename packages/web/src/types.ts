@@ -6,6 +6,7 @@ import type {
   UserAssistantMessageRole,
   Speaker,
   ApiError,
+  JsonPatchOperation,
 } from '@minimal-rpg/schemas';
 import type { CreateFullSessionRequest } from './shared/api/client.js';
 import type { UseFetchOnceResult } from './shared/hooks/useFetchOnce.js';
@@ -76,15 +77,6 @@ export interface RuntimeConfigResponse {
   topP: number;
   openrouterModel: string;
   governorDevMode: boolean;
-}
-
-export type JsonPatchOperationOp = 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
-
-export interface JsonPatchOperation {
-  op: JsonPatchOperationOp;
-  path: string;
-  from?: string;
-  value?: unknown;
 }
 
 export type IntentType =

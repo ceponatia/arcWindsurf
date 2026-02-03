@@ -4,7 +4,7 @@ import { loadTag } from '../api.js';
 import {
   createInitialState,
   createTriggerEntry,
-  type FormFieldErrors,
+  type TagFormFieldErrors,
   type TagFormState,
   type TriggerFormEntry,
 } from '../types.js';
@@ -57,8 +57,8 @@ function mapResponseToForm(tag: TagResponse): TagFormState {
 
 export interface UseTagBuilderFormResult {
   formState: TagFormState;
-  fieldErrors: FormFieldErrors;
-  setFieldErrors: React.Dispatch<React.SetStateAction<FormFieldErrors>>;
+  fieldErrors: TagFormFieldErrors;
+  setFieldErrors: React.Dispatch<React.SetStateAction<TagFormFieldErrors>>;
   updateField: <K extends keyof TagFormState>(key: K, value: TagFormState[K]) => void;
   // Trigger helpers
   updateTriggerEntry: <K extends keyof TriggerFormEntry>(
@@ -75,7 +75,7 @@ export interface UseTagBuilderFormResult {
 
 export function useTagBuilderForm(id?: string | null): UseTagBuilderFormResult {
   const [formState, setFormState] = useState<TagFormState>(() => createInitialState());
-  const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<TagFormFieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);

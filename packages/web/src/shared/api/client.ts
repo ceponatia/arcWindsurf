@@ -19,6 +19,8 @@ import type {
   TagResponse,
   CreateTagRequest,
   UpdateTagRequest,
+  SessionUsageInfo,
+  EntityUsageSummary,
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
 import { getAccessToken } from '../auth/accessToken.js';
@@ -810,19 +812,6 @@ export async function deleteItem(id: string, signal?: AbortSignal): Promise<void
 }
 
 // ============ ENTITY USAGE ============
-
-export interface SessionUsageInfo {
-  sessionId: string;
-  createdAt: string;
-  role?: string;
-}
-
-export interface EntityUsageSummary {
-  entityId: string;
-  entityType: 'character' | 'setting' | 'persona' | 'location';
-  sessions: SessionUsageInfo[];
-  totalCount: number;
-}
 
 /**
  * Get sessions that use a specific character template.

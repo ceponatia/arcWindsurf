@@ -6,28 +6,9 @@ import {
   eq,
   desc,
 } from '@minimal-rpg/db/node';
+import type { EntityUsageSummary, SessionUsageInfo } from '@minimal-rpg/schemas';
 import type { ApiError } from '../../types.js';
 import { toId } from '../../utils/uuid.js';
-
-/**
- * Entity usage summary returned from usage endpoints.
- */
-export interface EntityUsageSummary {
-  entityId: string;
-  entityType: 'character' | 'setting' | 'persona' | 'location';
-  sessions: SessionUsageInfo[];
-  totalCount: number;
-}
-
-/**
- * Minimal session info for usage display.
- */
-export interface SessionUsageInfo {
-  sessionId: string;
-  createdAt: string;
-  /** Role of the character in the session (for character usage) */
-  role?: string;
-}
 
 /**
  * Register entity usage routes.

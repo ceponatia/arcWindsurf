@@ -1,3 +1,5 @@
+import type { SessionUsageInfo } from '@minimal-rpg/schemas';
+
 export interface CharactersPanelCharacterSummary {
   id: string;
   name: string;
@@ -37,12 +39,6 @@ export interface SessionsPanelProps {
   onSelect?: (id: string) => void;
   onRetry?: () => void;
   onDelete?: (id: string) => void;
-}
-
-export interface SessionUsageInfo {
-  sessionId: string;
-  createdAt: string;
-  role?: string;
 }
 
 export interface EntityUsagePanelProps {

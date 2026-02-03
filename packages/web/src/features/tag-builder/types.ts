@@ -77,9 +77,12 @@ export interface TagFormState {
   isBuiltIn: boolean;
 }
 
-export type FormKey = keyof TagFormState;
-export type FormFieldErrors = Partial<Record<FormKey, string>>;
-export type UpdateFieldFn = <K extends keyof TagFormState>(key: K, value: TagFormState[K]) => void;
+export type TagFormKey = keyof TagFormState;
+export type TagFormFieldErrors = Partial<Record<TagFormKey, string>>;
+export type TagUpdateFieldFn = <K extends keyof TagFormState>(
+  key: K,
+  value: TagFormState[K]
+) => void;
 
 /**
  * Create a new trigger entry with defaults.

@@ -3,7 +3,7 @@ import { CharactersPanel as CharactersPanelView } from '@minimal-rpg/ui';
 import type { CharactersPanelProps as CharactersPanelViewProps } from '@minimal-rpg/ui';
 import { deleteCharacter } from '../../shared/api/client.js';
 
-export interface CharactersPanelProps {
+interface CharactersPanelProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onEdit?: (id: string) => void;

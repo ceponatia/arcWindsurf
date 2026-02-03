@@ -1,11 +1,11 @@
 import React from 'react';
 import { getInlineErrorProps } from '@minimal-rpg/utils';
-import type { SettingFormState, FormFieldErrors, FormKey } from '../types.js';
+import type { SettingFormState, SettingFormFieldErrors, SettingFormKey } from '../types.js';
 
 interface SettingGeneralFormProps {
   form: SettingFormState;
-  fieldErrors: FormFieldErrors;
-  updateField: <K extends FormKey>(key: K, value: SettingFormState[K]) => void;
+  fieldErrors: SettingFormFieldErrors;
+  updateField: <K extends SettingFormKey>(key: K, value: SettingFormState[K]) => void;
 }
 
 export const SettingGeneralForm: React.FC<SettingGeneralFormProps> = ({

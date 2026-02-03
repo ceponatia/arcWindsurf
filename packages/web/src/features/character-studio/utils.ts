@@ -10,7 +10,7 @@ import {
 import {
   type AppearanceEntry,
   type BodySensoryEntry,
-  type SensoryType,
+  type FormSensoryType,
   SENSORY_TYPES,
 } from './types.js';
 
@@ -134,7 +134,7 @@ export function findNextAvailableSensoryEntry(
 export function isSensoryCombinationUsed(
   entries: BodySensoryEntry[],
   region: BodyRegion,
-  type: SensoryType,
+  type: FormSensoryType,
   excludeIndex?: number
 ): boolean {
   return entries.some(

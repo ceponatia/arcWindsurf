@@ -249,6 +249,10 @@ Add a new row each time you complete an iteration.
 | `LoadedSensoryModifiers` | `packages/schemas/src/shared/sensory-modifiers-types.ts` | - | api, retrieval | Removed duplicate loader interfaces |
 | `ChatRole` | `packages/schemas/src/shared/message-types.ts` | `ConversationMessageRole` | api | Removed API alias export |
 | Tool types (`ToolParameterSchema`, `ToolDefinition`, `ToolCall`, `ToolResult`) | `packages/schemas/src/shared/tool-types.ts` | - | api, llm, utils | Removed duplicate tool interfaces |
+| `SensoryType` | `packages/schemas/src/shared/sensory-types.ts` | `FormSensoryType` | utils, web | Renamed form-specific type |
+| `JsonPatchOperation` | `packages/schemas/src/shared/json-patch-types.ts` | - | utils, web | Removed duplicate JSON Patch interfaces |
+| `SessionUsageInfo`/`EntityUsageSummary` | `packages/schemas/src/shared/usage-types.ts` | `EntityUsageType` | api, ui, web | Centralized usage response types |
+| Character form types (`BodySensoryEntry`, `AppearanceEntry`, `FormState`, `FormKey`, `FormFieldErrors`, `UpdateFieldFn`) | `packages/schemas/src/character/form-types.ts` | `PersonaFormState`, `SettingFormKey`, `TagFormKey` | web | Renamed web form types to avoid collisions |
 
 ## Acceptance Criteria (Per Iteration)
 

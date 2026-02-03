@@ -26,8 +26,8 @@ export interface FactionEntry {
   relationship: string;
 }
 
-export type FormKey = keyof SettingFormState;
-export type FormFieldErrors = Partial<Record<FormKey, string>>;
+export type SettingFormKey = keyof SettingFormState;
+export type SettingFormFieldErrors = Partial<Record<SettingFormKey, string>>;
 
 export interface SettingBuilderModeConfig {
   label: string;

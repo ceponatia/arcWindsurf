@@ -1,4 +1,5 @@
 import { getRecordOptional, setRecord } from '@minimal-rpg/schemas';
+import type { JsonPatchOperation } from '@minimal-rpg/schemas';
 
 /**
  * Check if value is a plain object (not array, null, Date, etc.).
@@ -117,13 +118,6 @@ export function deepDiff<T>(original: T, modified: T): DeepDiffResult {
     modifiedPaths,
     isIdentical: diffResult === undefined,
   };
-}
-
-export interface JsonPatchOperation {
-  op: string;
-  path: string;
-  from?: string;
-  value?: unknown;
 }
 
 /**

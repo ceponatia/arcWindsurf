@@ -63,7 +63,7 @@ Keyword dictionaries and intelligent matching functions.
 
 **Types:**
 
-- `SensoryType`: Union of sensory indicator keys (scent/texture/visual/flavor/sound)
+- `SensoryType` (from `@minimal-rpg/schemas`): Union of sensory indicator keys (scent/texture/visual/flavor/sound)
 
 ### parsers.ts
 

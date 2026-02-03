@@ -9,7 +9,7 @@ import { SettingTimeConfig } from './components/SettingTimeConfig.js';
 import { SettingFactionsForm } from './components/SettingFactionsForm.js';
 import { useSettingBuilderForm } from './hooks/useSettingBuilderForm.js';
 import { buildProfile } from './transformers.js';
-import { MODE_CONFIGS, type FormFieldErrors, type FormKey } from './types.js';
+import { MODE_CONFIGS, type SettingFormFieldErrors, type SettingFormKey } from './types.js';
 import { useAutoSave } from '../../hooks/useAutoSave.js';
 
 export const SettingBuilder: React.FC<{
@@ -51,17 +51,17 @@ export const SettingBuilder: React.FC<{
     const validation = SettingBackgroundSchema.safeParse(profile as any);
 
     if (!validation.success) {
-      const fieldMap = mapZodErrorsToFields<FormKey>(validation.error, {
+      const fieldMap = mapZodErrorsToFields<SettingFormKey>(validation.error, {
         pathToField: (path) => {
           const key = path[0] as string;
           // Map known top-level keys
           if (['id', 'name', 'lore', 'themes', 'tags', 'tone', 'startingScenario'].includes(key)) {
-            return key as FormKey;
+            return key as SettingFormKey;
           }
-          return undefined as unknown as FormKey;
+          return undefined as unknown as SettingFormKey;
         },
       });
-      setFieldErrors(fieldMap as FormFieldErrors);
+      setFieldErrors(fieldMap as SettingFormFieldErrors);
       setError('Please fix the highlighted fields.');
       setSaving(false);
       return;

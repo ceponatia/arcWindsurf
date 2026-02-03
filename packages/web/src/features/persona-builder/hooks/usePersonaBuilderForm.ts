@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { PersonaProfile, Gender } from '@minimal-rpg/schemas';
 import {
-  type FormState,
-  type FormFieldErrors,
-  type FormKey,
+  type PersonaFormState,
+  type PersonaFormFieldErrors,
+  type PersonaFormKey,
   createInitialState,
   createAppearanceEntry,
   createBodySensoryEntry,
@@ -14,12 +14,12 @@ import {
  * Provides updateField, validation, and conversion to/from PersonaProfile.
  */
 export function usePersonaBuilderForm(initialProfile?: PersonaProfile) {
-  const [formState, setFormState] = useState<FormState>(() =>
+  const [formState, setFormState] = useState<PersonaFormState>(() =>
     initialProfile ? mapProfileToForm(initialProfile) : createInitialState()
   );
-  const [errors, setErrors] = useState<FormFieldErrors>({});
+  const [errors, setErrors] = useState<PersonaFormFieldErrors>({});
 
-  const updateField = <K extends FormKey>(key: K, value: FormState[K]) => {
+  const updateField = <K extends PersonaFormKey>(key: K, value: PersonaFormState[K]) => {
     setFormState((prev) => {
       const next = { ...prev };
       Object.defineProperty(next, key, {
@@ -59,7 +59,7 @@ export function usePersonaBuilderForm(initialProfile?: PersonaProfile) {
  * Map a PersonaProfile to form state.
  * For personas, we keep it simple - only use appearance as free-text string.
  */
-export function mapProfileToForm(profile: PersonaProfile): FormState {
+export function mapProfileToForm(profile: PersonaProfile): PersonaFormState {
   const appearanceStr = typeof profile.appearance === 'string' ? profile.appearance : '';
 
   return {
@@ -77,7 +77,7 @@ export function mapProfileToForm(profile: PersonaProfile): FormState {
 /**
  * Build a PersonaProfile from form state.
  */
-export function buildProfileFromForm(formState: FormState): PersonaProfile {
+export function buildProfileFromForm(formState: PersonaFormState): PersonaProfile {
   const profile: PersonaProfile = {
     id: formState.id.trim(),
     name: formState.name.trim(),

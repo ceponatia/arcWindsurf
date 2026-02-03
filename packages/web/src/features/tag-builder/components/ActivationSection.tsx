@@ -4,12 +4,12 @@ import {
   ACTIVATION_MODE_LABELS,
   TARGET_TYPE_LABELS,
   type TagFormState,
-  type UpdateFieldFn,
+  type TagUpdateFieldFn,
 } from '../types.js';
 
 interface ActivationSectionProps {
   formState: TagFormState;
-  updateField: UpdateFieldFn;
+  updateField: TagUpdateFieldFn;
 }
 
 export function ActivationSection({ formState, updateField }: ActivationSectionProps) {
@@ -26,7 +26,9 @@ export function ActivationSection({ formState, updateField }: ActivationSectionP
               <button
                 key={value}
                 type="button"
-                onClick={() => { updateField('activationMode', value); }}
+                onClick={() => {
+                  updateField('activationMode', value);
+                }}
                 className={`flex-1 px-4 py-2 rounded border transition-colors ${
                   formState.activationMode === value
                     ? 'bg-blue-600 border-blue-500 text-white'
@@ -53,7 +55,9 @@ export function ActivationSection({ formState, updateField }: ActivationSectionP
         <select
           id="tag-target"
           value={formState.targetType}
-          onChange={(e) => { updateField('targetType', e.target.value as TagTargetType); }}
+          onChange={(e) => {
+            updateField('targetType', e.target.value as TagTargetType);
+          }}
           className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
         >
           {Object.entries(TARGET_TYPE_LABELS).map(([value, label]) => (

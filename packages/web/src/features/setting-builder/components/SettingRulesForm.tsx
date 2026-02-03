@@ -1,10 +1,10 @@
 import React from 'react';
-import type { SettingFormState, FormFieldErrors, FormKey } from '../types.js';
+import type { SettingFormState, SettingFormFieldErrors, SettingFormKey } from '../types.js';
 
 interface SettingRulesFormProps {
   form: SettingFormState;
-  fieldErrors: FormFieldErrors;
-  updateField: <K extends FormKey>(key: K, value: SettingFormState[K]) => void;
+  fieldErrors: SettingFormFieldErrors;
+  updateField: <K extends SettingFormKey>(key: K, value: SettingFormState[K]) => void;
 }
 
 export const SettingRulesForm: React.FC<SettingRulesFormProps> = ({ form, updateField }) => {

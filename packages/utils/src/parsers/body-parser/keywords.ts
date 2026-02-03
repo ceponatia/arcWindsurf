@@ -1,9 +1,9 @@
+import { getRecordOptional } from '@minimal-rpg/schemas';
+import type { RegionTexture, SensoryType } from '@minimal-rpg/schemas';
+
 /**
  * Keyword mappings for body sensory parsing.
  */
-
-import { getRecordOptional } from '@minimal-rpg/schemas';
-import type { RegionTexture } from '@minimal-rpg/schemas';
 
 // ============================================================================
 // Intensity Keywords
@@ -219,8 +219,6 @@ export const SENSORY_INDICATORS = {
   flavor: FLAVOR_INDICATORS,
   sound: SOUND_INDICATORS,
 } as const;
-
-export type SensoryType = keyof typeof SENSORY_INDICATORS;
 
 // ============================================================================
 // Suffix-Aware Keyword Matching

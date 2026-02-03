@@ -151,7 +151,7 @@ export interface DetailFormEntry {
 
 export interface BodySensoryEntry {
   region: BodyRegion;
-  type: 'scent' | 'texture' | 'flavor';
+  type: FormSensoryType;
   raw: string;
 }
 
@@ -251,7 +251,7 @@ export type FormFieldErrors = Partial<Record<FormKey, string>>;
 export type UpdateFieldFn = <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 
 export const SENSORY_TYPES = ['scent', 'texture', 'flavor'] as const;
-export type SensoryType = (typeof SENSORY_TYPES)[number];
+export type FormSensoryType = (typeof SENSORY_TYPES)[number];
 
 export const createDetailEntry = (): DetailFormEntry => ({
   label: '',

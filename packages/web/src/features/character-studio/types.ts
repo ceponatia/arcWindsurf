@@ -16,7 +16,7 @@ export type {
   FormKey,
   FormFieldErrors,
   UpdateFieldFn,
-  SensoryType,
+  FormSensoryType,
 } from '@minimal-rpg/schemas';
 
 export {

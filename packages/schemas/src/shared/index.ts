@@ -72,5 +72,24 @@ export {
   type ToolResult,
 } from './tool-types.js';
 
+// Sensory types
+export {
+  SENSORY_INDICATOR_TYPES,
+  type SensoryType,
+} from './sensory-types.js';
+
+// JSON Patch types
+export {
+  type JsonPatchOperationOp,
+  type JsonPatchOperation,
+} from './json-patch-types.js';
+
+// Usage types
+export {
+  type EntityUsageType,
+  type SessionUsageInfo,
+  type EntityUsageSummary,
+} from './usage-types.js';
+
 // Sensory modifiers
 export { type LoadedSensoryModifiers } from './sensory-modifiers-types.js';

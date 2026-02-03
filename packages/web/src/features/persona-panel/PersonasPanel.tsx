@@ -3,7 +3,7 @@ import { PersonasPanel as PersonasPanelView } from '@minimal-rpg/ui';
 import type { PersonasPanelProps as PersonasPanelViewProps } from '@minimal-rpg/ui';
 import { deletePersona } from '../../shared/api/client.js';
 
-export interface PersonasPanelProps {
+interface PersonasPanelProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onEdit?: (id: string) => void;

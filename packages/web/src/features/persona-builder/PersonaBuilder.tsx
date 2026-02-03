@@ -5,7 +5,7 @@ import { EntityUsagePanel } from '@minimal-rpg/ui';
 import { useEntityUsage } from '../../shared/hooks/useEntityUsage.js';
 import { persistPersona, removePersona, loadPersona } from './api.js';
 import { usePersonaBuilderForm, buildProfileFromForm } from './hooks/usePersonaBuilderForm.js';
-import type { FormKey, FormFieldErrors } from './types.js';
+import type { PersonaFormKey, PersonaFormFieldErrors } from './types.js';
 
 interface PersonaBuilderProps {
   /** Persona ID to edit (undefined/null for new) */
@@ -92,10 +92,10 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
       const result = PersonaProfileSchema.safeParse(profile);
 
       if (!result.success) {
-        const fieldMap = mapZodErrorsToFields<FormKey>(result.error, {
+        const fieldMap = mapZodErrorsToFields<PersonaFormKey>(result.error, {
           pathToField: (path: (string | number)[]) => {
             const p = path.map(String);
-            const top: Record<string, FormKey> = {
+            const top: Record<string, PersonaFormKey> = {
               id: 'id',
               name: 'name',
               age: 'age',
@@ -106,10 +106,10 @@ export function PersonaBuilder(props: PersonaBuilderProps) {
             const key = p[0];
             if (!key) return undefined;
             const entry = Object.getOwnPropertyDescriptor(top, key);
-            return typeof entry?.value === 'string' ? (entry.value as FormKey) : undefined;
+            return typeof entry?.value === 'string' ? (entry.value as PersonaFormKey) : undefined;
           },
         });
-        setErrors(fieldMap as FormFieldErrors);
+        setErrors(fieldMap as PersonaFormFieldErrors);
         setSaveStatus('error');
         setErrorMessage('Validation failed. Please check all fields.');
         return;

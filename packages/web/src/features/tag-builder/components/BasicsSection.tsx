@@ -1,6 +1,6 @@
 import type { TagCategory, TagVisibility } from '@minimal-rpg/schemas';
 
-import { CATEGORY_LABELS, type TagFormState, type UpdateFieldFn } from '../types.js';
+import { CATEGORY_LABELS, type TagFormState, type TagUpdateFieldFn } from '../types.js';
 
 const VISIBILITY_OPTIONS: { value: TagVisibility; label: string }[] = [
   { value: 'public', label: 'Public' },
@@ -10,7 +10,7 @@ const VISIBILITY_OPTIONS: { value: TagVisibility; label: string }[] = [
 
 interface BasicsSectionProps {
   formState: TagFormState;
-  updateField: UpdateFieldFn;
+  updateField: TagUpdateFieldFn;
 }
 
 export function BasicsSection({ formState, updateField }: BasicsSectionProps) {

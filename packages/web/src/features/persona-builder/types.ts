@@ -3,17 +3,18 @@ import {
   APPEARANCE_REGIONS,
   type BodyRegion,
   type AppearanceRegion,
+  type FormSensoryType,
 } from '@minimal-rpg/schemas';
 
 /**
  * Form entry for body sensory data.
  * Supports raw text input that gets parsed to structured BodyMap.
  */
-export interface BodySensoryEntry {
+export interface PersonaBodySensoryEntry {
   /** Body region (hair, torso, feet, etc.) */
   region: BodyRegion;
   /** Sensory type: scent, texture, or flavor (visual is covered by appearance section) */
-  type: 'scent' | 'texture' | 'flavor';
+  type: FormSensoryType;
   /** Raw text description (parsed on save) */
   raw: string;
 }
@@ -22,7 +23,7 @@ export interface BodySensoryEntry {
  * Form entry for appearance data.
  * Each entry specifies a region, attribute, and value.
  */
-export interface AppearanceEntry {
+export interface PersonaAppearanceEntry {
   /** Appearance region (hair, eyes, arms, etc.) */
   region: AppearanceRegion;
   /** Attribute key for the region (e.g., 'color' for hair) */
@@ -31,7 +32,7 @@ export interface AppearanceEntry {
   value: string;
 }
 
-export interface FormState {
+export interface PersonaFormState {
   id: string;
   name: string;
   age: number | string;
@@ -40,31 +41,31 @@ export interface FormState {
   /** Free-text appearance (alternative to structured entries) */
   appearance: string;
   /** Structured appearance entries (region → attribute → value) */
-  appearances: AppearanceEntry[];
+  appearances: PersonaAppearanceEntry[];
   /** Body sensory entries (scent, texture, visual per region) */
-  bodySensory: BodySensoryEntry[];
+  bodySensory: PersonaBodySensoryEntry[];
 }
 
-export type FormKey = keyof FormState;
-export type FormFieldErrors = Partial<Record<FormKey, string>>;
-export type UpdateFieldFn = <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+export type PersonaFormKey = keyof PersonaFormState;
+export type PersonaFormFieldErrors = Partial<Record<PersonaFormKey, string>>;
+export type PersonaUpdateFieldFn = <K extends keyof PersonaFormState>(
+  key: K,
+  value: PersonaFormState[K]
+) => void;
 
-export const SENSORY_TYPES = ['scent', 'texture', 'flavor'] as const;
-export type SensoryType = (typeof SENSORY_TYPES)[number];
-
-export const createBodySensoryEntry = (): BodySensoryEntry => ({
+export const createBodySensoryEntry = (): PersonaBodySensoryEntry => ({
   region: BODY_REGIONS[0],
   type: 'scent',
   raw: '',
 });
 
-export const createAppearanceEntry = (): AppearanceEntry => ({
+export const createAppearanceEntry = (): PersonaAppearanceEntry => ({
   region: APPEARANCE_REGIONS[0],
   attribute: 'height',
   value: '',
 });
 
-export const createInitialState = (): FormState => ({
+export const createInitialState = (): PersonaFormState => ({
   id: '',
   name: '',
   age: 21,
