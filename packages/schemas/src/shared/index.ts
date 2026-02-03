@@ -63,3 +63,14 @@ export {
   type ResponseValidationResult,
   type WorkspaceValidationResult,
 } from './validation-types.js';
+
+// Tool types
+export {
+  type ToolParameterSchema,
+  type ToolDefinition,
+  type ToolCall,
+  type ToolResult,
+} from './tool-types.js';
+
+// Sensory modifiers
+export { type LoadedSensoryModifiers } from './sensory-modifiers-types.js';

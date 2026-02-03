@@ -1,5 +1,5 @@
 /** Update relationship tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const UPDATE_RELATIONSHIP_TOOL: ToolDefinition = {
   type: 'function',

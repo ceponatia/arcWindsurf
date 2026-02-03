@@ -1,5 +1,10 @@
-import type { CharacterProfile, SettingProfile, WorldEvent } from '@minimal-rpg/schemas';
-import type { ChatRole, Speaker } from '../types.js';
+import type {
+  CharacterProfile,
+  SettingProfile,
+  WorldEvent,
+  ConversationMessageRole,
+} from '@minimal-rpg/schemas';
+import type { Speaker } from '../types.js';
 import type { DbMessage, DbSessionSummary } from '../db/types.js';
 
 // Sessions list item decoration
@@ -16,7 +21,7 @@ export interface SessionListItem {
 
 // Message DTO
 export interface MessageResponse {
-  role: ChatRole;
+  role: ConversationMessageRole;
   content: string;
   createdAt: string;
   idx?: number;

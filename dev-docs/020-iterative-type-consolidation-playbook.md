@@ -245,7 +245,10 @@ Add a new row each time you complete an iteration.
 
 | Type | Canonical location | Derived variants | Packages migrated | Notes |
 |------|---------------------|-----------------|------------------|-------|
-| (example) `MessageRole` | `packages/schemas/src/shared/message-types.ts` | `ChatMessageRole` | db, llm, web | Canonical includes `tool` |
+| `MessageRole` | `packages/schemas/src/shared/message-types.ts` | `ConversationMessageRole`, `UserAssistantMessageRole` | db, web | Removed package-level aliases |
+| `LoadedSensoryModifiers` | `packages/schemas/src/shared/sensory-modifiers-types.ts` | - | api, retrieval | Removed duplicate loader interfaces |
+| `ChatRole` | `packages/schemas/src/shared/message-types.ts` | `ConversationMessageRole` | api | Removed API alias export |
+| Tool types (`ToolParameterSchema`, `ToolDefinition`, `ToolCall`, `ToolResult`) | `packages/schemas/src/shared/tool-types.ts` | - | api, llm, utils | Removed duplicate tool interfaces |
 
 ## Acceptance Criteria (Per Iteration)
 

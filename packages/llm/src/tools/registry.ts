@@ -1,4 +1,4 @@
-import type { ToolDefinition } from './types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>();

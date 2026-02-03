@@ -1,10 +1,3 @@
-/**
- * Tool-related types for LLM function calling.
- */
-
-/**
- * JSON Schema for tool parameters.
- */
 export interface ToolParameterSchema {
   [key: string]: unknown;
   type: 'object';
@@ -20,9 +13,6 @@ export interface ToolParameterSchema {
   required?: string[];
 }
 
-/**
- * OpenAI-compatible tool definition for function calling.
- */
 export interface ToolDefinition {
   type: 'function';
   function: {
@@ -32,21 +22,15 @@ export interface ToolDefinition {
   };
 }
 
-/**
- * A tool call requested by the LLM.
- */
 export interface ToolCall {
   id: string;
   type: 'function';
   function: {
     name: string;
-    arguments: string; // JSON string
+    arguments: string;
   };
 }
 
-/**
- * Result from executing a tool call.
- */
 export interface ToolResult {
   success: boolean;
   error?: string;

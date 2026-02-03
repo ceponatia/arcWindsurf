@@ -1,5 +1,5 @@
 /** Advance time tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const ADVANCE_TIME_TOOL: ToolDefinition = {
   type: 'function',

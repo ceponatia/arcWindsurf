@@ -1,18 +1,19 @@
 /**
  * API-specific tool types.
  *
- * Re-exports shared tool types from utils and defines API-specific extensions.
+ * Re-exports shared tool types from schemas and defines API-specific extensions.
  */
 
-// Re-export shared tool types from utils (canonical source)
+// Re-export shared tool types from schemas (canonical source)
 export type {
   ToolDefinition,
   ToolParameterSchema,
   ToolCall,
   ToolResult,
-  StatePatches,
-  ChatMessageWithTools,
-} from '@minimal-rpg/utils';
+} from '@minimal-rpg/schemas';
+
+// Tool-adjacent types still owned by utils
+export type { ChatMessageWithTools, StatePatches } from '@minimal-rpg/utils';
 
 // =============================================================================
 // Session Tool Argument Types

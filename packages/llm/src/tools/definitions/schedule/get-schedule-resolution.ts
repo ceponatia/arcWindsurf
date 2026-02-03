@@ -1,5 +1,5 @@
 /** Get schedule resolution tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const GET_SCHEDULE_RESOLUTION_TOOL: ToolDefinition = {
   type: 'function',

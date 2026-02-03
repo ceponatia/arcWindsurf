@@ -1,4 +1,3 @@
-export * from './types.js';
 export * from './registry.js';
 
 // Re-export all tool definitions

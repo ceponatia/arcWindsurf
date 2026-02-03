@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ToolRegistry } from '../src/tools/registry.js';
-import type { ToolDefinition } from '../src/tools/types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 describe('ToolRegistry', () => {
   it('registers and retrieves tools', () => {

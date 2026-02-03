@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import security from 'eslint-plugin-security';
+import minimalRpg from './config/eslint/minimal-rpg-eslint-plugin.mjs';
 
 export default tseslint.config(
   // Global ignores (flat config replaces .eslintignore)
@@ -35,6 +36,7 @@ export default tseslint.config(
   {
     files: ['packages/*/src/**/*.{ts,tsx,js}'],
     plugins: {
+      'minimal-rpg': minimalRpg,
       security,
     },
     extends: [
@@ -45,6 +47,15 @@ export default tseslint.config(
     rules: {
       // Match Codacy's "Detect Object Injection"
       'security/detect-object-injection': 'warn',
+
+      // Cross-package type consolidation enforcement
+      'minimal-rpg/no-duplicate-exported-types': [
+        'error',
+        {
+          repoRoot: import.meta.dirname,
+          ignoreTypeNames: [],
+        },
+      ],
     },
     languageOptions: {
       parserOptions: {

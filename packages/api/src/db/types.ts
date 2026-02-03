@@ -1,8 +1,8 @@
 import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
-import type { ChatRole } from '../types.js';
+import type { ConversationMessageRole } from '@minimal-rpg/schemas';
 
 export interface DbMessage {
-  role: ChatRole;
+  role: ConversationMessageRole;
   content: string;
   createdAt: string;
   idx: number;

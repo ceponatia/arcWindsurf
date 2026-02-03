@@ -10,32 +10,13 @@ import path from 'node:path';
 import {
   SensoryModifiersDataSchema,
   getSensoryModifierByLevel,
+  type LoadedSensoryModifiers,
   type SensoryModifiersData,
-  type BodyPartHygieneConfig,
-  type BodyPartSensoryModifiers,
   type HygieneLevel,
 } from '@minimal-rpg/schemas';
 import { resolveDataDir } from './loader.js';
 
 const SENSORY_MODIFIERS_FILE = 'sensory-modifiers.json';
-
-/**
- * Loaded sensory modifiers with typed accessors.
- */
-export interface LoadedSensoryModifiers {
-  /** Raw validated data */
-  data: SensoryModifiersData;
-  /** Body part sensory modifier lookup */
-  bodyParts: Record<string, BodyPartSensoryModifiers>;
-  /** Decay rate configuration lookup */
-  decayRates: Record<string, BodyPartHygieneConfig>;
-  /** Get sensory modifier text for a body part, sense type, and hygiene level */
-  getModifier: (
-    bodyPart: string,
-    senseType: 'smell' | 'touch' | 'taste',
-    level: HygieneLevel
-  ) => string;
-}
 
 function safeGetModifier(
   data: SensoryModifiersData,

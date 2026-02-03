@@ -2,7 +2,7 @@
 export * from './types.js';
 
 // Data loaders
-export { loadSensoryModifiers, type LoadedSensoryModifiers } from './loaders/sensory-modifiers.js';
+export { loadSensoryModifiers } from './loaders/sensory-modifiers.js';
 
 // Scoring utilities
 export * from './scoring/index.js';

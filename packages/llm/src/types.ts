@@ -1,6 +1,5 @@
 import { Effect } from 'effect';
-import type { ToolCall, ToolDefinition } from './tools/types.js';
-import type { MessageRole } from '@minimal-rpg/schemas';
+import type { ToolCall, ToolDefinition, MessageRole } from '@minimal-rpg/schemas';
 
 export type { MessageRole } from '@minimal-rpg/schemas';
 

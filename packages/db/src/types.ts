@@ -274,10 +274,8 @@ export interface ItemInstanceRow extends DbRow {
 }
 
 // Session helpers exposed by sessions.ts
-export type MessageRole = ConversationMessageRole;
-
 export interface SessionMessage {
-  role: MessageRole;
+  role: ConversationMessageRole;
   content: string;
   createdAt: string;
   idx: number;

@@ -19,13 +19,11 @@ import {
   type BodyPartHygieneState,
   type HygieneUpdateInput,
   type HygieneLevel,
+  type LoadedSensoryModifiers,
 } from '@minimal-rpg/schemas';
 import { getActorState, upsertActorState } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
-import {
-  loadSensoryModifiers,
-  type LoadedSensoryModifiers,
-} from '../../loaders/sensory-modifiers-loader.js';
+import { loadSensoryModifiers } from '../../loaders/sensory-modifiers-loader.js';
 import { toSessionId, toId } from '../../utils/uuid.js';
 import { validateBody, validateParam, validateParamId } from '../../utils/request-validation.js';
 

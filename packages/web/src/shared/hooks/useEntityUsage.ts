@@ -43,10 +43,10 @@ export function useEntityUsage(
     typeof optionsOrEntityId === 'object' && optionsOrEntityId !== null && 'entityType' in optionsOrEntityId
       ? optionsOrEntityId
       : {
-          entityId: optionsOrEntityId as string | null | undefined,
-          entityType: entityTypeArg!,
-          autoFetch: true,
-        };
+        entityId: optionsOrEntityId as string | null | undefined,
+        entityType: entityTypeArg!,
+        autoFetch: true,
+      };
 
   const { entityId, entityType, autoFetch = true } = options;
   const [data, setData] = useState<EntityUsageSummary | null>(null);

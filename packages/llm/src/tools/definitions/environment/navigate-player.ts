@@ -1,5 +1,5 @@
 /** Navigation tool definition (placeholder). */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const NAVIGATE_PLAYER_TOOL: ToolDefinition = {
   type: 'function',

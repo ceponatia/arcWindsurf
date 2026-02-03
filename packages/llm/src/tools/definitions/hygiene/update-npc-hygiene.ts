@@ -1,5 +1,5 @@
 /** Update NPC hygiene tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const UPDATE_NPC_HYGIENE_TOOL: ToolDefinition = {
   type: 'function',

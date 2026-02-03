@@ -9,11 +9,9 @@ import path from 'node:path';
 import {
   SensoryModifiersDataSchema,
   getSensoryModifierByLevel,
-  type BodyPartHygieneConfig,
+  type LoadedSensoryModifiers,
   type BodyPartSensoryModifiers,
-  type HygieneLevel,
   type SensoryModifierLevels,
-  type SensoryModifiersData,
 } from '@minimal-rpg/schemas';
 
 const DEFAULT_DATA_DIR = (() => {
@@ -22,17 +20,6 @@ const DEFAULT_DATA_DIR = (() => {
 })();
 
 const SENSORY_MODIFIERS_FILE = 'sensory-modifiers.json';
-
-export interface LoadedSensoryModifiers {
-  data: SensoryModifiersData;
-  bodyParts: Record<string, BodyPartSensoryModifiers>;
-  decayRates: Record<string, BodyPartHygieneConfig>;
-  getModifier: (
-    bodyPart: string,
-    senseType: 'smell' | 'touch' | 'taste',
-    level: HygieneLevel
-  ) => string;
-}
 
 function getBodyPartModifiers(
   bodyParts: Record<string, BodyPartSensoryModifiers>,

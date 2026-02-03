@@ -2,7 +2,7 @@
  * Shared LLM types and interfaces.
  */
 import type { Operation } from 'fast-json-patch';
-import type { ConversationMessageRole, MessageRole } from '@minimal-rpg/schemas';
+import type { ConversationMessageRole, MessageRole, ToolCall } from '@minimal-rpg/schemas';
 
 // =============================================================================
 // Chat Roles
@@ -13,56 +13,6 @@ export type ChatRole = ConversationMessageRole;
 
 /** Extended chat role including tool messages (for tool calling) */
 export type ChatRoleWithTools = MessageRole;
-
-// =============================================================================
-// Tool Definition Types
-// =============================================================================
-
-/**
- * JSON Schema subset for tool parameter definitions.
- */
-export interface ToolParameterSchema {
-  type: 'object';
-  properties: Record<
-    string,
-    {
-      type: string;
-      description?: string;
-      enum?: string[];
-      items?: { type: string };
-    }
-  >;
-  required?: string[];
-}
-
-/**
- * Tool definition for LLM function calling.
- */
-export interface ToolDefinition {
-  type: 'function';
-  function: {
-    name: string;
-    description: string;
-    parameters: ToolParameterSchema;
-  };
-}
-
-// =============================================================================
-// Tool Call Types
-// =============================================================================
-
-/**
- * A tool call request from the LLM.
- */
-export interface ToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    /** JSON-encoded arguments */
-    arguments: string;
-  };
-}
 
 /**
  * Chat message with tool calling support.
@@ -79,7 +29,7 @@ export interface ChatMessageWithTools {
 }
 
 // =============================================================================
-// Tool Result Types
+// Tool State Patch Types
 // =============================================================================
 
 /**
@@ -87,18 +37,6 @@ export interface ChatMessageWithTools {
  * Key is slice name (e.g., 'proximity', 'inventory'), value is JSON Patch operations.
  */
 export type StatePatches = Record<string, Operation[]>;
-
-/**
- * Result from executing a tool.
- */
-export interface ToolResult {
-  success: boolean;
-  error?: string;
-  hint?: string;
-  /** Optional state patches to apply after tool execution */
-  statePatches?: StatePatches;
-  [key: string]: unknown;
-}
 
 // =============================================================================
 // LLM Response Types

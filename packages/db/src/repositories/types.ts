@@ -1,5 +1,4 @@
 import type {
-  MessageRole,
   MessageSpeaker,
   OwnerEmail,
   SessionMessage,
@@ -8,7 +7,7 @@ import type {
   UUID,
 } from '../types.js';
 
-export type { MessageSpeaker, MessageRole };
+export type { MessageSpeaker };
 export type {
   SessionMessage as Message,
   SessionRecord as Session,

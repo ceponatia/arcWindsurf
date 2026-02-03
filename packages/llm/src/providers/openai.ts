@@ -7,7 +7,7 @@ import type {
   LLMResponse,
   LLMStreamChunk,
 } from '../types.js';
-import type { ToolCall } from '../tools/types.js';
+import type { ToolCall } from '@minimal-rpg/schemas';
 
 export interface ProviderRouting {
   order?: string[];

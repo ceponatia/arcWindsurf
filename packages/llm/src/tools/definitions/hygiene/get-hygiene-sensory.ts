@@ -1,5 +1,5 @@
 /** Get hygiene sensory modifier tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const GET_HYGIENE_SENSORY_TOOL: ToolDefinition = {
   type: 'function',

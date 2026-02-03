@@ -1,5 +1,5 @@
 /** Use item tool definition (placeholder). */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const USE_ITEM_TOOL: ToolDefinition = {
   type: 'function',

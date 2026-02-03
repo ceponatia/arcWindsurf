@@ -47,10 +47,8 @@ export interface ItemSummary {
   tags?: string[];
 }
 
-export type MessageRole = UserAssistantMessageRole;
-
 export interface Message {
-  role: MessageRole;
+  role: UserAssistantMessageRole;
   content: string;
   createdAt: string; // ISO timestamp
   idx?: number; // Legacy/Display index OR Sequence for back-compat

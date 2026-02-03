@@ -1,5 +1,5 @@
 /** Move to location tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const MOVE_TO_LOCATION_TOOL: ToolDefinition = {
   type: 'function',

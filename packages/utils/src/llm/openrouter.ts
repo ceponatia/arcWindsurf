@@ -1,11 +1,10 @@
 import { getErrorMessage, isAbortError } from '../errors/errors.js';
 import { safeJson, safeText } from '../http/fetch.js';
+import type { ToolCall, ToolDefinition } from '@minimal-rpg/schemas';
 import type {
   ChatRole,
   LlmGenerationOptions,
   LlmResponse,
-  ToolDefinition,
-  ToolCall,
   ChatMessageWithTools,
   OpenRouterChatResponse,
   OpenRouterToolResponse,

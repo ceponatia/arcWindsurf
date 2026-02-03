@@ -2,13 +2,9 @@ import type {
   SessionTagInstance,
   Speaker,
   ApiError,
-  ConversationMessageRole,
 } from '@minimal-rpg/schemas';
 
 export type { SessionTagInstance, Speaker, ApiError };
-
-// LLM chat roles - alias for backward compatibility
-export type ChatRole = ConversationMessageRole;
 
 // Runtime config (public subset)
 export interface RuntimeConfigPublic {

@@ -1,5 +1,5 @@
 /** Proximity update tool definition. */
-import type { ToolDefinition } from '../../types.js';
+import type { ToolDefinition } from '@minimal-rpg/schemas';
 
 export const UPDATE_PROXIMITY_TOOL: ToolDefinition = {
   type: 'function',
