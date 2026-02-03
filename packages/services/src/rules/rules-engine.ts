@@ -113,14 +113,19 @@ export class RulesEngine {
 
     const gameTime = await getSessionGameTime(sessionId);
 
-    return {
+    const context: ValidationContext = {
       sessionId,
       actorId,
       currentLocationId,
       actorsAtLocation: actorIds,
       inventoryItemIds,
-      gameTime: gameTime ?? undefined,
     };
+
+    if (gameTime) {
+      context.gameTime = gameTime;
+    }
+
+    return context;
   }
 
   start(): void {

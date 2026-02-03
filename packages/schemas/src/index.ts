@@ -46,4 +46,6 @@ export * from './api/sensory-context.js';
 export * from './api/parsed-input.js';
 export * from './api/action-sequence.js';
 export * from './api/npc-config.js';
+export * from './api/speaker-types.js';
+export * from './api/error-types.js';
 export { DEFAULT_NPC_RESPONSE_CONFIG } from './api/npc-config.js';

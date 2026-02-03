@@ -1,14 +1,14 @@
-import type { SessionTagInstance } from '@minimal-rpg/schemas';
+import type {
+  SessionTagInstance,
+  Speaker,
+  ApiError,
+  ConversationMessageRole,
+} from '@minimal-rpg/schemas';
 
-export type { SessionTagInstance };
+export type { SessionTagInstance, Speaker, ApiError };
 
-// Errors & API status
-export interface ApiError {
-  ok: false;
-  error: string | Record<string, unknown>;
-  /** Optional validation details */
-  details?: unknown;
-}
+// LLM chat roles - alias for backward compatibility
+export type ChatRole = ConversationMessageRole;
 
 // Runtime config (public subset)
 export interface RuntimeConfigPublic {
@@ -28,24 +28,6 @@ export interface RuntimeConfig {
   openrouterApiKey: string;
   openrouterModel: string;
   debugLlm: boolean;
-}
-
-// LLM chat roles
-export type ChatRole = 'system' | 'user' | 'assistant';
-
-/**
- * Speaker metadata for chat UI display.
- * Included in turn responses so UI can show character name/avatar.
- */
-export interface Speaker {
-  /** Character template ID */
-  id: string;
-  /** Display name */
-  name: string;
-  /** Profile picture URL (user-uploadable) */
-  profilePic?: string | undefined;
-  /** Emote picture URL (future: generated per-response) */
-  emotePic?: string | undefined;
 }
 
 // Config / health / hello DTOs

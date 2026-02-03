@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PersonaProfileSchema, type PersonaProfile } from '@minimal-rpg/schemas';
 import { mapZodErrorsToFields } from '@minimal-rpg/utils';
 import { EntityUsagePanel } from '@minimal-rpg/ui';
-import { useEntityUsage } from '../../hooks/useEntityUsage.js';
+import { useEntityUsage } from '../../shared/hooks/useEntityUsage.js';
 import { persistPersona, removePersona, loadPersona } from './api.js';
 import { usePersonaBuilderForm, buildProfileFromForm } from './hooks/usePersonaBuilderForm.js';
 import type { FormKey, FormFieldErrors } from './types.js';

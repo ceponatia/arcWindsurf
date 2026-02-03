@@ -11,13 +11,15 @@ import { getSession } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import type { OverridesAudit } from '../../../services/types.js';
+import { validateBody, validateParamId } from '../../../utils/request-validation.js';
+import { z } from 'zod';
 import {
   upsertCharacterOverrides,
   upsertSettingOverrides,
   getEffectiveCharacter,
   getEffectiveSetting,
 } from '../../../services/index.js';
-import { notFound, badRequest, serverError } from '../../../utils/responses.js';
+import { notFound, serverError } from '../../../utils/responses.js';
 import { findCharacter, findSetting } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toSessionId } from '../../../utils/uuid.js';
@@ -28,6 +30,8 @@ interface SessionRecord {
   settingId?: string | null;
 }
 
+const OverridesSchema = z.record(z.string(), z.unknown());
+
 export async function handlePutCharacterOverrides(
   c: Context,
   getLoaded: LoadedDataGetter
@@ -36,7 +40,9 @@ export async function handlePutCharacterOverrides(
   const loaded = getLoaded();
   if (!loaded) return serverError(c, 'data not loaded');
 
-  const id = c.req.param('id');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
   const ownerEmail = getOwnerEmail(c);
   const session = (await getSession(toSessionId(id), ownerEmail)) as SessionRecord | null;
   if (!session) return notFound(c, 'session not found');
@@ -46,13 +52,9 @@ export async function handlePutCharacterOverrides(
     return serverError(c, 'character not found for session');
   }
 
-  const body: unknown = await c.req.json().catch(() => null);
-  const overrides =
-    body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
-
-  if (!overrides || Array.isArray(overrides)) {
-    return badRequest(c, 'overrides must be an object');
-  }
+  const bodyResult = await validateBody(c, OverridesSchema);
+  if (!bodyResult.success) return bodyResult.errorResponse;
+  const overrides = bodyResult.data;
 
   const audit = await upsertCharacterOverrides({
     sessionId: session.id,
@@ -79,7 +81,9 @@ export async function handlePutSettingOverrides(
   const loaded = getLoaded();
   if (!loaded) return serverError(c, 'data not loaded');
 
-  const id = c.req.param('id');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
   const ownerEmail = getOwnerEmail(c);
   const session = (await getSession(toSessionId(id), ownerEmail)) as SessionRecord | null;
   if (!session) return notFound(c, 'session not found');
@@ -89,13 +93,9 @@ export async function handlePutSettingOverrides(
     return serverError(c, 'setting not found for session');
   }
 
-  const body: unknown = await c.req.json().catch(() => null);
-  const overrides =
-    body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
-
-  if (!overrides || Array.isArray(overrides)) {
-    return badRequest(c, 'overrides must be an object');
-  }
+  const bodyResult = await validateBody(c, OverridesSchema);
+  if (!bodyResult.success) return bodyResult.errorResponse;
+  const overrides = bodyResult.data;
 
   const audit = await upsertSettingOverrides({
     sessionId: session.id,

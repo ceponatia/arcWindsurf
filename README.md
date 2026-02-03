@@ -1,454 +1,230 @@
-# Minimal RPG
+# Minimal RPG (ArcAgentic)
 
-Minimal roleplaying chat app powered by advanced language models.
+A monorepo for a roleplaying chat app with a Hono API server, a React/Vite web UI, and supporting packages for schemas, persistence, LLM providers, and game services.
 
-## 1. Quick Start (pnpm)
+This README focuses on what is true in this repository today (scripts, ports, and where to look for implementation details). For deeper design/roadmap docs, see the files under `dev-docs/`.
+
+## 1. Quick start (Docker)
+
+Docker Compose is the quickest way to run all required infrastructure (Postgres + Redis) and the dev servers.
+
+### Prerequisites
+
+- Docker and Docker Compose
+- An OpenRouter API key (recommended), or a local Ollama setup
+
+### Configure environment
+
+Copy the example env file and set at least `OPENROUTER_API_KEY` (or configure Ollama):
+
+```bash
+cp .env.example .env
+```
+
+### Start everything
+
+From the repo root:
+
+```bash
+docker compose --env-file .env -f config/docker/docker-compose.yml up --build
+```
+
+Services:
+
+- Web: <http://localhost:${WEB_PORT:-5173}>
+- API: <http://localhost:${API_PORT:-3001}>
+- Postgres: `localhost:${PG_PORT:-5433}`
+- Redis: `localhost:6379`
+
+Stop containers:
+
+```bash
+docker compose -f config/docker/docker-compose.yml down
+```
+
+Wipe the dev database volume:
+
+```bash
+docker compose -f config/docker/docker-compose.yml down -v
+```
+
+## 2. Quick start (local dev with pnpm)
 
 ### Prerequisites
 
 - Node.js 20+
-- pnpm (Corepack is fine)
-- OpenRouter account + API key (if using OpenRouter locally)
+- pnpm
+- Postgres 16+ (pgvector) and Redis 7+ (Docker is fine)
 
-### Install + env
-
-1. Copy `.env.example` to `.env` and set at least `OPENROUTER_API_KEY` (or point `DB_TARGET`/`DATABASE_URL_LOCAL` at your Postgres).
-2. Install and build:
+### Install and build
 
 ```bash
+cp .env.example .env
 pnpm -w install
 pnpm -w build
 ```
 
-### Dev servers
+### Start infrastructure (db + redis)
 
-- Start both API + Web via Turbo (recommended):
+If you do not already have Postgres + Redis running locally:
+
+```bash
+pnpm infra:up
+```
+
+### Run dev servers
+
+Run API + Web via Turbo:
 
 ```bash
 pnpm dev
 ```
 
-- Or run individually if you prefer separate terminals:
+Or run them individually:
 
 ```bash
-pnpm -F @minimal-rpg/api dev   # http://localhost:3002
-pnpm -F @minimal-rpg/web dev   # http://localhost:5173
+pnpm -F @minimal-rpg/api dev
+pnpm -F @minimal-rpg/web dev
 ```
 
-- API: <http://localhost:3002>
-- Web: <http://localhost:5173>
-- Postgres: `localhost:${PG_PORT:-5432}` (set `PG_PORT` in `.env` if 5432 is taken)
-- `pnpm dev:kill` frees ports 3002/5173 if something is already running.
-- Web chat: when a session has NPC instances, use the selector beside the input to target an NPC; leave it on Auto to use the primary/default.
+Defaults:
 
-## 2. Quickstart (Docker)
-
-### Run everything with Docker Compose
-
-From the repo root:
-
-Create a repo-root `.env` (see `.env.example`) and set at least `OPENROUTER_API_KEY`.
-If port 5432 is already in use on your machine, set `PG_PORT=5433` (or another free port) in `.env`.
-
-```bash
-docker compose -f config/docker/docker-compose.yml up --build
-```
-
-This starts Postgres, the API, and the Web dev server:
-
-- API: <http://localhost:3002>
+- API: <http://localhost:3001>
 - Web: <http://localhost:5173>
 
-Stop containers with `Ctrl+C`, or in another shell:
+If a port is already in use:
 
 ```bash
-docker compose -f config/docker/docker-compose.yml down
-```
-
-### When do I need `--build`?
-
-The `config/docker/Dockerfile.dev` bakes in the dependency install step, but the source code is mounted as a volume (`.:/app`), so most edits do not require a rebuild.
-
-Use **`--build` (or `docker compose -f config/docker/docker-compose.yml build`) when**:
-
-- You change `package.json`, `pnpm-lock.yaml`, or `pnpm-workspace.yaml`
-- You add/remove packages or change their `package.json` files
-- You change Docker-related files (`config/docker/Dockerfile.dev`, `config/docker/docker-compose.yml`)
-
-You **do not need to rebuild** when:
-
-- Editing TypeScript/JS/TSX files in any package
-- Changing JSON data under `data/` (characters, settings, etc.)
-- Tweaking `.env` files used at runtime (restart containers instead)
-
-For non-build changes, a simple restart is enough:
-
-```bash
-docker compose -f config/docker/docker-compose.yml down
-docker compose -f config/docker/docker-compose.yml up
+pnpm dev:kill
 ```
 
 ## 3. Scripts
 
-Core repo scripts (root `package.json`):
+Core scripts (repo root):
 
-- `pnpm dev`: Run API + Web dev servers via Turbo.
-- `pnpm dev:kill`: Free ports 3002/5173 if something is blocking them.
-- `pnpm build`: Turbo build all packages.
-- `pnpm lint`: Lint the workspace.
-- `pnpm test`: Run vitest suites via Turbo.
-- `pnpm typecheck`: Type-check all packages.
-- `pnpm db:migrate`: Apply Postgres migrations.
-- `pnpm db:migrate:fresh`: Drop and re-apply migrations for a clean dev DB.
-- `pnpm refs:check`: Verify TypeScript project references are up to date.
-- `pnpm refs:sync`: Regenerate TypeScript project references.
+- `pnpm build`: Build all packages (Turbo)
+- `pnpm dev`: Run dev servers (Turbo)
+- `pnpm lint`: Lint all packages (Turbo)
+- `pnpm test`: Run tests across the monorepo (Turbo)
+- `pnpm typecheck`: Typecheck all packages (Turbo)
+- `pnpm dev:kill`: Kill listeners on ports 3001 and 5173 (uses `lsof` or `fuser`)
 
-### Test Scripts
+Infrastructure and DB:
 
-**Unit tests** (vitest): Run tests for packages with test coverage:
+- `pnpm infra:up`: Start Postgres + Redis via Docker Compose (detached)
+- `pnpm infra:down`: Stop Postgres + Redis containers
+- `pnpm docker:up`: Start all services (db + redis + api + web)
+- `pnpm docker:build`: Start all services with rebuild
+- `pnpm docker:down`: Stop and remove containers
+- `pnpm db:migrate`: Apply migrations
+- `pnpm db:migrate:fresh`: Drop and re-apply migrations
+
+Note: the root scripts run Turbo through `scripts/turbo.mjs` to make pnpm resolution robust when Turbo executes tasks from package subdirectories.
+
+## 4. Tests
+
+Run all tests:
 
 ```bash
-pnpm test                                  # Run all tests across monorepo
-pnpm -F @minimal-rpg/web test              # Web package (workspace store)
-pnpm -F @minimal-rpg/api test              # API package (session creation)
-pnpm -F @minimal-rpg/agents test           # Agents package
-pnpm -F @minimal-rpg/retrieval test        # Retrieval package
+pnpm test
 ```
 
-**Tool calling test**: Test LLM function calling with RPG tools:
+Run a single package:
 
 ```bash
-npx tsx scripts/test-tool-calling.ts                   # Default test prompts
-npx tsx scripts/test-tool-calling.ts --verbose         # Show API details
-npx tsx scripts/test-tool-calling.ts --prompt "..."    # Custom prompt
+pnpm -F @minimal-rpg/api test
+pnpm -F @minimal-rpg/web test
+pnpm -F @minimal-rpg/llm test
 ```
 
-**Studio SSE streaming test**: Validate `/studio/generate/stream` sends `content` chunks and finishes with a `done` event:
+Streaming smoke test (SSE and provider streaming):
 
 ```bash
-node scripts/test-streaming.mjs --target=studio --message "Generate a short NPC greeting." \
-  --apiBaseUrl http://localhost:3002
-```
-
-You can also test the underlying OpenAI-compatible streaming API directly (OpenAI/OpenRouter) using keys/models from `.env`:
-
-```bash
+node scripts/test-streaming.mjs --target=studio --message "Generate a short NPC greeting." --apiBaseUrl http://localhost:3001
 node scripts/test-streaming.mjs --target=openai --message "Say hello in one sentence."
 ```
 
-**Personality test**: Test LLM responses to personality traits:
+## 5. Database and environment
 
-```bash
-pnpm test:trait -- --trait "quiet, introverted, empathetic"
-```
+- Postgres 16+ with pgvector is the expected DB engine.
+- Redis is used by the bus and caches; Docker Compose includes it by default.
+- The repo uses a single repo-root `.env` file. The API loads it on startup; Vite is configured with `envDir` to load it from the repo root.
 
----
-
-## 4. Database & Environment
-
-### Database setup
-
-- PostgreSQL 16+ with pgvector is required.
-- The repo-root `.env` is shared by API, scripts, and Vite (via `envDir`).
-- `DB_TARGET=local` uses `DATABASE_URL_LOCAL`; staging/prod can set `DB_TARGET=supabase` or use `DATABASE_URL` directly.
-- Default ports: Postgres `${PG_PORT:-5432}`, API `${API_PORT:-3002}`, Web `${WEB_PORT:-5173}`.
-
-Apply or update schema:
+Apply migrations:
 
 ```bash
 pnpm db:migrate
 ```
 
-Reset locally (drop + re-apply migrations):
+## 6. Packages
 
-```bash
-pnpm db:migrate:fresh
+Packages live under `packages/`:
+
+- `@minimal-rpg/api`: Hono HTTP server (routes, auth, validation)
+- `@minimal-rpg/web`: React + Vite SPA
+- `@minimal-rpg/db`: Drizzle ORM + migrations + repositories
+- `@minimal-rpg/schemas`: Zod schemas and shared types (contracts)
+- `@minimal-rpg/llm`: LLM provider adapters (OpenRouter/OpenAI-style + Ollama)
+- `@minimal-rpg/bus`: World event bus (Redis pub/sub adapter)
+- `@minimal-rpg/services`: Domain services used by turns
+- `@minimal-rpg/actors`: Runtime actor logic
+- `@minimal-rpg/projections`: Read models and projections
+- `@minimal-rpg/retrieval`: Retrieval/scoring utilities
+- `@minimal-rpg/characters`: Character-related helpers
+- `@minimal-rpg/generator`: Content generation utilities
+- `@minimal-rpg/utils`: Shared utilities
+- `@minimal-rpg/ui`: Shared UI components
+- `@minimal-rpg/workers`: Background workers
+
+For a recent package breakdown and dependency layering, see `dev-docs/inventory.md`.
+
+## 7. API overview
+
+Base URL (dev): <http://localhost:3001>
+
+The API is organized by route registrars in `packages/api/src/routes/`. A few commonly used endpoints:
+
+- `GET /health`: health status (including LLM/provider reachability)
+- `GET /system/config`: effective runtime config (no secrets)
+- `GET /characters`, `GET /settings`: list profiles (filesystem + DB)
+- `GET /sessions`: session management
+- `POST /game/turns`: turn processing
+- `POST /studio/generate/stream`: server-sent events streaming
+
+Note on profiles: if a `data/` folder exists (for example `data/characters/*.json` and `data/settings/*.json` at the repo root), those profiles are loaded and validated at API startup. DB-backed profiles are also supported.
+
+## 8. Configuration
+
+See `.env.example` for the full list; commonly edited values include:
+
+```dotenv
+# LLM
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=
+
+# Local Ollama (optional)
+OLLAMA_BASE_URL=
+OLLAMA_MODEL=
+
+# DB and ports
+DB_TARGET=local
+DATABASE_URL_LOCAL=postgres://postgres:postgres@localhost:5432/minirpg
+PG_PORT=5433
+API_PORT=3001
+WEB_PORT=5173
+PORT=3001
+
+# Redis
+REDIS_URL=redis://localhost:6379
 ```
 
-### Docker Compose (dev)
+## 9. Troubleshooting
 
-Postgres data lives in the `pgdata` volume. Use `docker compose -f config/docker/docker-compose.yml down -v` to wipe it.
+- If the API fails on startup, ensure Postgres and Redis are reachable (run `pnpm infra:up`).
+- If the web UI loads but API calls fail, confirm `VITE_API_BASE_URL` (defaults to `http://localhost:3001`) and check `GET /health`.
+- If ports are stuck, run `pnpm dev:kill`.
 
----
-- [dev-docs/planning/gpt-refactor.md](dev-docs/planning/gpt-refactor.md) - Consolidated phased implementation plan for Session Workspace + builders + runtime NPC systems
+## 10. Documentation
 
-## 5. API Overview
-
-Base URL: <http://localhost:3002>
-
-- `GET /characters` – list characters (id, name, summary, tags)
-- `POST /characters` – create character (body: CharacterProfile JSON)
-- `GET /sessions` – list sessions (most recent first)
-- `POST /sessions` – create session `{ characterId, settingId }`
-- `GET /sessions/:id/npcs` – list per-session character/NPC instances with role/label/name
-- `POST /sessions/:id/npcs` – create an additional per-session NPC instance from a character template `{ templateId, role?, label? }` (role defaults to `npc` and only one `primary` is allowed)
-- `GET /sessions/:id` – session details + messages
-- `POST /sessions/:id/messages` – send message `{ content }`
-- `POST /sessions/:id/turns` – governor-backed turn endpoint `{ input, npcId? }` that persists state slices, resolves the active NPC, and writes per-NPC transcripts
-- `PUT /sessions/:id/overrides/character` – upsert character overrides (**deprecated**: bypasses state manager)
-- `PUT /sessions/:id/overrides/setting` – upsert setting overrides (**deprecated**: bypasses state manager)
-- `GET /health` – health and reachability
-- `GET /config` – effective runtime config (no secrets)
-
-Characters and settings come from JSON files under `data/characters` and `data/settings`. The server validates these on startup and fails fast on invalid data.
-
-Per-session overrides mutate the `character_instances` and `setting_instances` snapshots; arrays replace, objects merge deeply before persisting.
-
----
-
-## 6. Schemas & Packages
-
-### Schema package
-
-`@minimal-rpg/schemas` provides Zod schemas and types for characters, settings, personas, locations, and inventory. Import directly: `CharacterProfileSchema`, `InventoryStateSchema`, `BuiltLocationSchema`, etc.
-
-### Persona System
-
-Player character profiles with identity and appearance (no personality fields since players control their own actions).
-
-- **API**: `/personas` endpoints (CRUD)
-- **Database**: `persona_profiles` table
-- **Governor**: Persona passed via `TurnInput.persona` for personalized NPC responses
-- **Web UI**: Builder and panel in `packages/web/src/features/persona-*`
-
-### Monorepo packages
-
-- `@minimal-rpg/api` – Hono-based HTTP server with session state services (loader, persister, cache)
-- `@minimal-rpg/web` – React + Vite SPA
-- `@minimal-rpg/db` – PostgreSQL + pgvector + migrations
-- `@minimal-rpg/schemas` – Zod schemas for domain types + proximity state
-- `@minimal-rpg/governor` – Turn orchestration (intent → agents → response) with tool-based state patches
-- `@minimal-rpg/agents` – Map, NPC, Sensory, Rules agents with proximity slice support (exports `MAP_INTENT_TYPES` / `RULES_INTENT_TYPES`)
-- `@minimal-rpg/retrieval` – Knowledge node retrieval/scoring
-- `@minimal-rpg/generator` – Random character generation
-- `@minimal-rpg/utils` – Shared utilities
-- `@minimal-rpg/ui` – Shared UI components
-
-See [dev-docs/00-architecture-overview.md](dev-docs/00-architecture-overview.md) for architecture details.
-
-**Brainstorm documents** (status: design/research):
-
-- [26-time-system.md](dev-docs/26-time-system.md) – Game time tracking and configuration (foundation complete)
-- [27-npc-schedules-and-routines.md](dev-docs/27-npc-schedules-and-routines.md) – Background NPC behavior
-- [28-affinity-and-relationship-dynamics.md](dev-docs/28-affinity-and-relationship-dynamics.md) – Multi-dimensional relationship tracking
-- [29-time-triggered-behaviors.md](dev-docs/29-time-triggered-behaviors.md) – Time-aware NPC responses
-
----
-
-## 7. Configuration
-
-### Core env vars
-
-- `PORT` (default `3002`)
-- `DB_TARGET` – `local` (dev) or `supabase` (staging)
-- `DATABASE_URL_LOCAL` – local Postgres connection string (used when `DB_TARGET=local`)
-- `DATABASE_URL` – Postgres connection string (set this via Fly secrets for staging/prod)
-
-Staging uses Supabase via deployment-time secrets (GitHub Actions secrets for the web build, and Fly secrets for the API). Local dev uses `.env` or Docker Compose.
-
-For GitHub Pages builds (see `.github/workflows/web-pages-staging.yml`), set **either** GitHub Actions **Secrets** or **Variables**:
-
-- `VITE_SUPABASE_URL` (your Supabase project URL, `https://<ref>.supabase.co`)
-- `VITE_SUPABASE_ANON_KEY` (your Supabase anon key)
-- `VITE_API_BASE_URL` (your deployed API base URL; otherwise the web app will default to `http://localhost:3002`)
-
-### LLM (OpenRouter)
-
-- `OPENROUTER_API_KEY` – from <https://openrouter.ai/keys>
-- `OPENROUTER_MODEL` – e.g. `deepseek/deepseek-chat-v3-0324`
-
-### Frontend (Vite)
-
-- `VITE_API_BASE_URL` (default `http://localhost:3002`)
-- `VITE_API_MESSAGE_TIMEOUT_MS` (default `60000`)
-- `VITE_STRICT_MODE` (default `false`)
-
-Additional details live in `dev-docs/` (LLM recommendations, migration guide, web architecture).
-
----
-
-## 8. Dev Tools & Troubleshooting
-
-### Dev DB viewer
-
-- Enable server flag `ADMIN_DB_TOOLS=true` (API) and `VITE_DB_TOOLS=true` (Web)
-- Visit <http://localhost:5173/dbview> for table metadata + recent rows
-
-### Common issues
-
-- Messages endpoint 5xx
-  - Check `GET /health` – `llm.configured` must be `true`
-  - Ensure `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` are set in the repo-root `.env`
-- DB migration errors
-  - Verify `DATABASE_URL` and Postgres reachability
-  - Re-run: `pnpm db:migrate`
-- Dev servers exit early
-  - Start packages individually (`pnpm -F @minimal-rpg/api dev`, `pnpm -F @minimal-rpg/web dev`) to surface errors
-
-Run `pnpm lint`, `pnpm typecheck`, and `node ./scripts/validate-data.js` after schema or data changes to catch issues early.
-
----
-
-## 9. Key Features
-
-### Character System
-
-- **Body Map**: 33 anatomical regions with per-region sensory data (scent, texture, visual, flavor)
-- **Personality Map**: Big Five dimensions, emotional baseline, values, fears, attachment style, social patterns, speech style
-- **Flexible Details**: Label/value entries with area, importance, tags
-- **Gender Field**: Optional gender with context-aware body regions in UI
-- **Random Generation**: Themed character generator with "Fill Missing Fields" button
-- **Progressive Disclosure**: Three complexity modes in Character Builder
-  - Quick Mode (5 fields): Name, age, gender, summary, profile picture
-  - Standard Mode (~20 fields): Quick + personality traits, backstory, key appearance, tags
-  - Advanced Mode (~100 fields): Standard + detailed physique, body sensory map, detailed personality
-
-### Hygiene & Sensory System
-
-- **Dynamic Hygiene State**: Per-NPC, per-body-part hygiene tracking with decay over time
-- **Activity Multipliers**: Different activities (idle, walking, running, labor, combat) affect decay rate
-- **Footwear Modifiers**: Barefoot/sandals/shoes/boots affect feet hygiene decay
-- **Environment Effects**: Dry/humid/rain/swimming conditions modify decay
-- **Sensory Modifiers**: Context-aware smell/touch/taste descriptions based on hygiene level (0-6)
-- **Governor Tools**: `update_npc_hygiene` and `get_hygiene_sensory` for runtime state management
-
-### Intent & Interaction
-
-- **Compound Intents**: Asterisk rule for parsing mixed speech/action/thought/sensory input
-- **Sensory Agents**: Body region resolution for natural language queries (e.g., "her hair" → hair region)
-- **Multi-Action Processing**: Enhanced NPC responses for action sequences with temporal ordering
-- **Tool-Based Turn Handler**: LLM intelligently decides when to call tools based on context
-  - Replaces brittle rule-based intent detection
-  - Rich system prompts include full NPC profile (backstory, personality, speech style, goals)
-  - Setting/location context with atmosphere and exits
-  - Body map sensory data summary (available regions and senses)
-  - Player persona context for personalized NPC responses
-  - 10-message conversation history window for context continuity (optimized for tool pattern retention)
-  - The LLM understands: "He looks at Taylor's face" (sensory) vs "He looks up hopefully" (narrative)
-- **Tool Call History Persistence**: Maintains tool calling patterns in long conversations
-  - `tool_call_history` table stores tool calls per session/turn
-  - `conversation_summaries` table for future LLM-generated summaries
-  - Tool usage statistics and hints injected into context for sessions with established patterns
-  - Prevents pattern drift where LLM stops using tools after many turns
-
-### Session Management
-
-- **Session Workspace**: Multi-step wizard for session configuration (WIP)
-  - Zustand store with localStorage persistence and server sync
-  - Step 1: Setting selection with time configuration
-  - Step 2: NPC cast configuration with role/tier assignment
-  - Step 3: Player persona selection or anonymous play
-  - Step 4: Tags and rules selection
-  - Step 5: Review and launch
-  - Compact Builder mode for power users
-- **Transactional Creation**: `POST /sessions/create-full` atomic endpoint
-- **Entity Usage Tracking**: "Where is this used?" API endpoints
-  - `GET /entity-usage/characters/:id` - Sessions using a character
-  - `GET /entity-usage/settings/:id` - Sessions using a setting
-  - `GET /entity-usage/personas/:id` - Sessions using a persona
-  - UI component: EntityUsagePanel with collapsible session list
-- **Session Tags Injection**: Active tags injected into Governor system prompts
-- **Draft Persistence**: Auto-save workspace drafts to database
-- **Immutable Templates**: Character/setting templates + per-session snapshots with overrides
-- **Per-NPC Transcripts**: Separate conversation history for each NPC
-- **State Persistence**: Location, inventory, time slices in dedicated tables
-- **Speaker Metadata**: NPC avatars and names persist in messages
-
-### UI & Documentation
-
-- **In-App Docs**: MDX-based docs with navigation, syntax highlighting (`#/docs`)
-- **Character Builder**: Dynamic entry-based UI for appearance and body sensory data
-- **Persona Builder**: Player character profiles (identity + appearance)
-- **Tags System**: Categories, activation modes, trigger conditions, live preview
-- **Mobile-Optimized**: Responsive AppShell layout
-
-### Technical
-
-- **OpenRouter**: Sole LLM provider (DeepSeek V3 recommended)
-- **PostgreSQL + pgvector**: Embeddings and retrieval
-- **Governor Architecture**: Turn orchestration with agent routing and state patches
-- **Tool-Based Turns**: Classic intent detection removed; LLM-driven tool calling only
-- **LLM Efficiency**: SensoryAgent provides data, NpcAgent writes prose (1 LLM call vs 2-3)
-
-### Location & NPC State
-
-- **NPC Location Tracking**: Per-session state for where NPCs are and what they're doing
-- **Location Occupancy**: Tracks who is at each location, recent departures, expected arrivals
-- **Crowd Level Classification**: `empty`, `sparse`, `moderate`, `crowded`, `packed`
-- **NPC Awareness**: How NPCs perceive the player (unaware/peripheral/noticed/focused)
-- **NPC Availability**: Sleep, travel, busy states with override mechanics
-- **Lazy Simulation Cache**: Tiered simulation strategy for performance
-- **LocationGraphService**: Stateless service for location graph operations
-  - Transforms rich LocationMap (nodes/connections/ports) to runtime-usable formats
-  - Exit resolution with direction matching (north, up, "through the door")
-  - BFS pathfinding with travel time calculation
-  - Bridges to ToolExecutor's LocationInfo format
-  - Session-specific location maps with DB persistence
-
-### Location Prefabs
-
-- **Prefab Library**: Create reusable location templates (taverns, shops, dungeons) via Locations sidebar
-- **Category Grouping**: Prefabs organized by category for easy browsing
-- **Location Types**: Region, Building, and Room node types with tree structure
-- **Entry Points**: Configure which locations serve as entry points for the prefab
-- **Session Integration**: Insert prefabs into session maps for quick world building
-- **Auto-Linked Exits**: Drawing a connection between two nodes auto-creates bidirectional exits
-  - Each location node gets an exit with direction (north/south/etc.) and target reference
-  - Exits are editable in the Properties panel (direction, locked status, travel time)
-  - Deleting a connection removes the associated exits from both nodes
-  - Visual exit indicators on nodes show configured directions
-
-### Time System
-
-- **GameTime**: In-game time with configurable calendars (year, month, day, hour, minute, second)
-- **TimeConfig**: Setting-level configuration for time scales, day periods, calendars
-- **Day Periods**: Named periods (dawn, morning, afternoon, etc.) with descriptions
-- **Calendar Support**: Custom month names, day names, seasons, holidays
-- **Time Skip Config**: Configurable max skip hours, justification requirements, cooldowns
-- **Session Time State**: Per-session time tracking with pending events
-- **Time Utilities**: Pure functions for advancing time, formatting, period detection
-
-### NPC Tier System
-
-- **Four Tiers**: Major (full profile), Minor (partial), Background (minimal), Transient (generated)
-- **Player Interest Scoring**: Track engagement with NPCs for automatic promotion
-- **Bleed Rate**: Interest decays over time, slower for high-investment NPCs
-- **Promotion Thresholds**: Configurable per-setting promotion requirements
-- **Simulation Priority**: Tier-based priority with recency decay (eager→active→lazy→on-demand)
-- **Profile Expansion**: Track which fields need LLM generation on promotion
-
-### NPC Schedule System
-
-- **Schedule Slots**: Time-bound activity definitions with location and activity
-- **Choice-Based Destinations**: Weighted options with 2d6 bell curve resolution
-- **Condition System**: Weather, relationship, player presence, custom conditions
-- **Override Support**: Temporary schedule changes (stay-put, go-to, follow-npc, unavailable)
-- **Schedule Templates**: Reusable patterns (shopkeeper, guard, tavern keeper, noble, wanderer)
-- **Placeholder Resolution**: Templates with $workLocation, $homeLocation substitution
-- **Common Activities**: Pre-defined activities (sleeping, working, socializing, etc.)
-- **Governor Tools**:
-  - `generate_npc_schedule`: Create schedule from template with placeholder resolution
-  - `assign_npc_location`: Match NPC profile to appropriate location
-  - `get_schedule_resolution`: Resolve current location/activity from schedule
-
-### NPC Simulation System
-
-- **Tiered Simulation**: Eager/active/lazy/on-demand strategies based on NPC tier and distance
-- **Priority Calculation**: Recency bonus, distance penalty, interest boost for simulation order
-- **Simulation Triggers**: Turn, period-change, location-change, time-skip events
-- **Cache Management**: Validity checking with configurable TTL by fidelity level
-- **Budget Constraints**: Max NPCs per tick, per period, with overage handling
-- **Time Skip Handling**: Batch simulation with configurable fidelity and summarization
-- **Occupancy Utilities**: Prompt context building, departure/arrival filtering, NPC sorting
-
-### Affinity & Relationship System
-
-- **Multi-Dimensional Scores**: Fondness, trust, respect, comfort, attraction, fear (-100 to 100)
-- **Disposition Calculation**: Weighted composite (hostile→unfriendly→neutral→friendly→close→devoted)
-- **Affinity Effects**: 40+ action types with dimension-specific effects
-- **Diminishing Returns**: Repeated actions have reduced effect with configurable decay
-- **Natural Decay**: Affinity drifts toward neutral over time (configurable per-dimension)
-- **Unlock System**: Dialogue topics, favors, secrets, romance options based on thresholds
-- **Tolerance Profiles**: Per-NPC tolerance for insults, prying, flattery based on affinity
-- **Milestone Events**: Permanent relationship shifts from significant events
-- **Prompt Context**: LLM-ready relationship insights and available actions
+- In-app docs are authored as MDX under `packages/web/src/docs/` and are reachable in the UI at `#/docs`.
+- Developer notes and plans live under `dev-docs/`.

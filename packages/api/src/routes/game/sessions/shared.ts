@@ -7,46 +7,27 @@ import {
   type CharacterProfile,
   type SettingProfile,
 } from '@minimal-rpg/schemas';
+import { z } from 'zod';
 import type { LoadedData } from '../../../loaders/types.js';
-import type { CreateSessionRequest, MessageRequest } from '../../../services/types.js';
 import { getEntityProfile } from '@minimal-rpg/db/node';
 import { extractJsonField } from '@minimal-rpg/utils';
 import { isUuid, toId } from '../../../utils/uuid.js';
 
-// Type guards for request validation
-export function isMessageRequest(body: unknown): body is MessageRequest {
-  return Boolean(
-    body && typeof body === 'object' && typeof (body as { content?: unknown }).content === 'string'
-  );
-}
+export const MessageRequestSchema = z.object({
+  content: z.string().min(1).max(4000),
+});
 
-export function isCreateSessionRequest(body: unknown): body is CreateSessionRequest {
-  if (!body || typeof body !== 'object') return false;
-  const { characterId, settingId } = body as {
-    characterId?: unknown;
-    settingId?: unknown;
-  };
-  return typeof characterId === 'string' && typeof settingId === 'string';
-}
+export const CreateSessionRequestSchema = z.object({
+  characterId: z.string().trim().min(1),
+  settingId: z.string().trim().min(1),
+  tagIds: z.array(z.string()).optional(),
+});
 
-export interface CreateNpcInstanceRequest {
-  templateId: string;
-  role?: string;
-  label?: string;
-}
-
-export function isCreateNpcInstanceRequest(body: unknown): body is CreateNpcInstanceRequest {
-  if (!body || typeof body !== 'object') return false;
-  const { templateId, role, label } = body as {
-    templateId?: unknown;
-    role?: unknown;
-    label?: unknown;
-  };
-  const templateValid = typeof templateId === 'string' && templateId.trim().length > 0;
-  const roleValid = role === undefined || typeof role === 'string';
-  const labelValid = label === undefined || typeof label === 'string';
-  return templateValid && roleValid && labelValid;
-}
+export const CreateNpcInstanceRequestSchema = z.object({
+  templateId: z.string().trim().min(1),
+  role: z.string().optional(),
+  label: z.string().optional(),
+});
 
 /**
  * Extract name field from profile JSON string.

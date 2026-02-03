@@ -1,14 +1,11 @@
 import type { ReactNode } from 'react';
+import type { Speaker } from '@minimal-rpg/schemas';
 
 /**
  * Speaker metadata for assistant messages.
+ * Re-exported from @minimal-rpg/schemas for backward compatibility.
  */
-export interface ChatViewSpeaker {
-  id: string;
-  name: string;
-  profilePic?: string;
-  emotePic?: string;
-}
+export type ChatViewSpeaker = Speaker;
 
 export interface ChatViewMessage {
   role: string;

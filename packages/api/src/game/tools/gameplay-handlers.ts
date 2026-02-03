@@ -15,6 +15,7 @@ import {
   getLocationMap,
   getSession,
   getSessionProjection,
+  LocationDataValidationError,
   listActorStatesForSession,
   updateActorState,
   upsertProjection,
@@ -313,11 +314,21 @@ async function loadSessionLocationMap(
   const session = await getSession(sessionKey, context.ownerEmail);
   if (!session?.locationMapId) return null;
 
-  const mapRow = await getLocationMap(session.locationMapId);
+  let mapRow: Awaited<ReturnType<typeof getLocationMap>>;
+
+  try {
+    mapRow = await getLocationMap(session.locationMapId);
+  } catch (error) {
+    if (error instanceof LocationDataValidationError) {
+      console.error('[GameplayTools] Invalid location map data detected', error.details);
+      return null;
+    }
+    throw error;
+  }
   if (!mapRow) return null;
 
-  const nodesParse = LocationNodeSchema.array().safeParse(mapRow.nodesJson ?? []);
-  const connectionsParse = LocationConnectionSchema.array().safeParse(mapRow.connectionsJson ?? []);
+  const nodes = LocationNodeSchema.array().parse(mapRow.nodesJson ?? []);
+  const connections = LocationConnectionSchema.array().parse(mapRow.connectionsJson ?? []);
 
   return {
     id: mapRow.id,
@@ -325,8 +336,8 @@ async function loadSessionLocationMap(
     description: mapRow.description ?? undefined,
     settingId: mapRow.settingId ?? 'unknown',
     isTemplate: true,
-    nodes: nodesParse.success ? nodesParse.data : [],
-    connections: connectionsParse.success ? connectionsParse.data : [],
+    nodes,
+    connections,
     defaultStartLocationId: mapRow.defaultStartLocationId ?? undefined,
     tags: mapRow.tags ?? [],
     createdAt: mapRow.createdAt?.toISOString(),

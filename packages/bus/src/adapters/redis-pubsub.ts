@@ -1,4 +1,4 @@
-import { type WorldEvent } from '@minimal-rpg/schemas';
+import { WireWorldEventSchema, type WorldEvent } from '@minimal-rpg/schemas';
 import { pubRedis, subRedis } from '../core/redis-client.js';
 
 export type EventHandler = (event: WorldEvent) => void | Promise<void>;
@@ -20,7 +20,7 @@ export class RedisPubSubAdapter {
       subRedis.on('message', (channel, message) => {
         if (channel === this.channel) {
           try {
-            const event = JSON.parse(message) as WorldEvent;
+            const event = WireWorldEventSchema.parse(JSON.parse(message));
             for (const h of this.handlers) {
               const result = h(event);
               if (result instanceof Promise) {

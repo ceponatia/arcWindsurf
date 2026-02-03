@@ -19,6 +19,7 @@ import type { LoadedDataGetter, CharacterSummary, SettingSummary } from '../../l
 import { mapCharacterSummary, mapSettingSummary } from '../../mappers/profile-mappers.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { toId } from '../../utils/uuid.js';
+import { validateBody } from '../../utils/request-validation.js';
 
 interface ProfilesRouteDeps {
   getLoaded: LoadedDataGetter;
@@ -67,14 +68,16 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json(fsChar, 200);
     }
 
-    // Check DB
-    const dbChar = await getEntityProfile(toId(id));
-    if (dbChar?.entityType === 'character') {
-      try {
-        const parsed = CharacterProfileSchema.parse(dbChar.profileJson);
-        return c.json(parsed, 200);
-      } catch {
-        return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
+    // Check DB (entity_profiles.id is UUID; avoid passing non-UUID ids)
+    if (isUuid(id)) {
+      const dbChar = await getEntityProfile(toId(id));
+      if (dbChar?.entityType === 'character') {
+        try {
+          const parsed = CharacterProfileSchema.parse(dbChar.profileJson);
+          return c.json(parsed, 200);
+        } catch {
+          return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
+        }
       }
     }
 
@@ -84,16 +87,8 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
   // POST /characters - create a new dynamic character template
   app.post('/characters', async (c) => {
     const ownerEmail = getOwnerEmail(c);
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-    const parsed = CharacterProfileSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, CharacterProfileSchema);
+    if (!parsed.success) return parsed.errorResponse;
     const rawProfile = parsed.data;
     const normalizedId = isUuid(rawProfile.id) ? rawProfile.id : generateId();
     const profile: CharacterProfile = { ...rawProfile, id: normalizedId };
@@ -157,6 +152,10 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       );
     }
 
+    if (!isUuid(id)) {
+      return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
+    }
+
     const existing = await getEntityProfile(toId(id));
     if (existing?.entityType !== 'character') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
@@ -209,14 +208,16 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
       return c.json(fsSet, 200);
     }
 
-    // Check DB
-    const dbSet = await getEntityProfile(toId(id));
-    if (dbSet?.entityType === 'setting') {
-      try {
-        const parsed = SettingProfileSchema.parse(dbSet.profileJson);
-        return c.json(parsed, 200);
-      } catch {
-        return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
+    // Check DB (entity_profiles.id is UUID; avoid passing non-UUID ids)
+    if (isUuid(id)) {
+      const dbSet = await getEntityProfile(toId(id));
+      if (dbSet?.entityType === 'setting') {
+        try {
+          const parsed = SettingProfileSchema.parse(dbSet.profileJson);
+          return c.json(parsed, 200);
+        } catch {
+          return c.json({ ok: false, error: 'invalid db data' } satisfies ApiError, 500);
+        }
       }
     }
 
@@ -226,16 +227,8 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
   // POST /settings - create or update a dynamic setting template
   app.post('/settings', async (c) => {
     const ownerEmail = getOwnerEmail(c);
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-    const parsed = SettingProfileSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, SettingProfileSchema);
+    if (!parsed.success) return parsed.errorResponse;
     const rawProfile = parsed.data;
     const profileId = isUuid(rawProfile.id) ? rawProfile.id : generateId();
     const profile: SettingProfile = { ...rawProfile, id: profileId };
@@ -278,6 +271,10 @@ export function registerProfileRoutes(app: Hono, deps: ProfilesRouteDeps): void 
   app.delete('/settings/:id', async (c) => {
     const ownerEmail = getOwnerEmail(c);
     const id = c.req.param('id');
+    if (!isUuid(id)) {
+      return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);
+    }
+
     const existing = await getEntityProfile(toId(id));
     if (existing?.entityType !== 'setting') {
       return c.json({ ok: false, error: 'not found' } satisfies ApiError, 404);

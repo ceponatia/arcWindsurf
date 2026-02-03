@@ -2,15 +2,17 @@
  * Shared LLM types and interfaces.
  */
 import type { Operation } from 'fast-json-patch';
+import type { ConversationMessageRole, MessageRole } from '@minimal-rpg/schemas';
 
 // =============================================================================
 // Chat Roles
 // =============================================================================
 
-export type ChatRole = 'system' | 'user' | 'assistant';
+/** Chat role for conversation messages (system, user, assistant) */
+export type ChatRole = ConversationMessageRole;
 
 /** Extended chat role including tool messages (for tool calling) */
-export type ChatRoleWithTools = ChatRole | 'tool';
+export type ChatRoleWithTools = MessageRole;
 
 // =============================================================================
 // Tool Definition Types

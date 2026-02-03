@@ -11,5 +11,9 @@ export * from './admin.js';
 export * from './studio-sessions.js';
 export * from './workspace-drafts.js';
 export * from './dialogue.js';
-export * from './projections.js';
+export {
+  getActorsAtLocation,
+  getInventoryItem,
+  getInventoryItems,
+} from './projections.js';
 export * from './types.js';

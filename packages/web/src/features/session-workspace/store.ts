@@ -18,6 +18,7 @@ import type {
   SettingProfile,
   PersonaProfile,
   TagTargetType,
+  WorkspaceValidationResult as SharedWorkspaceValidationResult,
 } from '@minimal-rpg/schemas';
 import {
   createWorkspaceDraft,
@@ -101,10 +102,10 @@ export interface StepValidationState {
   errors: string[];
 }
 
-export interface ValidationResult {
-  isValid: boolean;
-  stepErrors: Partial<Record<WorkspaceStep, StepValidationState>>;
-}
+export type WorkspaceValidationResult = SharedWorkspaceValidationResult<
+  WorkspaceStep,
+  StepValidationState
+>;
 
 export interface WorkspaceState {
   // Navigation
@@ -181,7 +182,7 @@ export interface WorkspaceActions {
   setMode: (mode: 'wizard' | 'compact') => void;
 
   // Validation
-  validate: () => ValidationResult;
+  validate: () => WorkspaceValidationResult;
   validateStep: (step: WorkspaceStep) => StepValidationState;
 
   // Reset
@@ -617,7 +618,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
               'review',
             ];
             const stepErrors: Partial<Record<WorkspaceStep, StepValidationState>> = {};
-            let isValid = true;
+            let valid = true;
 
             for (const step of steps) {
               const validation = get().validateStep(step);
@@ -628,11 +629,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
                 configurable: true,
               });
               if (!validation.valid && (step === 'setting' || step === 'npcs')) {
-                isValid = false;
+                valid = false;
               }
             }
 
-            return { isValid, stepErrors };
+            return { valid, stepErrors };
           },
 
           // Reset
@@ -836,7 +837,7 @@ export const useIsDirty = () => useWorkspaceStore((s) => s.isDirty);
  * Use validation state. This hook memoizes the validation result
  * based on the actual data that affects validation (setting + npcs).
  */
-export const useValidation = (): ValidationResult => {
+export const useValidation = (): WorkspaceValidationResult => {
   const setting = useWorkspaceStore((s) => s.setting);
   const npcs = useWorkspaceStore((s) => s.npcs);
   const player = useWorkspaceStore((s) => s.player);

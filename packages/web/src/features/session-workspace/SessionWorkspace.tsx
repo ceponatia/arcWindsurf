@@ -296,7 +296,7 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
   }, [currentStep, setStep]);
 
   const handleCreateSession = useCallback(async () => {
-    if (!validation.isValid) {
+    if (!validation.valid) {
       setCreateError('Please fix validation errors before creating session');
       return;
     }
@@ -383,7 +383,7 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
       setCreating(false);
     }
   }, [
-    validation.isValid,
+    validation.valid,
     settingState,
     playerState,
     npcs,

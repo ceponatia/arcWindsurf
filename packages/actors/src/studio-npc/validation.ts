@@ -3,6 +3,8 @@
  * Catches training data leakage, code injection, and malformed responses.
  */
 
+import type { ResponseValidationResult } from '@minimal-rpg/schemas';
+
 /**
  * Markers that indicate code or technical content.
  */
@@ -100,11 +102,7 @@ export function isValidCharacterResponse(response: string): boolean {
 /**
  * Detailed validation result with reason.
  */
-export interface ValidationResult {
-  valid: boolean;
-  reason?: string;
-  markers?: string[];
-}
+export type ValidationResult = ResponseValidationResult;
 
 /**
  * Get detailed validation result.

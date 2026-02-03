@@ -13,6 +13,7 @@ import type { ItemSummary } from '../../loaders/types.js';
 import { mapItemSummary } from '../../mappers/item-mappers.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { toId } from '../../utils/uuid.js';
+import { validateBody, validateParamId } from '../../utils/request-validation.js';
 
 export function registerItemRoutes(app: Hono): void {
   // GET /items - list all item definitions
@@ -44,7 +45,9 @@ export function registerItemRoutes(app: Hono): void {
 
   // GET /items/:id - get full item definition
   app.get('/items/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     const ownerEmail = getOwnerEmail(c);
 
     const profile = await getEntityProfile(toId(id));
@@ -67,17 +70,9 @@ export function registerItemRoutes(app: Hono): void {
   // POST /items - create or update an item definition
   app.post('/items', async (c) => {
     const ownerEmail = getOwnerEmail(c);
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
 
-    const parsed = ItemDefinitionSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, ItemDefinitionSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     const definition = parsed.data;
 
@@ -109,20 +104,13 @@ export function registerItemRoutes(app: Hono): void {
 
   // PUT /items/:id - update an item definition
   app.put('/items/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     const ownerEmail = getOwnerEmail(c);
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = ItemDefinitionSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, ItemDefinitionSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     const definition = parsed.data;
 
@@ -148,7 +136,9 @@ export function registerItemRoutes(app: Hono): void {
 
   // DELETE /items/:id - delete an item definition
   app.delete('/items/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     const ownerEmail = getOwnerEmail(c);
 
     const existing = await getEntityProfile(toId(id));

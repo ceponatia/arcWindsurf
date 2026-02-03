@@ -2,7 +2,7 @@
  * Location Maps API Routes
  * CRUD operations for location maps and prefabs using Drizzle repositories.
  */
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import {
   LocationNodeSchema,
@@ -10,6 +10,7 @@ import {
   type LocationMap,
   type LocationPrefab,
 } from '@minimal-rpg/schemas';
+import { LocationDataValidationError } from '@minimal-rpg/db/node';
 import {
   createLocationMap,
   getLocationMap,
@@ -23,6 +24,12 @@ import {
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import type { ApiError } from '../../types.js';
 import { toId } from '../../utils/uuid.js';
+import {
+  validateBody,
+  validateParamId,
+  validateQuery,
+} from '../../utils/request-validation.js';
+import { badRequest } from '../../utils/responses.js';
 
 // ============================================================================
 // Types
@@ -103,6 +110,10 @@ const CreatePrefabSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+const LocationPrefabsQuerySchema = z.object({
+  category: z.string().max(50).optional(),
+});
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -126,10 +137,8 @@ function mapRowToSummary(row: LocationMapRow): LocationMapSummary {
 }
 
 function mapRowToLocationMap(row: LocationMapRow): LocationMap {
-  const nodesParse = LocationNodeSchema.array().safeParse(row.nodesJson ?? []);
-  const nodes = nodesParse.success ? nodesParse.data : [];
-  const connectionsParse = LocationConnectionSchema.array().safeParse(row.connectionsJson ?? []);
-  const connections = connectionsParse.success ? connectionsParse.data : [];
+  const nodes = LocationNodeSchema.array().parse(row.nodesJson ?? []);
+  const connections = LocationConnectionSchema.array().parse(row.connectionsJson ?? []);
   const result: LocationMap = {
     id: row.id,
     name: row.name,
@@ -147,10 +156,8 @@ function mapRowToLocationMap(row: LocationMapRow): LocationMap {
 }
 
 function mapRowToPrefab(row: LocationPrefabRow): LocationPrefab {
-  const nodesParse = LocationNodeSchema.array().safeParse(row.nodesJson ?? []);
-  const nodes = nodesParse.success ? nodesParse.data : [];
-  const connectionsParse = LocationConnectionSchema.array().safeParse(row.connectionsJson ?? []);
-  const connections = connectionsParse.success ? connectionsParse.data : [];
+  const nodes = LocationNodeSchema.array().parse(row.nodesJson ?? []);
+  const connections = LocationConnectionSchema.array().parse(row.connectionsJson ?? []);
   const result: LocationPrefab = {
     id: row.id,
     name: row.name,
@@ -162,6 +169,43 @@ function mapRowToPrefab(row: LocationPrefabRow): LocationPrefab {
   if (row.category) result.category = row.category ?? undefined;
   if (row.tags) result.tags = row.tags ?? undefined;
   return result;
+}
+
+function mapRowToPrefabSafe(row: LocationPrefabRow): LocationPrefab {
+  const nodesResult = LocationNodeSchema.array().safeParse(row.nodesJson ?? []);
+  const connectionsResult = LocationConnectionSchema.array().safeParse(row.connectionsJson ?? []);
+
+  const result: LocationPrefab = {
+    id: row.id,
+    name: row.name,
+    nodes: nodesResult.success ? nodesResult.data : [],
+    connections: connectionsResult.success ? connectionsResult.data : [],
+    entryPoints: row.entryPoints ?? [],
+  };
+
+  if (row.description) result.description = row.description ?? undefined;
+  if (row.category) result.category = row.category ?? undefined;
+  if (row.tags) result.tags = row.tags ?? undefined;
+
+  return result;
+}
+
+/**
+ * Translate location data validation errors into a consistent API response.
+ */
+function handleLocationDataError(c: Context, error: unknown): Response | null {
+  if (!(error instanceof LocationDataValidationError)) {
+    return null;
+  }
+
+  return badRequest(c, {
+    message: 'Location data is invalid; please delete or repair the map.',
+    type: 'invalid_location_data',
+    entity: error.details.entity,
+    recordId: error.details.recordId,
+    fields: error.details.fields,
+    issues: error.details.issues,
+  });
 }
 
 // ============================================================================
@@ -181,14 +225,17 @@ export function registerLocationMapRoutes(app: Hono): void {
       const summaries = maps.map((row: LocationMapRow) => mapRowToSummary(row));
       return c.json({ ok: true, maps: summaries }, 200);
     } catch (err) {
-      console.error('[API] Failed to list location maps:', err);
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       return c.json({ ok: false, error: 'failed to list maps' } satisfies ApiError, 500);
     }
   });
 
   // GET /location-maps/:id - get full map with nodes and connections
   app.get('/location-maps/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     try {
       const map = (await getLocationMap(toId(id))) as LocationMapRow | null;
       if (!map) {
@@ -196,6 +243,8 @@ export function registerLocationMapRoutes(app: Hono): void {
       }
       return c.json({ ok: true, map: mapRowToLocationMap(map) }, 200);
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to get location map:', err);
       return c.json({ ok: false, error: 'failed to get map' } satisfies ApiError, 500);
     }
@@ -204,17 +253,8 @@ export function registerLocationMapRoutes(app: Hono): void {
   // POST /location-maps - create new map
   app.post('/location-maps', async (c) => {
     const ownerEmail = getOwnerEmail(c);
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = CreateMapSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, CreateMapSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     try {
       const mapInput: Parameters<typeof createLocationMap>[0] = {
@@ -247,6 +287,8 @@ export function registerLocationMapRoutes(app: Hono): void {
 
       return c.json({ ok: true, map: mapRowToLocationMap(map) }, 201);
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to create location map:', err);
       return c.json({ ok: false, error: 'failed to create map' } satisfies ApiError, 500);
     }
@@ -254,19 +296,11 @@ export function registerLocationMapRoutes(app: Hono): void {
 
   // PUT /location-maps/:id - update map
   app.put('/location-maps/:id', async (c) => {
-    const id = c.req.param('id');
-
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = UpdateMapSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
+    const parsed = await validateBody(c, UpdateMapSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     try {
       const updateInput: Parameters<typeof updateLocationMap>[1] = {};
@@ -301,6 +335,8 @@ export function registerLocationMapRoutes(app: Hono): void {
 
       return c.json({ ok: true, map: mapRowToLocationMap(updated as LocationMapRow) }, 200);
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to update location map:', err);
       return c.json({ ok: false, error: 'failed to update map' } satisfies ApiError, 500);
     }
@@ -308,7 +344,9 @@ export function registerLocationMapRoutes(app: Hono): void {
 
   // DELETE /location-maps/:id - delete map
   app.delete('/location-maps/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     try {
       const deleted = await deleteLocationMap(id);
       if (!deleted) {
@@ -323,7 +361,9 @@ export function registerLocationMapRoutes(app: Hono): void {
 
   // POST /location-maps/:id/duplicate - create a copy of a map
   app.post('/location-maps/:id/duplicate', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     const ownerEmail = getOwnerEmail(c);
 
     try {
@@ -358,6 +398,8 @@ export function registerLocationMapRoutes(app: Hono): void {
 
       return c.json({ ok: true, map: mapRowToLocationMap(map) }, 201);
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to duplicate location map:', err);
       return c.json({ ok: false, error: 'failed to duplicate map' } satisfies ApiError, 500);
     }
@@ -369,14 +411,18 @@ export function registerLocationMapRoutes(app: Hono): void {
 
   // GET /location-prefabs - list prefabs
   app.get('/location-prefabs', async (c) => {
-    const category = c.req.query('category');
+    const queryResult = validateQuery(c, LocationPrefabsQuerySchema);
+    if (!queryResult.success) return queryResult.errorResponse;
+    const { category } = queryResult.data;
     try {
       const prefabs = (await listLocationPrefabs(category)) as LocationPrefabRow[];
       return c.json(
-        { ok: true, prefabs: prefabs.map((row: LocationPrefabRow) => mapRowToPrefab(row)) },
+        { ok: true, prefabs: prefabs.map((row: LocationPrefabRow) => mapRowToPrefabSafe(row)) },
         200
       );
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to list prefabs:', err);
       return c.json({ ok: false, error: 'failed to list prefabs' } satisfies ApiError, 500);
     }
@@ -384,7 +430,9 @@ export function registerLocationMapRoutes(app: Hono): void {
 
   // GET /location-prefabs/:id - get single prefab
   app.get('/location-prefabs/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     try {
       const prefab = (await getLocationPrefab(toId(id))) as LocationPrefabRow | null;
       if (!prefab) {
@@ -392,6 +440,8 @@ export function registerLocationMapRoutes(app: Hono): void {
       }
       return c.json({ ok: true, prefab: mapRowToPrefab(prefab) }, 200);
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to get prefab:', err);
       return c.json({ ok: false, error: 'failed to get prefab' } satisfies ApiError, 500);
     }
@@ -400,17 +450,8 @@ export function registerLocationMapRoutes(app: Hono): void {
   // POST /location-prefabs - create prefab
   app.post('/location-prefabs', async (c) => {
     const ownerEmail = getOwnerEmail(c);
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = CreatePrefabSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, CreatePrefabSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     try {
       const prefabInput: Parameters<typeof createLocationPrefab>[0] = {
@@ -441,6 +482,8 @@ export function registerLocationMapRoutes(app: Hono): void {
 
       return c.json({ ok: true, prefab: mapRowToPrefab(prefab) }, 201);
     } catch (err) {
+      const locationError = handleLocationDataError(c, err);
+      if (locationError) return locationError;
       console.error('[API] Failed to create prefab:', err);
       return c.json({ ok: false, error: 'failed to create prefab' } satisfies ApiError, 500);
     }

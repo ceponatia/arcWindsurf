@@ -27,7 +27,7 @@ export type {
   TagSelection,
   RelationshipConfig,
   StepValidationState,
-  ValidationResult,
+  WorkspaceValidationResult,
   WorkspaceState,
   WorkspaceActions,
   WorkspaceStore,

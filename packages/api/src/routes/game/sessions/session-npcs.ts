@@ -6,11 +6,12 @@
 import type { Context } from 'hono';
 import { getSession, listActorStatesForSession, upsertActorState } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
-import { notFound, badRequest, serverError, conflict } from '../../../utils/responses.js';
+import { notFound, serverError, conflict } from '../../../utils/responses.js';
 import { generateInstanceId } from '@minimal-rpg/utils';
-import { findCharacter, isCreateNpcInstanceRequest } from './shared.js';
+import { CreateNpcInstanceRequestSchema, findCharacter } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../../utils/uuid.js';
+import { validateBody, validateParamId } from '../../../utils/request-validation.js';
 
 interface NpcActorState {
   role?: string;
@@ -21,7 +22,9 @@ interface NpcActorState {
 
 export async function handleListNpcs(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
-  const sessionId = c.req.param('id');
+  const sessionIdResult = validateParamId(c, 'id');
+  if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+  const sessionId = sessionIdResult.data;
   const session = await getSession(toSessionId(sessionId), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
@@ -43,22 +46,22 @@ export async function handleListNpcs(c: Context): Promise<Response> {
 
 export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
-  const sessionId = c.req.param('id');
+  const sessionIdResult = validateParamId(c, 'id');
+  if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+  const sessionId = sessionIdResult.data;
   const session = await getSession(toSessionId(sessionId), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
   const loaded = getLoaded();
   if (!loaded) return serverError(c, 'data not loaded');
 
-  const rawBody: unknown = await c.req.json().catch(() => null);
-  if (!isCreateNpcInstanceRequest(rawBody)) {
-    return badRequest(c, 'templateId is required');
-  }
+  const bodyResult = await validateBody(c, CreateNpcInstanceRequestSchema);
+  if (!bodyResult.success) return bodyResult.errorResponse;
 
-  const { templateId } = rawBody;
-  const requestedRole = typeof rawBody.role === 'string' ? rawBody.role.trim() : '';
+  const { templateId } = bodyResult.data;
+  const requestedRole = typeof bodyResult.data.role === 'string' ? bodyResult.data.role.trim() : '';
   const normalizedRole = requestedRole.toLowerCase() === 'primary' ? 'primary' : 'npc';
-  const label = typeof rawBody.label === 'string' ? rawBody.label.trim() : '';
+  const label = typeof bodyResult.data.label === 'string' ? bodyResult.data.label.trim() : '';
 
   // Prevent multiple primary instances in a session.
   if (normalizedRole === 'primary') {

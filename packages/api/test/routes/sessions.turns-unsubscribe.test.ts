@@ -44,6 +44,7 @@ vi.mock('@minimal-rpg/services', () => ({
   timeService: { start: vi.fn() },
   socialEngine: { start: vi.fn() },
   rulesEngine: { start: vi.fn() },
+  Scheduler: { start: vi.fn() },
 }));
 
 describe('routes/sessions POST /sessions/:id/turns', () => {

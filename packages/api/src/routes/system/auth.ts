@@ -6,6 +6,7 @@ import type { AuthTokenPayload, AuthUser } from '../../auth/types.js';
 import { getAuthSecret, signAuthToken } from '../../auth/token.js';
 import { getAuthUser } from '../../auth/middleware.js';
 import { loginRateLimiter } from '../../middleware/rate-limiter.js';
+import { validateBody } from '../../utils/request-validation.js';
 
 const LoginSchema = z.object({
   identifier: z.string().min(1),
@@ -24,17 +25,8 @@ function makeTokenPayload(user: AuthUser, ttlSeconds: number): AuthTokenPayload 
 
 export function registerAuthRoutes(app: Hono): void {
   app.post('/auth/login', loginRateLimiter, async (c) => {
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = LoginSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, LoginSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     // Ensure the legacy default user row exists; does not authenticate.
     await getOrCreateDefaultUser();

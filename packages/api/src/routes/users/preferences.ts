@@ -12,12 +12,17 @@ import {
   getOrCreateDefaultUser,
 } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
+import { validateBody } from '../../utils/request-validation.js';
 
 /**
  * Schema for updating preferences
  */
 const UpdatePreferencesSchema = z.object({
   workspaceMode: z.enum(['wizard', 'compact']).optional(),
+});
+
+const UpdateWorkspaceModeSchema = z.object({
+  mode: z.enum(['wizard', 'compact']),
 });
 
 /**
@@ -52,17 +57,8 @@ export function registerUserPreferencesRoutes(app: Hono): void {
   app.put('/user/preferences', async (c) => {
     const userId = c.req.query('user_id') ?? 'default';
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = UpdatePreferencesSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, UpdatePreferencesSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     try {
       // Ensure default user exists
@@ -106,17 +102,8 @@ export function registerUserPreferencesRoutes(app: Hono): void {
   app.put('/user/preferences/workspace-mode', async (c) => {
     const userId = c.req.query('user_id') ?? 'default';
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = z.object({ mode: z.enum(['wizard', 'compact']) }).safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, UpdateWorkspaceModeSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     try {
       if (userId === 'default') {

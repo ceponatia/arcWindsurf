@@ -7,7 +7,121 @@ import {
 import { eq } from 'drizzle-orm';
 import type { UUID } from '../types.js';
 import type { LocationConnectionSummary } from './types.js';
-import { LocationConnectionSchema, LocationNodeSchema } from '@minimal-rpg/schemas';
+import {
+  LocationConnectionSchema,
+  LocationNodeSchema,
+  type LocationConnection,
+  type LocationNode,
+} from '@minimal-rpg/schemas';
+import type { ZodIssue } from 'zod';
+
+export type LocationDataEntity = 'map' | 'prefab';
+
+export interface LocationDataValidationDetails {
+  entity: LocationDataEntity;
+  recordId?: string;
+  fields: Array<'nodesJson' | 'connectionsJson'>;
+  issues: ZodIssue[];
+}
+
+export class LocationDataValidationError extends Error {
+  readonly details: LocationDataValidationDetails;
+
+  constructor(details: LocationDataValidationDetails) {
+    super('Location data is invalid');
+    this.name = 'LocationDataValidationError';
+    this.details = details;
+  }
+}
+
+/**
+ * Validate location nodes/connections JSON, throwing on invalid data.
+ */
+function parseLocationJson(
+  entity: LocationDataEntity,
+  recordId: string | undefined,
+  nodesJson: unknown[] | undefined,
+  connectionsJson: unknown[] | undefined
+): { nodesJson: LocationNode[]; connectionsJson: LocationConnection[] } {
+  const nodesResult = LocationNodeSchema.array().safeParse(nodesJson ?? []);
+  const connectionsResult = LocationConnectionSchema.array().safeParse(
+    connectionsJson ?? []
+  );
+
+  if (nodesResult.success && connectionsResult.success) {
+    return {
+      nodesJson: nodesResult.data,
+      connectionsJson: connectionsResult.data,
+    };
+  }
+
+  const fields: Array<'nodesJson' | 'connectionsJson'> = [];
+  const issues: ZodIssue[] = [];
+
+  if (!nodesResult.success) {
+    fields.push('nodesJson');
+    issues.push(...nodesResult.error.issues);
+  }
+
+  if (!connectionsResult.success) {
+    fields.push('connectionsJson');
+    issues.push(...connectionsResult.error.issues);
+  }
+
+  const details: LocationDataValidationDetails = {
+    entity,
+    fields,
+    issues,
+  };
+  if (recordId !== undefined) {
+    details.recordId = recordId;
+  }
+  throw new LocationDataValidationError(details);
+}
+
+/**
+ * Validate partial location JSON updates without overwriting missing fields.
+ */
+function validateLocationJsonUpdate(
+  entity: LocationDataEntity,
+  recordId: string | undefined,
+  updates: Partial<Pick<CreateLocationMapInput, 'nodesJson' | 'connectionsJson'>>
+): void {
+  const fields: Array<'nodesJson' | 'connectionsJson'> = [];
+  const issues: ZodIssue[] = [];
+
+  if (updates.nodesJson !== undefined) {
+    const result = LocationNodeSchema.array().safeParse(updates.nodesJson);
+    if (result.success) {
+      updates.nodesJson = result.data;
+    } else {
+      fields.push('nodesJson');
+      issues.push(...result.error.issues);
+    }
+  }
+
+  if (updates.connectionsJson !== undefined) {
+    const result = LocationConnectionSchema.array().safeParse(updates.connectionsJson);
+    if (result.success) {
+      updates.connectionsJson = result.data;
+    } else {
+      fields.push('connectionsJson');
+      issues.push(...result.error.issues);
+    }
+  }
+
+  if (issues.length > 0) {
+    const details: LocationDataValidationDetails = {
+      entity,
+      fields,
+      issues,
+    };
+    if (recordId !== undefined) {
+      details.recordId = recordId;
+    }
+    throw new LocationDataValidationError(details);
+  }
+}
 
 // =============================================================================
 // Location Maps
@@ -25,6 +139,12 @@ export interface CreateLocationMapInput {
 }
 
 export async function createLocationMap(input: CreateLocationMapInput) {
+  const validated = parseLocationJson(
+    'map',
+    undefined,
+    input.nodesJson ?? [],
+    input.connectionsJson ?? []
+  );
   const [result] = await db
     .insert(locationMaps)
     .values({
@@ -32,8 +152,8 @@ export async function createLocationMap(input: CreateLocationMapInput) {
       name: input.name,
       description: input.description,
       settingId: input.settingId,
-      nodesJson: input.nodesJson ?? [],
-      connectionsJson: input.connectionsJson ?? [],
+      nodesJson: validated.nodesJson,
+      connectionsJson: validated.connectionsJson,
       defaultStartLocationId: input.defaultStartLocationId,
       tags: input.tags ?? [],
     })
@@ -43,18 +163,31 @@ export async function createLocationMap(input: CreateLocationMapInput) {
 
 export async function getLocationMap(id: UUID) {
   const [result] = await db.select().from(locationMaps).where(eq(locationMaps.id, id)).limit(1);
-  return result;
+  if (!result) return result;
+  const validated = parseLocationJson(
+    'map',
+    result.id,
+    Array.isArray(result.nodesJson) ? result.nodesJson : [],
+    Array.isArray(result.connectionsJson) ? result.connectionsJson : []
+  );
+  return {
+    ...result,
+    nodesJson: validated.nodesJson,
+    connectionsJson: validated.connectionsJson,
+  };
 }
 
 export async function listLocationMaps(ownerEmail?: string) {
   const query = db.select().from(locationMaps);
-  if (ownerEmail) {
-    return query.where(eq(locationMaps.ownerEmail, ownerEmail));
-  }
-  return query;
+  return ownerEmail
+    ? await query.where(eq(locationMaps.ownerEmail, ownerEmail))
+    : await query;
 }
 
 export async function updateLocationMap(id: UUID, updates: Partial<CreateLocationMapInput>) {
+  if (updates.nodesJson !== undefined || updates.connectionsJson !== undefined) {
+    validateLocationJsonUpdate('map', id, updates);
+  }
   const [result] = await db
     .update(locationMaps)
     .set({
@@ -90,36 +223,41 @@ export async function getLocationConnections(
   const map = await getLocationMap(mapId);
   if (!map) return [];
 
-  const nodesParse = LocationNodeSchema.array().safeParse(map.nodesJson ?? []);
-  const connectionsParse = LocationConnectionSchema.array().safeParse(
+  const { nodesJson: nodes, connectionsJson: connections } = parseLocationJson(
+    'map',
+    map.id,
+    map.nodesJson ?? [],
     map.connectionsJson ?? []
   );
-
-  const nodes = nodesParse.success ? nodesParse.data : [];
-  const connections = connectionsParse.success ? connectionsParse.data : [];
   const nodeNames = new Map(nodes.map((node) => [node.id, node.name]));
 
   const results: LocationConnectionSummary[] = [];
 
   for (const connection of connections) {
     if (connection.fromLocationId === locationId) {
-      results.push({
+      const targetName = nodeNames.get(connection.toLocationId);
+      const lockReason = connection.lockReason;
+      const summary: LocationConnectionSummary = {
         connectionId: connection.id,
         targetLocationId: connection.toLocationId,
-        targetName: nodeNames.get(connection.toLocationId),
         locked: connection.locked,
-        lockReason: connection.lockReason,
-      });
+      };
+      if (targetName !== undefined) summary.targetName = targetName;
+      if (lockReason !== undefined) summary.lockReason = lockReason;
+      results.push(summary);
     }
 
     if (connection.bidirectional && connection.toLocationId === locationId) {
-      results.push({
+      const targetName = nodeNames.get(connection.fromLocationId);
+      const lockReason = connection.lockReason;
+      const summary: LocationConnectionSummary = {
         connectionId: connection.id,
         targetLocationId: connection.fromLocationId,
-        targetName: nodeNames.get(connection.fromLocationId),
         locked: connection.locked,
-        lockReason: connection.lockReason,
-      });
+      };
+      if (targetName !== undefined) summary.targetName = targetName;
+      if (lockReason !== undefined) summary.lockReason = lockReason;
+      results.push(summary);
     }
   }
 
@@ -143,6 +281,12 @@ export interface CreateLocationPrefabInput {
 }
 
 export async function createLocationPrefab(input: CreateLocationPrefabInput) {
+  const validated = parseLocationJson(
+    'prefab',
+    undefined,
+    input.nodesJson ?? [],
+    input.connectionsJson ?? []
+  );
   const [result] = await db
     .insert(locationPrefabs)
     .values({
@@ -151,8 +295,8 @@ export async function createLocationPrefab(input: CreateLocationPrefabInput) {
       type: input.type ?? 'building',
       description: input.description,
       category: input.category,
-      nodesJson: input.nodesJson ?? [],
-      connectionsJson: input.connectionsJson ?? [],
+      nodesJson: validated.nodesJson,
+      connectionsJson: validated.connectionsJson,
       entryPoints: input.entryPoints ?? [],
       tags: input.tags ?? [],
     })
@@ -166,13 +310,23 @@ export async function getLocationPrefab(id: UUID) {
     .from(locationPrefabs)
     .where(eq(locationPrefabs.id, id))
     .limit(1);
-  return result;
+  if (!result) return result;
+  const validated = parseLocationJson(
+    'prefab',
+    result.id,
+    Array.isArray(result.nodesJson) ? result.nodesJson : [],
+    Array.isArray(result.connectionsJson) ? result.connectionsJson : []
+  );
+  return {
+    ...result,
+    nodesJson: validated.nodesJson,
+    connectionsJson: validated.connectionsJson,
+  };
 }
 
 export async function listLocationPrefabs(category?: string) {
   const query = db.select().from(locationPrefabs);
-  if (category) {
-    return query.where(eq(locationPrefabs.category, category));
-  }
-  return query;
+  return category
+    ? await query.where(eq(locationPrefabs.category, category))
+    : await query;
 }

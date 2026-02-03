@@ -62,7 +62,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     };
   }, [settingState, npcs, playerState, tags]);
 
-  const canLaunch = validation.isValid && !launching;
+  const canLaunch = validation.valid && !launching;
 
   // Flatten validation errors for display
   const validationErrors = useMemo(() => {
@@ -91,7 +91,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       </div>
 
       {/* Validation Status */}
-      {!validation.isValid && validationErrors.length > 0 && (
+      {!validation.valid && validationErrors.length > 0 && (
         <div className="p-4 rounded-lg bg-red-900/20 border border-red-800/50">
           <p className="text-sm font-medium text-red-400 mb-2">Please fix the following issues:</p>
           <ul className="space-y-1">
@@ -287,7 +287,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       </div>
 
       {/* Validation Summary */}
-      {validation.isValid && (
+      {validation.valid && (
         <div className="text-center py-4">
           <p className="text-sm text-emerald-400">✓ All required fields configured</p>
         </div>

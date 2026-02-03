@@ -1,6 +1,10 @@
 // Local shared types for DB utilities and filesystem helpers used by scripts
 // Keep these minimal and focused on what we actually call.
 
+import type { ConversationMessageRole, MessageSpeaker } from '@minimal-rpg/schemas';
+
+export type { MessageSpeaker };
+
 export interface PgPoolLike {
   query: (sql: string, params?: unknown[]) => Promise<unknown>;
   end: () => Promise<void>;
@@ -270,20 +274,7 @@ export interface ItemInstanceRow extends DbRow {
 }
 
 // Session helpers exposed by sessions.ts
-export type MessageRole = 'user' | 'assistant' | 'system';
-
-/**
- * Speaker metadata persisted with assistant messages.
- * Enables UI to display NPC name/avatar on reload.
- */
-export interface MessageSpeaker {
-  /** Character template ID of the NPC who spoke */
-  id: string;
-  /** Display name of the speaker at time of message */
-  name: string;
-  /** Profile picture URL of the speaker at time of message */
-  profilePic?: string;
-}
+export type MessageRole = ConversationMessageRole;
 
 export interface SessionMessage {
   role: MessageRole;

@@ -12,20 +12,24 @@ import {
   and,
   getEventsForSession,
 } from '@minimal-rpg/db/node';
-import { notFound, badRequest } from '../../../utils/responses.js';
-import { isMessageRequest } from './shared.js';
+import { notFound } from '../../../utils/responses.js';
+import { MessageRequestSchema } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toSessionId } from '../../../utils/uuid.js';
 import { mapSpokeEventsToMessages } from './message-mapping.js';
 import { createMessageMappingDeps } from './message-mapping-deps.js';
 import type { SpokePayload } from './types.js';
+import { validateBody, validateParam, validateParamId } from '../../../utils/request-validation.js';
+import { z } from 'zod';
 
 type DbEvent = Awaited<ReturnType<typeof getEventsForSession>>[number];
 type SpokeEventRecord = DbEvent & { actorId: string; type: 'SPOKE' };
 
 export async function handleListMessages(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
-  const id = c.req.param('id');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
 
   const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
@@ -42,21 +46,20 @@ export async function handleListMessages(c: Context): Promise<Response> {
 
 export async function handlePatchMessage(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
-  const id = c.req.param('id');
-  const idx = parseInt(c.req.param('idx'), 10);
-  if (isNaN(idx)) return badRequest(c, 'invalid index');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
+
+  const idxResult = validateParam(c, 'idx', z.coerce.number().int().nonnegative());
+  if (!idxResult.success) return idxResult.errorResponse;
+  const idx = idxResult.data;
 
   const session = await getSession(toSessionId(id), ownerEmail);
   if (!session) return notFound(c, 'session not found');
 
-  const rawBody: unknown = await c.req.json().catch(() => null);
-  if (!isMessageRequest(rawBody)) {
-    return badRequest(c, 'content must be 1..4000 characters');
-  }
-  const { content } = rawBody;
-  if (content.length < 1 || content.length > 4000) {
-    return badRequest(c, 'content must be 1..4000 characters');
-  }
+  const bodyResult = await validateBody(c, MessageRequestSchema);
+  if (!bodyResult.success) return bodyResult.errorResponse;
+  const { content } = bodyResult.data;
 
   const [existingEvent] = await drizzle
     .select()
@@ -98,9 +101,13 @@ export async function handlePatchMessage(c: Context): Promise<Response> {
 
 export async function handleDeleteMessage(c: Context): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
-  const id = c.req.param('id');
-  const idx = parseInt(c.req.param('idx'), 10);
-  if (isNaN(idx)) return badRequest(c, 'invalid index');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
+
+  const idxResult = validateParam(c, 'idx', z.coerce.number().int().nonnegative());
+  if (!idxResult.success) return idxResult.errorResponse;
+  const idx = idxResult.data;
 
   console.info(`[API] Request to delete message: session=${id}, idx=${idx}`);
 

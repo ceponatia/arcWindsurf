@@ -13,18 +13,21 @@ import type { LoadedDataGetter } from '../../../loaders/types.js';
 import { notFound, badRequest, serverError } from '../../../utils/responses.js';
 import { jsonifyBigInts } from '../../../utils/json.js';
 import { generateId } from '@minimal-rpg/utils';
-import { findCharacter, findSetting, isCreateSessionRequest } from './shared.js';
+import { CreateSessionRequestSchema, findCharacter, findSetting } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../../utils/uuid.js';
 import { primeSessionSequence } from '../../../services/event-persistence.js';
 import { mapSpokeEventsToMessages } from './message-mapping.js';
 import { createMessageMappingDeps } from './message-mapping-deps.js';
+import { validateBody, validateParamId } from '../../../utils/request-validation.js';
 
 type DbEvent = Awaited<ReturnType<typeof getEventsForSession>>[number];
 type SpokeEventRecord = DbEvent & { actorId: string; type: 'SPOKE' };
 
 export async function handleGetSession(c: Context): Promise<Response> {
-  const id = c.req.param('id');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
   const ownerEmail = getOwnerEmail(c);
   // getSession(id, ownerEmail) is from @minimal-rpg/db/node (sessions repository)
   const session = await getSession(toSessionId(id), ownerEmail);
@@ -56,13 +59,10 @@ export async function handleCreateSession(
     return serverError(c, 'data not loaded');
   }
 
-  const rawBody: unknown = await c.req.json().catch(() => null);
-  console.log('[API] Request body:', rawBody);
-  if (!isCreateSessionRequest(rawBody)) {
-    return badRequest(c, 'characterId and settingId are required');
-  }
+  const bodyResult = await validateBody(c, CreateSessionRequestSchema);
+  if (!bodyResult.success) return bodyResult.errorResponse;
 
-  const { characterId, settingId, tagIds } = rawBody;
+  const { characterId, settingId, tagIds } = bodyResult.data;
   const character = await findCharacter(loaded, characterId);
   const setting = await findSetting(loaded, settingId);
 
@@ -129,7 +129,9 @@ export async function handleCreateSession(
 }
 
 export async function handleDeleteSession(c: Context): Promise<Response> {
-  const id = c.req.param('id');
+  const idResult = validateParamId(c, 'id');
+  if (!idResult.success) return idResult.errorResponse;
+  const id = idResult.data;
   const ownerEmail = getOwnerEmail(c);
   await deleteSession(toSessionId(id), ownerEmail);
   return c.body(null, 204);

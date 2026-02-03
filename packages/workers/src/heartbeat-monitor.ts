@@ -1,13 +1,8 @@
+import type { PresenceRecord, PresenceSchedulerStopOnly } from '@minimal-rpg/schemas';
+
 const DEFAULT_MONITOR_INTERVAL_MS = 30_000;
 
-export interface PresenceRecord {
-  sessionId: string;
-  lastHeartbeatAt: Date;
-}
-
-export interface PresenceScheduler {
-  stopWorldTick: (sessionId: string) => Promise<void> | void;
-}
+type PresenceScheduler = PresenceSchedulerStopOnly;
 
 export interface PresenceTracker {
   listSessions: () => PresenceRecord[];

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { WorldEventSchema } from '../src/events/index.js';
+import { WireWorldEventSchema, WorldEventSchema } from '../src/events/index.js';
 import worldEventLegacyFixture from './fixtures/world-event-legacy.json' with {
   type: 'json',
 };
@@ -48,6 +48,15 @@ describe('events/world-event schema', () => {
         tick: 1,
       })
     ).toThrow();
+
+    expect(() =>
+      WireWorldEventSchema.parse({
+        type: 'TICK',
+        sessionId: 'session-1',
+        timestamp: 'not-a-date',
+        tick: 1,
+      })
+    ).toThrow();
   });
 
   test('parses legacy world event fixture', () => {
@@ -66,5 +75,25 @@ describe('events/world-event schema', () => {
     const roundTripped = JSON.parse(JSON.stringify(parsed));
 
     expect(() => WorldEventSchema.parse(roundTripped)).toThrow();
+    expect(() => WireWorldEventSchema.parse(roundTripped)).not.toThrow();
+  });
+
+  test('wire schema accepts ISO strings and epoch timestamps', () => {
+    const iso = WireWorldEventSchema.parse({
+      type: 'TICK',
+      sessionId: 'session-1',
+      timestamp: '2024-01-01T00:00:00.000Z',
+      tick: 1,
+    });
+
+    const epoch = WireWorldEventSchema.parse({
+      type: 'TICK',
+      sessionId: 'session-1',
+      timestamp: 1704067200000,
+      tick: 2,
+    });
+
+    expect(iso.timestamp).toBeInstanceOf(Date);
+    expect(epoch.timestamp).toBeInstanceOf(Date);
   });
 });

@@ -1,7 +1,7 @@
 import { drizzle as db } from '../connection/index.js';
 import { actorStates } from '../schema/index.js';
 import { eq, and, sql } from 'drizzle-orm';
-import type { NpcSchedule, NpcScheduleRef } from '@minimal-rpg/schemas';
+import { NpcScheduleSchema, type NpcSchedule, type NpcScheduleRef } from '@minimal-rpg/schemas';
 import type { UUID } from '../types.js';
 
 type ActorStateRecord = Record<string, unknown>;
@@ -137,10 +137,10 @@ export async function getSessionNpcsWithSchedules(
 ): Promise<
   {
     npcId: string;
-    schedule?: NpcSchedule | undefined;
-    scheduleRef?: NpcScheduleRef | undefined;
-    homeLocationId?: string | undefined;
-    workLocationId?: string | undefined;
+    schedule?: NpcSchedule;
+    scheduleRef?: NpcScheduleRef;
+    homeLocationId?: string;
+    workLocationId?: string;
   }[]
 > {
   const actors = await db
@@ -153,8 +153,9 @@ export async function getSessionNpcsWithSchedules(
       const state = isRecord(actor.state) ? actor.state : {};
       const scheduleState = isRecord(state['schedule']) ? state['schedule'] : undefined;
 
-      const scheduleData = isRecord(scheduleState?.['scheduleData'])
-        ? (scheduleState?.['scheduleData'] as NpcSchedule)
+      const scheduleDataResult = NpcScheduleSchema.safeParse(scheduleState?.['scheduleData']);
+      const scheduleData: NpcSchedule | undefined = scheduleDataResult.success
+        ? scheduleDataResult.data
         : undefined;
       const templateId =
         typeof scheduleState?.['templateId'] === 'string'

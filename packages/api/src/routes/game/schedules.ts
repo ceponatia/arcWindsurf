@@ -13,6 +13,7 @@ import {
 import type { ApiError } from '../../types.js';
 import { toSessionId, toId } from '../../utils/uuid.js';
 import { asNpcState, type NpcActorState } from '../../types/index.js';
+import { validateBody, validateParam, validateParamId } from '../../utils/request-validation.js';
 
 // =============================================================================
 // Request/Response Schemas
@@ -90,7 +91,9 @@ export function registerScheduleRoutes(app: Hono): void {
    * Get a single schedule template by ID.
    */
   app.get('/schedule-templates/:id', async (c) => {
-    const { id } = c.req.param();
+    const idResult = validateParamId(c, 'id');
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
     try {
       const [template] = await db
@@ -129,38 +132,15 @@ export function registerScheduleRoutes(app: Hono): void {
    */
   app.post('/schedule-templates', async (c) => {
     try {
-      let body: unknown;
-      try {
-        body = await c.req.json();
-      } catch {
-        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-      }
-      const parsed = CreateScheduleTemplateSchema.safeParse(body);
-
-      if (!parsed.success) {
-        return c.json(
-          {
-            ok: false,
-            error: 'Invalid request body',
-            details: parsed.error.format(),
-          } satisfies ApiError,
-          400
-        );
-      }
+      const parsed = await validateBody(c, CreateScheduleTemplateSchema);
+      if (!parsed.success) return parsed.errorResponse;
 
       const { name, description, templateData } = parsed.data;
 
       // Validate template data against schema
       const templateValidation = ScheduleTemplateSchema.safeParse(templateData);
       if (!templateValidation.success) {
-        return c.json(
-          {
-            ok: false,
-            error: 'Invalid template data',
-            details: templateValidation.error.format(),
-          } satisfies ApiError,
-          400
-        );
+        return c.json({ ok: false, error: templateValidation.error.flatten() } satisfies ApiError, 400);
       }
 
       const [template] = await db
@@ -204,27 +184,13 @@ export function registerScheduleRoutes(app: Hono): void {
    * Update an existing schedule template.
    */
   app.put('/schedule-templates/:id', async (c) => {
-    const { id } = c.req.param();
+    const idResult = validateParamId(c, 'id');
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
     try {
-      let body: unknown;
-      try {
-        body = await c.req.json();
-      } catch {
-        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-      }
-      const parsed = UpdateScheduleTemplateSchema.safeParse(body);
-
-      if (!parsed.success) {
-        return c.json(
-          {
-            ok: false,
-            error: 'Invalid request body',
-            details: parsed.error.format(),
-          } satisfies ApiError,
-          400
-        );
-      }
+      const parsed = await validateBody(c, UpdateScheduleTemplateSchema);
+      if (!parsed.success) return parsed.errorResponse;
 
       const { name, description, templateData } = parsed.data;
 
@@ -233,11 +199,7 @@ export function registerScheduleRoutes(app: Hono): void {
         const templateValidation = ScheduleTemplateSchema.safeParse(templateData);
         if (!templateValidation.success) {
           return c.json(
-            {
-              ok: false,
-              error: 'Invalid template data',
-              details: templateValidation.error.format(),
-            } satisfies ApiError,
+            { ok: false, error: templateValidation.error.flatten() } satisfies ApiError,
             400
           );
         }
@@ -283,7 +245,9 @@ export function registerScheduleRoutes(app: Hono): void {
    * Delete a schedule template.
    */
   app.delete('/schedule-templates/:id', async (c) => {
-    const { id } = c.req.param();
+    const idResult = validateParamId(c, 'id');
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
     try {
       await db.delete(scheduleTemplates).where(eq(scheduleTemplates.id, toId(id)));
@@ -306,7 +270,9 @@ export function registerScheduleRoutes(app: Hono): void {
    * List all NPC schedules for a session.
    */
   app.get('/sessions/:sessionId/npc-schedules', async (c) => {
-    const { sessionId } = c.req.param();
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
     try {
       const npcStates = await db
@@ -346,7 +312,13 @@ export function registerScheduleRoutes(app: Hono): void {
    * Get the schedule for a specific NPC in a session.
    */
   app.get('/sessions/:sessionId/npc-schedules/:npcId', async (c) => {
-    const { sessionId, npcId } = c.req.param();
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
+
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     try {
       const actorState = await getActorState(toSessionId(sessionId), npcId);
@@ -376,41 +348,20 @@ export function registerScheduleRoutes(app: Hono): void {
    * Create or update an NPC schedule for a session.
    */
   app.post('/sessions/:sessionId/npc-schedules', async (c) => {
-    const { sessionId } = c.req.param();
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
     try {
-      let body: unknown;
-      try {
-        body = await c.req.json();
-      } catch {
-        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-      }
-      const parsed = CreateNpcScheduleSchema.safeParse(body);
-
-      if (!parsed.success) {
-        return c.json(
-          {
-            ok: false,
-            error: 'Invalid request body',
-            details: parsed.error.format(),
-          } satisfies ApiError,
-          400
-        );
-      }
+      const parsed = await validateBody(c, CreateNpcScheduleSchema);
+      if (!parsed.success) return parsed.errorResponse;
 
       const { npcId, templateId, scheduleData, placeholderMappings } = parsed.data;
 
       // Validate schedule data against schema
       const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
       if (!scheduleValidation.success) {
-        return c.json(
-          {
-            ok: false,
-            error: 'Invalid schedule data',
-            details: scheduleValidation.error.format(),
-          } satisfies ApiError,
-          400
-        );
+        return c.json({ ok: false, error: scheduleValidation.error.flatten() } satisfies ApiError, 400);
       }
 
       const actorState = await getActorState(toSessionId(sessionId), npcId);
@@ -463,7 +414,13 @@ export function registerScheduleRoutes(app: Hono): void {
    * Update an NPC schedule.
    */
   app.put('/sessions/:sessionId/npc-schedules/:npcId', async (c) => {
-    const { sessionId, npcId } = c.req.param();
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
+
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     try {
       const actorState = await getActorState(toSessionId(sessionId), npcId);
@@ -471,24 +428,8 @@ export function registerScheduleRoutes(app: Hono): void {
         return c.json({ ok: false, error: 'not found' }, 404);
       }
 
-      let body: unknown;
-      try {
-        body = await c.req.json();
-      } catch {
-        return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-      }
-      const parsed = UpdateNpcScheduleSchema.safeParse(body);
-
-      if (!parsed.success) {
-        return c.json(
-          {
-            ok: false,
-            error: 'Invalid request body',
-            details: parsed.error.format(),
-          } satisfies ApiError,
-          400
-        );
-      }
+      const parsed = await validateBody(c, UpdateNpcScheduleSchema);
+      if (!parsed.success) return parsed.errorResponse;
 
       const { templateId, scheduleData, placeholderMappings } = parsed.data;
 
@@ -498,11 +439,7 @@ export function registerScheduleRoutes(app: Hono): void {
         const scheduleValidation = NpcScheduleSchema.safeParse(scheduleData);
         if (!scheduleValidation.success) {
           return c.json(
-            {
-              ok: false,
-              error: 'Invalid schedule data',
-              details: scheduleValidation.error.format(),
-            } satisfies ApiError,
+            { ok: false, error: scheduleValidation.error.flatten() } satisfies ApiError,
             400
           );
         }
@@ -548,7 +485,13 @@ export function registerScheduleRoutes(app: Hono): void {
    * Delete an NPC schedule.
    */
   app.delete('/sessions/:sessionId/npc-schedules/:npcId', async (c) => {
-    const { sessionId, npcId } = c.req.param();
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
+
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     try {
       const actorState = await getActorState(toSessionId(sessionId), npcId);

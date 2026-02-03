@@ -24,6 +24,7 @@ import { findCharacter, findSetting } from './shared.js';
 import { getAuthUser } from '../../../auth/middleware.js';
 import { toSessionId, toId, toIds } from '../../../utils/uuid.js';
 import type { CharacterProfile } from '@minimal-rpg/schemas';
+import { validateBody } from '../../../utils/request-validation.js';
 
 /**
  * Request schema for creating a full session
@@ -184,21 +185,10 @@ export async function handleCreateFullSession(
     return serverError(c, 'data not loaded');
   }
 
-  // Parse and validate request body
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return badRequest(c, 'invalid json body');
-  }
+  const bodyResult = await validateBody(c, CreateFullSessionRequestSchema);
+  if (!bodyResult.success) return bodyResult.errorResponse;
 
-  const parseResult = CreateFullSessionRequestSchema.safeParse(body);
-  if (!parseResult.success) {
-    console.error('[API] Validation failed:', parseResult.error.flatten());
-    return badRequest(c, `validation failed: ${JSON.stringify(parseResult.error.flatten())}`);
-  }
-
-  const request = parseResult.data;
+  const request = bodyResult.data;
 
   // Validate setting exists
   const setting = await findSetting(loaded, request.settingId);

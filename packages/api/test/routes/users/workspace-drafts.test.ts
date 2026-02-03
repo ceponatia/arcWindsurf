@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { registerWorkspaceDraftRoutes } from '../../../src/routes/users/workspaceDrafts.js';
 
+const DRAFT_ID_1 = '89dcf560-f144-4bc6-a3cd-dad235ed4351';
+const DRAFT_ID_2 = '89dcf560-f144-4bc6-a3cd-dad235ed4352';
+const DRAFT_ID_3 = '89dcf560-f144-4bc6-a3cd-dad235ed4353';
+
 const dbMocks = vi.hoisted(() => ({
   listWorkspaceDrafts: vi.fn(),
   getWorkspaceDraft: vi.fn(),
@@ -34,7 +38,7 @@ describe('routes/users/workspace-drafts', () => {
   });
 
   it('lists workspace drafts with defaults', async () => {
-    dbMocks.listWorkspaceDrafts.mockResolvedValue([{ id: 'draft-1' }]);
+    dbMocks.listWorkspaceDrafts.mockResolvedValue([{ id: DRAFT_ID_1 }]);
 
     const app = makeApp();
     const res = await app.request('/workspace-drafts');
@@ -42,7 +46,7 @@ describe('routes/users/workspace-drafts', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
-      drafts: [{ id: 'draft-1' }],
+      drafts: [{ id: DRAFT_ID_1 }],
       total: 1,
     });
 
@@ -50,7 +54,7 @@ describe('routes/users/workspace-drafts', () => {
   });
 
   it('lists workspace drafts with query params', async () => {
-    dbMocks.listWorkspaceDrafts.mockResolvedValue([{ id: 'draft-2' }, { id: 'draft-3' }]);
+    dbMocks.listWorkspaceDrafts.mockResolvedValue([{ id: DRAFT_ID_2 }, { id: DRAFT_ID_3 }]);
 
     const app = makeApp();
     const res = await app.request('/workspace-drafts?user_id=user-1&limit=5');
@@ -58,7 +62,7 @@ describe('routes/users/workspace-drafts', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
-      drafts: [{ id: 'draft-2' }, { id: 'draft-3' }],
+      drafts: [{ id: DRAFT_ID_2 }, { id: DRAFT_ID_3 }],
       total: 2,
     });
 
@@ -76,21 +80,21 @@ describe('routes/users/workspace-drafts', () => {
   });
 
   it('gets a workspace draft by id', async () => {
-    dbMocks.getWorkspaceDraft.mockResolvedValue({ id: 'draft-1', name: 'Draft' });
+    dbMocks.getWorkspaceDraft.mockResolvedValue({ id: DRAFT_ID_1, name: 'Draft' });
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1');
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`);
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, draft: { id: 'draft-1', name: 'Draft' } });
-    expect(dbMocks.getWorkspaceDraft).toHaveBeenCalledWith('draft-1');
+    await expect(res.json()).resolves.toEqual({ ok: true, draft: { id: DRAFT_ID_1, name: 'Draft' } });
+    expect(dbMocks.getWorkspaceDraft).toHaveBeenCalledWith(DRAFT_ID_1);
   });
 
   it('returns 404 when draft is missing', async () => {
     dbMocks.getWorkspaceDraft.mockResolvedValue(null);
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-missing');
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_2}`);
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ ok: false, error: 'not found' });
@@ -100,14 +104,14 @@ describe('routes/users/workspace-drafts', () => {
     dbMocks.getWorkspaceDraft.mockRejectedValue(new Error('boom'));
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-err');
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_3}`);
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ ok: false, error: 'failed to get draft' });
   });
 
   it('creates a draft with optional fields', async () => {
-    dbMocks.createWorkspaceDraft.mockResolvedValue({ id: 'draft-1', name: 'Draft' });
+    dbMocks.createWorkspaceDraft.mockResolvedValue({ id: DRAFT_ID_1, name: 'Draft' });
 
     const app = makeApp();
     const res = await app.request('/workspace-drafts?user_id=user-1', {
@@ -117,7 +121,7 @@ describe('routes/users/workspace-drafts', () => {
     });
 
     expect(res.status).toBe(201);
-    await expect(res.json()).resolves.toEqual({ ok: true, draft: { id: 'draft-1', name: 'Draft' } });
+    await expect(res.json()).resolves.toEqual({ ok: true, draft: { id: DRAFT_ID_1, name: 'Draft' } });
     expect(dbMocks.createWorkspaceDraft).toHaveBeenCalledWith({
       userId: 'user-1',
       name: 'Draft',
@@ -167,18 +171,18 @@ describe('routes/users/workspace-drafts', () => {
   });
 
   it('updates a workspace draft', async () => {
-    dbMocks.updateWorkspaceDraft.mockResolvedValue({ id: 'draft-1', name: 'Updated' });
+    dbMocks.updateWorkspaceDraft.mockResolvedValue({ id: DRAFT_ID_1, name: 'Updated' });
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1', {
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated', validationState: { ok: true } }),
     });
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, draft: { id: 'draft-1', name: 'Updated' } });
-    expect(dbMocks.updateWorkspaceDraft).toHaveBeenCalledWith('draft-1', {
+    await expect(res.json()).resolves.toEqual({ ok: true, draft: { id: DRAFT_ID_1, name: 'Updated' } });
+    expect(dbMocks.updateWorkspaceDraft).toHaveBeenCalledWith(DRAFT_ID_1, {
       name: 'Updated',
       validationState: { ok: true },
     });
@@ -186,7 +190,7 @@ describe('routes/users/workspace-drafts', () => {
 
   it('returns 400 when update body is invalid json', async () => {
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1', {
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: '{',
@@ -198,7 +202,7 @@ describe('routes/users/workspace-drafts', () => {
 
   it('returns 400 when update body fails schema', async () => {
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1', {
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 123 }),
@@ -214,7 +218,7 @@ describe('routes/users/workspace-drafts', () => {
     dbMocks.updateWorkspaceDraft.mockResolvedValue(null);
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/missing', {
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_2}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated' }),
@@ -228,7 +232,7 @@ describe('routes/users/workspace-drafts', () => {
     dbMocks.updateWorkspaceDraft.mockRejectedValue(new Error('boom'));
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1', {
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated' }),
@@ -242,17 +246,17 @@ describe('routes/users/workspace-drafts', () => {
     dbMocks.deleteWorkspaceDraft.mockResolvedValue(true);
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1', { method: 'DELETE' });
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`, { method: 'DELETE' });
 
     expect(res.status).toBe(204);
-    expect(dbMocks.deleteWorkspaceDraft).toHaveBeenCalledWith('draft-1');
+    expect(dbMocks.deleteWorkspaceDraft).toHaveBeenCalledWith(DRAFT_ID_1);
   });
 
   it('returns 404 when delete target missing', async () => {
     dbMocks.deleteWorkspaceDraft.mockResolvedValue(false);
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/missing', { method: 'DELETE' });
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_2}`, { method: 'DELETE' });
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ ok: false, error: 'not found' });
@@ -262,7 +266,7 @@ describe('routes/users/workspace-drafts', () => {
     dbMocks.deleteWorkspaceDraft.mockRejectedValue(new Error('boom'));
 
     const app = makeApp();
-    const res = await app.request('/workspace-drafts/draft-1', { method: 'DELETE' });
+    const res = await app.request(`/workspace-drafts/${DRAFT_ID_1}`, { method: 'DELETE' });
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ ok: false, error: 'failed to delete draft' });

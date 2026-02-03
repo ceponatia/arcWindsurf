@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import type { EntityUsageSummary } from '../api/client.js';
 import { getCharacterUsage, getSettingUsage, getPersonaUsage } from '../api/client.js';
 
-export type EntityType = 'character' | 'setting' | 'persona';
+export type EntityType = 'character' | 'setting' | 'persona' | 'location';
 
 export interface UseEntityUsageOptions {
   /** Entity ID to fetch usage for */
-  entityId: string | null;
+  entityId: string | null | undefined;
   /** Type of entity */
   entityType: EntityType;
   /** Whether to automatically fetch on mount/change */
@@ -14,8 +14,10 @@ export interface UseEntityUsageOptions {
 }
 
 export interface UseEntityUsageResult {
-  /** Usage data */
+  /** Usage data (aliased as both 'data' and 'usage' for compatibility) */
   data: EntityUsageSummary | null;
+  /** @deprecated Use 'data' instead */
+  usage: EntityUsageSummary | null;
   /** Loading state */
   loading: boolean;
   /** Error message */
@@ -27,12 +29,26 @@ export interface UseEntityUsageResult {
 /**
  * Hook for fetching entity usage data.
  * Shows which sessions reference a given entity (character, setting, persona).
+ *
+ * Supports two call signatures:
+ * - useEntityUsage({ entityId, entityType, autoFetch? }) - options object
+ * - useEntityUsage(entityId, entityType) - positional arguments (legacy)
  */
-export function useEntityUsage({
-  entityId,
-  entityType,
-  autoFetch = true,
-}: UseEntityUsageOptions): UseEntityUsageResult {
+export function useEntityUsage(
+  optionsOrEntityId: UseEntityUsageOptions | string | null | undefined,
+  entityTypeArg?: EntityType
+): UseEntityUsageResult {
+  // Normalize arguments to options object
+  const options: UseEntityUsageOptions =
+    typeof optionsOrEntityId === 'object' && optionsOrEntityId !== null && 'entityType' in optionsOrEntityId
+      ? optionsOrEntityId
+      : {
+          entityId: optionsOrEntityId as string | null | undefined,
+          entityType: entityTypeArg!,
+          autoFetch: true,
+        };
+
+  const { entityId, entityType, autoFetch = true } = options;
   const [data, setData] = useState<EntityUsageSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +75,8 @@ export function useEntityUsage({
         case 'persona':
           result = await getPersonaUsage(entityId);
           break;
+        case 'location':
+          throw new Error('Usage tracking not implemented for location');
         default:
           throw new Error('Unknown entity type');
       }
@@ -85,6 +103,7 @@ export function useEntityUsage({
 
   return {
     data,
+    usage: data, // Alias for backward compatibility
     loading,
     error,
     refresh,

@@ -27,6 +27,7 @@ import {
   type LoadedSensoryModifiers,
 } from '../../loaders/sensory-modifiers-loader.js';
 import { toSessionId, toId } from '../../utils/uuid.js';
+import { validateBody, validateParam, validateParamId } from '../../utils/request-validation.js';
 
 interface HygieneActorState {
   hygiene?: Record<string, BodyPartHygieneState>;
@@ -35,6 +36,8 @@ interface HygieneActorState {
 
 type BodyRegionKey = (typeof BODY_REGIONS)[number];
 const BODY_REGION_LIST = BODY_REGIONS as readonly BodyRegionKey[];
+
+const HygieneUpdateBodySchema = HygieneUpdateInputSchema.omit({ npcId: true });
 
 function isBodyRegion(part: string): part is BodyRegionKey {
   return (BODY_REGION_LIST as readonly string[]).includes(part);
@@ -267,8 +270,13 @@ async function applyHygieneEventToNpc(
 export function registerHygieneRoutes(app: Hono): void {
   // GET /sessions/:sessionId/npcs/:npcId/hygiene - Get NPC hygiene state
   app.get('/sessions/:sessionId/npcs/:npcId/hygiene', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const npcId = c.req.param('npcId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
+
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     try {
       const state = await getNpcHygieneState(sessionId, npcId);
@@ -281,8 +289,13 @@ export function registerHygieneRoutes(app: Hono): void {
 
   // POST /sessions/:sessionId/npcs/:npcId/hygiene/initialize - Initialize hygiene state
   app.post('/sessions/:sessionId/npcs/:npcId/hygiene/initialize', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const npcId = c.req.param('npcId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
+
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     try {
       const state = await initializeHygieneState(sessionId, npcId);
@@ -298,19 +311,18 @@ export function registerHygieneRoutes(app: Hono): void {
 
   // POST /sessions/:sessionId/npcs/:npcId/hygiene/update - Update hygiene based on activity
   app.post('/sessions/:sessionId/npcs/:npcId/hygiene/update', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const npcId = c.req.param('npcId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-    }
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
-    // Parse and validate input
-    const inputWithNpc = { ...(body as object), npcId };
-    const parsed = HygieneUpdateInputSchema.safeParse(inputWithNpc);
+    const bodyResult = await validateBody(c, HygieneUpdateBodySchema);
+    if (!bodyResult.success) return bodyResult.errorResponse;
+
+    const parsed = HygieneUpdateInputSchema.safeParse({ ...bodyResult.data, npcId });
     if (!parsed.success) {
       return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
     }
@@ -326,31 +338,28 @@ export function registerHygieneRoutes(app: Hono): void {
 
   // POST /sessions/:sessionId/npcs/:npcId/hygiene/clean - Clean specific body parts
   app.post('/sessions/:sessionId/npcs/:npcId/hygiene/clean', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const npcId = c.req.param('npcId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-    }
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     const cleanSchema = z.object({
       bodyParts: z.array(z.string()).min(1),
     });
 
-    const parsed = cleanSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const bodyResult = await validateBody(c, cleanSchema);
+    if (!bodyResult.success) return bodyResult.errorResponse;
+    const { bodyParts } = bodyResult.data;
 
     const now = new Date();
     try {
       const state = await getNpcHygieneState(sessionId, npcId);
 
       // Reset specified body parts
-      for (const part of parsed.data.bodyParts) {
+      for (const part of bodyParts) {
         if ((BODY_REGIONS as readonly string[]).includes(part)) {
           // eslint-disable-next-line security/detect-object-injection -- part validated against BODY_REGIONS
           state.bodyParts[part] = {
@@ -371,15 +380,13 @@ export function registerHygieneRoutes(app: Hono): void {
 
   // POST /sessions/:sessionId/npcs/:npcId/hygiene/event - Apply a discrete hygiene event
   app.post('/sessions/:sessionId/npcs/:npcId/hygiene/event', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const npcId = c.req.param('npcId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'Invalid JSON body' } satisfies ApiError, 400);
-    }
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
     const hygieneEventSchema = z.union([
       z.object({ kind: z.literal('clean'), event: z.string() }),
@@ -390,13 +397,12 @@ export function registerHygieneRoutes(app: Hono): void {
       }),
     ]);
 
-    const parsed = hygieneEventSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const bodyResult = await validateBody(c, hygieneEventSchema);
+    if (!bodyResult.success) return bodyResult.errorResponse;
+    const event = bodyResult.data as HygieneEvent;
 
     try {
-      const state = await applyHygieneEventToNpc(sessionId, npcId, parsed.data as HygieneEvent);
+      const state = await applyHygieneEventToNpc(sessionId, npcId, event);
       return c.json(state, 200);
     } catch (error) {
       console.error('Error applying hygiene event:', error);
@@ -406,18 +412,25 @@ export function registerHygieneRoutes(app: Hono): void {
 
   // GET /sessions/:sessionId/npcs/:npcId/hygiene/sensory/:bodyPart/:senseType - Get sensory modifier
   app.get('/sessions/:sessionId/npcs/:npcId/hygiene/sensory/:bodyPart/:senseType', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const npcId = c.req.param('npcId');
-    const bodyPart = c.req.param('bodyPart');
-    const senseType = c.req.param('senseType') as 'smell' | 'touch' | 'taste';
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
-    if (!['smell', 'touch', 'taste'].includes(senseType)) {
-      return c.json({ ok: false, error: 'Invalid sense type' } satisfies ApiError, 400);
-    }
+    const npcIdResult = validateParam(c, 'npcId', z.string().trim().min(1));
+    if (!npcIdResult.success) return npcIdResult.errorResponse;
+    const npcId = npcIdResult.data;
 
-    if (!isBodyRegion(bodyPart)) {
-      return c.json({ ok: false, error: 'Invalid body part' } satisfies ApiError, 400);
-    }
+    const bodyPartResult = validateParam(
+      c,
+      'bodyPart',
+      z.string().refine((part) => isBodyRegion(part), 'Invalid body part')
+    );
+    if (!bodyPartResult.success) return bodyPartResult.errorResponse;
+    const bodyPart = bodyPartResult.data as BodyRegionKey;
+
+    const senseTypeResult = validateParam(c, 'senseType', z.enum(['smell', 'touch', 'taste']));
+    if (!senseTypeResult.success) return senseTypeResult.errorResponse;
+    const senseType = senseTypeResult.data;
 
     try {
       const modifiers = await getSensoryModifiers();

@@ -1,8 +1,8 @@
 import { Effect } from 'effect';
 import type { ToolCall, ToolDefinition } from './tools/types.js';
+import type { MessageRole } from '@minimal-rpg/schemas';
 
-/** LLM Message roles. */
-export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
+export type { MessageRole } from '@minimal-rpg/schemas';
 
 /** LLM Message. */
 export interface LLMMessage {

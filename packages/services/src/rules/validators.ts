@@ -1,19 +1,15 @@
-import type { GameTime, WorldEvent } from '@minimal-rpg/schemas';
+import type { ActionValidationResult, GameTime, WorldEvent } from '@minimal-rpg/schemas';
 import {
   getLocationConnections,
   getActorState,
   getInventoryItem,
+  LocationDataValidationError,
 } from '@minimal-rpg/db';
 
 /**
  * Validation result for an action.
  */
-export interface ValidationResult {
-  valid: boolean;
-  reason: string;
-  /** Suggested alternative action if invalid */
-  suggestion?: string;
-}
+export type ValidationResult = ActionValidationResult;
 
 /**
  * Game state context for validation.
@@ -120,21 +116,37 @@ async function validateMoveIntent(
     return { valid: false, reason: 'No destination specified' };
   }
 
-  const connections = await getLocationConnections(
-    context.sessionId,
-    context.currentLocationId
-  );
+  let connections: Awaited<ReturnType<typeof getLocationConnections>>;
+
+  try {
+    connections = await getLocationConnections(context.sessionId, context.currentLocationId);
+  } catch (error) {
+    if (error instanceof LocationDataValidationError) {
+      console.error('[Validators] Invalid location map data detected', error.details);
+      return {
+        valid: false,
+        reason: 'Location map data is invalid. Please delete or repair the map.',
+      };
+    }
+    throw error;
+  }
   const isConnected = connections.some(
     (connection) => connection.targetLocationId === moveEvent.destinationId
   );
 
   if (!isConnected) {
     const exits = connections.map((connection) => connection.targetName ?? connection.targetLocationId);
-    return {
+
+    const result: ValidationResult = {
       valid: false,
       reason: `Cannot reach ${moveEvent.destinationId} from current location`,
-      suggestion: exits.length > 0 ? `Available exits: ${exits.join(', ')}` : undefined,
     };
+
+    if (exits.length > 0) {
+      result.suggestion = `Available exits: ${exits.join(', ')}`;
+    }
+
+    return result;
   }
 
   return { valid: true, reason: '' };

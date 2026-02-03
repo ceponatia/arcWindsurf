@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
-import type { ZodSchema } from 'zod';
+import { z, type ZodSchema } from 'zod';
+import { isUuid } from '@minimal-rpg/utils';
 import { badRequest } from './responses.js';
 
 /**
@@ -7,13 +8,13 @@ import { badRequest } from './responses.js';
  */
 export type ValidationResult<T> =
   | {
-      success: true;
-      data: T;
-    }
+    success: true;
+    data: T;
+  }
   | {
-      success: false;
-      errorResponse: Response;
-    };
+    success: false;
+    errorResponse: Response;
+  };
 
 /**
  * Validate request body with Zod schema.
@@ -101,4 +102,53 @@ export async function validateOptionalBody<T>(
     success: true,
     data: result.data,
   };
+}
+
+/**
+ * Validate query params with a Zod schema.
+ */
+export function validateQuery<T>(c: Context, schema: ZodSchema<T>): ValidationResult<T> {
+  const result = schema.safeParse(c.req.query());
+
+  if (!result.success) {
+    return {
+      success: false,
+      errorResponse: badRequest(c, result.error.flatten()),
+    };
+  }
+
+  return {
+    success: true,
+    data: result.data,
+  };
+}
+
+/**
+ * Validate a route parameter with a Zod schema.
+ */
+export function validateParam<T>(
+  c: Context,
+  paramName: string,
+  schema: ZodSchema<T>
+): ValidationResult<T> {
+  const result = schema.safeParse(c.req.param(paramName));
+
+  if (!result.success) {
+    return {
+      success: false,
+      errorResponse: badRequest(c, result.error.flatten()),
+    };
+  }
+
+  return {
+    success: true,
+    data: result.data,
+  };
+}
+
+/**
+ * Validate a UUID route parameter.
+ */
+export function validateParamId(c: Context, paramName = 'id'): ValidationResult<string> {
+  return validateParam(c, paramName, z.string().refine(isUuid, 'invalid id'));
 }

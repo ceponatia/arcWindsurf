@@ -208,7 +208,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // POST /studio/generate - legacy non-streaming generation endpoint
   app.post('/studio/generate', studioRateLimiter, async (c) => {
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
       const parsed = GenerateRequestSchema.safeParse(body);
 
       if (!parsed.success) {
@@ -304,7 +309,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // POST /studio/infer-traits - Endpoint to perform trait inference asynchronously
   app.post('/studio/infer-traits', studioRateLimiter, async (c) => {
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
 
       const legacyParsed = LegacyInferTraitsRequestSchema.safeParse(body);
       if (legacyParsed.success) {
@@ -406,7 +416,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // POST /studio/summarize - Endpoint to summarize older messages
   app.post('/studio/summarize', studioRateLimiter, async (c) => {
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
       const parsed = z.object({ sessionId: z.string() }).safeParse(body);
 
       if (!parsed.success) {
@@ -495,7 +510,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   app.post('/studio/conversation', studioRateLimiter, async (c) => {
     const requestStart = performance.now();
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
       const parsed = ConversationRequestSchema.safeParse(body);
 
       if (!parsed.success) {
@@ -608,7 +628,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
 
   // POST /studio/conversation/stream - Streaming conversation endpoint
   app.post('/studio/conversation/stream', studioRateLimiter, async (c) => {
-    const body: unknown = await c.req.json();
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+    }
     const parsed = ConversationRequestSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -768,7 +793,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // POST /studio/suggest-prompt - Get suggested prompts
   app.post('/studio/suggest-prompt', studioRateLimiter, async (c) => {
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' } satisfies ApiError, 400);
+      }
       const parsed = SuggestPromptRequestSchema.safeParse(body);
 
       if (!parsed.success) {
@@ -809,7 +839,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // POST /studio/dilemma/generate - Generate just the dilemma scenario (no response)
   app.post('/studio/dilemma/generate', studioRateLimiter, async (c) => {
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' }, 400);
+      }
       const profile = (body as { profile?: Partial<CharacterProfile> })?.profile;
 
       if (!profile) {
@@ -839,7 +874,12 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
   // POST /studio/dilemma - Generate a moral dilemma (legacy - full flow)
   app.post('/studio/dilemma', studioRateLimiter, async (c) => {
     try {
-      const body: unknown = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ ok: false, error: 'Invalid request' }, 400);
+      }
       const parsed = DilemmaRequestSchema.safeParse(body);
 
       if (!parsed.success) {

@@ -14,6 +14,16 @@ import { getSession } from '../../db/sessionsClient.js';
 import type { ApiError } from '../../types.js';
 import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../utils/uuid.js';
+import { validateBody, validateParamId } from '../../utils/request-validation.js';
+import { z } from 'zod';
+
+const PersonaProfileDbSchema = PersonaProfileSchema.extend({
+  id: z.string().uuid(),
+});
+
+const AttachPersonaSchema = z.object({
+  personaId: z.string().uuid(),
+});
 
 interface EntityProfileRow {
   id: string;
@@ -90,7 +100,9 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // GET /personas/:id - get full persona profile
   app.get('/personas/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c, 'id');
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
     const persona = (await getEntityProfile(toId(id))) as EntityProfileRow | null;
 
@@ -109,18 +121,8 @@ export function registerPersonaRoutes(app: Hono): void {
   // POST /personas - create or update persona (upsert)
   app.post('/personas', async (c) => {
     const ownerEmail = getOwnerEmail(c);
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = PersonaProfileSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
-
+    const parsed = await validateBody(c, PersonaProfileDbSchema);
+    if (!parsed.success) return parsed.errorResponse;
     const profile = parsed.data;
 
     // Check if persona with this ID already exists
@@ -159,21 +161,13 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // PUT /personas/:id - update existing persona
   app.put('/personas/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c, 'id');
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     const ownerEmail = getOwnerEmail(c);
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = PersonaProfileSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
-
+    const parsed = await validateBody(c, PersonaProfileDbSchema);
+    if (!parsed.success) return parsed.errorResponse;
     const profile = parsed.data;
 
     // Ensure ID in URL matches ID in body
@@ -206,7 +200,9 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // DELETE /personas/:id - delete persona
   app.delete('/personas/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c, 'id');
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     const ownerEmail = getOwnerEmail(c);
 
     const existing = (await getEntityProfile(toId(id))) as EntityProfileRow | null;
@@ -225,22 +221,17 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // POST /sessions/:sessionId/persona - attach persona to session
   app.post('/sessions/:sessionId/persona', async (c) => {
-    const sessionId = c.req.param('sessionId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
     const ownerEmail = getOwnerEmail(c);
 
-    let body: { personaId: string } | undefined;
-    try {
-      body = await c.req.json<{ personaId: string }>();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    if (!body?.personaId) {
-      return c.json({ ok: false, error: 'personaId required' } satisfies ApiError, 400);
-    }
+    const bodyResult = await validateBody(c, AttachPersonaSchema);
+    if (!bodyResult.success) return bodyResult.errorResponse;
+    const body = bodyResult.data;
 
     // Check if session exists
-    const session = (await getSession(sessionId, ownerEmail)) as SessionRecord | null;
+    const session = (await getSession(toSessionId(sessionId), ownerEmail)) as SessionRecord | null;
     if (!session) {
       return c.json({ ok: false, error: 'session not found' } satisfies ApiError, 404);
     }
@@ -278,7 +269,9 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // GET /sessions/:sessionId/persona - get active session persona
   app.get('/sessions/:sessionId/persona', async (c) => {
-    const sessionId = c.req.param('sessionId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
     const playerState = await getActorState(toSessionId(sessionId), 'player');
 
@@ -305,7 +298,9 @@ export function registerPersonaRoutes(app: Hono): void {
 
   // DELETE /sessions/:sessionId/persona - detach persona from session
   app.delete('/sessions/:sessionId/persona', async (c) => {
-    const sessionId = c.req.param('sessionId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
 
     const existing = await getActorState(toSessionId(sessionId), 'player');
 

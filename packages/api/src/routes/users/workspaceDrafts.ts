@@ -15,6 +15,7 @@ import {
 } from '@minimal-rpg/db/node';
 import type { ApiError } from '../../types.js';
 import { toId } from '../../utils/uuid.js';
+import { validateBody, validateParamId } from '../../utils/request-validation.js';
 
 /**
  * Validation schema for workspace state.
@@ -52,7 +53,9 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
 
   // GET /workspace-drafts/:id - get single draft
   app.get('/workspace-drafts/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
     try {
       const draft = await getWorkspaceDraft(toId(id));
@@ -70,17 +73,8 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
   app.post('/workspace-drafts', async (c) => {
     const userId = c.req.query('user_id') ?? 'default';
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = CreateDraftSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, CreateDraftSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     const { name, workspaceState, currentStep } = parsed.data;
 
@@ -101,19 +95,12 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
 
   // PUT /workspace-drafts/:id - update draft
   app.put('/workspace-drafts/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ ok: false, error: 'invalid json body' } satisfies ApiError, 400);
-    }
-
-    const parsed = UpdateDraftSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.flatten() } satisfies ApiError, 400);
-    }
+    const parsed = await validateBody(c, UpdateDraftSchema);
+    if (!parsed.success) return parsed.errorResponse;
 
     const { name, workspaceState, currentStep, validationState } = parsed.data;
 
@@ -138,7 +125,9 @@ export function registerWorkspaceDraftRoutes(app: Hono): void {
 
   // DELETE /workspace-drafts/:id - delete draft
   app.delete('/workspace-drafts/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
 
     try {
       const deleted = await deleteWorkspaceDraft(toId(id));

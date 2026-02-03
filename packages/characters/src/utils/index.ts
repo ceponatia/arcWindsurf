@@ -1,13 +1,5 @@
 // Common utility types and helpers for characters domain.
-
-export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
-
-export function ok<T>(value: T): Result<T> {
-  return { ok: true, value };
-}
-
-export function err<E = Error>(error: E): Result<never, E> {
-  return { ok: false, error };
-}
+// Re-export Result type from @minimal-rpg/utils for backward compatibility
+export { type Result, ok, err } from '@minimal-rpg/utils';
 
 export { resolveDataDir } from './dataDir.js';

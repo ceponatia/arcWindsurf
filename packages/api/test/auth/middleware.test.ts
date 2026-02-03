@@ -20,7 +20,15 @@ const originalEnv = process.env;
  * Update process.env for test cases.
  */
 function setEnv(next: Record<string, string | undefined>): void {
-  process.env = { ...originalEnv, ...next };
+  const env: Record<string, string> = { ...(process.env as Record<string, string>) };
+  for (const [key, value] of Object.entries(next)) {
+    if (value === undefined) {
+      delete env[key];
+    } else {
+      env[key] = value;
+    }
+  }
+  process.env = env;
 }
 
 /**

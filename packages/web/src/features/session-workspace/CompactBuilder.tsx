@@ -132,11 +132,11 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           </button>
           <button
             onClick={() => void onLaunch()}
-            disabled={!validation.isValid || launching}
+            disabled={!validation.valid || launching}
             className={`
               px-4 py-1.5 text-sm font-medium rounded transition-all
               ${
-                validation.isValid && !launching
+                validation.valid && !launching
                   ? 'bg-violet-600 text-white hover:bg-violet-500'
                   : 'bg-slate-700 text-slate-500 cursor-not-allowed'
               }
@@ -155,7 +155,7 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
       )}
 
       {/* Validation Errors */}
-      {!validation.isValid && validationErrors.length > 0 && (
+      {!validation.valid && validationErrors.length > 0 && (
         <div className="p-3 rounded bg-amber-900/20 border border-amber-800/50">
           <div className="flex flex-wrap gap-2 text-xs text-amber-300">
             {validationErrors.map((err: string, idx: number) => (
@@ -175,7 +175,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* Setting Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => { toggleSection('setting'); }}
+              onClick={() => {
+                toggleSection('setting');
+              }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -197,7 +199,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                 {settings.map((setting) => (
                   <button
                     key={setting.id}
-                    onClick={() => { handleSelectSetting(setting); }}
+                    onClick={() => {
+                      handleSelectSetting(setting);
+                    }}
                     className={`
                       w-full text-left p-2 rounded text-sm transition-colors
                       ${
@@ -217,7 +221,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* NPCs Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => { toggleSection('npcs'); }}
+              onClick={() => {
+                toggleSection('npcs');
+              }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -239,7 +245,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                   return (
                     <button
                       key={char.id}
-                      onClick={() => { handleToggleNpc(char); }}
+                      onClick={() => {
+                        handleToggleNpc(char);
+                      }}
                       className={`
                         w-full text-left p-2 rounded text-sm flex items-center justify-between transition-colors
                         ${
@@ -261,7 +269,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* Player Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => { toggleSection('player'); }}
+              onClick={() => {
+                toggleSection('player');
+              }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -303,7 +313,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                 {personas.map((persona) => (
                   <button
                     key={persona.id}
-                    onClick={() => { handleSelectPersona(persona); }}
+                    onClick={() => {
+                      handleSelectPersona(persona);
+                    }}
                     className={`
                       w-full text-left p-2 rounded text-sm transition-colors
                       ${
@@ -323,7 +335,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
           {/* Tags Section */}
           <div className="border border-slate-800 rounded-lg bg-slate-900/30">
             <button
-              onClick={() => { toggleSection('tags'); }}
+              onClick={() => {
+                toggleSection('tags');
+              }}
               className="w-full px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
@@ -343,7 +357,9 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
                   return (
                     <button
                       key={tag.id}
-                      onClick={() => { handleToggleTag(tag); }}
+                      onClick={() => {
+                        handleToggleTag(tag);
+                      }}
                       className={`
                         w-full text-left p-2 rounded text-sm flex items-center justify-between transition-colors
                         ${

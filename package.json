@@ -3,13 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "turbo run build",
-    "build:watch": "turbo run build --watch",
+    "build": "node scripts/turbo.mjs run build",
+    "build:watch": "node scripts/turbo.mjs run build --watch",
     "db:migrate": "pnpm --filter @minimal-rpg/db run db:migrate",
     "db:migrate:fresh": "bash scripts/fresh-migration.sh",
-    "dev": "turbo run dev",
+    "dev": "node scripts/turbo.mjs run dev",
     "dev:kill": "node scripts/kill-ports.mjs 3001 5173",
-    "lint": "turbo run lint",
+    "lint": "node scripts/turbo.mjs run lint",
     "infra:up": "docker compose --env-file .env -f config/docker/docker-compose.yml up -d db redis",
     "infra:down": "docker compose -f config/docker/docker-compose.yml stop db redis",
     "docker:up": "docker compose --env-file .env -f config/docker/docker-compose.yml up -d --wait",
@@ -17,8 +17,8 @@
     "docker:down": "docker compose -f config/docker/docker-compose.yml down",
     "refs:check": "node scripts/sync-ts-references.mjs && git diff --exit-code",
     "refs:sync": "node scripts/sync-ts-references.mjs",
-    "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "test": "node scripts/turbo.mjs run test",
+    "typecheck": "node scripts/turbo.mjs run typecheck"
   },
   "lint-staged": {
     "*.{js,cjs,mjs,jsx,ts,tsx}": [

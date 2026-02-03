@@ -1,7 +1,19 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { Build, ItemCategory, TagTargetType } from '@minimal-rpg/schemas';
+import type {
+  Build,
+  ItemCategory,
+  TagTargetType,
+  UserAssistantMessageRole,
+  Speaker,
+  ApiError,
+} from '@minimal-rpg/schemas';
 import type { CreateFullSessionRequest } from './shared/api/client.js';
 import type { UseFetchOnceResult } from './shared/hooks/useFetchOnce.js';
+
+export type { Speaker };
+
+/** @deprecated Use ApiError from @minimal-rpg/schemas */
+export type ApiErrorShape = ApiError;
 
 export interface CharacterSummary {
   id: string;
@@ -35,17 +47,7 @@ export interface ItemSummary {
   tags?: string[];
 }
 
-export type MessageRole = 'user' | 'assistant';
-
-/**
- * Speaker metadata for assistant messages, identifying which NPC is speaking.
- */
-export interface Speaker {
-  id: string;
-  name: string;
-  profilePic?: string;
-  emotePic?: string;
-}
+export type MessageRole = UserAssistantMessageRole;
 
 export interface Message {
   role: MessageRole;
@@ -365,11 +367,6 @@ export type ArmsBuildOption = SelectOption<Build['arms']['build']>;
 export type ArmsLengthOption = SelectOption<Build['arms']['length']>;
 export type LegsLengthOption = SelectOption<Build['legs']['length']>;
 export type LegsBuildOption = SelectOption<Build['legs']['build']>;
-
-export interface ApiErrorShape {
-  ok: false;
-  error: unknown;
-}
 
 // Mobile UI Types
 export interface MobileHeaderProps {

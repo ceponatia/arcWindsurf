@@ -20,6 +20,11 @@ import {
 } from '@minimal-rpg/schemas';
 import type { ApiError } from '../../types.js';
 import { toId, toSessionId } from '../../utils/uuid.js';
+import {
+  validateBody,
+  validateParamId,
+  validateQuery,
+} from '../../utils/request-validation.js';
 
 // DB row types for tag responses (aligned with Drizzle schema)
 interface PromptTagRow {
@@ -83,11 +88,8 @@ export function registerTagRoutes(app: Hono): void {
 
   // GET /tags - list all tags with optional filters
   app.get('/tags', async (c) => {
-    const rawQuery = c.req.query();
-    const queryResult = TagQuerySchema.safeParse(rawQuery);
-    if (!queryResult.success) {
-      return c.json({ ok: false, error: 'Invalid query parameters' } satisfies ApiError, 400);
-    }
+    const queryResult = validateQuery(c, TagQuerySchema);
+    if (!queryResult.success) return queryResult.errorResponse;
 
     const { category, activationMode, isBuiltIn } = queryResult.data;
     const tagQuery: Parameters<typeof listPromptTags>[0] = {};
@@ -115,7 +117,9 @@ export function registerTagRoutes(app: Hono): void {
 
   // GET /tags/:id - get a single tag
   app.get('/tags/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     try {
       const tag = await getPromptTag(toId(id));
       if (!tag) {
@@ -130,18 +134,8 @@ export function registerTagRoutes(app: Hono): void {
 
   // POST /tags - create a new tag
   app.post('/tags', async (c) => {
-    const rawBody: unknown = await c.req.json().catch(() => null);
-    const result = CreateTagRequestSchema.safeParse(rawBody);
-    if (!result.success) {
-      return c.json(
-        {
-          ok: false,
-          error: 'Invalid request body',
-          details: result.error.issues,
-        } satisfies ApiError & { details: unknown },
-        400
-      );
-    }
+    const result = await validateBody(c, CreateTagRequestSchema);
+    if (!result.success) return result.errorResponse;
 
     try {
       const tagInput: Parameters<typeof createPromptTag>[0] = {
@@ -169,19 +163,11 @@ export function registerTagRoutes(app: Hono): void {
 
   // PUT /tags/:id - update a tag
   app.put('/tags/:id', async (c) => {
-    const id = c.req.param('id');
-    const rawBody: unknown = await c.req.json().catch(() => null);
-    const result = UpdateTagRequestSchema.safeParse(rawBody);
-    if (!result.success) {
-      return c.json(
-        {
-          ok: false,
-          error: 'Invalid request body',
-          details: result.error.issues,
-        } satisfies ApiError & { details: unknown },
-        400
-      );
-    }
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
+    const result = await validateBody(c, UpdateTagRequestSchema);
+    if (!result.success) return result.errorResponse;
 
     try {
       const updateInput: Parameters<typeof updatePromptTag>[1] = {};
@@ -212,7 +198,9 @@ export function registerTagRoutes(app: Hono): void {
 
   // DELETE /tags/:id - delete a tag
   app.delete('/tags/:id', async (c) => {
-    const id = c.req.param('id');
+    const idResult = validateParamId(c);
+    if (!idResult.success) return idResult.errorResponse;
+    const id = idResult.data;
     try {
       const deleted = await deletePromptTag(toId(id));
       if (!deleted) {
@@ -231,7 +219,9 @@ export function registerTagRoutes(app: Hono): void {
 
   // GET /sessions/:sessionId/tags - get all tag bindings for a session
   app.get('/sessions/:sessionId/tags', async (c) => {
-    const sessionId = c.req.param('sessionId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
     try {
       const ownerEmail = getOwnerEmail(c);
       const bindings = await getSessionTagsWithDefinitions(ownerEmail, toSessionId(sessionId), {
@@ -255,12 +245,11 @@ export function registerTagRoutes(app: Hono): void {
 
   // POST /sessions/:sessionId/tags - bind a tag to a session
   app.post('/sessions/:sessionId/tags', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const rawBody: unknown = await c.req.json().catch(() => null);
-    const result = CreateTagBindingRequestSchema.safeParse(rawBody);
-    if (!result.success) {
-      return c.json({ ok: false, error: 'Invalid request body' } satisfies ApiError, 400);
-    }
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const sessionId = sessionIdResult.data;
+    const result = await validateBody(c, CreateTagBindingRequestSchema);
+    if (!result.success) return result.errorResponse;
 
     try {
       const ownerEmail = getOwnerEmail(c);
@@ -285,12 +274,13 @@ export function registerTagRoutes(app: Hono): void {
 
   // PATCH /sessions/:sessionId/tags/:bindingId - toggle a tag binding
   app.patch('/sessions/:sessionId/tags/:bindingId', async (c) => {
-    const bindingId = c.req.param('bindingId');
-    const rawBody: unknown = await c.req.json().catch(() => null);
-    const result = UpdateTagBindingRequestSchema.safeParse(rawBody);
-    if (!result.success) {
-      return c.json({ ok: false, error: 'Invalid request body' } satisfies ApiError, 400);
-    }
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const bindingIdResult = validateParamId(c, 'bindingId');
+    if (!bindingIdResult.success) return bindingIdResult.errorResponse;
+    const bindingId = bindingIdResult.data;
+    const result = await validateBody(c, UpdateTagBindingRequestSchema);
+    if (!result.success) return result.errorResponse;
 
     try {
       const ownerEmail = getOwnerEmail(c);
@@ -307,7 +297,11 @@ export function registerTagRoutes(app: Hono): void {
 
   // DELETE /sessions/:sessionId/tags/:bindingId - remove a tag binding
   app.delete('/sessions/:sessionId/tags/:bindingId', async (c) => {
-    const bindingId = c.req.param('bindingId');
+    const sessionIdResult = validateParamId(c, 'sessionId');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+    const bindingIdResult = validateParamId(c, 'bindingId');
+    if (!bindingIdResult.success) return bindingIdResult.errorResponse;
+    const bindingId = bindingIdResult.data;
     try {
       const ownerEmail = getOwnerEmail(c);
       const deleted = await deleteSessionTagBinding(ownerEmail, toId(bindingId));

@@ -3,7 +3,7 @@ import { getOwnerEmail } from '../../auth/ownerEmail.js';
 import { getSession } from '../../db/sessionsClient.js';
 import { getEntityProfile, listActorStatesForSession } from '@minimal-rpg/db/node';
 import { turnRateLimiter } from '../../middleware/rate-limiter.js';
-import { notFound, serverError } from '../../utils/responses.js';
+import { notFound } from '../../utils/responses.js';
 import { worldBus } from '@minimal-rpg/bus';
 import { actorRegistry } from '@minimal-rpg/actors';
 import {
@@ -17,6 +17,8 @@ import {
 import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
 import { OpenAIProvider, createOpenRouterProviderFromEnv } from '@minimal-rpg/llm';
 import { toSessionId } from '../../utils/uuid.js';
+import { validateBody, validateParamId } from '../../utils/request-validation.js';
+import { z } from 'zod';
 
 interface SessionRecord {
   id: string;
@@ -32,6 +34,11 @@ interface TurnResponseDto {
 }
 
 const RESPONSE_TIMEOUT_MS = 2500;
+
+const TurnRequestSchema = z.object({
+  input: z.string().trim().min(1),
+  npcId: z.string().trim().min(1).optional(),
+});
 
 const defaultTurnLlmProvider =
   createOpenRouterProviderFromEnv({ id: 'session-turns' }) ??
@@ -111,7 +118,10 @@ export function registerTurnRoutes(app: Hono): void {
    * Execute a turn using the World Bus + Actors pipeline.
    */
   app.post('/sessions/:id/turns', turnRateLimiter, async (c) => {
-    const sessionId = c.req.param('id');
+    const sessionIdResult = validateParamId(c, 'id');
+    if (!sessionIdResult.success) return sessionIdResult.errorResponse;
+
+    const sessionId = sessionIdResult.data;
     const sessionKey = toSessionId(sessionId);
     const ownerEmail = getOwnerEmail(c);
 
@@ -120,21 +130,11 @@ export function registerTurnRoutes(app: Hono): void {
       return notFound(c, 'session not found');
     }
 
-    const body: unknown = await c.req.json().catch(() => null);
-    if (
-      !body ||
-      typeof body !== 'object' ||
-      typeof (body as { input?: unknown }).input !== 'string'
-    ) {
-      return serverError(c, 'input is required');
-    }
+    const turnBodyResult = await validateBody(c, TurnRequestSchema);
+    if (!turnBodyResult.success) return turnBodyResult.errorResponse;
 
-    const input = (body as { input: string }).input.trim();
-    const requestedNpcId =
-      typeof (body as { npcId?: unknown }).npcId === 'string'
-        ? (body as { npcId: string }).npcId.trim()
-        : '';
-    const targetNpcId = requestedNpcId.length > 0 ? requestedNpcId : null;
+    const input = turnBodyResult.data.input;
+    const targetNpcId = turnBodyResult.data.npcId ?? null;
 
     // Ensure core services are running (idempotent starts)
     dialogueService.start();

@@ -16,6 +16,15 @@ export {
 // Core identity fields
 export { GENDERS, CoreIdentitySchema, type CoreIdentity, type Gender } from './basics.js';
 
+// Message roles and helpers
+export {
+  MESSAGE_ROLES,
+  MessageRoleSchema,
+  type MessageRole,
+  type ConversationMessageRole,
+  type UserAssistantMessageRole,
+} from './message-types.js';
+
 // Physical appearance/physique
 export {
   APPEARANCE_HEIGHTS,
@@ -39,3 +48,18 @@ export {
   type Appearance,
   type Physique,
 } from './physique.js';
+
+// Presence tracking
+export {
+  type PresenceRecord,
+  type PresenceScheduler,
+  type PresenceSchedulerStopOnly,
+} from './presence-types.js';
+
+// Validation results
+export {
+  type ValidationResult,
+  type ActionValidationResult,
+  type ResponseValidationResult,
+  type WorkspaceValidationResult,
+} from './validation-types.js';

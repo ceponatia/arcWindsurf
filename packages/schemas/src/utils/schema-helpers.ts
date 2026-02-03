@@ -17,3 +17,13 @@ export const numericString = z.string().transform((val) => {
   const parsed = parseFloat(val);
   return isNaN(parsed) ? undefined : parsed;
 });
+
+/**
+ * Helper to coerce ISO strings or epoch numbers into Date objects.
+ */
+export const coercedDate = z.preprocess((value) => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return new Date(value);
+  }
+  return value;
+}, z.date());
