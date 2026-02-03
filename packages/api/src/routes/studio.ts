@@ -21,6 +21,7 @@ import {
 import { Cause, Effect, Exit } from 'effect';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import { generateId } from '@minimal-rpg/utils';
 import { z } from 'zod';
 import type { ApiError } from '../types.js';
 import { getConfig } from '../utils/config.js';
@@ -529,7 +530,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
 
       if (!session) {
         // Create new session
-        sessionId = crypto.randomUUID();
+        sessionId = generateId();
         session = await createStudioSession(sessionId, profile);
       }
 
@@ -639,7 +640,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
     }
 
     if (!session) {
-      sessionId = crypto.randomUUID();
+      sessionId = generateId();
       session = await createStudioSession(sessionId, profile);
     }
 

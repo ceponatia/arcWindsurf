@@ -108,6 +108,40 @@ export function generateInstanceId(templateId: string): string {
 }
 
 /**
+ * Generate a UUID in a compact (no dashes) hex format.
+ *
+ * Useful for building composite IDs where '-' is reserved as a delimiter.
+ * Example output: 89dcf560f1444bc6a3cddad235ed4351
+ */
+export function generateCompactUuid(): string {
+  return generateId().replace(/-/g, '');
+}
+
+/**
+ * Generate a short opaque ID.
+ *
+ * This is derived from a cryptographically-secure UUID, then compacted.
+ * Output is lowercase hex.
+ */
+export function generateShortId(length = 8): string {
+  const safeLength = Math.max(1, Math.min(32, Math.floor(length)));
+  return generateCompactUuid().slice(0, safeLength).toLowerCase();
+}
+
+/**
+ * Generate a UI-local ID safe for use in composite IDs.
+ *
+ * Format: {prefix}_{shortHex}
+ * - Avoids '-' so callers can safely compose IDs using '-' as a delimiter
+ * - Uses cryptographically secure randomness (via generateId)
+ */
+export function generateLocalId(prefix: string, shortLength = 12): string {
+  const trimmedPrefix = prefix.trim();
+  const safePrefix = trimmedPrefix.length > 0 ? trimmedPrefix : 'id';
+  return `${safePrefix}_${generateShortId(shortLength)}`;
+}
+
+/**
  * Returns true if the value is a RFC4122-compliant UUID string.
  *
  * Validates UUID format with version 1-5 and variant 8-B.

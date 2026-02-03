@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { generateLocalId } from '@minimal-rpg/utils';
 
 const LEADER_HEARTBEAT_INTERVAL_MS = 2000;
 const LEADER_TIMEOUT_MS = 5000;
@@ -223,5 +224,5 @@ export function useSessionTabCoordination(
 }
 
 function generateTabId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return generateLocalId('tab');
 }

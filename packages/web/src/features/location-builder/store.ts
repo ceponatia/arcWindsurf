@@ -19,6 +19,7 @@ import type {
   LocationPrefabResponse,
 } from './types.js';
 import { API_BASE_URL } from '../../config.js';
+import { generateLocalId } from '@minimal-rpg/utils';
 
 const API_BASE = API_BASE_URL;
 
@@ -35,11 +36,6 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<FetchResu
     return { ok: false, error: typeof data.error === 'string' ? data.error : 'Request failed' };
   }
   return { ok: true, data: data as unknown as T };
-}
-
-/** Generate a unique ID */
-function generateId(): string {
-  return `loc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /** Initial viewport state */
@@ -157,7 +153,7 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
 
     const newNode: LocationNode = {
       ...node,
-      id: generateId(),
+      id: generateLocalId('loc'),
     };
 
     set({
@@ -213,7 +209,7 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
 
     const newConnection: LocationConnection = {
       ...conn,
-      id: generateId(),
+      id: generateLocalId('conn'),
     };
 
     set({
@@ -354,7 +350,7 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
     // Create ID mapping for new prefab
     const idMap = new Map<string, string>();
     subtreeNodes.forEach((n) => {
-      idMap.set(n.id, generateId());
+      idMap.set(n.id, generateLocalId('loc'));
     });
 
     // Clone nodes with new IDs and relative structure
@@ -368,21 +364,24 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
     // Clone connections with new IDs
     const prefabConnections: LocationConnection[] = subtreeConnections.map((c) => ({
       ...c,
-      id: generateId(),
+      id: generateLocalId('conn'),
       fromLocationId: idMap.get(c.fromLocationId)!,
       toLocationId: idMap.get(c.toLocationId)!,
     }));
 
     // Map entry points to new port IDs
+    const subtreeNodeIdList = Array.from(subtreeNodeIds).sort((a, b) => b.length - a.length);
     const mappedEntryPoints = entryPoints.map((ep) => {
-      const nodeId = ep.split('-')[0];
-      if (!nodeId) return ep;
+      const oldNodeId = subtreeNodeIdList.find((id) => ep === id || ep.startsWith(`${id}-`));
+      if (!oldNodeId) return ep;
 
-      const newNodeId = idMap.get(nodeId);
-      if (newNodeId) {
-        return `${newNodeId}-${ep.split('-').slice(1).join('-')}`;
-      }
-      return ep;
+      const newNodeId = idMap.get(oldNodeId);
+      if (!newNodeId) return ep;
+
+      if (ep === oldNodeId) return newNodeId;
+
+      const suffix = ep.slice(oldNodeId.length + 1);
+      return `${newNodeId}-${suffix}`;
     });
 
     try {
@@ -436,7 +435,7 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
     // Create ID mapping for new instances
     const idMap = new Map<string, string>();
     prefab.nodes.forEach((n) => {
-      idMap.set(n.id, generateId());
+      idMap.set(n.id, generateLocalId('loc'));
     });
 
     // Find the root node of the prefab (node with no parentId or parentId not in prefab)
@@ -463,7 +462,7 @@ export const useLocationBuilderStore = create<LocationBuilderStore>((set, get) =
     // Clone connections with new IDs
     const newConnections: LocationConnection[] = prefab.connections.map((c) => ({
       ...c,
-      id: generateId(),
+      id: generateLocalId('conn'),
       fromLocationId: idMap.get(c.fromLocationId)!,
       toLocationId: idMap.get(c.toLocationId)!,
     }));

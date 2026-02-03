@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generateId } from '@minimal-rpg/utils';
 import { pool } from '../utils/client.js';
 import type {
   DbRow,
@@ -8,16 +8,7 @@ import type {
   SessionTagBindingRow,
   UUID,
 } from '../types.js';
-import type {
-  ListTagsOptions,
-  CreateTagInput,
-  UpdateTagInput,
-  CreateBindingInput,
-} from './types.js';
-
-// Ensure typed UUID generator
-type RandomUUID = () => UUID;
-const genUUID: RandomUUID = randomUUID as unknown as RandomUUID;
+import type { ListTagsOptions, CreateTagInput, UpdateTagInput, CreateBindingInput } from './types.js';
 
 /**
  * Increment version based on changelog presence.
@@ -121,7 +112,7 @@ export async function getPromptTag(id: UUID, owner?: string): Promise<PromptTagR
  * Create a new prompt tag with enhanced fields.
  */
 export async function createPromptTag(input: CreateTagInput): Promise<PromptTagRow> {
-  const id = genUUID();
+  const id = generateId() as UUID;
   const res: QueryResult<DbRow> = await pool.query(
     `INSERT INTO prompt_tags (
       id, owner, visibility, name, short_description, category, prompt_text,
@@ -266,7 +257,7 @@ export async function createSessionTagBinding(
   ownerEmail: OwnerEmail,
   input: CreateBindingInput
 ): Promise<SessionTagBindingRow> {
-  const id = genUUID();
+  const id = generateId() as UUID;
   const res: QueryResult<DbRow> = await pool.query(
     `INSERT INTO session_tag_bindings (id, owner_email, session_id, tag_id, target_type, target_entity_id, enabled)
      VALUES ($1, $2, $3, $4, $5, $6, $7)

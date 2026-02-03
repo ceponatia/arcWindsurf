@@ -15,6 +15,7 @@ import type { XYPosition } from '@xyflow/react';
 import type { PrefabBuilderStore } from './types.js';
 import { calculateDirection, toExitDirection, getOppositeExitDirection } from './types.js';
 import { API_BASE_URL } from '../../config.js';
+import { generateLocalId } from '@minimal-rpg/utils';
 
 const API_BASE = API_BASE_URL;
 
@@ -28,7 +29,7 @@ function getString(value: unknown): string | undefined {
 
 /** Generate a unique ID */
 function generateId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return generateLocalId(prefix);
 }
 
 /** Capitalize first letter */

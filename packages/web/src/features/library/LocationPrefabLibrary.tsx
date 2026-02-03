@@ -29,6 +29,7 @@ import {
   FileText,
 } from 'lucide-react';
 import type { LocationType, LocationNode, LocationPort } from '@minimal-rpg/schemas';
+import { generateLocalId } from '@minimal-rpg/utils';
 import { API_BASE_URL } from '../../config.js';
 
 const API_BASE = API_BASE_URL;
@@ -357,7 +358,7 @@ interface PrefabEditorModalProps {
 
 /** Generate a unique ID for new nodes/ports */
 function generateId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return generateLocalId(prefix);
 }
 
 /** Expandable card for editing a location node */

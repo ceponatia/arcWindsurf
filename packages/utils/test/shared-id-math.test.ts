@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateId,
+  generateCompactUuid,
+  generateShortId,
+  generateLocalId,
   isUuid,
   toSessionId,
   toEntityProfileId,
@@ -26,6 +29,24 @@ describe('shared id and math', () => {
     expect(isUuid('89dcf560-f144-4bc6-a3cd-dad235ed435Z')).toBe(false);
     expect(isUuid('89dcf560-f144-4bc6-a3cd')).toBe(false);
     expect(isUuid('')).toBe(false);
+  });
+
+  it('generates compact uuid (32 hex)', () => {
+    const id = generateCompactUuid();
+    expect(id).toMatch(/^[0-9a-f]{32}$/i);
+  });
+
+  it('generates short id with requested length', () => {
+    expect(generateShortId(7)).toHaveLength(7);
+    expect(generateShortId(32)).toHaveLength(32);
+    expect(generateShortId(100)).toHaveLength(32);
+    expect(generateShortId(0)).toHaveLength(1);
+  });
+
+  it('generates local id without dashes', () => {
+    const id = generateLocalId('tab');
+    expect(id.startsWith('tab_')).toBe(true);
+    expect(id.includes('-')).toBe(false);
   });
 
   it('coerces ids without changing values', () => {

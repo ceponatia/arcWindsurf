@@ -12,6 +12,7 @@ import { LocationBucket } from './LocationBucket.js';
 import { PropertiesPanel } from './PropertiesPanel.js';
 import type { Location, LocationPort, PrefabBuilderProps } from './types.js';
 import { calculateDirection } from './types.js';
+import { generateLocalId } from '@minimal-rpg/utils';
 
 /** Main PrefabBuilder component */
 export function PrefabBuilder({ prefabId, onSave, onBack }: PrefabBuilderProps) {
@@ -130,7 +131,7 @@ export function PrefabBuilder({ prefabId, onSave, onBack }: PrefabBuilderProps) 
 
   // Create a blank location for dragging/clicking
   const createBlankLocation = useCallback((): Location => {
-    const id = `loc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id = generateLocalId('loc');
     return {
       id,
       name: 'New Location',
@@ -297,7 +298,9 @@ export function PrefabBuilder({ prefabId, onSave, onBack }: PrefabBuilderProps) 
             onUpdateConnection={updateConnection}
             onDeleteNode={handleDeleteNode}
             onDeleteEdge={removeConnection}
-            onAutoFocusHandled={() => { setShouldFocusName(false); }}
+            onAutoFocusHandled={() => {
+              setShouldFocusName(false);
+            }}
           />
         </aside>
       </div>

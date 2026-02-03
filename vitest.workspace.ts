@@ -1,10 +1,10 @@
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defineWorkspace } from 'vitest/config';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-export default defineWorkspace([
+/**
+ * Vitest workspace config.
+ *
+ * In Vitest v4, `vitest/config` does not export `defineWorkspace`. Workspace files
+ * should default-export an array of projects.
+ */
+export default [
   'packages/actors/vitest.config.ts',
   'packages/api/vitest.config.ts',
   'packages/db/vitest.config.ts',
@@ -13,15 +13,4 @@ export default defineWorkspace([
   'packages/utils/vitest.config.ts',
   'packages/web/vitest.config.ts',
   'packages/workers/vitest.config.ts',
-  {
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      coverage: {
-        enabled: true,
-        reportsDirectory: resolve(__dirname, './.codacy/coverage'),
-        reporter: ['text', 'lcov'],
-      },
-    },
-  },
-]);
+];

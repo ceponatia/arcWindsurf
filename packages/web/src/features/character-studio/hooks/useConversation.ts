@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { generateLocalId } from '@minimal-rpg/utils';
 import {
   conversationHistory,
   characterProfile,
@@ -73,9 +74,9 @@ export function useConversation(): UseConversationResult {
             if (response.inferredTraits && response.inferredTraits.length > 0) {
               pendingTraits.value = [
                 ...pendingTraits.value,
-                ...response.inferredTraits.map((t, index) => ({
+                ...response.inferredTraits.map((t) => ({
                   ...t,
-                  id: `trait-${Date.now()}-${index}`,
+                  id: generateLocalId('trait'),
                   status: 'pending' as const,
                 })),
               ];
@@ -92,9 +93,9 @@ export function useConversation(): UseConversationResult {
                 if (result.inferredTraits && result.inferredTraits.length > 0) {
                   pendingTraits.value = [
                     ...pendingTraits.value,
-                    ...result.inferredTraits.map((t, i) => ({
+                    ...result.inferredTraits.map((t) => ({
                       ...t,
-                      id: `trait-async-${Date.now()}-${i}`,
+                      id: generateLocalId('trait'),
                       status: 'pending' as const,
                     })),
                   ];

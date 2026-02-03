@@ -7,7 +7,7 @@ import type { Context } from 'hono';
 import { getSession, listActorStatesForSession, upsertActorState } from '@minimal-rpg/db/node';
 import type { LoadedDataGetter } from '../../../loaders/types.js';
 import { notFound, badRequest, serverError, conflict } from '../../../utils/responses.js';
-import { generateId } from '@minimal-rpg/utils';
+import { generateInstanceId } from '@minimal-rpg/utils';
 import { findCharacter, isCreateNpcInstanceRequest } from './shared.js';
 import { getOwnerEmail } from '../../../auth/ownerEmail.js';
 import { toId, toSessionId } from '../../../utils/uuid.js';
@@ -74,7 +74,7 @@ export async function handleCreateNpc(c: Context, getLoaded: LoadedDataGetter): 
     return notFound(c, 'template not found');
   }
 
-  const npcInstanceId = `${templateId}-${generateId()}`;
+  const npcInstanceId = generateInstanceId(templateId);
 
   try {
     await upsertActorState({

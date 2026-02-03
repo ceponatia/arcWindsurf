@@ -6,6 +6,7 @@ import {
   type ResolvedBodyMap,
   type SensoryProfileConfig,
 } from '@minimal-rpg/schemas';
+import { generateLocalId } from '@minimal-rpg/utils';
 import type { StudioFieldErrors, StudioFieldKey } from './validation/types.js';
 import { applyTrait } from './utils/trait-applicator.js';
 import { validateCharacterProfileBeforeSave } from './validation/validateCharacterProfileBeforeSave.js';
@@ -262,7 +263,7 @@ export function clearAllFieldErrors(): void {
 export function addMessage(message: Omit<ConversationMessage, 'id' | 'timestamp'>): void {
   const newMessage: ConversationMessage = {
     ...message,
-    id: crypto.randomUUID(),
+    id: generateLocalId('msg'),
     timestamp: new Date(),
   };
   conversationHistory.value = [...conversationHistory.value, newMessage];

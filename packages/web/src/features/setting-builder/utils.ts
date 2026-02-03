@@ -1,1 +1,3 @@
-export const generateId = () => Math.random().toString(36).substring(2, 9);
+import { generateShortId } from '@minimal-rpg/utils';
+
+export const generateId = () => generateShortId(7);

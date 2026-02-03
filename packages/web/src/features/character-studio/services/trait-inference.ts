@@ -1,4 +1,5 @@
 import { getRecordOptional, setRecord } from '@minimal-rpg/schemas';
+import { generateLocalId } from '@minimal-rpg/utils';
 import type { InferredTrait, ConversationMessage } from '../signals.js';
 
 /**
@@ -22,7 +23,7 @@ export function inferTraitsFromKeywords(
   for (const { pattern, category } of fearPatterns) {
     if (pattern.test(message)) {
       traits.push({
-        id: Math.random().toString(36).slice(2),
+        id: generateLocalId('trait'),
         path: 'personalityMap.fears',
         value: { category, specific: extractFearSpecific(message) },
         confidence: 0.6,
@@ -44,7 +45,7 @@ export function inferTraitsFromKeywords(
   for (const { pattern, value } of valuePatterns) {
     if (pattern.test(message)) {
       traits.push({
-        id: Math.random().toString(36).slice(2),
+        id: generateLocalId('trait'),
         path: 'personalityMap.values',
         value: { value, priority: 5 },
         confidence: 0.5,
@@ -60,7 +61,7 @@ export function inferTraitsFromKeywords(
 
     if (isGuarded) {
       traits.push({
-        id: Math.random().toString(36).slice(2),
+        id: generateLocalId('trait'),
         path: 'personalityMap.social.strangerDefault',
         value: 'guarded',
         confidence: 0.7,
@@ -68,7 +69,7 @@ export function inferTraitsFromKeywords(
       });
     } else if (isFriendly) {
       traits.push({
-        id: Math.random().toString(36).slice(2),
+        id: generateLocalId('trait'),
         path: 'personalityMap.social.strangerDefault',
         value: 'open',
         confidence: 0.7,

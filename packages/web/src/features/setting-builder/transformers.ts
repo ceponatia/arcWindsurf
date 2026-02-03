@@ -1,4 +1,5 @@
 import type { SettingBackground } from '@minimal-rpg/schemas';
+import { generateId } from '@minimal-rpg/utils';
 import { splitList } from '../shared/stringLists.js';
 import type { SettingFormState } from './types.js';
 
@@ -36,7 +37,7 @@ export const initialFormState: SettingFormState = {
 export function createInitialFormState(): SettingFormState {
   return {
     ...initialFormState,
-    id: crypto.randomUUID(),
+    id: generateId(),
   };
 }
 
