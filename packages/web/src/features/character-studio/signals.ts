@@ -281,7 +281,11 @@ export function acceptTrait(traitId: string): void {
   if (!trait) return;
 
   // Apply the trait value to the profile
-  applyTrait(trait);
+  applyTrait(trait, {
+    profile: characterProfile.value,
+    updateProfile,
+    updatePersonalityMap,
+  });
 
   // Update trait status to 'accepted'
   pendingTraits.value = pendingTraits.value.map((t) =>

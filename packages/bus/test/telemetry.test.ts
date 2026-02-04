@@ -7,15 +7,19 @@ interface SpanLike {
   end: () => void;
 }
 
-const span: SpanLike = {
-  setAttribute: vi.fn(),
-  setStatus: vi.fn(),
-  recordException: vi.fn(),
-  end: vi.fn(),
-};
+const { span, startActiveSpanMock } = vi.hoisted(() => {
+  const span: SpanLike = {
+    setAttribute: vi.fn(),
+    setStatus: vi.fn(),
+    recordException: vi.fn(),
+    end: vi.fn(),
+  };
 
-const startActiveSpanMock = vi.fn(async (_name: string, fn: (active: SpanLike) => Promise<void>) => {
-  await fn(span);
+  const startActiveSpanMock = vi.fn(async (_name: string, fn: (active: SpanLike) => Promise<void>) => {
+    await fn(span);
+  });
+
+  return { span, startActiveSpanMock };
 });
 
 vi.mock('@opentelemetry/api', () => ({

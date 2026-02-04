@@ -1,7 +1,7 @@
 import { getRecordOptional, getPartialRecord, setRecord } from '../../shared/record-helpers.js';
 import { BODY_REGIONS, type BodyRegion } from '../regions.js';
 import type { RegionScent } from '../../body-regions/sensory-types.js';
-import type { BodyMap } from '../sensory.js';
+import type { BodyMap } from '../body-map.js';
 
 /**
  * Get scent data for a specific body region, with fallback chain.

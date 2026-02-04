@@ -102,7 +102,7 @@ export interface StepValidationState {
   errors: string[];
 }
 
-export type WorkspaceValidationResult = SharedWorkspaceValidationResult<
+export type WorkspaceValidationSummary = SharedWorkspaceValidationResult<
   WorkspaceStep,
   StepValidationState
 >;
@@ -182,7 +182,7 @@ export interface WorkspaceActions {
   setMode: (mode: 'wizard' | 'compact') => void;
 
   // Validation
-  validate: () => WorkspaceValidationResult;
+  validate: () => WorkspaceValidationSummary;
   validateStep: (step: WorkspaceStep) => StepValidationState;
 
   // Reset
@@ -837,7 +837,7 @@ export const useIsDirty = () => useWorkspaceStore((s) => s.isDirty);
  * Use validation state. This hook memoizes the validation result
  * based on the actual data that affects validation (setting + npcs).
  */
-export const useValidation = (): WorkspaceValidationResult => {
+export const useValidation = (): WorkspaceValidationSummary => {
   const setting = useWorkspaceStore((s) => s.setting);
   const npcs = useWorkspaceStore((s) => s.npcs);
   const player = useWorkspaceStore((s) => s.player);

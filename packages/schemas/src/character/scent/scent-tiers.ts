@@ -1,5 +1,5 @@
 import type { BodyRegion } from '../regions.js';
-import { TOE_REGIONS } from '../../body-regions/index.js';
+import { TOE_REGIONS } from '../../body-regions/feet/toes.js';
 
 /**
  * Tiered scent defaults.

@@ -22,7 +22,7 @@ import {
   updateDialogueState,
 } from '@minimal-rpg/db';
 import { FactionService } from './faction.js';
-import type { DialogueContext } from './dialogue.js';
+import type { DialogueContext } from './dialogue-types.js';
 import type { DialogueConditionContext } from './dialogue-tree-types.js';
 
 interface DialogueTreeRecord {

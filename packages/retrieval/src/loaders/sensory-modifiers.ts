@@ -13,11 +13,7 @@ import {
   type BodyPartSensoryModifiers,
   type SensoryModifierLevels,
 } from '@minimal-rpg/schemas';
-
-const DEFAULT_DATA_DIR = (() => {
-  // Default to repo-root ./data (caller can override)
-  return path.resolve(process.cwd(), 'data');
-})();
+import { resolveDataDir } from '../config.js';
 
 const SENSORY_MODIFIERS_FILE = 'sensory-modifiers.json';
 
@@ -44,14 +40,6 @@ function getSenseModifiers(
     default:
       return undefined;
   }
-}
-
-function resolveDataDir(dataDir?: string): string {
-  const dir = dataDir?.trim();
-  if (dir) return path.resolve(dir);
-  const envDir = process.env['DATA_DIR']?.trim();
-  if (envDir) return path.resolve(envDir);
-  return DEFAULT_DATA_DIR;
 }
 
 /**

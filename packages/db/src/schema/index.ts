@@ -12,29 +12,20 @@ import {
   doublePrecision,
   index,
   unique,
-  customType,
 } from 'drizzle-orm/pg-core';
-
-// Custom type for pgvector
-const vector = customType<{ data: number[] }>({
-  dataType(config) {
-    const dimensions = (config as { dimensions?: number })?.dimensions ?? 1536;
-    return `vector(${dimensions})`;
-  },
-});
+import { vector } from './vector.js';
+import { entityProfiles } from './entity-profiles.js';
+import { locations } from './locations.js';
+import { sessions } from './sessions.js';
+export { userAccounts } from './users.js';
+export { entityProfiles } from './entity-profiles.js';
+export { locations } from './locations.js';
+export { locationMaps } from './location-maps.js';
+export { sessions, sessionParticipants } from './sessions.js';
 
 // =============================================================================
 // 001_FOUNDATION
 // =============================================================================
-
-export const userAccounts = pgTable('user_accounts', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').unique().notNull(),
-  displayName: text('display_name'),
-  roles: text('roles').array().default(['player']),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
 
 export const workspaceDrafts = pgTable(
   'workspace_drafts',
@@ -52,30 +43,6 @@ export const workspaceDrafts = pgTable(
     return {
       userIdx: index('idx_workspace_drafts_user').on(table.userId),
       updatedIdx: index('idx_workspace_drafts_updated').on(table.updatedAt),
-    };
-  }
-);
-
-export const entityProfiles = pgTable(
-  'entity_profiles',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    entityType: text('entity_type').notNull(), // 'character', 'setting', 'item', 'faction', 'persona'
-    name: text('name').notNull(),
-    ownerEmail: text('owner_email').notNull().default('public'),
-    visibility: text('visibility').default('public'),
-    tier: text('tier'), // 'major', 'minor', 'background'
-    profileJson: jsonb('profile_json').notNull().default({}),
-    tags: text('tags').array().default([]),
-    embedding: vector('embedding', { dimensions: 1536 }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => {
-    return {
-      typeIdx: index('idx_entity_profiles_type').on(table.entityType),
-      ownerIdx: index('idx_entity_profiles_owner').on(table.ownerEmail),
-      nameIdx: index('idx_entity_profiles_name').on(table.name),
     };
   }
 );
@@ -105,54 +72,6 @@ export const plugins = pgTable('plugins', {
 // =============================================================================
 // 002_WORLD
 // =============================================================================
-
-export const locations = pgTable(
-  'locations',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    ownerEmail: text('owner_email').notNull().default('system'),
-    settingId: uuid('setting_id').references(() => entityProfiles.id, { onDelete: 'set null' }),
-    name: text('name').notNull(),
-    type: text('type').notNull().default('room'),
-    description: text('description'),
-    summary: text('summary'),
-    isTemplate: boolean('is_template').notNull().default(false),
-    tags: text('tags').array().default([]),
-    properties: jsonb('properties').default({}),
-    atmosphere: jsonb('atmosphere').default({}),
-    capacity: integer('capacity'),
-    accessibility: text('accessibility').default('open'),
-    parentLocationId: uuid('parent_location_id').references((): AnyPgColumn => locations.id, {
-      onDelete: 'set null',
-    }),
-    embedding: vector('embedding', { dimensions: 1536 }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => {
-    return {
-      ownerIdx: index('idx_locations_owner').on(table.ownerEmail),
-      typeIdx: index('idx_locations_type').on(table.type),
-      templateIdx: index('idx_locations_template').on(table.isTemplate),
-    };
-  }
-);
-
-export const locationMaps = pgTable('location_maps', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  ownerEmail: text('owner_email').notNull().default('system'),
-  name: text('name').notNull(),
-  description: text('description'),
-  settingId: uuid('setting_id').references(() => entityProfiles.id, { onDelete: 'set null' }),
-  nodesJson: jsonb('nodes_json').notNull().default([]),
-  connectionsJson: jsonb('connections_json').notNull().default([]),
-  defaultStartLocationId: uuid('default_start_location_id').references(() => locations.id, {
-    onDelete: 'set null',
-  }),
-  tags: text('tags').array().default([]),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
 
 export const locationPrefabs = pgTable('location_prefabs', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -264,38 +183,6 @@ export const scheduleTemplates = pgTable('schedule_templates', {
 // 003_ACTORS
 // =============================================================================
 
-export const sessions = pgTable(
-  'sessions',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    ownerEmail: text('owner_email')
-      .notNull()
-      .references(() => userAccounts.email, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
-    description: text('description'),
-    settingId: uuid('setting_id').references(() => entityProfiles.id, { onDelete: 'set null' }),
-    playerCharacterId: uuid('player_character_id').references(() => entityProfiles.id, {
-      onDelete: 'set null',
-    }),
-    locationMapId: uuid('location_map_id').references(() => locationMaps.id, {
-      onDelete: 'set null',
-    }),
-    status: text('status').default('active'), // 'active', 'paused', 'ended'
-    mode: text('mode').default('solo'), // 'solo', 'multiplayer'
-    eventSeq: bigint('event_seq', { mode: 'bigint' }).notNull().default(0n),
-    totalTokensUsed: bigint('total_tokens_used', { mode: 'bigint' }).default(0n),
-    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => {
-    return {
-      ownerIdx: index('idx_sessions_owner').on(table.ownerEmail),
-      statusIdx: index('idx_sessions_status').on(table.status),
-    };
-  }
-);
-
 export const events = pgTable(
   'events',
   {
@@ -361,33 +248,6 @@ export const sessionProjections = pgTable('session_projections', {
   lastEventSeq: bigint('last_event_seq', { mode: 'bigint' }).notNull().default(0n),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
-
-export const sessionParticipants = pgTable(
-  'session_participants',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    sessionId: uuid('session_id')
-      .notNull()
-      .references(() => sessions.id, { onDelete: 'cascade' }),
-    userEmail: text('user_email')
-      .notNull()
-      .references(() => userAccounts.email, { onDelete: 'cascade' }),
-    displayName: text('display_name'),
-    role: text('role').notNull().default('player'), // 'player', 'gm', 'spectator'
-    actorId: text('actor_id'),
-    status: text('status').default('connected'),
-    canControlNpcs: boolean('can_control_npcs').default(false),
-    canEditWorld: boolean('can_edit_world').default(false),
-    joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
-    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow(),
-  },
-  (table) => {
-    return {
-      sessionUserUnique: unique().on(table.sessionId, table.userEmail),
-      sessionIdx: index('idx_session_participants_session').on(table.sessionId),
-    };
-  }
-);
 
 export const sessionPluginState = pgTable(
   'session_plugin_state',

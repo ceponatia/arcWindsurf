@@ -1,7 +1,7 @@
 // Composite character profile schema and type used across the app
 import { z } from 'zod';
 import { PhysiqueSchema, type Physique } from './appearance.js';
-import { BodyMapSchema } from './sensory.js';
+import { BodyMapSchema } from './body-map.js';
 import { SensoryProfileConfigSchema } from './sensoryProfileConfig.js';
 import { CharacterBasicsSchema, type CharacterBasics } from './basics.js';
 import { CharacterDetailSchema, type CharacterDetail } from './details.js';

@@ -1,7 +1,8 @@
+import { CHARACTER_DETAIL_AREAS, type CharacterDetailArea } from './details.js';
+import { BODY_REGIONS, type BodyRegion } from './regions.js';
+import { APPEARANCE_REGIONS, type AppearanceRegion } from './appearance.js';
+import type { BodyMap } from './body-map.js';
 import {
-  CHARACTER_DETAIL_AREAS,
-  BODY_REGIONS,
-  APPEARANCE_REGIONS,
   PERSONALITY_DIMENSIONS,
   CORE_EMOTIONS,
   EMOTION_INTENSITIES,
@@ -25,10 +26,6 @@ import {
   PACE_LEVELS,
   STRESS_RESPONSES,
   RECOVERY_RATES,
-  type CharacterDetailArea,
-  type BodyRegion,
-  type BodyMap,
-  type AppearanceRegion,
   type PersonalityDimension,
   type CoreEmotion,
   type EmotionIntensity,
@@ -36,7 +33,7 @@ import {
   type CoreValue,
   type FearCategory,
   type CopingMechanism,
-} from '../index.js';
+} from './personality.js';
 
 export type CharacterBuilderMode = 'quick' | 'standard' | 'advanced';
 

@@ -57,11 +57,11 @@ export interface LLMProvider {
 }
 
 /** Task types for tiered cognition. */
-export type CognitionTaskType = 'fast' | 'deep' | 'reasoning' | 'vision';
+export type LlmCognitionTaskType = 'fast' | 'deep' | 'reasoning' | 'vision';
 
 /** Cognition task request. */
-export interface CognitionTask {
-  type: CognitionTaskType;
+export interface LlmCognitionTask {
+  type: LlmCognitionTaskType;
   messages: LLMMessage[];
   options?: ChatOptions;
 }

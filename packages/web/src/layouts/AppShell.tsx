@@ -253,7 +253,7 @@ interface MainContentProps {
   createError: string | null;
   onStartSession: (characterId: string, settingId: string, tagIds: string[]) => Promise<void>;
   onCreateSessionFull: (
-    config: import('../shared/api/client.js').CreateFullSessionRequest
+    config: import('../shared/api/types.js').CreateFullSessionRequest
   ) => Promise<string>;
   onSessionCreated: (sessionId: string) => void;
 }

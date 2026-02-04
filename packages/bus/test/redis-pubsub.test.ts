@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { WorldEvent } from '@minimal-rpg/schemas';
+import type { RedisPubSubAdapter } from '../src/adapters/redis-pubsub.js';
 
-const publishMock = vi.fn();
-const subscribeMock = vi.fn();
-const onMock = vi.fn();
+const { publishMock, subscribeMock, onMock, subRedisOnMock } = vi.hoisted(() => {
+  const publishMock = vi.fn();
+  const subscribeMock = vi.fn();
+  const onMock = vi.fn();
+  const subRedisOnMock = vi.fn();
+  return { publishMock, subscribeMock, onMock, subRedisOnMock };
+});
 
-const subRedisOnMock = vi.fn();
 let messageHandler: ((channel: string, message: string) => void) | null = null;
 
 vi.mock('../src/core/redis-client.js', () => ({
@@ -19,17 +23,21 @@ vi.mock('../src/core/redis-client.js', () => ({
   },
 }));
 
-import { redisPubSub } from '../src/adapters/redis-pubsub.js';
-
 describe('redis-pubsub adapter', () => {
-  beforeEach(() => {
+  let redisPubSub: RedisPubSubAdapter;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    vi.resetModules();
     messageHandler = null;
     subRedisOnMock.mockImplementation((event: string, handler: (channel: string, message: string) => void) => {
       if (event === 'message') {
         messageHandler = handler;
       }
     });
+    // Re-import to get fresh singleton
+    const mod = await import('../src/adapters/redis-pubsub.js');
+    redisPubSub = mod.redisPubSub;
   });
 
   it('publishes to the redis channel', async () => {
@@ -60,7 +68,8 @@ describe('redis-pubsub adapter', () => {
     const event = { type: 'TICK', tick: 1, timestamp: new Date() } as unknown as WorldEvent;
     messageHandler?.('world-events', JSON.stringify(event));
 
-    expect(errorSpy).toHaveBeenCalled();
+    // Wait for async .catch() to execute
+    await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled());
     errorSpy.mockRestore();
   });
 

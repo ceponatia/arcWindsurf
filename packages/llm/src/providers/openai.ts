@@ -7,6 +7,7 @@ import type {
   LLMResponse,
   LLMStreamChunk,
 } from '../types.js';
+import { getOpenRouterEnvSettings, type OpenRouterEnvConfig } from '../config.js';
 import type { ToolCall } from '@minimal-rpg/schemas';
 
 export interface ProviderRouting {
@@ -22,13 +23,6 @@ export interface OpenAIProviderConfig {
   model: string;
   /** OpenRouter-specific provider routing preferences */
   providerRouting?: ProviderRouting;
-}
-
-export interface OpenRouterEnvConfig {
-  /** Provider ID used for metrics/logging. Defaults to 'openrouter'. */
-  id?: string;
-  /** Fallback model if OPENROUTER_MODEL is missing. */
-  defaultModel?: string;
 }
 
 export class OpenAIProvider implements LLMProvider {
@@ -234,23 +228,16 @@ export class OpenAIProvider implements LLMProvider {
 export function createOpenRouterProviderFromEnv(
   config?: OpenRouterEnvConfig
 ): OpenAIProvider | null {
-  const apiKey = process.env['OPENROUTER_API_KEY'] ?? '';
-  if (!apiKey) return null;
+  const settings = getOpenRouterEnvSettings(config);
+  if (!settings) return null;
 
-  const model =
-    process.env['OPENROUTER_MODEL'] ?? config?.defaultModel ?? 'deepseek/deepseek-v3.2';
-  const baseURL = process.env['OPENROUTER_BASE_URL'] ?? 'https://openrouter.ai/api/v1';
-  const id = config?.id ?? 'openrouter';
-
-  // Parse provider sorting preference from env
-  const providerSort = process.env['OPENROUTER_PROVIDER_SORT'] as 'price' | 'throughput' | 'latency' | undefined;
-  const providerRouting = providerSort ? { sort: providerSort } : undefined;
+  const providerRouting = settings.providerSort ? { sort: settings.providerSort } : undefined;
 
   return new OpenAIProvider({
-    id,
-    apiKey,
-    baseURL,
-    model,
+    id: settings.id,
+    apiKey: settings.apiKey,
+    baseURL: settings.baseURL,
+    model: settings.model,
     ...(providerRouting ? { providerRouting } : {}),
   });
 }

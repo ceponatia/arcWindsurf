@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const onMock = vi.fn();
-const RedisCtor = vi.fn().mockImplementation(() => ({
-  on: onMock,
-}));
+const { onMock, RedisCtor } = vi.hoisted(() => {
+  const onMock = vi.fn();
+  const RedisCtor = vi.fn().mockImplementation(() => ({
+    on: onMock,
+  }));
+  return { onMock, RedisCtor };
+});
 
 vi.mock('ioredis', () => ({
   Redis: RedisCtor,

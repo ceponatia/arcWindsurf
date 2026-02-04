@@ -5,8 +5,8 @@ import {
   createSession,
   createSessionFull,
   deleteSession,
-  type CreateFullSessionRequest,
 } from '../../shared/api/client.js';
+import type { CreateFullSessionRequest } from '../../shared/api/types.js';
 import { useSessions } from '../../shared/hooks/useSessions.js';
 import { useSettings } from '../../shared/hooks/useSettings.js';
 import { useCharacters } from '../../shared/hooks/useCharacters.js';

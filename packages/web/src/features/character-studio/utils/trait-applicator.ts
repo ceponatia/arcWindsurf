@@ -1,4 +1,3 @@
-import { characterProfile, updatePersonalityMap, updateProfile } from '../signals.js';
 import type { CharacterProfile, PersonalityMap } from '@minimal-rpg/schemas';
 import {
   ATTACHMENT_STYLES,
@@ -30,21 +29,37 @@ import {
   type ValueEntry,
 } from '../types.js';
 
+export interface TraitApplicatorContext {
+  profile: Partial<CharacterProfile>;
+  updateProfile: <K extends keyof CharacterProfile>(
+    key: K,
+    value: CharacterProfile[K]
+  ) => void;
+  updatePersonalityMap: (updates: Partial<PersonalityMap>) => void;
+}
+
 /**
  * Applies an inferred trait to the character profile based on its dot-notation path.
  *
  * @param trait - The inferred trait object containing path and value
+ * @param context - Current profile snapshot and update callbacks
  */
-export function applyTrait(trait: { path: string; value: unknown }): void {
+export function applyTrait(
+  trait: { path: string; value: unknown },
+  context: TraitApplicatorContext
+): void {
   const pathParts = trait.path.split('.');
   const root = pathParts[0];
   if (!root) return;
 
   if (root === 'personalityMap') {
-    applyPersonalityTrait(pathParts.slice(1), trait.value);
+    applyPersonalityTrait(pathParts.slice(1), trait.value, context);
   } else {
     // Top-level profile field (name, backstory, etc.)
-    updateProfile(root as keyof CharacterProfile, trait.value as CharacterProfile[keyof CharacterProfile]);
+    context.updateProfile(
+      root as keyof CharacterProfile,
+      trait.value as CharacterProfile[keyof CharacterProfile]
+    );
   }
 }
 
@@ -59,8 +74,12 @@ function isAllowedValue(values: unknown, candidate: string): boolean {
  * @param path - The segments of the path under personalityMap
  * @param value - The value to apply
  */
-function applyPersonalityTrait(path: string[], value: unknown): void {
-  const current: Partial<PersonalityMap> = characterProfile.value.personalityMap ?? {};
+function applyPersonalityTrait(
+  path: string[],
+  value: unknown,
+  context: TraitApplicatorContext
+): void {
+  const current: Partial<PersonalityMap> = context.profile.personalityMap ?? {};
   const head = path[0];
   if (!head) return;
 
@@ -82,11 +101,11 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
     const existingValues = current.values ?? [];
     const existingFears = current.fears ?? [];
     if (head === 'values') {
-      updatePersonalityMap({
+      context.updatePersonalityMap({
         values: [...existingValues, normalizeValueEntry(value)],
       });
     } else {
-      updatePersonalityMap({
+      context.updatePersonalityMap({
         fears: [...existingFears, normalizeFearEntry(value)],
       });
     }
@@ -96,13 +115,13 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
   if (path.length === 1) {
     if (head === 'attachment' && typeof value === 'string') {
       if (isAllowedValue(ATTACHMENT_STYLES, value)) {
-        updatePersonalityMap({ attachment: value as PersonalityMap['attachment'] });
+        context.updatePersonalityMap({ attachment: value as PersonalityMap['attachment'] });
       }
     }
     if (head === 'traits') {
       const nextTraits = normalizeStringList(value);
       if (nextTraits.length > 0) {
-        updatePersonalityMap({ traits: nextTraits });
+        context.updatePersonalityMap({ traits: nextTraits });
       }
     }
     return;
@@ -120,7 +139,7 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
       const nextValue = Math.min(1, Math.max(0, value));
       const dimensions = { ...(current.dimensions ?? {}) } as Record<string, unknown>;
       setStringValue(dimensions, field, nextValue);
-      updatePersonalityMap({ dimensions: dimensions as PersonalityMap['dimensions'] });
+      context.updatePersonalityMap({ dimensions: dimensions as PersonalityMap['dimensions'] });
       return;
     }
     case 'social': {
@@ -146,7 +165,7 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
       } else {
         return;
       }
-      updatePersonalityMap({ social: social as PersonalityMap['social'] });
+      context.updatePersonalityMap({ social: social as PersonalityMap['social'] });
       return;
     }
     case 'speech': {
@@ -178,7 +197,7 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
       } else {
         return;
       }
-      updatePersonalityMap({ speech: speech as PersonalityMap['speech'] });
+      context.updatePersonalityMap({ speech: speech as PersonalityMap['speech'] });
       return;
     }
     case 'stress': {
@@ -206,7 +225,7 @@ function applyPersonalityTrait(path: string[], value: unknown): void {
       } else {
         return;
       }
-      updatePersonalityMap({ stress: stress as PersonalityMap['stress'] });
+      context.updatePersonalityMap({ stress: stress as PersonalityMap['stress'] });
       return;
     }
     default:

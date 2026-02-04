@@ -2,15 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Effect } from 'effect';
 import type { LLMMessage } from '../src/types.js';
 
-const createMock = vi.fn();
-const ctorMock = vi.fn();
+const { createMock, ctorMock, OpenAIStub } = vi.hoisted(() => {
+  const createMock = vi.fn();
+  const ctorMock = vi.fn();
 
-class OpenAIStub {
-  public chat = { completions: { create: createMock } };
-  constructor(config: unknown) {
-    ctorMock(config);
+  class OpenAIStub {
+    public chat = { completions: { create: createMock } };
+    constructor(config: unknown) {
+      ctorMock(config);
+    }
   }
-}
+
+  return { createMock, ctorMock, OpenAIStub };
+});
 
 vi.mock('openai', () => ({
   OpenAI: OpenAIStub,

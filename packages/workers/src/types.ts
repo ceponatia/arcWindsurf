@@ -1,4 +1,4 @@
-import type { WorldEvent } from '@minimal-rpg/schemas';
+export type { CognitionTask } from '@minimal-rpg/schemas';
 
 /**
  * Generic wrapper for BullMQ job payloads.
@@ -36,18 +36,6 @@ export interface JobResult {
   metrics?: {
     durationMs: number;
     cpuTime?: number;
-  };
-}
-
-/**
- * Specific payload for Cognition tasks
- */
-export interface CognitionTask {
-  actorId: string;
-  context: {
-    lastEvents: WorldEvent[];
-    availableTools: string[];
-    memoryContext?: string;
   };
 }
 

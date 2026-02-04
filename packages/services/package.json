@@ -15,6 +15,7 @@
     "build": "tsc -b",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo",
     "lint": "eslint src --cache --cache-location ../../.eslintcache",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -27,7 +28,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
+    "@vitest/coverage-v8": "^4.0.16",
     "rimraf": "^6.1.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.0.16"
   }
 }

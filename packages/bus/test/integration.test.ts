@@ -1,80 +1,110 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const { subscribers, publishMock, subscribeMock, unsubscribeMock } = vi.hoisted(() => {
+  const subscribers = new Set<(event: import('@minimal-rpg/schemas').WorldEvent) => void | Promise<void>>();
+  const publishMock = vi.fn(async (event: import('@minimal-rpg/schemas').WorldEvent) => {
+    for (const handler of subscribers) {
+      await handler(event);
+    }
+  });
+  const subscribeMock = vi.fn(async (handler: (event: import('@minimal-rpg/schemas').WorldEvent) => void | Promise<void>) => {
+    subscribers.add(handler);
+  });
+  const unsubscribeMock = vi.fn((handler: (event: import('@minimal-rpg/schemas').WorldEvent) => void | Promise<void>) => {
+    subscribers.delete(handler);
+  });
+  return { subscribers, publishMock, subscribeMock, unsubscribeMock };
+});
+
+vi.mock('../src/adapters/redis-pubsub.js', () => ({
+  redisPubSub: {
+    publish: publishMock,
+    subscribe: subscribeMock,
+    unsubscribe: unsubscribeMock,
+  },
+}));
+
 import {
-  worldBus,
+  WorldBus,
   telemetryMiddleware,
   persistenceMiddleware,
   registerPersistenceHandler,
-} from '@minimal-rpg/bus';
+} from '../src/index.js';
 import type { WorldEvent } from '@minimal-rpg/schemas';
 
 describe('Phase 1 & 2 Integration', () => {
   const capturedEvents: WorldEvent[] = [];
 
-  beforeAll(() => {
-    // Register a test persistence handler
+  beforeEach(() => {
+    capturedEvents.length = 0;
+    subscribers.clear();
+    publishMock.mockClear();
+    subscribeMock.mockClear();
+    unsubscribeMock.mockClear();
+  });
+
+  function createBus(): WorldBus {
+    const bus = new WorldBus();
+    bus.use(telemetryMiddleware);
+    bus.use(persistenceMiddleware);
+    return bus;
+  }
+
+  it('should emit and persist TICK events', async () => {
     registerPersistenceHandler(async (event: WorldEvent) => {
       capturedEvents.push(event);
     });
+    const bus = createBus();
 
-    // Add middleware
-    worldBus.use(telemetryMiddleware);
-    worldBus.use(persistenceMiddleware);
-  });
-
-  it('should emit and persist TICK events', async () => {
     const tickEvent: WorldEvent = {
       type: 'TICK',
       tick: 1,
       timestamp: new Date(),
     };
 
-    await worldBus.emit(tickEvent);
-
-    // Give async handlers time to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await bus.emit(tickEvent);
 
     expect(capturedEvents).toHaveLength(1);
     expect(capturedEvents[0]?.type).toBe('TICK');
   });
 
   it('should emit and persist MOVE_INTENT events', async () => {
+    registerPersistenceHandler(async (event: WorldEvent) => {
+      capturedEvents.push(event);
+    });
+    const bus = createBus();
+
     const moveIntent: WorldEvent = {
       type: 'MOVE_INTENT',
       destinationId: 'tavern',
     };
 
-    await worldBus.emit(moveIntent);
+    await bus.emit(moveIntent);
 
-    // Give async handlers time to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    expect(capturedEvents.length).toBeGreaterThan(1);
-    const lastEvent = capturedEvents[capturedEvents.length - 1];
-    expect(lastEvent?.type).toBe('MOVE_INTENT');
+    expect(capturedEvents).toHaveLength(1);
+    expect(capturedEvents[0]?.type).toBe('MOVE_INTENT');
   });
 
   it('should subscribe to events via WorldBus', async () => {
     const receivedEvents: WorldEvent[] = [];
+    const bus = createBus();
 
     const handler = (event: WorldEvent) => {
       receivedEvents.push(event);
     };
 
-    await worldBus.subscribe(handler);
+    await bus.subscribe(handler);
 
     const speakIntent: WorldEvent = {
       type: 'SPEAK_INTENT',
       content: 'Hello, world!',
     };
 
-    await worldBus.emit(speakIntent);
-
-    // Give async handlers time to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await bus.emit(speakIntent);
 
     expect(receivedEvents).toHaveLength(1);
     expect(receivedEvents[0]?.type).toBe('SPEAK_INTENT');
 
-    worldBus.unsubscribe(handler);
+    bus.unsubscribe(handler);
   });
 });

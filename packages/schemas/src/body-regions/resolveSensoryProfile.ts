@@ -7,7 +7,7 @@ import type {
   RegionTexture,
   RegionVisual,
 } from './sensory-types.js';
-import type { BodyMap } from '../character/sensory.js';
+import type { BodyMap } from '../character/body-map.js';
 import type { BodyRegion } from '../character/regions.js';
 import type {
   SensoryProfileConfig,

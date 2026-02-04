@@ -38,9 +38,11 @@ describe('world repository', () => {
     const created = await createLocationMap({ name: 'Map' });
     expect(created).toEqual({ id: 'map-1' });
 
-    mockDb.limit.mockResolvedValueOnce([{ id: 'map-1' }]);
+    mockDb.limit.mockResolvedValueOnce([
+      { id: 'map-1', nodesJson: [], connectionsJson: [] },
+    ]);
     const fetched = await getLocationMap('map-1');
-    expect(fetched).toEqual({ id: 'map-1' });
+    expect(fetched).toEqual({ id: 'map-1', nodesJson: [], connectionsJson: [] });
   });
 
   it('lists location maps with optional owner', async () => {
@@ -64,9 +66,11 @@ describe('world repository', () => {
     const created = await createLocationPrefab({ name: 'Prefab' });
     expect(created).toEqual({ id: 'prefab-1' });
 
-    mockDb.limit.mockResolvedValueOnce([{ id: 'prefab-1' }]);
+    mockDb.limit.mockResolvedValueOnce([
+      { id: 'prefab-1', nodesJson: [], connectionsJson: [] },
+    ]);
     const fetched = await getLocationPrefab('prefab-1');
-    expect(fetched).toEqual({ id: 'prefab-1' });
+    expect(fetched).toEqual({ id: 'prefab-1', nodesJson: [], connectionsJson: [] });
   });
 
   it('lists location prefabs by category', async () => {

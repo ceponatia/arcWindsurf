@@ -8,7 +8,7 @@ import type {
   ApiError,
   JsonPatchOperation,
 } from '@minimal-rpg/schemas';
-import type { CreateFullSessionRequest } from './shared/api/client.js';
+import type { CreateFullSessionRequest } from './shared/api/types.js';
 import type { UseFetchOnceResult } from './shared/hooks/useFetchOnce.js';
 
 export type { Speaker };

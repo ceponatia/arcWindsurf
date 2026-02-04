@@ -9,7 +9,7 @@ import {
 /**
  * Validation result for an action.
  */
-export type ValidationResult = ActionValidationResult;
+type ValidationResult = ActionValidationResult;
 
 /**
  * Game state context for validation.

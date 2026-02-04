@@ -2,7 +2,7 @@ import { getRecordOptional, getTuple } from '../../shared/record-helpers.js';
 import type { BodyRegion } from '../regions.js';
 import type { HygieneLevel } from '../../state/hygiene.js';
 import type { RegionScent } from '../../body-regions/sensory-types.js';
-import type { BodyMap } from '../sensory.js';
+import type { BodyMap } from '../body-map.js';
 import { SCENT_TIERS } from './scent-tiers.js';
 import { DEFAULT_SCENTS, HYGIENE_SCENT_MODIFIERS } from './default-scents.js';
 

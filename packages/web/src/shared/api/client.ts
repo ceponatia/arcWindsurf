@@ -11,6 +11,7 @@ import type {
   TurnMetadata,
   NpcInstanceSummary,
 } from '../../types.js';
+import type { CreateFullSessionRequest, CreateFullSessionResponse } from './types.js';
 import type {
   CharacterProfile,
   SettingProfile,
@@ -25,6 +26,8 @@ import type {
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
 import { getAccessToken } from '../auth/accessToken.js';
 import type { AuthLoginResponse, AuthMeResponse } from '../auth/types.js';
+
+export type { EntityUsageSummary };
 
 interface TurnEndpointResponse {
   message: string;
@@ -263,74 +266,6 @@ export async function createSession(
 /**
  * Request payload for creating a full session via /sessions/create-full
  */
-export interface CreateFullSessionRequest {
-  settingId: string;
-  personaId?: string;
-  startLocationId?: string;
-  startTime?: {
-    year?: number;
-    month?: number;
-    day?: number;
-    hour: number;
-    minute: number;
-  };
-  secondsPerTurn?: number;
-  npcs: {
-    characterId: string;
-    role: string;
-    tier: string;
-    startLocationId?: string;
-    label?: string;
-  }[];
-  relationships?: {
-    fromActorId: string;
-    toActorId: string;
-    relationshipType: string;
-    affinitySeed?: {
-      trust?: number;
-      fondness?: number;
-      fear?: number;
-    };
-  }[];
-  tags?: {
-    tagId: string;
-    targetType: string;
-    targetEntityId?: string | null;
-  }[];
-}
-
-/**
- * Response from /sessions/create-full endpoint
- */
-export interface CreateFullSessionResponse {
-  id: string;
-  settingId: string;
-  playerCharacterId: string;
-  personaId: string | null;
-  startLocationId: string | null;
-  secondsPerTurn: number;
-  createdAt: string;
-  npcs: {
-    instanceId: string;
-    templateId: string;
-    role: string;
-    tier: string;
-    label: string | null;
-    startLocationId: string | null;
-  }[];
-  tagBindings: {
-    id: string;
-    tagId: string;
-    targetType: string;
-    targetEntityId: string | null;
-  }[];
-  relationships: {
-    fromActorId: string;
-    toActorId: string;
-    relationshipType: string;
-  }[];
-}
-
 /**
  * Create a full session with all related entities in a single transaction.
  * Uses the /sessions/create-full endpoint.

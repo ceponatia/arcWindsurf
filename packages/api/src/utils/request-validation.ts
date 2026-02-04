@@ -6,7 +6,7 @@ import { badRequest } from './responses.js';
 /**
  * Result of a validation operation.
  */
-export type ValidationResult<T> =
+export type RequestValidationResult<T> =
   | {
     success: true;
     data: T;
@@ -31,7 +31,7 @@ export type ValidationResult<T> =
 export async function validateBody<T>(
   c: Context,
   schema: ZodSchema<T>
-): Promise<ValidationResult<T>> {
+): Promise<RequestValidationResult<T>> {
   let body: unknown;
 
   try {
@@ -69,7 +69,7 @@ export async function validateBody<T>(
 export async function validateOptionalBody<T>(
   c: Context,
   schema: ZodSchema<T>
-): Promise<ValidationResult<T | undefined>> {
+): Promise<RequestValidationResult<T | undefined>> {
   let body: unknown;
 
   try {
@@ -107,7 +107,10 @@ export async function validateOptionalBody<T>(
 /**
  * Validate query params with a Zod schema.
  */
-export function validateQuery<T>(c: Context, schema: ZodSchema<T>): ValidationResult<T> {
+export function validateQuery<T>(
+  c: Context,
+  schema: ZodSchema<T>
+): RequestValidationResult<T> {
   const result = schema.safeParse(c.req.query());
 
   if (!result.success) {
@@ -130,7 +133,7 @@ export function validateParam<T>(
   c: Context,
   paramName: string,
   schema: ZodSchema<T>
-): ValidationResult<T> {
+): RequestValidationResult<T> {
   const result = schema.safeParse(c.req.param(paramName));
 
   if (!result.success) {
@@ -149,6 +152,9 @@ export function validateParam<T>(
 /**
  * Validate a UUID route parameter.
  */
-export function validateParamId(c: Context, paramName = 'id'): ValidationResult<string> {
+export function validateParamId(
+  c: Context,
+  paramName = 'id'
+): RequestValidationResult<string> {
   return validateParam(c, paramName, z.string().refine(isUuid, 'invalid id'));
 }

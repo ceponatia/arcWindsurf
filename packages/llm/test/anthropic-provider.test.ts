@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Effect } from 'effect';
 import type { LLMMessage } from '../src/types.js';
 
-const createMock = vi.fn();
+const { createMock, AnthropicStub } = vi.hoisted(() => {
+  const createMock = vi.fn();
 
-class AnthropicStub {
-  public messages = { create: createMock };
-  constructor(_config: unknown) { }
-}
+  class AnthropicStub {
+    public messages = { create: createMock };
+    constructor(_config: unknown) { }
+  }
+
+  return { createMock, AnthropicStub };
+});
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: AnthropicStub,

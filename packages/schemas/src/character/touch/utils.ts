@@ -1,7 +1,7 @@
 import { getRecordOptional } from '../../shared/record-helpers.js';
 import type { BodyRegion } from '../regions.js';
 import type { RegionTexture } from '../../body-regions/sensory-types.js';
-import type { BodyMap } from '../sensory.js';
+import type { BodyMap } from '../body-map.js';
 
 /**
  * Get texture data for a specific body region.

@@ -253,6 +253,7 @@ Add a new row each time you complete an iteration.
 | `JsonPatchOperation` | `packages/schemas/src/shared/json-patch-types.ts` | - | utils, web | Removed duplicate JSON Patch interfaces |
 | `SessionUsageInfo`/`EntityUsageSummary` | `packages/schemas/src/shared/usage-types.ts` | `EntityUsageType` | api, ui, web | Centralized usage response types |
 | Character form types (`BodySensoryEntry`, `AppearanceEntry`, `FormState`, `FormKey`, `FormFieldErrors`, `UpdateFieldFn`) | `packages/schemas/src/character/form-types.ts` | `PersonaFormState`, `SettingFormKey`, `TagFormKey` | web | Renamed web form types to avoid collisions |
+| Validation types (`ValidationResult`, `WorkspaceValidationResult`) | `packages/schemas/src/shared/validation-types.ts` | `RequestValidationResult`, `WorkspaceValidationSummary` | api, actors, services, web | Removed duplicate exports and renamed request/workspace variants |
 
 ## Acceptance Criteria (Per Iteration)
 

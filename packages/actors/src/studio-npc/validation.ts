@@ -100,14 +100,9 @@ export function isValidCharacterResponse(response: string): boolean {
 }
 
 /**
- * Detailed validation result with reason.
- */
-export type ValidationResult = ResponseValidationResult;
-
-/**
  * Get detailed validation result.
  */
-export function validateCharacterResponse(response: string): ValidationResult {
+export function validateCharacterResponse(response: string): ResponseValidationResult {
   if (!response || typeof response !== 'string') {
     return { valid: false, reason: 'Empty or invalid response' };
   }

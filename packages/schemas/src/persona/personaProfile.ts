@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { PersonaBasicsSchema, type PersonaBasics } from './basics.js';
 import { PersonaAppearanceSchema, type PersonaAppearance, type Physique } from './appearance.js';
-import { BodyMapSchema, type BodyMap } from '../character/sensory.js';
+import { BodyMapSchema, type BodyMap } from '../character/body-map.js';
 
 /**
  * Persona Profile Schema - represents a player character for a session.

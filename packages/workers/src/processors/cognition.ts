@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import { WorldBus } from '@minimal-rpg/bus';
 import {
   TieredCognitionRouter,
-  type CognitionTask as LLMCognitionTask,
+  type LlmCognitionTask,
   type LLMMessage,
 } from '@minimal-rpg/llm';
 import type { WorldEvent } from '@minimal-rpg/schemas';
@@ -22,14 +22,14 @@ export const createCognitionProcessor = (
 
     try {
       // 1. Prepare LLM task
-      const llmTask: LLMCognitionTask = {
+      const llmTask: LlmCognitionTask = {
         type: 'fast',
         messages: [
           {
             role: 'system',
             content: `You are NPC ${actorId}. Context: ${context.memoryContext ?? 'No memory'}.`,
           },
-          ...context.lastEvents.map<LLMMessage>((event) => ({
+          ...context.lastEvents.map<LLMMessage>((event: WorldEvent) => ({
             role: 'user',
             content: JSON.stringify(event),
           })),

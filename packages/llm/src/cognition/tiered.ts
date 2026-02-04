@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import type { LLMProvider, CognitionTask, LLMResponse } from '../types.js';
+import type { LLMProvider, LlmCognitionTask, LLMResponse } from '../types.js';
 
 export interface TieredCognitionConfig {
   fast: LLMProvider;
@@ -8,9 +8,9 @@ export interface TieredCognitionConfig {
 }
 
 export class TieredCognitionRouter {
-  constructor(private config: TieredCognitionConfig) {}
+  constructor(private config: TieredCognitionConfig) { }
 
-  route(task: CognitionTask): LLMProvider {
+  route(task: LlmCognitionTask): LLMProvider {
     switch (task.type) {
       case 'fast':
         return this.config.fast;
@@ -26,7 +26,7 @@ export class TieredCognitionRouter {
     }
   }
 
-  execute(task: CognitionTask): Effect.Effect<LLMResponse, Error> {
+  execute(task: LlmCognitionTask): Effect.Effect<LLMResponse, Error> {
     const provider = this.route(task);
     return provider.chat(task.messages, task.options);
   }

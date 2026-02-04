@@ -4,6 +4,9 @@ import path from 'node:path';
 import { globSync } from 'glob';
 import ts from 'typescript';
 
+import packageLayerBoundaries from './rules/package-layer-boundaries.mjs';
+import schemasOnlyInSchemasPackage from './rules/schemas-only-in-schemas-package.mjs';
+
 /**
  * @typedef {object} ExportedTypeDefinition
  * @property {string} name
@@ -277,6 +280,8 @@ const plugin = {
         };
       },
     },
+    'package-layer-boundaries': packageLayerBoundaries,
+    'schemas-only-in-schemas-package': schemasOnlyInSchemasPackage,
   },
 };
 

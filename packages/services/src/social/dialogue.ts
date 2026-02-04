@@ -2,26 +2,9 @@ import { Effect } from 'effect';
 import { getCharacterProfile, getOrCreateDialogueState } from '@minimal-rpg/db';
 import type { LLMProvider } from '@minimal-rpg/llm';
 import type { CharacterProfile } from '@minimal-rpg/schemas';
+import type { DialogueContext } from './dialogue-types.js';
 import type { DialogueConditionContext } from './dialogue-tree-types.js';
 import { DialogueTreeResolver } from './dialogue-tree-resolver.js';
-
-/**
- * Context for dialogue resolution.
- */
-export interface DialogueContext {
-  /** Session id for conversation scoping */
-  sessionId: string;
-  /** Current conversation topic or state */
-  topic?: string;
-  /** Previous dialogue history (last N exchanges) */
-  history?: readonly string[];
-  /** Player's relationship level with the NPC */
-  relationshipLevel?: number;
-  /** Current location ID */
-  locationId?: string;
-  /** Condition and effect context for dialogue trees */
-  conditionContext?: Partial<DialogueConditionContext>;
-}
 
 /**
  * Response from dialogue resolution.

@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const publishMock = vi.fn();
-const subscribeMock = vi.fn();
-const unsubscribeMock = vi.fn();
+const { publishMock, subscribeMock, unsubscribeMock } = vi.hoisted(() => {
+  const publishMock = vi.fn();
+  const subscribeMock = vi.fn();
+  const unsubscribeMock = vi.fn();
+  return { publishMock, subscribeMock, unsubscribeMock };
+});
 
 vi.mock('../src/adapters/redis-pubsub.js', () => ({
   redisPubSub: {

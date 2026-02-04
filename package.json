@@ -18,7 +18,9 @@
     "refs:check": "node scripts/sync-ts-references.mjs && git diff --exit-code",
     "refs:sync": "node scripts/sync-ts-references.mjs",
     "test": "node scripts/turbo.mjs run test",
-    "typecheck": "node scripts/turbo.mjs run typecheck"
+    "typecheck": "node scripts/turbo.mjs run typecheck",
+    "deps:check": "dependency-cruiser packages --config .dependency-cruiser.cjs",
+    "deps:graph": "dependency-cruiser packages --config .dependency-cruiser.cjs --output-type dot | dot -T svg > dependency-graph.svg"
   },
   "lint-staged": {
     "*.{js,cjs,mjs,jsx,ts,tsx}": [
@@ -44,6 +46,7 @@
     "@types/pg": "^8.16.0",
     "@vitest/coverage-v8": "4.0.16",
     "add": "^2.0.6",
+    "dependency-cruiser": "^17.3.7",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.1",

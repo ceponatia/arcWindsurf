@@ -1,5 +1,6 @@
 import { pgTable, uuid, text, integer, timestamp, index, unique } from 'drizzle-orm/pg-core';
-import { entityProfiles, sessions } from './index.js';
+import { entityProfiles } from './entity-profiles.js';
+import { sessions } from './sessions.js';
 
 export const factionRelationships = pgTable(
   'faction_relationships',

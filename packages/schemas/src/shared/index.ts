@@ -93,3 +93,11 @@ export {
 
 // Sensory modifiers
 export { type LoadedSensoryModifiers } from './sensory-modifiers-types.js';
+
+// Cognition task payloads
+export {
+  CognitionTaskContextSchema,
+  CognitionTaskSchema,
+  type CognitionTaskContext,
+  type CognitionTask,
+} from './cognition-task.js';
