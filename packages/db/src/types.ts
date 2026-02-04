@@ -1,9 +1,14 @@
 // Local shared types for DB utilities and filesystem helpers used by scripts
 // Keep these minimal and focused on what we actually call.
 
-import type { ConversationMessageRole, MessageSpeaker } from '@minimal-rpg/schemas';
+import type {
+  ConversationMessageRole,
+  MessageSpeaker,
+  DbTableOverview,
+} from '@minimal-rpg/schemas';
 
 export type { MessageSpeaker };
+export type { DbColumn, DbTableOverview } from '@minimal-rpg/schemas';
 
 export interface PgPoolLike {
   query: (sql: string, params?: unknown[]) => Promise<unknown>;
@@ -43,13 +48,13 @@ export interface QueryResult<T> {
 }
 
 export interface PgClientLike {
-  query: (text: string, params?: SqlParams) => Promise<QueryResult<DbRow>>;
+  query: <T = DbRow>(text: string, params?: SqlParams) => Promise<QueryResult<T>>;
   release: () => void;
 }
 
 export interface PgPoolStrict {
   connect: () => Promise<PgClientLike>;
-  query: (text: string, params?: SqlParams) => Promise<QueryResult<DbRow>>;
+  query: <T = DbRow>(text: string, params?: SqlParams) => Promise<QueryResult<T>>;
   end: () => Promise<void>;
 }
 
@@ -83,22 +88,6 @@ export interface UserSessionEntity {
   settingTemplateId: string;
   createdAt?: Date;
   messages?: MessageEntity[];
-}
-
-// Admin DB helpers shared with the API package
-export interface DbColumn {
-  name: string;
-  type: string;
-  isId: boolean;
-  isRequired: boolean;
-  isList: boolean;
-}
-
-export interface DbTableOverview {
-  name: string;
-  columns: DbColumn[];
-  rowCount: number;
-  sample: DbRow[];
 }
 
 export interface DbOverviewResult {
@@ -358,28 +347,6 @@ export interface LocationOccupancyCacheRow extends DbRow {
   occupancyJson: unknown;
   /** JSONB GameTime */
   computedAtJson: unknown;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-// =============================================================================
-// Schedule Template Types
-// =============================================================================
-
-/**
- * Row type for schedule_templates table.
- * Reusable schedule templates for NPC daily routines.
- */
-export interface ScheduleTemplateRow extends DbRow {
-  id: string;
-  name: string;
-  description: string | null;
-  /** JSONB schedule template structure */
-  templateData: unknown;
-  /** Required placeholders that must be provided */
-  requiredPlaceholders: string[];
-  /** Whether this is a built-in system template */
-  isSystem: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

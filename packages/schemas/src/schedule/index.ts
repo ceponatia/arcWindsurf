@@ -14,6 +14,7 @@ export type {
   ConditionEffect,
   ConditionType,
   NpcActivity,
+  NpcScheduleData,
   NpcSchedule,
   NpcScheduleRef,
   OverrideBehavior,

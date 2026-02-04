@@ -6,54 +6,15 @@
  *
  * @see dev-docs/32-npc-encounters-and-occupancy.md
  */
-import type { CrowdLevel, NpcActivity } from '@minimal-rpg/schemas';
+import type {
+  CrowdLevel,
+  EncounterNarration,
+  EncounterNarrationOptions,
+  EncounterNpcInfo,
+  NpcActivity,
+} from '@minimal-rpg/schemas';
 
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * NPC info for encounter narration.
- */
-export interface EncounterNpcInfo {
-  npcId: string;
-  name: string;
-  appearance?: string;
-  activity: NpcActivity;
-  tier: 'major' | 'minor' | 'background' | 'transient';
-}
-
-/**
- * Encounter narration result.
- */
-export interface EncounterNarration {
-  /** Main scene description */
-  sceneDescription: string;
-  /** Individual NPC introductions (for major/minor NPCs) */
-  npcIntroductions: { npcId: string; introduction: string }[];
-  /** Crowd description (for background NPCs) */
-  crowdDescription: string | null;
-  /** Full combined narration */
-  fullNarration: string;
-}
-
-/**
- * Options for generating encounter narration.
- */
-export interface EncounterNarrationOptions {
-  /** Location name */
-  locationName: string;
-  /** Location description */
-  locationDescription?: string;
-  /** NPCs present at the location */
-  npcsPresent: EncounterNpcInfo[];
-  /** Crowd level */
-  crowdLevel: CrowdLevel;
-  /** Time of day for atmosphere */
-  timeOfDay?: 'dawn' | 'morning' | 'midday' | 'afternoon' | 'evening' | 'night';
-  /** Whether this is the player entering (vs NPCs entering) */
-  playerEntering: boolean;
-}
+export type { EncounterNarration, EncounterNarrationOptions, EncounterNpcInfo };
 
 // =============================================================================
 // Narration Generation
@@ -127,8 +88,7 @@ export function generateNpcEntranceNarration(
 
   // Pick based on name hash for consistency
   const phraseIndex = hashString(name) % entrancePhrases.length;
-  // eslint-disable-next-line security/detect-object-injection -- index is bounded by entrancePhrases length
-  const phrase = entrancePhrases[phraseIndex] ?? entrancePhrases[0]!;
+  const phrase = entrancePhrases.at(phraseIndex) ?? entrancePhrases.at(0) ?? '';
 
   // Add activity context if not idle
   if (npc.activity.type !== 'idle') {
@@ -153,8 +113,7 @@ export function generateNpcExitNarration(npc: EncounterNpcInfo, exitDirection?: 
   ];
 
   const phraseIndex = hashString(name) % exitPhrases.length;
-  // eslint-disable-next-line security/detect-object-injection -- index is bounded by exitPhrases length
-  return exitPhrases[phraseIndex] ?? exitPhrases[0]!;
+  return exitPhrases.at(phraseIndex) ?? exitPhrases.at(0) ?? '';
 }
 
 // =============================================================================
@@ -242,8 +201,7 @@ function generateNpcIntroduction(npc: EncounterNpcInfo, playerEntering: boolean)
       `${name} can be seen ${activityDesc.toLowerCase()}`,
     ];
     const phraseIndex = hashString(name) % presencePhrases.length;
-    // eslint-disable-next-line security/detect-object-injection -- index is bounded by presencePhrases length
-    return presencePhrases[phraseIndex] ?? presencePhrases[0]!;
+    return presencePhrases.at(phraseIndex) ?? presencePhrases.at(0) ?? '';
   } else {
     // NPC entering - use entrance narration
     return generateNpcEntranceNarration(npc);

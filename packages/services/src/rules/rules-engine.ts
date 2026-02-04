@@ -132,14 +132,14 @@ export class RulesEngine {
     if (this.started) return;
     void worldBus.subscribe(this.handler);
     this.started = true;
-    console.log('[RulesEngine] Started');
+    console.info('[RulesEngine] Started');
   }
 
   stop(): void {
     if (!this.started) return;
     worldBus.unsubscribe(this.handler);
     this.started = false;
-    console.log('[RulesEngine] Stopped');
+    console.info('[RulesEngine] Stopped');
   }
 }
 

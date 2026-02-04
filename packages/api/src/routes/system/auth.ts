@@ -7,6 +7,7 @@ import { getAuthSecret, signAuthToken } from '../../auth/token.js';
 import { getAuthUser } from '../../auth/middleware.js';
 import { loginRateLimiter } from '../../middleware/rate-limiter.js';
 import { validateBody } from '../../utils/request-validation.js';
+import { getEnvCsv, getEnvFlag } from '../../utils/env.js';
 
 const LoginSchema = z.object({
   identifier: z.string().min(1),
@@ -65,13 +66,8 @@ export function registerAuthRoutes(app: Hono): void {
       return c.json({ ok: true, user: null }, 200);
     }
 
-    if (process.env['INVITE_ONLY'] === 'true') {
-      const invited = new Set(
-        (process.env['INVITE_EMAILS'] ?? '')
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean)
-      );
+    if (getEnvFlag('INVITE_ONLY')) {
+      const invited = new Set(getEnvCsv('INVITE_EMAILS').map((email) => email.toLowerCase()));
       const email = user.email ?? null;
       if (!email || !invited.has(email.toLowerCase())) {
         return c.json({ ok: false, error: 'Forbidden' } satisfies ApiError, 403);

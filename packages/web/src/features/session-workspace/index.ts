@@ -22,7 +22,7 @@ export type {
   SettingWorkspaceState,
   NpcSessionConfig,
   NpcRole,
-  NpcTier,
+  SessionNpcTier,
   PlayerSessionConfig,
   TagSelection,
   RelationshipConfig,

@@ -14,6 +14,8 @@ import {
   calculateDecayPoints,
   isFootRelatedPart,
   getSensoryModifierByLevel,
+  getRecordOptional,
+  setPartialRecord,
   type HygieneEvent,
   type NpcHygieneState,
   type BodyPartHygieneState,
@@ -66,8 +68,7 @@ function getBodyPartState(
   bodyParts: Record<string, BodyPartHygieneState>,
   part: BodyRegionKey
 ): BodyPartHygieneState | undefined {
-  // eslint-disable-next-line security/detect-object-injection -- part is validated against BODY_REGIONS
-  return bodyParts[part];
+  return getRecordOptional(bodyParts, part);
 }
 
 function sanitizeBodyParts(
@@ -77,8 +78,7 @@ function sanitizeBodyParts(
   return Object.fromEntries(
     BODY_REGION_LIST.map((region) => [
       region,
-      // eslint-disable-next-line security/detect-object-injection -- region comes from BODY_REGIONS constant
-      bodyParts[region] ?? {
+      getRecordOptional(bodyParts, region) ?? {
         points: 0,
         level: 0,
         lastUpdatedAt: timestamp,
@@ -204,8 +204,7 @@ async function updateHygieneState(
       continue;
     }
 
-    // eslint-disable-next-line security/detect-object-injection -- region comes from BODY_REGIONS constant
-    const config = modifiers.decayRates[region];
+    const config = getRecordOptional(modifiers.decayRates, region);
     if (!config) {
       continue;
     }
@@ -359,12 +358,11 @@ export function registerHygieneRoutes(app: Hono): void {
       // Reset specified body parts
       for (const part of bodyParts) {
         if ((BODY_REGIONS as readonly string[]).includes(part)) {
-          // eslint-disable-next-line security/detect-object-injection -- part validated against BODY_REGIONS
-          state.bodyParts[part] = {
+          setPartialRecord(state.bodyParts, part, {
             points: 0,
             level: 0,
             lastUpdatedAt: now.toISOString(),
-          };
+          });
         }
       }
 
@@ -436,13 +434,9 @@ export function registerHygieneRoutes(app: Hono): void {
       const partState = getBodyPartState(state.bodyParts, bodyPart);
       const level = (partState?.level ?? 0) as HygieneLevel;
 
-      const partModifiers = Object.prototype.hasOwnProperty.call(modifiers.bodyParts, bodyPart)
-        ? // eslint-disable-next-line security/detect-object-injection -- bodyPart validated by isBodyRegion
-        modifiers.bodyParts[bodyPart]
-        : undefined;
+      const partModifiers = getRecordOptional(modifiers.bodyParts, bodyPart);
       const senseModifiers = partModifiers
-        ? // eslint-disable-next-line security/detect-object-injection -- senseType constrained to allowed senses
-        partModifiers[senseType]
+        ? getRecordOptional(partModifiers, senseType)
         : undefined;
       const modifier = senseModifiers ? getSensoryModifierByLevel(senseModifiers, level) : '';
 

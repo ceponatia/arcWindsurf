@@ -79,11 +79,11 @@ export async function listPromptTags(options: ListTagsOptions = {}): Promise<Pro
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const res: QueryResult<DbRow> = await pool.query(
+  const res = await pool.query<PromptTagRow>(
     `SELECT * FROM prompt_tags ${whereClause} ORDER BY category, name ASC`,
     values
   );
-  return res.rows as PromptTagRow[];
+  return res.rows;
 }
 
 /**
@@ -104,16 +104,16 @@ export async function getPromptTag(id: UUID, owner?: string): Promise<PromptTagR
     values = [id];
   }
 
-  const res: QueryResult<DbRow> = await pool.query(query, values);
-  return res.rows[0] as PromptTagRow | undefined;
+  const res = await pool.query<PromptTagRow>(query, values);
+  return res.rows[0];
 }
 
 /**
  * Create a new prompt tag with enhanced fields.
  */
 export async function createPromptTag(input: CreateTagInput): Promise<PromptTagRow> {
-  const id = generateId() as UUID;
-  const res: QueryResult<DbRow> = await pool.query(
+  const id = generateId();
+  const res = await pool.query<PromptTagRow>(
     `INSERT INTO prompt_tags (
       id, owner, visibility, name, short_description, category, prompt_text,
       activation_mode, target_type, triggers, priority, composition_mode,
@@ -138,7 +138,9 @@ export async function createPromptTag(input: CreateTagInput): Promise<PromptTagR
       input.isBuiltIn ?? false,
     ]
   );
-  return res.rows[0] as PromptTagRow;
+  const created = res.rows[0];
+  if (!created) throw new Error('Failed to create prompt tag');
+  return created;
 }
 
 /**
@@ -152,13 +154,13 @@ export async function updatePromptTag(
   updates: UpdateTagInput
 ): Promise<PromptTagRow | undefined> {
   // First get current tag to check ownership and get current version
-  const current = await pool.query('SELECT * FROM prompt_tags WHERE id = $1 AND owner = $2', [
-    id,
-    owner,
-  ]);
+  const current = await pool.query<PromptTagRow>(
+    'SELECT * FROM prompt_tags WHERE id = $1 AND owner = $2',
+    [id, owner]
+  );
   if (current.rows.length === 0) return undefined;
-
-  const currentTag = current.rows[0] as PromptTagRow;
+  const currentTag = current.rows[0];
+  if (!currentTag) return undefined;
 
   const fields: string[] = [];
   const values: unknown[] = [id, owner];
@@ -226,11 +228,11 @@ export async function updatePromptTag(
 
   fields.push(`updated_at = now()`);
 
-  const res: QueryResult<DbRow> = await pool.query(
+  const res = await pool.query<PromptTagRow>(
     `UPDATE prompt_tags SET ${fields.join(', ')} WHERE id = $1 AND owner = $2 RETURNING *`,
     values
   );
-  return (res.rows[0] as PromptTagRow) || undefined;
+  return res.rows[0];
 }
 
 /**
@@ -257,7 +259,7 @@ export async function createSessionTagBinding(
   ownerEmail: OwnerEmail,
   input: CreateBindingInput
 ): Promise<SessionTagBindingRow> {
-  const id = generateId() as UUID;
+  const id = generateId();
   const res: QueryResult<DbRow> = await pool.query(
     `INSERT INTO session_tag_bindings (id, owner_email, session_id, tag_id, target_type, target_entity_id, enabled)
      VALUES ($1, $2, $3, $4, $5, $6, $7)

@@ -3,6 +3,7 @@ import type { ApiError } from '../types.js';
 import type { AuthUser } from './types.js';
 import { getAuthSecret, verifyAuthToken } from './token.js';
 import { getSupabaseAuthConfig, verifySupabaseJwt } from './supabase.js';
+import { getEnvCsv, getEnvFlag } from '../utils/env.js';
 
 const AUTH_CONTEXT_KEY = 'authUser';
 
@@ -23,7 +24,7 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
   const authHeader = c.req.header('Authorization') ?? null;
   const token = parseBearerToken(authHeader);
 
-  const debugAuth = process.env['DEBUG_AUTH'] === 'true';
+  const debugAuth = getEnvFlag('DEBUG_AUTH');
 
   if (debugAuth) {
     console.info('[auth] attachAuthUser', {
@@ -50,12 +51,7 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
       if (verified.ok) {
         const email = verified.claims.email;
 
-        const adminEmails = new Set(
-          (process.env['ADMIN_EMAILS'] ?? '')
-            .split(',')
-            .map((s) => s.trim().toLowerCase())
-            .filter(Boolean)
-        );
+        const adminEmails = new Set(getEnvCsv('ADMIN_EMAILS').map((email) => email.toLowerCase()));
 
         const role = email && adminEmails.has(email.toLowerCase()) ? 'admin' : 'user';
 
@@ -71,7 +67,7 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
             role,
           });
         }
-      } else if (process.env['DEBUG_AUTH'] === 'true') {
+      } else if (debugAuth) {
         console.warn('[auth] Supabase JWT verification failed', {
           error: verified.error,
           debugMessage: verified.debugMessage,
@@ -109,7 +105,7 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
   }
 
   // Bypass auth if configured (dev only)
-  if (process.env['BYPASS_AUTH'] === 'true') {
+  if (getEnvFlag('BYPASS_AUTH')) {
     c.set(AUTH_CONTEXT_KEY as never, {
       identifier: 'dev-admin',
       role: 'admin',
@@ -121,20 +117,15 @@ export async function attachAuthUser(c: Context, next: Next): Promise<void> {
 }
 
 function isAuthRequired(): boolean {
-  return process.env['AUTH_REQUIRED'] === 'true';
+  return getEnvFlag('AUTH_REQUIRED');
 }
 
 function isInviteOnly(): boolean {
-  return process.env['INVITE_ONLY'] === 'true';
+  return getEnvFlag('INVITE_ONLY');
 }
 
 function getInviteEmails(): Set<string> {
-  return new Set(
-    (process.env['INVITE_EMAILS'] ?? '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
-  );
+  return new Set(getEnvCsv('INVITE_EMAILS').map((email) => email.toLowerCase()));
 }
 
 function isPublicPath(path: string): boolean {

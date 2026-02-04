@@ -1,4 +1,9 @@
-import type { CreateTagRequest, UpdateTagRequest, TagResponse } from '@minimal-rpg/schemas';
+import type {
+  CreateTagRequest,
+  UpdateTagRequest,
+  TagResponse,
+  TagListResponse,
+} from '@minimal-rpg/schemas';
 import {
   getTag as apiGetTag,
   getTags as apiGetTags,
@@ -7,12 +12,7 @@ import {
   deleteTag as apiDeleteTag,
 } from '../../shared/api/client.js';
 
-export type { TagResponse };
-
-export interface TagListResponse {
-  tags: TagResponse[];
-  total: number;
-}
+export type { TagResponse, TagListResponse };
 
 export interface TagQueryOptions {
   category?: string;

@@ -19,7 +19,7 @@ export { usePrefabBuilderStore } from './store.js';
 export type {
   LocationNodeData,
   EntryNodeData,
-  CanvasNode,
+  PrefabCanvasNode,
   PendingConnection,
   PrefabBuilderState,
   PrefabBuilderActions,

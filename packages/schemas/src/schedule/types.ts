@@ -241,6 +241,26 @@ export interface CharacterScheduleFields {
 }
 
 // =============================================================================
+// Schedule Resolution Inputs
+// =============================================================================
+
+/**
+ * NPC schedule data for resolution.
+ */
+export interface NpcScheduleData {
+  /** NPC identifier */
+  readonly npcId: string;
+  /** Direct schedule definition (if provided) */
+  readonly schedule?: NpcSchedule | undefined;
+  /** Schedule template reference (if using templates) */
+  readonly scheduleRef?: NpcScheduleRef | undefined;
+  /** Home location fallback */
+  readonly homeLocationId?: string | undefined;
+  /** Work location fallback */
+  readonly workLocationId?: string | undefined;
+}
+
+// =============================================================================
 // Resolution Types
 // =============================================================================
 

@@ -2,14 +2,19 @@ import { signal, computed } from '@preact/signals-react';
 import {
   resolveSensoryProfile,
   type CharacterProfile,
+  type ConversationMessage,
+  type InferredTrait,
   type PersonalityMap,
   type ResolvedBodyMap,
+  type SuggestedPrompt,
   type SensoryProfileConfig,
 } from '@minimal-rpg/schemas';
 import { generateLocalId } from '@minimal-rpg/utils';
 import type { StudioFieldErrors, StudioFieldKey } from './validation/types.js';
 import { applyTrait } from './utils/trait-applicator.js';
 import { validateCharacterProfileBeforeSave } from './validation/validateCharacterProfileBeforeSave.js';
+
+export type { ConversationMessage, InferredTrait, SuggestedPrompt } from '@minimal-rpg/schemas';
 
 // ============================================================================
 // Character Data Signals
@@ -44,23 +49,6 @@ export const fieldErrors = signal<StudioFieldErrors>({});
 // Conversation Signals
 // ============================================================================
 
-export interface ConversationMessage {
-  id: string;
-  role: 'user' | 'character' | 'system';
-  content: string;
-  timestamp: Date;
-  inferredTraits?: InferredTrait[];
-}
-
-export interface InferredTrait {
-  id: string; // Unique identifier for React keys
-  path: string; // e.g., 'personalityMap.social.strangerDefault'
-  value: unknown; // e.g., 'guarded'
-  confidence: number; // 0-1
-  evidence: string; // Quote from conversation that triggered inference
-  status: 'pending' | 'accepted' | 'rejected' | 'dismissed';
-}
-
 /** Conversation history with the character */
 export const conversationHistory = signal<ConversationMessage[]>([]);
 
@@ -75,12 +63,6 @@ export const suggestedPrompts = signal<SuggestedPrompt[]>([]);
 
 /** Explored topics in current session */
 export const exploredTopics = signal<string[]>([]);
-
-export interface SuggestedPrompt {
-  prompt: string;
-  topic: string;
-  rationale: string;
-}
 
 /** Pending trait inferences from conversation */
 export const pendingTraits = signal<InferredTrait[]>([]);

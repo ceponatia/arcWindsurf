@@ -6,7 +6,7 @@ import {
   getActorState,
   updateActorState,
 } from '@minimal-rpg/db';
-import type { GameTime, NpcLocationState } from '@minimal-rpg/schemas';
+import type { NpcLocationState } from '@minimal-rpg/schemas';
 import { resolveNpcSchedulesBatch } from './schedule-service.js';
 
 type ActorStateRecord = Record<string, unknown>;
@@ -23,10 +23,10 @@ export class Scheduler {
   /**
    * Process schedules for all active sessions.
    */
-  static async processAllSchedules(tick: number): Promise<void> {
+  static async processAllSchedules(): Promise<void> {
     const sessions = await getActiveSessions();
 
-    await Promise.all(sessions.map((session) => this.processSchedules(session.id, tick)));
+    await Promise.all(sessions.map((session) => this.processSchedules(session.id)));
   }
 
   /**
@@ -34,7 +34,7 @@ export class Scheduler {
    * @param sessionId - Session identifier
    * @param tick - Current game tick number
    */
-  static async processSchedules(sessionId: string, tick: number): Promise<void> {
+  static async processSchedules(sessionId: string): Promise<void> {
     if (this.processing.has(sessionId)) {
       console.debug(`[Scheduler] Skipping ${sessionId} - already processing`);
       return;
@@ -61,7 +61,7 @@ export class Scheduler {
       }
 
       for (const [npcId, newState] of locationStates) {
-        await this.processNpcSchedule(sessionId, npcId, newState, gameTime);
+        await this.processNpcSchedule(sessionId, npcId, newState);
       }
     } finally {
       this.processing.delete(sessionId);
@@ -74,8 +74,7 @@ export class Scheduler {
   private static async processNpcSchedule(
     sessionId: string,
     npcId: string,
-    newState: NpcLocationState,
-    _gameTime: GameTime
+    newState: NpcLocationState
   ): Promise<void> {
     const currentState = await getActorState(sessionId, npcId);
     if (!currentState) return;
@@ -132,11 +131,11 @@ export class Scheduler {
 
     void worldBus.subscribe(async (event) => {
       if (event.type === 'TICK') {
-        await this.processAllSchedules(event.tick);
+        await this.processAllSchedules();
       }
     });
     this.started = true;
-    console.log('[Scheduler] Started - listening for TICK events');
+    console.info('[Scheduler] Started - listening for TICK events');
   }
 
   private static getCurrentLocationId(state: ActorStateRecord): string | null {

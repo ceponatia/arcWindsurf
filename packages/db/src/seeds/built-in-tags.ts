@@ -116,7 +116,7 @@ export async function seedBuiltInTags(
   pool: PgPoolLike,
   options: SeedBuiltInTagsOptions = {}
 ): Promise<void> {
-  console.log('[seed] Seeding built-in tags...');
+  console.info('[seed] Seeding built-in tags...');
 
   const mode: BuiltInTagSeedMode = options.mode ?? 'insert';
 
@@ -160,5 +160,5 @@ export async function seedBuiltInTags(
     }
   }
 
-  console.log(`[seed] Seeded ${ALL_BUILT_IN_TAGS.length} built-in tags.`);
+  console.info(`[seed] Seeded ${ALL_BUILT_IN_TAGS.length} built-in tags.`);
 }

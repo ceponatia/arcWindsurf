@@ -20,29 +20,12 @@ import {
   clearDialogueState,
   getDialogueTrees,
   updateDialogueState,
+  type DialogueStateRecord,
+  type DialogueTreeRecord,
 } from '@minimal-rpg/db';
 import { FactionService } from './faction.js';
 import type { DialogueContext } from './dialogue-types.js';
 import type { DialogueConditionContext } from './dialogue-tree-types.js';
-
-interface DialogueTreeRecord {
-  id: string;
-  npcId: string;
-  triggerType: string;
-  triggerData: Record<string, unknown>;
-  startNodeId: string;
-  nodes: Record<string, unknown>;
-  priority: number | null;
-}
-
-interface DialogueStateRecord {
-  id: string;
-  sessionId: string | null;
-  npcId: string;
-  treeId: string | null;
-  currentNodeId: string | null;
-  visitedNodes: string[];
-}
 
 /**
  * Resolved dialogue option for presentation.
@@ -74,12 +57,11 @@ export class DialogueTreeResolver {
     input: string,
     context: DialogueContext
   ): Promise<DialogueTree | null> {
-    const trees = (await getDialogueTrees(npcId)) as unknown as DialogueTreeRecord[];
+    const trees = await getDialogueTrees(npcId);
     const parsedTrees = this.parseDialogueTrees(trees);
 
     for (const entry of parsedTrees.sort((a, b) => b.priority - a.priority)) {
-      const conditionContext =
-        context.conditionContext as Partial<DialogueConditionContext> | undefined;
+      const conditionContext = context.conditionContext;
       if (this.matchesTrigger(entry.tree.trigger, input, context, conditionContext)) {
         return entry.tree;
       }

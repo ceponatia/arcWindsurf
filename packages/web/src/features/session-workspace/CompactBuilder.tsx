@@ -13,13 +13,7 @@ import {
   useValidation,
 } from './store.js';
 import type { SettingSummary, CharacterSummary, PersonaSummary, TagSummary } from '../../types.js';
-import type {
-  NpcSessionConfig,
-  TagSelection,
-  NpcRole,
-  NpcTier,
-  StepValidationState,
-} from './store.js';
+import type { NpcSessionConfig, TagSelection, StepValidationState } from './store.js';
 import type { SettingProfile, PersonaProfile } from '@minimal-rpg/schemas';
 
 interface CompactBuilderProps {
@@ -71,8 +65,8 @@ export const CompactBuilder: React.FC<CompactBuilderProps> = ({
     } else {
       const config: NpcSessionConfig = {
         characterId: character.id,
-        role: 'supporting' as NpcRole,
-        tier: 'minor' as NpcTier,
+        role: 'supporting',
+        tier: 'minor',
       };
       addNpc(config);
     }

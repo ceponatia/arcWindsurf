@@ -1,6 +1,6 @@
 import { worldBus } from '@minimal-rpg/bus';
 import { TieredCognitionRouter, OpenAIProvider } from '@minimal-rpg/llm';
-import { createWorker } from './config.js';
+import { createWorker, getOpenAiWorkerConfig } from './config.js';
 import { createCognitionProcessor } from './processors/cognition.js';
 import { createTickProcessor } from './processors/tick.js';
 import { createEmbeddingProcessor } from './processors/embedding.js';
@@ -44,22 +44,16 @@ async function hydratePresenceFromDatabase(scheduler: Scheduler): Promise<void> 
  * Main Worker Entry Point
  */
 async function main(): Promise<{ scheduler: Scheduler; heartbeatMonitor: HeartbeatMonitor }> {
-  console.log('Starting Minimal RPG Background Workers...');
+  console.info('Starting Minimal RPG Background Workers...');
 
   // 1. Initialize dependencies
-  const apiKey = process.env['OPENAI_API_KEY'];
-  if (!apiKey) {
-    throw new Error('Missing OPENAI_API_KEY for workers LLM router');
-  }
-
-  const model = process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini';
-  const baseURL = process.env['OPENAI_BASE_URL'];
+  const { apiKey, model, baseUrl } = getOpenAiWorkerConfig();
 
   const provider = new OpenAIProvider({
     id: 'openai',
     apiKey,
     model,
-    ...(baseURL ? { baseURL } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {}),
   });
 
   const llmRouter = new TieredCognitionRouter({
@@ -93,11 +87,11 @@ async function main(): Promise<{ scheduler: Scheduler; heartbeatMonitor: Heartbe
 
   heartbeatMonitor.start();
 
-  console.log('Workers initialized and listening for jobs.');
+  console.info('Workers initialized and listening for jobs.');
 
   // Handle shutdown
   const shutdown = async () => {
-    console.log('Shutting down workers...');
+    console.info('Shutting down workers...');
     heartbeatMonitor.stop();
     await Promise.all([
       cognitionWorker.close(),

@@ -43,7 +43,7 @@ export function useEntityUsage(
     typeof optionsOrEntityId === 'object' && optionsOrEntityId !== null && 'entityType' in optionsOrEntityId
       ? optionsOrEntityId
       : {
-        entityId: optionsOrEntityId as string | null | undefined,
+        entityId: optionsOrEntityId ?? null,
         entityType: entityTypeArg!,
         autoFetch: true,
       };

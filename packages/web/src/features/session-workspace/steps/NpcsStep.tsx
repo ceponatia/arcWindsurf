@@ -6,8 +6,31 @@ import React, { useState } from 'react';
 import { useWorkspaceStore, useNpcsState } from '../store.js';
 import { SelectableCard } from '../components/SelectableCard.js';
 import type { CharacterSummary } from '../../../types.js';
-import type { NpcSessionConfig, NpcRole, NpcTier } from '../store.js';
+import type { NpcSessionConfig, NpcRole, SessionNpcTier } from '../store.js';
 import { Search, Filter, X } from 'lucide-react';
+
+/**
+ * Guard for session NPC tier values from UI inputs.
+ */
+function isSessionNpcTier(value: unknown): value is SessionNpcTier {
+  return value === 'major' || value === 'minor' || value === 'transient';
+}
+
+function getSessionNpcTier(value: unknown): SessionNpcTier {
+  return isSessionNpcTier(value) ? value : 'minor';
+}
+
+/**
+ * Guard for NPC role values from UI inputs.
+ */
+function isNpcRole(value: string): value is NpcRole {
+  return (
+    value === 'primary' ||
+    value === 'supporting' ||
+    value === 'background' ||
+    value === 'antagonist'
+  );
+}
 
 interface NpcsStepProps {
   characters: CharacterSummary[];
@@ -61,6 +84,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
   const selectedNpcConfig = selectedForConfig
     ? npcs.find((n: NpcSessionConfig) => n.characterId === selectedForConfig)
     : null;
+  const selectedNpcTier = selectedNpcConfig ? getSessionNpcTier(selectedNpcConfig.tier) : 'minor';
 
   // Get character name from characters list
   const getCharacterName = (characterId: string): string => {
@@ -267,11 +291,12 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
               <label className="block text-sm text-slate-400 mb-1">Role</label>
               <select
                 value={selectedNpcConfig.role}
-                onChange={(e) =>
-                  updateNpc(selectedNpcConfig.characterId, {
-                    role: e.target.value as NpcRole,
-                  })
-                }
+                onChange={(e) => {
+                  const nextRole = isNpcRole(e.currentTarget.value)
+                    ? e.currentTarget.value
+                    : 'supporting';
+                  updateNpc(selectedNpcConfig.characterId, { role: nextRole });
+                }}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-200"
               >
                 <option value="primary">Primary (Main character)</option>
@@ -285,12 +310,11 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
             <div>
               <label className="block text-sm text-slate-400 mb-1">Tier</label>
               <select
-                value={selectedNpcConfig.tier}
-                onChange={(e) =>
-                  updateNpc(selectedNpcConfig.characterId, {
-                    tier: e.target.value as NpcTier,
-                  })
-                }
+                value={selectedNpcTier}
+                onChange={(e) => {
+                  const nextTier = getSessionNpcTier(e.currentTarget.value);
+                  updateNpc(selectedNpcConfig.characterId, { tier: nextTier });
+                }}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-200"
               >
                 <option value="major">Major (Full detail)</option>

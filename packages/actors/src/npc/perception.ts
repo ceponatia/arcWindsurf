@@ -1,5 +1,5 @@
 import type { WorldEvent } from '@minimal-rpg/schemas';
-import type { PerceptionContext, NpcActorState } from './types.js';
+import type { PerceptionContext, NpcRuntimeState } from './types.js';
 
 /**
  * Perception layer - filters and processes events for an NPC.
@@ -8,14 +8,14 @@ export class PerceptionLayer {
   /**
    * Filter events relevant to this NPC.
    */
-  static filterRelevantEvents(events: WorldEvent[], state: NpcActorState): WorldEvent[] {
+  static filterRelevantEvents(events: WorldEvent[], state: NpcRuntimeState): WorldEvent[] {
     return events.filter((event) => this.isRelevant(event, state));
   }
 
   /**
    * Check if an event is relevant to this NPC.
    */
-  static isRelevant(event: WorldEvent, state: NpcActorState): boolean {
+  static isRelevant(event: WorldEvent, state: NpcRuntimeState): boolean {
     const rawEvent = event as Record<string, unknown>;
     const payload = rawEvent['payload'] as Record<string, unknown> | undefined;
 
@@ -62,7 +62,7 @@ export class PerceptionLayer {
   /**
    * Build perception context from recent events.
    */
-  static buildContext(events: WorldEvent[], state: NpcActorState): PerceptionContext {
+  static buildContext(events: WorldEvent[], state: NpcRuntimeState): PerceptionContext {
     const relevantEvents = this.filterRelevantEvents(events, state);
 
     // Extract nearby actors from MOVED events

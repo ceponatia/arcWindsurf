@@ -41,6 +41,16 @@ export * as Utils from './utils/index.js';
 
 // API-facing schemas (prompt configuration, etc.)
 export * from './api/promptConfigSchemas.js';
+export * from './api/admin-db.js';
+export * from './api/db-rows.js';
+export * from './api/session-history.js';
+export * from './api/user-types.js';
+export * from './api/auth-types.js';
+export * from './api/summary-types.js';
+export * from './api/runtime-config.js';
+export * from './api/session-create-full.js';
+export * from './api/session-requests.js';
+export * from './api/tool-args.js';
 export * from './api/tags.js';
 export * from './api/sensory-context.js';
 export * from './api/parsed-input.js';

@@ -2,18 +2,10 @@ import type {
   SessionTagInstance,
   Speaker,
   ApiError,
+  RuntimeConfigResponse,
 } from '@minimal-rpg/schemas';
 
-export type { SessionTagInstance, Speaker, ApiError };
-
-// Runtime config (public subset)
-export interface RuntimeConfigPublic {
-  port: number;
-  contextWindow: number;
-  temperature: number;
-  topP: number;
-  openrouterModel: string;
-}
+export type { SessionTagInstance, Speaker, ApiError, RuntimeConfigResponse };
 
 // Full internal runtime configuration (includes secrets / private values)
 export interface RuntimeConfig {
@@ -38,4 +30,3 @@ export interface HealthResponse {
   db: { ok: boolean };
   llm: { provider: string; model: string; configured: boolean };
 }
-export type RuntimeConfigResponse = RuntimeConfigPublic;

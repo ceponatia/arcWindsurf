@@ -52,7 +52,7 @@ export interface EntryNodeData extends BaseNodeData {
 export type CanvasNodeData = LocationNodeData | EntryNodeData;
 
 /** Canvas node with typed data */
-export type CanvasNode = Node<CanvasNodeData>;
+export type PrefabCanvasNode = Node<CanvasNodeData>;
 
 // ============================================================================
 // Store State

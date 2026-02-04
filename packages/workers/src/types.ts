@@ -54,3 +54,12 @@ export interface EmbeddingTask {
   nodeId: string;
   text: string;
 }
+
+/**
+ * OpenAI configuration for worker LLM routing.
+ */
+export interface OpenAiWorkerConfig {
+  apiKey: string;
+  model: string;
+  baseUrl?: string | undefined;
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
 import { buildNpcCognitionPrompt, NPC_DECISION_SYSTEM_PROMPT } from '../src/npc/prompts.js';
-import type { PerceptionContext, NpcActorState } from '../src/npc/types.js';
+import type { PerceptionContext, NpcRuntimeState } from '../src/npc/types.js';
 
 describe('npc/prompts', () => {
   it('includes profile details and recent events', () => {
@@ -23,7 +23,7 @@ describe('npc/prompts', () => {
       nearbyActors: ['player-1'],
     };
 
-    const state: NpcActorState = {
+    const state: NpcRuntimeState = {
       id: 'npc-1',
       type: 'npc',
       npcId: 'npc-1',
@@ -49,7 +49,7 @@ describe('npc/prompts', () => {
   it('handles empty events', () => {
     const profile = { name: 'NPC' } as CharacterProfile;
     const perception: PerceptionContext = { relevantEvents: [], nearbyActors: [] };
-    const state: NpcActorState = {
+    const state: NpcRuntimeState = {
       id: 'npc-1',
       type: 'npc',
       npcId: 'npc-1',
@@ -73,7 +73,7 @@ describe('npc/prompts', () => {
     });
 
     const perception: PerceptionContext = { relevantEvents: events, nearbyActors: [] };
-    const state: NpcActorState = {
+    const state: NpcRuntimeState = {
       id: 'npc-1',
       type: 'npc',
       npcId: 'npc-1',

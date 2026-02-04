@@ -209,8 +209,7 @@ export class TurnOrchestrator {
       actorState.state && typeof actorState.state === 'object'
         ? (actorState.state as Record<string, unknown>)
         : {};
-    const locationId =
-      typeof rawState['locationId'] === 'string' ? (rawState['locationId'] as string) : 'unknown';
+    const locationId = typeof rawState['locationId'] === 'string' ? rawState['locationId'] : 'unknown';
     const spawnedAt = actorState.createdAt ?? new Date();
     const lastActiveAt = actorState.updatedAt ?? new Date();
     const recentEvents = Array.isArray(rawState['recentEvents'])
@@ -277,7 +276,7 @@ export class TurnOrchestrator {
 
     for (const id of candidateIds) {
       const profileRow = await getEntityProfile(toId(id));
-      if (!profileRow || profileRow.entityType !== 'character') {
+      if (profileRow?.entityType !== 'character') {
         continue;
       }
 

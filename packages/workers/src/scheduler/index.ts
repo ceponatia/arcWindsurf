@@ -13,7 +13,7 @@ export class Scheduler {
     const repeatableJobs = await this.tickQueue.getRepeatableJobs();
     const existingJob = repeatableJobs.find((job) => job.name === jobName);
     if (existingJob && typeof existingJob.every === 'number' && existingJob.every === intervalMs) {
-      console.log(`[Scheduler] World tick already scheduled for session ${sessionId}`);
+      console.info(`[Scheduler] World tick already scheduled for session ${sessionId}`);
       return;
     }
     if (existingJob) {
@@ -38,7 +38,7 @@ export class Scheduler {
       }
     );
 
-    console.log(`[Scheduler] Started world tick for session ${sessionId} every ${intervalMs}ms`);
+    console.info(`[Scheduler] Started world tick for session ${sessionId} every ${intervalMs}ms`);
   }
 
   /**
@@ -52,6 +52,6 @@ export class Scheduler {
         await this.tickQueue.removeRepeatableByKey(job.key);
       }
     }
-    console.log(`[Scheduler] Stopped world tick for session ${sessionId}`);
+    console.info(`[Scheduler] Stopped world tick for session ${sessionId}`);
   }
 }

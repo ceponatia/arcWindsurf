@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type {
   Build,
-  ItemCategory,
+  CharacterSummary,
+  PersonaSummary,
+  SettingSummary,
   TagTargetType,
   UserAssistantMessageRole,
   Speaker,
@@ -12,41 +14,17 @@ import type { CreateFullSessionRequest } from './shared/api/types.js';
 import type { UseFetchOnceResult } from './shared/hooks/useFetchOnce.js';
 
 export type { Speaker };
+export type {
+  CharacterSummary,
+  SettingSummary,
+  PersonaSummary,
+  ItemSummary,
+  RuntimeConfigResponse,
+} from '@minimal-rpg/schemas';
 
 /** @deprecated Use ApiError from @minimal-rpg/schemas */
 export type ApiErrorShape = ApiError;
 
-export interface CharacterSummary {
-  id: string;
-  name: string;
-  summary: string;
-  archetype?: string;
-  tags?: string[];
-  source?: 'fs' | 'db';
-}
-
-export interface SettingSummary {
-  id: string;
-  name: string;
-  tone: string;
-}
-
-export interface PersonaSummary {
-  id: string;
-  name: string;
-  summary: string;
-  bio?: string;
-  source: 'db';
-}
-
-export interface ItemSummary {
-  id: string;
-  name: string;
-  category: ItemCategory;
-  type: string;
-  description: string;
-  tags?: string[];
-}
 
 export interface Message {
   role: UserAssistantMessageRole;
@@ -70,16 +48,8 @@ export interface Session {
   messages: Message[];
 }
 
-export interface RuntimeConfigResponse {
-  port: number;
-  contextWindow: number;
-  temperature: number;
-  topP: number;
-  openrouterModel: string;
-  governorDevMode: boolean;
-}
 
-export type IntentType =
+export type UiIntentType =
   | 'move'
   | 'look'
   | 'talk'
@@ -107,7 +77,7 @@ export interface IntentSegment {
 }
 
 export interface DetectedIntent {
-  type: IntentType;
+  type: UiIntentType;
   confidence: number;
   params?: IntentParams;
   signals?: string[];

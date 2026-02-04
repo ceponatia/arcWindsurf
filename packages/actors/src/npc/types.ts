@@ -6,7 +6,7 @@ import type { CharacterProfile } from '@minimal-rpg/schemas';
 /**
  * NPC-specific state extensions.
  */
-export interface NpcActorState extends BaseActorState {
+export interface NpcRuntimeState extends BaseActorState {
   type: 'npc';
   /** NPC persona/character ID */
   npcId: string;
@@ -37,7 +37,7 @@ export interface CognitionContext {
   /** What the NPC perceived */
   perception: PerceptionContext;
   /** NPC's current state */
-  state: NpcActorState;
+  state: NpcRuntimeState;
   /** Available actions */
   availableActions: string[];
 }

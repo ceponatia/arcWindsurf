@@ -115,15 +115,19 @@ export class OpenAIProvider implements LLMProvider {
           throw new Error('No choice in response');
         }
 
+        type OpenAIFunctionToolCall = OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
+
         const toolCalls: ToolCall[] | null = choice.message.tool_calls
-          ? choice.message.tool_calls.map((toolCall) => ({
-            id: toolCall.id,
-            type: 'function',
-            function: {
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments,
-            },
-          }))
+          ? choice.message.tool_calls
+            .filter((toolCall): toolCall is OpenAIFunctionToolCall => toolCall.type === 'function')
+            .map((toolCall) => ({
+              id: toolCall.id,
+              type: 'function',
+              function: {
+                name: toolCall.function.name,
+                arguments: toolCall.function.arguments,
+              },
+            }))
           : null;
 
         return {

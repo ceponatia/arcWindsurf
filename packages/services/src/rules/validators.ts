@@ -33,7 +33,7 @@ export interface ValidationContext {
 type ValidationRule = (
   event: WorldEvent,
   context: ValidationContext
-) => Promise<ValidationResult>;
+) => ValidationResult | Promise<ValidationResult>;
 
 /**
  * Registry of validation rules per event type.
@@ -226,10 +226,10 @@ async function validateUseItemIntent(
 /**
  * Validate ATTACK_INTENT - check combat rules.
  */
-async function validateAttackIntent(
+function validateAttackIntent(
   event: WorldEvent,
   context: ValidationContext
-): Promise<ValidationResult> {
+): ValidationResult {
   const attackEvent = event as { targetActorId?: string };
 
   if (!attackEvent.targetActorId) {
@@ -249,10 +249,10 @@ async function validateAttackIntent(
 /**
  * Validate TAKE_ITEM_INTENT - check if item is available.
  */
-async function validateTakeItemIntent(
+function validateTakeItemIntent(
   event: WorldEvent,
   _context: ValidationContext
-): Promise<ValidationResult> {
+): ValidationResult {
   void _context;
   const takeEvent = event as { itemId?: string };
 

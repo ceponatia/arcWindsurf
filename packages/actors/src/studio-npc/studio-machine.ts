@@ -302,7 +302,7 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
           conversation: ({ context, event }) => {
             const dilemma = (event as unknown as { output: Dilemma }).output;
 
-            console.log('[DilemmaDebug] Generated dilemma:', JSON.stringify(dilemma, null, 2));
+            console.debug('[DilemmaDebug] Generated dilemma:', JSON.stringify(dilemma, null, 2));
 
             const newMessage: ConversationMessage = {
               id: crypto.randomUUID(),
@@ -430,7 +430,7 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
           if (manager.needsSummarization()) {
             // Trigger summarization (handled separately in TASK-006/009)
             // For now we just log it as a signal
-            console.log(`[StudioMachine] Summarization recommended for session ${ctx.sessionId}`);
+            console.debug(`[StudioMachine] Summarization recommended for session ${ctx.sessionId}`);
           }
 
           const promptStart = performance.now();
@@ -447,7 +447,7 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
 
           if (isDilemmaResponse) {
             const scenario = lastMsg.content.replace('[DILEMMA]: ', '');
-            console.log('[DilemmaDebug] Dilemma scenario detected:', scenario);
+            console.debug('[DilemmaDebug] Dilemma scenario detected:', scenario);
             messages.push({
               role: 'system',
               content: buildDilemmaPrompt(scenario, ['your core values', 'the situation at hand'])
@@ -461,7 +461,7 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
 
           // Log full message array for debugging
           if (isDilemmaResponse) {
-            console.log('[DilemmaDebug] Full messages array:', JSON.stringify(messages.map(m => ({
+            console.debug('[DilemmaDebug] Full messages array:', JSON.stringify(messages.map(m => ({
               role: m.role,
               contentLength: (m.content ?? '').length,
               contentPreview: (m.content ?? '').slice(0, 200) + ((m.content ?? '').length > 200 ? '...' : '')
@@ -476,12 +476,12 @@ export function createStudioMachine(initialContext: StudioMachineContext) {
 
           // Log timing for all requests
           const totalActorMs = performance.now() - actorStart;
-          console.log(`[StudioTiming] generateResponse: total=${totalActorMs.toFixed(0)}ms prompt=${promptMs.toFixed(0)}ms llm=${llmMs.toFixed(0)}ms tokens=${messages.reduce((acc, m) => acc + (m.content ?? '').length, 0)} responseLen=${responseContent.length}`);
+          console.info(`[StudioTiming] generateResponse: total=${totalActorMs.toFixed(0)}ms prompt=${promptMs.toFixed(0)}ms llm=${llmMs.toFixed(0)}ms tokens=${messages.reduce((acc, m) => acc + (m.content ?? '').length, 0)} responseLen=${responseContent.length}`);
 
           // Log response for debugging
           if (isDilemmaResponse) {
-            console.log('[DilemmaDebug] LLM response length:', responseContent.length);
-            console.log('[DilemmaDebug] LLM response preview:', responseContent.slice(0, 500));
+            console.debug('[DilemmaDebug] LLM response length:', responseContent.length);
+            console.debug('[DilemmaDebug] LLM response preview:', responseContent.slice(0, 500));
           }
 
           // Validate the response

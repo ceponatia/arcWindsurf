@@ -1,10 +1,6 @@
-export type UserRole = 'user' | 'admin';
+import type { AuthUser } from '@minimal-rpg/schemas';
 
-export interface AuthUser {
-  identifier: string;
-  role: UserRole;
-  email?: string | null;
-}
+export type { AuthUser, UserRole } from '@minimal-rpg/schemas';
 
 export interface AuthMeResponse {
   ok: true;

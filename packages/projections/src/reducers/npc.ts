@@ -35,11 +35,10 @@ export const npcReducer: Reducer<NpcsState> = (state, event) => {
 
     case 'ACTOR_DESPAWN': {
       const actorId = event.actorId;
-      const newState = { ...state };
-      // SECURITY: actorId is validated as part of the event payload
-      // eslint-disable-next-line security/detect-object-injection
-      delete newState[actorId];
-      return newState;
+      const nextState = Object.fromEntries(
+        Object.entries(state).filter(([key]) => key !== actorId)
+      ) as NpcsState;
+      return nextState;
     }
 
     case 'MOVED': {

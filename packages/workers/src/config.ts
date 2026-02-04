@@ -5,7 +5,7 @@ import {
   type WorkerOptions,
   type Job,
 } from 'bullmq';
-import type { JobResult } from './types.js';
+import type { JobResult, OpenAiWorkerConfig } from './types.js';
 
 const REDIS_URL = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
 
@@ -40,6 +40,25 @@ const getBullMqConnectionOptions = (redisUrl: string): ConnectionOptions => {
 export const connection: ConnectionOptions = getBullMqConnectionOptions(REDIS_URL);
 
 /**
+ * Resolve OpenAI configuration for worker LLM routing.
+ */
+export function getOpenAiWorkerConfig(): OpenAiWorkerConfig {
+  const apiKey = process.env['OPENAI_API_KEY'] ?? '';
+  if (!apiKey) {
+    throw new Error('Missing OPENAI_API_KEY for workers LLM router');
+  }
+
+  const model = process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini';
+  const baseUrl = process.env['OPENAI_BASE_URL'];
+
+  return {
+    apiKey,
+    model,
+    baseUrl: baseUrl && baseUrl.trim().length > 0 ? baseUrl : undefined,
+  };
+}
+
+/**
  * HOF factory to ensure consistent error handling and logging stats for all queues.
  */
 export function createWorker<T, R extends JobResult = JobResult>(
@@ -52,12 +71,12 @@ export function createWorker<T, R extends JobResult = JobResult>(
     async (job: Job<T, R>) => {
       const start = Date.now();
       try {
-        console.log(`[Worker:${queueName}] Processing job ${job.id}`);
+        console.debug(`[Worker:${queueName}] Processing job ${job.id}`);
         const result = await processor(job);
         const duration = Date.now() - start;
 
         if (result.success) {
-          console.log(`[Worker:${queueName}] Job ${job.id} completed in ${duration}ms`);
+          console.debug(`[Worker:${queueName}] Job ${job.id} completed in ${duration}ms`);
         } else {
           console.error(`[Worker:${queueName}] Job ${job.id} failed: ${result.error}`);
         }

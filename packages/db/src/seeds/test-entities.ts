@@ -223,7 +223,7 @@ export async function seedTestEntities(
   pool: PgPoolLike,
   options: SeedTestEntitiesOptions = {}
 ): Promise<void> {
-  console.log('[seed] Seeding test entities...');
+  console.info('[seed] Seeding test entities...');
 
   const mode: TestEntitiesSeedMode = options.mode ?? 'insert';
 
@@ -303,7 +303,7 @@ export async function seedTestEntities(
       [TEST_CHARACTER_ID, characterJson]
     );
 
-    console.log('[seed] Seeded test entities (upsert).');
+    console.info('[seed] Seeded test entities (upsert).');
     return;
   }
 
@@ -366,5 +366,5 @@ export async function seedTestEntities(
     [TEST_CHARACTER_ID, characterJson]
   );
 
-  console.log('[seed] Seeded test entities (insert-only).');
+  console.info('[seed] Seeded test entities (insert-only).');
 }

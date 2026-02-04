@@ -6,6 +6,7 @@ import { loadData } from './loaders/loader.js';
 import type { ApiError } from './types.js';
 import type { LoadedData } from './loaders/types.js';
 import { getConfig } from './utils/config.js';
+import { getEnvCsv, getEnvValue } from './utils/env.js';
 import {
   ensureLocalAdminUser,
   initStudioSessionsTable,
@@ -37,7 +38,7 @@ function initializeWorldBus(): void {
   worldBus.use(telemetryMiddleware);
   worldBus.use(persistenceMiddleware);
   registerPersistenceHandler(persistWorldEvent);
-  console.log('[bus] persistence initialized');
+  console.info('[bus] persistence initialized');
 }
 
 app.onError((err, c) => {
@@ -66,15 +67,15 @@ export async function startServer(): Promise<void> {
 
     // Load character + setting JSON from data/
     loaded = await loadData();
-    console.log(
+    console.info(
       `Startup: loaded ${loaded.characters.length} characters and ${loaded.settings.length} settings`
     );
 
     // Local/dev bootstrap: if LOCAL_ADMIN_PASSWORD is provided, ensure an admin user exists.
-    const localAdminPassword = process.env['LOCAL_ADMIN_PASSWORD'];
+    const localAdminPassword = getEnvValue('LOCAL_ADMIN_PASSWORD');
     if (localAdminPassword && localAdminPassword.trim().length > 0) {
       await ensureLocalAdminUser({ password: localAdminPassword });
-      console.log('[auth] ensured local admin user (identifier=admin)');
+      console.info('[auth] ensured local admin user (identifier=admin)');
     }
   } catch (err) {
     console.error('Failed to load data', (err as Error).message);
@@ -82,7 +83,7 @@ export async function startServer(): Promise<void> {
   }
 
   const cfg = getConfig();
-  console.log('Runtime config', {
+  console.info('Runtime config', {
     port: cfg.port,
     contextWindow: cfg.contextWindow,
     temperature: cfg.temperature,
@@ -92,10 +93,7 @@ export async function startServer(): Promise<void> {
   });
 
   // Enable CORS for browser-based clients (Vite dev, etc.)
-  const corsOrigins = (process.env['CORS_ORIGINS'] ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const corsOrigins = getEnvCsv('CORS_ORIGINS');
 
   app.use(
     '*',
@@ -124,5 +122,5 @@ export async function startServer(): Promise<void> {
 
   const port = cfg.port;
   serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
-  console.log(`API server listening on http://0.0.0.0:${port}`);
+  console.info(`API server listening on http://0.0.0.0:${port}`);
 }

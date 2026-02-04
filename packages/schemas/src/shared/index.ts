@@ -25,6 +25,15 @@ export {
   type UserAssistantMessageRole,
 } from './message-types.js';
 
+// Character studio conversation types
+export {
+  type StudioMessageRole,
+  type InferredTraitStatus,
+  type InferredTrait,
+  type ConversationMessage,
+  type SuggestedPrompt,
+} from './studio-types.js';
+
 // Physical appearance/physique
 export {
   APPEARANCE_HEIGHTS,

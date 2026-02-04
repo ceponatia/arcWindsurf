@@ -1,4 +1,4 @@
-import { createActor } from 'xstate';
+import { createActor, type ActorRefFrom } from 'xstate';
 import type { WorldEvent } from '@minimal-rpg/schemas';
 import type { Actor, BaseActorState, NpcActorConfig } from '../base/types.js';
 import { BaseActorLifecycle } from '../base/lifecycle.js';
@@ -15,8 +15,7 @@ export class NpcActor implements Actor {
 
   private readonly npcId: string;
   private readonly locationId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly machine: any;
+  private readonly machine: ActorRefFrom<ReturnType<typeof createNpcMachine>>;
   private readonly lifecycle: BaseActorLifecycle;
 
   constructor(config: NpcActorConfig) {
@@ -44,19 +43,16 @@ export class NpcActor implements Actor {
   }
 
   start(): void {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.machine.start();
     void this.lifecycle.start();
   }
 
   stop(): void {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.machine.stop();
     this.lifecycle.stop();
   }
 
   send(event: WorldEvent): void {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.machine.send({ type: 'WORLD_EVENT', event });
   }
 
@@ -75,8 +71,7 @@ export class NpcActor implements Actor {
    * Get the current machine state (for debugging).
    */
   getMachineState(): string {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const snapshot = this.machine.getSnapshot() as { value: unknown };
+    const snapshot = this.machine.getSnapshot();
     return JSON.stringify(snapshot.value);
   }
 }

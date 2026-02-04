@@ -1,5 +1,5 @@
 import type { CharacterProfile } from '@minimal-rpg/schemas';
-import type { PerceptionContext, NpcActorState } from './types.js';
+import type { PerceptionContext, NpcRuntimeState } from './types.js';
 
 export const NPC_DECISION_SYSTEM_PROMPT = [
   'You decide how an NPC should act based on recent events and their personality.',
@@ -10,7 +10,7 @@ export const NPC_DECISION_SYSTEM_PROMPT = [
 
 export function buildNpcCognitionPrompt(
   perception: PerceptionContext,
-  state: NpcActorState,
+  state: NpcRuntimeState,
   profile: CharacterProfile
 ): string {
   const lines: string[] = [];

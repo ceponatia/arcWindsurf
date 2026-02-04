@@ -27,6 +27,25 @@ export type {
   TimeSkipSimulation,
 } from './types.js';
 
+export type {
+  EncounterNarration,
+  EncounterNarrationOptions,
+  EncounterNpcInfo,
+  EncounterTimeOfDay,
+} from './encounter-types.js';
+
+export type {
+  HookNpcInfo,
+  LocationChangeHookInput,
+  LocationChangeHookResult,
+  PeriodChangeHookInput,
+  PeriodChangeHookResult,
+  TimeSkipHookInput,
+  TimeSkipHookResult,
+  TurnHookInput,
+  TurnHookResult,
+} from './hooks-types.js';
+
 // Schemas
 export {
   CachedSimulationSchema,

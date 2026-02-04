@@ -20,14 +20,27 @@ import type {
   TagResponse,
   CreateTagRequest,
   UpdateTagRequest,
-  SessionUsageInfo,
   EntityUsageSummary,
+  DbColumn,
+  DbTableOverview,
+  DbRelationOverview,
+  DbOverview,
+  UserPreferences,
+  WorkspaceMode,
 } from '@minimal-rpg/schemas';
 import { API_BASE_URL, MESSAGE_TIMEOUT_MS } from '../../config.js';
 import { getAccessToken } from '../auth/accessToken.js';
 import type { AuthLoginResponse, AuthMeResponse } from '../auth/types.js';
 
-export type { EntityUsageSummary };
+export type {
+  EntityUsageSummary,
+  DbColumn,
+  DbTableOverview,
+  DbRelationOverview,
+  DbOverview,
+  UserPreferences,
+  WorkspaceMode,
+};
 
 interface TurnEndpointResponse {
   message: string;
@@ -38,32 +51,6 @@ interface TurnEndpointResponse {
   success: boolean;
 }
 
-export interface DbColumn {
-  name: string;
-  type: string;
-  isId: boolean;
-  isRequired: boolean;
-  isList: boolean;
-}
-
-export interface DbTableOverview {
-  name: string;
-  columns: DbColumn[];
-  rowCount?: number;
-  sample?: Record<string, unknown>[];
-}
-
-export interface DbRelationOverview {
-  fromTable: string;
-  fromColumn: string;
-  toTable: string;
-  toColumn: string;
-}
-
-export interface DbOverview {
-  tables: DbTableOverview[];
-  relations: DbRelationOverview[];
-}
 
 interface HttpOptions extends RequestInit {
   signal?: AbortSignal;
@@ -791,12 +778,6 @@ export async function getPersonaUsage(
 // User Preferences API
 // =============================================================================
 
-export type WorkspaceMode = 'wizard' | 'compact';
-
-export interface UserPreferences {
-  workspaceMode?: WorkspaceMode;
-  [key: string]: unknown;
-}
 
 /**
  * Get user preferences

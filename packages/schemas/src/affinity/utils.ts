@@ -5,7 +5,7 @@
  *
  * @see dev-docs/28-affinity-and-relationship-dynamics.md
  */
-import { getRecord, setRecord } from '../shared/record-helpers.js';
+import { getRecord, getRecordOptional, setPartialRecord, setRecord } from '../shared/record-helpers.js';
 import type {
   RelationshipScores,
   Disposition,
@@ -337,14 +337,13 @@ export function applyAffinityDecay(
   ];
 
   for (const dimension of dimensions) {
-    // Not a Record: RelationshipScores has optional 'attraction' field
-    // eslint-disable-next-line security/detect-object-injection
-    const value = result[dimension];
+    const value = getRecordOptional(result, dimension);
     if (value === undefined) continue;
 
-    // Not a Record: dimensionMultipliers is Partial<Record>
-    // eslint-disable-next-line security/detect-object-injection
-    const multiplier = config.dimensionMultipliers?.[dimension] ?? 1;
+    const multiplier =
+      (config.dimensionMultipliers
+        ? getRecordOptional(config.dimensionMultipliers, dimension)
+        : undefined) ?? 1;
     const decay = config.dailyDecayRate * multiplier * daysSinceLastInteraction;
 
     if (dimension === 'fear') {
@@ -360,15 +359,9 @@ export function applyAffinityDecay(
     } else {
       // Other dimensions decay toward neutral zone
       if (value > config.decayCeiling) {
-        const key = dimension;
-        // Not a Record: RelationshipScores has optional 'attraction' field
-        // eslint-disable-next-line security/detect-object-injection
-        result[key] = Math.max(config.decayCeiling, value - decay);
+        setPartialRecord(result, dimension, Math.max(config.decayCeiling, value - decay));
       } else if (value < config.decayFloor) {
-        const key = dimension;
-        // Not a Record: RelationshipScores has optional 'attraction' field
-        // eslint-disable-next-line security/detect-object-injection
-        result[key] = Math.min(config.decayFloor, value + decay);
+        setPartialRecord(result, dimension, Math.min(config.decayFloor, value + decay));
       }
     }
   }
@@ -554,10 +547,7 @@ export function formatAffinityPrompt(context: AffinityContext): string {
  * @returns Default affinity scores
  * @deprecated Use DEFAULT_AFFINITY_SCORES directly (attraction is now always present)
  */
-export function createDefaultRelationshipScores(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _includeAttraction = false
-): RelationshipScores {
+export function createDefaultRelationshipScores(): RelationshipScores {
   return {
     ...DEFAULT_AFFINITY_SCORES,
   };
@@ -566,14 +556,11 @@ export function createDefaultRelationshipScores(
 /**
  * Create a new character instance affinity state.
  *
- * @param includeAttraction - Whether to include attraction
  * @returns New character instance affinity
  */
-export function createCharacterInstanceAffinity(
-  includeAttraction = false
-): CharacterInstanceAffinity {
+export function createCharacterInstanceAffinity(): CharacterInstanceAffinity {
   return {
-    scores: createDefaultRelationshipScores(includeAttraction),
+    scores: createDefaultRelationshipScores(),
     lastUpdated: new Date().toISOString(),
     actionHistory: [],
     milestones: [],

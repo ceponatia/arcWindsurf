@@ -1,5 +1,6 @@
 import type { getDbOverview, getDbPathInfo } from '@minimal-rpg/db/node';
 import type { ConversationMessageRole } from '@minimal-rpg/schemas';
+import type { SessionHistoryEntry, StateChangeLogEntry } from '@minimal-rpg/schemas';
 
 export interface DbMessage {
   role: ConversationMessageRole;
@@ -13,24 +14,7 @@ export interface DbMessage {
   };
 }
 
-export interface StateChangeLogEntry {
-  id: string;
-  sessionId: string;
-  turnIdx: number | null;
-  patchCount: number;
-  modifiedPaths: string[];
-  agentTypes: string[];
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-}
-
-export interface SessionHistoryEntry {
-  id: string;
-  sessionId: string;
-  turnIdx: number;
-  playerInput: string;
-  createdAt: string;
-}
+export type { SessionHistoryEntry, StateChangeLogEntry };
 
 export interface DbSession {
   id: string;

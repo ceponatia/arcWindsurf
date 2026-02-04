@@ -25,6 +25,7 @@ import { generateId } from '@minimal-rpg/utils';
 import { z } from 'zod';
 import type { ApiError } from '../types.js';
 import { getConfig } from '../utils/config.js';
+import { getEnvValue } from '../utils/env.js';
 import { studioRateLimiter } from '../middleware/rate-limiter.js';
 
 // In-memory actor cache (actors are expensive to create)
@@ -36,9 +37,9 @@ const openrouterApiKey = cfg.openrouterApiKey;
 const openrouterModel = cfg.openrouterModel;
 const openrouterBaseUrl = 'https://openrouter.ai/api/v1';
 
-const openaiApiKey = process.env['OPENAI_API_KEY'] ?? '';
-const openaiModel = process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini';
-const openaiBaseUrl = process.env['OPENAI_BASE_URL'];
+const openaiApiKey = getEnvValue('OPENAI_API_KEY') ?? '';
+const openaiModel = getEnvValue('OPENAI_MODEL') ?? 'gpt-4o-mini';
+const openaiBaseUrl = getEnvValue('OPENAI_BASE_URL');
 
 const defaultLlmProvider = openrouterApiKey
   ? new OpenAIProvider({
@@ -609,7 +610,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       const persistMs = performance.now() - persistStart;
 
       const totalMs = performance.now() - requestStart;
-      console.log(`[StudioTiming] sessionId=${sessionId} total=${totalMs.toFixed(0)}ms session=${sessionMs.toFixed(0)}ms respond=${respondMs.toFixed(0)}ms persist=${persistMs.toFixed(0)}ms`);
+      console.info(`[StudioTiming] sessionId=${sessionId} total=${totalMs.toFixed(0)}ms session=${sessionMs.toFixed(0)}ms respond=${respondMs.toFixed(0)}ms persist=${persistMs.toFixed(0)}ms`);
 
       return c.json({
         ok: true,
@@ -888,7 +889,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
 
       const { sessionId, profile } = parsed.data;
 
-      console.log('[DilemmaAPI] Request received:', {
+      console.debug('[DilemmaAPI] Request received:', {
         sessionId,
         profileName: profile['name'],
       });
@@ -930,7 +931,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
       // Extract the dilemma scenario from conversation (it was added before the response)
       const state = actor.exportState();
 
-      console.log('[DilemmaAPI] Conversation messages:', state.conversation.map(m => ({
+      console.debug('[DilemmaAPI] Conversation messages:', state.conversation.map(m => ({
         role: m.role,
         contentPreview: m.content.slice(0, 80),
       })));
@@ -949,7 +950,7 @@ export function registerStudioRoutes(app: Hono, options?: RegisterStudioRoutesOp
         dilemmaScenario = match?.[1]?.trim() ?? null;
       }
 
-      console.log('[DilemmaAPI] Response generated:', {
+      console.debug('[DilemmaAPI] Response generated:', {
         foundDilemmaMessage: !!dilemmaMessage,
         dilemmaScenario: dilemmaScenario?.slice(0, 100),
         responseLength: response.response?.length ?? 0,

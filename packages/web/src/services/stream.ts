@@ -20,7 +20,7 @@ export function connectStream(url: string, handlers: StreamHandlers) {
     eventSource = new EventSource(url);
 
     eventSource.onopen = () => {
-      console.log(`[Stream] Connected to ${url}`);
+      console.info(`[Stream] Connected to ${url}`);
       handlers.onStatusChange('connected');
       retryCount = 0;
     };
@@ -42,7 +42,7 @@ export function connectStream(url: string, handlers: StreamHandlers) {
 
       if (retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount);
-        console.log(`[Stream] Retrying in ${delay}ms... (Attempt ${retryCount + 1}/${maxRetries})`);
+        console.info(`[Stream] Retrying in ${delay}ms... (Attempt ${retryCount + 1}/${maxRetries})`);
         setTimeout(connect, delay);
         retryCount++;
       } else {
@@ -55,7 +55,7 @@ export function connectStream(url: string, handlers: StreamHandlers) {
   connect();
 
   return () => {
-    console.log('[Stream] Closing connection');
+    console.info('[Stream] Closing connection');
     eventSource?.close();
   };
 }

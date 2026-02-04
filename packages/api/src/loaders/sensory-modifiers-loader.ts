@@ -10,6 +10,7 @@ import path from 'node:path';
 import {
   SensoryModifiersDataSchema,
   getSensoryModifierByLevel,
+  getRecordOptional,
   type LoadedSensoryModifiers,
   type SensoryModifiersData,
   type HygieneLevel,
@@ -24,18 +25,12 @@ function safeGetModifier(
   senseType: 'smell' | 'touch' | 'taste',
   level: HygieneLevel
 ): string {
-  if (!Object.prototype.hasOwnProperty.call(data.bodyParts, bodyPart)) {
-    return '';
-  }
+  const partModifiers = getRecordOptional(data.bodyParts, bodyPart);
+  if (!partModifiers) return '';
 
-  // eslint-disable-next-line security/detect-object-injection -- bodyPart validated by schema
-  const partModifiers = data.bodyParts[bodyPart];
-  if (!partModifiers || !Object.prototype.hasOwnProperty.call(partModifiers, senseType)) {
-    return '';
-  }
+  const senseModifiers = getRecordOptional(partModifiers, senseType);
+  if (!senseModifiers) return '';
 
-  // eslint-disable-next-line security/detect-object-injection -- senseType constrained to smell/touch/taste
-  const senseModifiers = partModifiers[senseType];
   return getSensoryModifierByLevel(senseModifiers, level);
 }
 

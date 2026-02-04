@@ -52,7 +52,7 @@ async function run() {
   const { builtInTagsMode, includeTestEntities } = parseSeedArgs(
     (globalThis as unknown as { process?: { argv?: string[] } }).process?.argv ?? []
   );
-  console.log('[db] Running seeds...');
+  console.info('[db] Running seeds...');
 
   // Seed built-in tags
   await seedBuiltInTags(pool, { mode: builtInTagsMode });
@@ -62,7 +62,7 @@ async function run() {
     await seedTestEntities(pool, { mode: builtInTagsMode });
   }
 
-  console.log('[db] Seeds complete.');
+  console.info('[db] Seeds complete.');
   await pool.end();
 }
 

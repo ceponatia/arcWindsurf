@@ -5,28 +5,13 @@
  */
 import type {
   GameTime,
-  NpcSchedule,
-  NpcScheduleRef,
   ScheduleResolution,
   ConditionContext,
   NpcLocationState,
+  NpcScheduleData,
 } from '@minimal-rpg/schemas';
 
-/**
- * NPC schedule data for resolution.
- */
-export interface NpcScheduleData {
-  /** NPC identifier */
-  npcId: string;
-  /** Direct schedule definition (if provided) */
-  schedule?: NpcSchedule;
-  /** Schedule template reference (if using templates) */
-  scheduleRef?: NpcScheduleRef;
-  /** Home location fallback */
-  homeLocationId?: string;
-  /** Work location fallback */
-  workLocationId?: string;
-}
+export type { NpcScheduleData };
 
 /**
  * Result of resolving schedules for multiple NPCs.

@@ -52,7 +52,7 @@ export async function handleCreateSession(
   getLoaded: LoadedDataGetter
 ): Promise<Response> {
   const ownerEmail = getOwnerEmail(c);
-  console.log('[API] POST /sessions request received');
+  console.info('[API] POST /sessions request received');
   const loaded = getLoaded();
   if (!loaded) {
     console.error('[API] Data not loaded');
@@ -73,7 +73,7 @@ export async function handleCreateSession(
 
   const sessionId = toSessionId(generateId());
 
-  console.log('[API] Creating session:', sessionId);
+  console.info('[API] Creating session:', sessionId);
   const sessionRecord = await createSession({
     id: sessionId,
     ownerEmail,
@@ -97,7 +97,7 @@ export async function handleCreateSession(
     });
 
     if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
-      console.log('[API] Creating tag bindings:', tagIds.length);
+      console.info('[API] Creating tag bindings:', tagIds.length);
       for (const tid of tagIds) {
         if (typeof tid === 'string') {
           const t = await getPromptTag(tid);
@@ -124,7 +124,7 @@ export async function handleCreateSession(
     createdAt: sessionRecord.createdAt.toISOString(),
   };
 
-  console.log('[API] Session created successfully');
+  console.info('[API] Session created successfully');
   return c.json(response, 201);
 }
 

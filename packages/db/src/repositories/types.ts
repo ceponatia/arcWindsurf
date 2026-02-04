@@ -6,25 +6,15 @@ import type {
   SessionSummaryRecord,
   UUID,
 } from '../types.js';
+import type { SessionHistoryEntry, StateChangeLogEntry, UserPreferences, UserRole } from '@minimal-rpg/schemas';
 
 export type { MessageSpeaker };
+export type { SessionHistoryEntry, StateChangeLogEntry, UserPreferences, UserRole };
 export type {
   SessionMessage as Message,
   SessionRecord as Session,
   SessionSummaryRecord as SessionSummary,
 };
-
-// From sessions.ts
-export interface SessionHistoryEntry {
-  id: UUID;
-  sessionId: UUID;
-  turnIdx: number;
-  ownerUserId: string | null;
-  playerInput: string;
-  context: Record<string, unknown> | null;
-  debug: Record<string, unknown> | null;
-  createdAt: string;
-}
 
 export interface NpcMessage {
   idx: number;
@@ -32,17 +22,6 @@ export interface NpcMessage {
   content: string;
   createdAt: string;
   witnessedBy?: string[];
-}
-
-export interface StateChangeLogEntry {
-  id: UUID;
-  sessionId: UUID;
-  turnIdx: number | null;
-  patchCount: number;
-  modifiedPaths: string[];
-  agentTypes: string[];
-  metadata?: Record<string, unknown>;
-  createdAt: string;
 }
 
 export type SessionSliceState = Record<string, unknown>;
@@ -257,16 +236,6 @@ export interface CreateBindingInput {
   targetEntityId?: string | null;
   enabled?: boolean;
 }
-
-// From users.ts
-export interface UserPreferences {
-  /** Preferred workspace mode: wizard (step-by-step) or compact (power user) */
-  workspaceMode?: 'wizard' | 'compact' | undefined;
-  /** Future preferences can be added here */
-  [key: string]: unknown;
-}
-
-export type UserRole = 'user' | 'admin';
 
 export type AuthProvider = 'local' | 'supabase';
 

@@ -22,7 +22,7 @@ import {
 import {
   SpatialIndex,
   type SpatialUpdateResult,
-  type UpdateProximityParams,
+  type SpatialUpdateProximityParams,
 } from './spatial-index.js';
 
 // =============================================================================
@@ -204,7 +204,10 @@ export class ProximityService {
   /**
    * Update or create a sensory engagement.
    */
-  updateEngagement(state: ProximityState, params: UpdateProximityParams): SpatialUpdateResult {
+  updateEngagement(
+    state: ProximityState,
+    params: SpatialUpdateProximityParams
+  ): SpatialUpdateResult {
     return SpatialIndex.updateEngagement(state, params);
   }
 

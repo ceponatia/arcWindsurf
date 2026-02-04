@@ -1,7 +1,12 @@
 import { drizzle as db } from '../connection/index.js';
 import { actorStates } from '../schema/index.js';
 import { eq, and, sql } from 'drizzle-orm';
-import { NpcScheduleSchema, type NpcSchedule, type NpcScheduleRef } from '@minimal-rpg/schemas';
+import {
+  getRecordOptional,
+  NpcScheduleSchema,
+  type NpcSchedule,
+  type NpcScheduleRef,
+} from '@minimal-rpg/schemas';
 import type { UUID } from '../types.js';
 
 type ActorStateRecord = Record<string, unknown>;
@@ -22,11 +27,38 @@ function toStringRecord(value: unknown): Record<string, string> | undefined {
   const result: Record<string, string> = {};
   for (const [key, entry] of Object.entries(value)) {
     if (typeof entry === 'string') {
-      result[key] = entry;
+      Object.defineProperty(result, key, {
+        value: entry,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * Safely read a nested record from an actor state object.
+ */
+function getActorStateRecord(
+  record: ActorStateRecord | undefined,
+  key: string
+): ActorStateRecord | undefined {
+  const value = getRecordOptional(record, key);
+  return isRecord(value) ? value : undefined;
+}
+
+/**
+ * Safely read a string field from an actor state object.
+ */
+function getActorStateString(
+  record: ActorStateRecord | undefined,
+  key: string
+): string | undefined {
+  const value = getRecordOptional(record, key);
+  return typeof value === 'string' ? value : undefined;
 }
 
 export interface UpsertActorStateInput {
@@ -150,28 +182,27 @@ export async function getSessionNpcsWithSchedules(
 
   return actors
     .map((actor) => {
-      const state = isRecord(actor.state) ? actor.state : {};
-      const scheduleState = isRecord(state['schedule']) ? state['schedule'] : undefined;
+      const state = isRecord(actor.state) ? actor.state : undefined;
+      const scheduleState = getActorStateRecord(state, 'schedule');
 
-      const scheduleDataResult = NpcScheduleSchema.safeParse(scheduleState?.['scheduleData']);
+      const scheduleDataResult = NpcScheduleSchema.safeParse(
+        getRecordOptional(scheduleState, 'scheduleData')
+      );
       const scheduleData: NpcSchedule | undefined = scheduleDataResult.success
         ? scheduleDataResult.data
         : undefined;
-      const templateId =
-        typeof scheduleState?.['templateId'] === 'string'
-          ? (scheduleState?.['templateId'] as string)
-          : undefined;
-      const placeholderMappings = toStringRecord(scheduleState?.['placeholderMappings']);
+      const templateId = getActorStateString(scheduleState, 'templateId');
+      const placeholderMappings = toStringRecord(
+        getRecordOptional(scheduleState, 'placeholderMappings')
+      );
 
       const scheduleRef =
         templateId && placeholderMappings
           ? ({ templateId, placeholders: placeholderMappings } satisfies NpcScheduleRef)
           : undefined;
 
-      const homeLocationId =
-        typeof state['homeLocationId'] === 'string' ? (state['homeLocationId'] as string) : undefined;
-      const workLocationId =
-        typeof state['workLocationId'] === 'string' ? (state['workLocationId'] as string) : undefined;
+      const homeLocationId = getActorStateString(state, 'homeLocationId');
+      const workLocationId = getActorStateString(state, 'workLocationId');
 
       return {
         npcId: actor.actorId,
@@ -181,7 +212,7 @@ export async function getSessionNpcsWithSchedules(
         ...(workLocationId ? { workLocationId } : {}),
       };
     })
-    .filter((npc) => npc.schedule || npc.scheduleRef);
+    .filter((npc) => (npc.schedule ?? npc.scheduleRef) !== undefined);
 }
 
 export async function deleteActorState(sessionId: UUID, actorId: string) {

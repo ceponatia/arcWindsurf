@@ -111,7 +111,7 @@ export function useConversation(): UseConversationResult {
               summarizeConversation(studioSessionId.value)
                 .then(result => {
                   if (result.summarized) {
-                    console.log('Conversation summarized', result.summary);
+                    console.info('Conversation summarized', result.summary);
                     conversationSummary.value = result.summary;
                   }
                 })

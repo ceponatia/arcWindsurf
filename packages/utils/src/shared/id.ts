@@ -14,40 +14,7 @@ export function generateId(): string {
     // Ignore and attempt other fallbacks
   }
 
-  // 2. Try Node's crypto.randomUUID() via require, if available
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const nodeCrypto = require('crypto') as typeof import('crypto');
-    if (nodeCrypto && typeof nodeCrypto.randomUUID === 'function') {
-      return nodeCrypto.randomUUID();
-    }
-    if (nodeCrypto && typeof nodeCrypto.randomBytes === 'function') {
-      const bytes = nodeCrypto.randomBytes(16);
-      // Format as RFC4122 version 4 UUID
-      const b6 = bytes[6];
-      const b8 = bytes[8];
-      if (b6 !== undefined && b8 !== undefined) {
-        bytes[6] = (b6 & 0x0f) | 0x40;
-        bytes[8] = (b8 & 0x3f) | 0x80;
-      }
-      const hex = bytes.toString('hex');
-      return (
-        hex.slice(0, 8) +
-        '-' +
-        hex.slice(8, 12) +
-        '-' +
-        hex.slice(12, 16) +
-        '-' +
-        hex.slice(16, 20) +
-        '-' +
-        hex.slice(20, 32)
-      );
-    }
-  } catch {
-    // Ignore and attempt other fallbacks
-  }
-
-  // 3. Try browser crypto.getRandomValues
+  // 2. Try browser crypto.getRandomValues
   try {
     if (
       typeof crypto !== 'undefined' &&

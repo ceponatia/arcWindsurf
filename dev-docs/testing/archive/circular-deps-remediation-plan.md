@@ -90,8 +90,8 @@ The deps check reported 16 circular dependency violations across web, services, 
 
 ## Acceptance Criteria
 
-- [ ] Running `pnpm deps:check` reports zero circular dependency violations.
+- [x] Running `pnpm deps:check` reports zero circular dependency violations.
 - [ ] No suppressions, rule relaxations, shims, barrel masking, re-export facades, or lazy-import cycle breaks were added.
-- [ ] Sensory schema files contain only data structure definitions, with logic moved into dedicated helper modules.
-- [ ] Hygiene and scent defaults live in packages/schemas/src/body-regions/hygiene-data.ts with granular regions grouped under parent regions.
+- [x] Sensory schema files contain only data structure definitions, with logic moved into dedicated helper modules.
+- [x] Hygiene and scent defaults live in packages/schemas/src/body-regions/hygiene-data.ts with granular regions grouped under parent regions.
 - [ ] All module boundaries follow one-directional imports and avoid index.ts back-references.

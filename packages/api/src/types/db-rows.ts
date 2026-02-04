@@ -4,7 +4,7 @@
  * These types define the shape of rows returned from Drizzle queries.
  * Use these to properly type mapper functions and avoid `as any` casts.
  */
-import type { LocationNode, LocationConnection } from '@minimal-rpg/schemas';
+import type { LocationNode, LocationConnection, ScheduleTemplateRow } from '@minimal-rpg/schemas';
 
 /**
  * Row shape from location_maps table.
@@ -40,17 +40,7 @@ export interface LocationPrefabRow {
   updatedAt: Date;
 }
 
-/**
- * Row shape from schedule_templates table.
- */
-export interface ScheduleTemplateRow {
-  id: string;
-  name: string;
-  description: string | null;
-  scheduleJson: unknown;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type { ScheduleTemplateRow };
 
 /**
  * Row shape from entity_profiles table.

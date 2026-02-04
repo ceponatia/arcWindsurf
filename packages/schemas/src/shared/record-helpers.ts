@@ -26,9 +26,8 @@
  * @returns Value at the key
  */
 export function getRecord<K extends string, V>(record: Record<K, V>, key: K): V {
-  // SECURITY: Key is constrained to union K by TypeScript, not arbitrary input
-  // eslint-disable-next-line security/detect-object-injection
-  return record[key];
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor?.value as V;
 }
 
 /**
@@ -49,9 +48,8 @@ export function getRecordOptional<K extends string, V>(
   key: K
 ): V | undefined {
   if (!record) return undefined;
-  // SECURITY: Key is constrained to union K by TypeScript, not arbitrary input
-  // eslint-disable-next-line security/detect-object-injection
-  return record[key];
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor?.value as V | undefined;
 }
 
 /**
@@ -85,9 +83,12 @@ export function getPartialRecord<K extends string, V>(
  * @param value - Value to set
  */
 export function setRecord<K extends string, V>(record: Record<K, V>, key: K, value: V): void {
-  // SECURITY: Key is constrained to union K by TypeScript, not arbitrary input
-  // eslint-disable-next-line security/detect-object-injection
-  record[key] = value;
+  Object.defineProperty(record, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
 
 /**
@@ -109,9 +110,12 @@ export function setPartialRecord<K extends string, V>(
   key: K,
   value: V | undefined
 ): void {
-  // SECURITY: Key is constrained to union K by TypeScript, not arbitrary input
-  // eslint-disable-next-line security/detect-object-injection
-  obj[key] = value as (Partial<Record<K, V>> | Record<K, V | undefined>)[K];
+  Object.defineProperty(obj, key, {
+    value: value as (Partial<Record<K, V>> | Record<K, V | undefined>)[K],
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
 
 /**
@@ -126,9 +130,7 @@ export function setPartialRecord<K extends string, V>(
  * @returns Element at index, or undefined if out of bounds
  */
 export function getArraySafe<T>(array: readonly T[], index: number): T | undefined {
-  // SECURITY: Array access with bounds checking, index is a number not string key
-  // eslint-disable-next-line security/detect-object-injection
-  return array[index];
+  return array.at(index);
 }
 
 // Helper type to extract the value type from a collection at a numeric index
@@ -169,7 +171,6 @@ export function getTuple<C extends readonly unknown[] | Record<number, unknown>,
   collection: C,
   index: N
 ): ValueAtIndex<C, N> {
-  // SECURITY: Index is constrained to numeric literal type N, not arbitrary input
-  // eslint-disable-next-line security/detect-object-injection
-  return collection[index] as ValueAtIndex<C, N>;
+  const descriptor = Object.getOwnPropertyDescriptor(collection, String(index));
+  return descriptor?.value as ValueAtIndex<C, N>;
 }

@@ -18,6 +18,7 @@ import type {
   SettingProfile,
   PersonaProfile,
   TagTargetType,
+  NpcTier as SchemaNpcTier,
   WorkspaceValidationResult as SharedWorkspaceValidationResult,
 } from '@minimal-rpg/schemas';
 import {
@@ -61,13 +62,13 @@ export interface LocationMapState {
 }
 
 export type NpcRole = 'primary' | 'supporting' | 'background' | 'antagonist';
-export type NpcTier = 'major' | 'minor' | 'transient';
+export type SessionNpcTier = Exclude<SchemaNpcTier, 'background'>;
 
 export interface NpcSessionConfig {
   characterId: string;
   characterProfile?: CharacterProfile;
   role: NpcRole;
-  tier: NpcTier;
+  tier: SessionNpcTier;
   startLocationId?: string;
   label?: string;
 }
@@ -540,7 +541,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
                   workspaceState,
                   currentStep: state.currentStep,
                 });
-                console.log('[Workspace] Draft updated:', state.draftId);
+                console.info('[Workspace] Draft updated:', state.draftId);
               } else {
                 // Create new draft
                 const draft = await createWorkspaceDraft({
@@ -548,7 +549,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
                   currentStep: state.currentStep,
                 });
                 set({ draftId: draft.id }, false, 'saveDraftToServer:created');
-                console.log('[Workspace] Draft created:', draft.id);
+                console.info('[Workspace] Draft created:', draft.id);
               }
 
               set({ isDirty: false, lastSavedAt: Date.now() }, false, 'saveDraftToServer:done');
@@ -569,7 +570,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
             try {
               await apiDeleteWorkspaceDraft(state.draftId);
-              console.log('[Workspace] Draft deleted:', state.draftId);
+              console.info('[Workspace] Draft deleted:', state.draftId);
               set({ draftId: null }, false, 'deleteDraftFromServer');
             } catch (err) {
               console.error('[Workspace] Failed to delete draft:', err);
@@ -806,7 +807,7 @@ async function loadModePreference(): Promise<void> {
     if (mode !== currentMode) {
       // Use setState directly to avoid triggering the server save
       useWorkspaceStore.setState({ mode }, false, 'loadModePreference');
-      console.log('[Workspace] Loaded mode preference from server:', mode);
+      console.info('[Workspace] Loaded mode preference from server:', mode);
     }
   } catch (err) {
     console.warn('[Workspace] Failed to load mode preference:', err);
@@ -827,7 +828,7 @@ if (typeof window !== 'undefined') {
 
 export const useCurrentStep = () => useWorkspaceStore((s) => s.currentStep);
 export const useSettingState = () => useWorkspaceStore((s) => s.setting);
-export const useNpcsState = () => useWorkspaceStore((s) => s.npcs);
+export const useNpcsState = (): NpcSessionConfig[] => useWorkspaceStore((s) => s.npcs);
 export const usePlayerState = () => useWorkspaceStore((s) => s.player);
 export const useTagsState = () => useWorkspaceStore((s) => s.tags);
 export const useWorkspaceMode = () => useWorkspaceStore((s) => s.mode);

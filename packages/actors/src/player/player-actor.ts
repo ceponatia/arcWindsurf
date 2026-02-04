@@ -39,7 +39,7 @@ export class PlayerActor implements Actor {
   send(event: WorldEvent): void {
     // For now, player actors just observe events
     // In multiplayer, this would handle player-specific event processing
-    console.log(`[PlayerActor ${this.id}] received event:`, event.type);
+    console.debug(`[PlayerActor ${this.id}] received event:`, event.type);
   }
 
   getSnapshot(): BaseActorState {

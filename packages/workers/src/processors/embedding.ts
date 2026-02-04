@@ -10,7 +10,7 @@ export const createEmbeddingProcessor = (): Processor<JobData<EmbeddingTask>, Jo
     const { nodeId, text } = payload;
 
     try {
-      console.log(
+      console.info(
         `[EmbeddingProcessor] Generating embedding for node ${nodeId} (chars=${text.length})`
       );
       // In a real implementation, this would call an embedding service (e.g. OpenAI)

@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { getEnvValue } from '../utils/env.js';
 
 export interface SupabaseJwtClaims {
   sub: string;
@@ -55,16 +56,7 @@ type SupabaseEnvVar =
  * Reads a supported Supabase environment variable, trimmed.
  */
 function readStringEnv(name: SupabaseEnvVar): string | null {
-  const v =
-    name === 'SUPABASE_JWT_ISSUER'
-      ? process.env['SUPABASE_JWT_ISSUER']
-      : name === 'SUPABASE_JWKS_URL'
-        ? process.env['SUPABASE_JWKS_URL']
-        : name === 'SUPABASE_PROJECT_URL'
-          ? process.env['SUPABASE_PROJECT_URL']
-          : name === 'SUPABASE_JWT_AUDIENCE'
-            ? process.env['SUPABASE_JWT_AUDIENCE']
-            : process.env['SUPABASE_JWT_ALGS'];
+  const v = getEnvValue(name);
 
   if (!v) return null;
   const t = v.trim();

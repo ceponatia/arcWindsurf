@@ -18,37 +18,42 @@ import {
 } from '@minimal-rpg/schemas';
 import type { SimulationNpcInfo } from './simulation-service.js';
 import { runSimulationTick, runTimeSkipSimulation } from './simulation-service.js';
-import type { NpcScheduleData } from './schedule-service.js';
 import { listActorStatesForSession, bulkUpsertActorStates } from '@minimal-rpg/db/node';
 import type {
-  NpcTier,
-  GameTime,
-  DayPeriod,
-  TieredSimulationConfig,
   NpcLocationState,
   LocationOccupancy,
   PresentNpc,
   CrowdLevel,
   TimeSkipSimulation,
+  HookNpcInfo,
+  TurnHookInput,
+  TurnHookResult,
+  PeriodChangeHookInput,
+  PeriodChangeHookResult,
+  LocationChangeHookInput,
+  LocationChangeHookResult,
+  TimeSkipHookInput,
+  TimeSkipHookResult,
 } from '@minimal-rpg/schemas';
 import { toSessionId } from '../utils/uuid.js';
 import type { NpcActorState } from '../types/actor-state.js';
 import { asNpcState } from '../types/actor-state.js';
 
+export type {
+  HookNpcInfo,
+  TurnHookInput,
+  TurnHookResult,
+  PeriodChangeHookInput,
+  PeriodChangeHookResult,
+  LocationChangeHookInput,
+  LocationChangeHookResult,
+  TimeSkipHookInput,
+  TimeSkipHookResult,
+};
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-/**
- * NPC info for hooks (combines schedule and tier info).
- */
-export interface HookNpcInfo {
-  npcId: string;
-  tier: NpcTier.NpcTier;
-  scheduleData: NpcScheduleData;
-  lastInteractionTurn?: number | undefined;
-  distanceFromPlayer?: number | undefined;
-}
 
 function toSimulationNpcInfo({
   npcId,
@@ -75,117 +80,6 @@ function toSimulationNpcInfo({
     lastInteractionTurn,
     distanceFromPlayer,
   };
-}
-
-/**
- * Turn hook input.
- */
-export interface TurnHookInput {
-  /** Owner key for tenancy scoping */
-  ownerEmail: string;
-  sessionId: string;
-  currentTime: GameTime;
-  playerLocationId: string;
-  currentTurn: number;
-  npcs: HookNpcInfo[];
-  config?: TieredSimulationConfig;
-}
-
-/**
- * Turn hook result.
- */
-export interface TurnHookResult {
-  /** NPCs that were simulated */
-  simulatedNpcs: string[];
-  /** Updated location states */
-  locationStates: Map<string, NpcLocationState>;
-  /** NPCs now at player's location */
-  npcsAtPlayerLocation: string[];
-  /** Whether any NPC entered player's location */
-  npcEnteredLocation: boolean;
-  /** Whether any NPC left player's location */
-  npcLeftLocation: boolean;
-}
-
-/**
- * Period change hook input.
- */
-export interface PeriodChangeHookInput {
-  /** Owner key for tenancy scoping */
-  ownerEmail: string;
-  sessionId: string;
-  currentTime: GameTime;
-  previousPeriod: DayPeriod;
-  newPeriod: DayPeriod;
-  playerLocationId: string;
-  npcs: HookNpcInfo[];
-  config?: TieredSimulationConfig;
-}
-
-/**
- * Period change hook result.
- */
-export interface PeriodChangeHookResult {
-  /** NPCs that were simulated */
-  simulatedNpcs: string[];
-  /** Updated location states */
-  locationStates: Map<string, NpcLocationState>;
-  /** Occupancy changes at player's location */
-  locationOccupancyChanged: boolean;
-}
-
-/**
- * Location change hook input.
- */
-export interface LocationChangeHookInput {
-  /** Owner key for tenancy scoping */
-  ownerEmail: string;
-  sessionId: string;
-  currentTime: GameTime;
-  previousLocationId: string;
-  newLocationId: string;
-  npcs: HookNpcInfo[];
-  config?: TieredSimulationConfig;
-}
-
-/**
- * Location change hook result.
- */
-export interface LocationChangeHookResult {
-  /** Occupancy at new location */
-  occupancy: LocationOccupancy;
-  /** NPCs present at new location */
-  npcsPresent: string[];
-  /** Narrative-ready description of location population */
-  occupancyDescription: string;
-}
-
-/**
- * Time skip hook input.
- */
-export interface TimeSkipHookInput {
-  /** Owner key for tenancy scoping */
-  ownerEmail: string;
-  sessionId: string;
-  fromTime: GameTime;
-  toTime: GameTime;
-  playerLocationId: string;
-  npcs: HookNpcInfo[];
-  config?: TieredSimulationConfig;
-}
-
-/**
- * Time skip hook result.
- */
-export interface TimeSkipHookResult {
-  /** Time skip simulation results */
-  simulation: TimeSkipSimulation;
-  /** Final location states after skip */
-  finalLocationStates: Map<string, NpcLocationState>;
-  /** Occupancy at player's location after skip */
-  occupancy: LocationOccupancy;
-  /** Summary of changes during skip */
-  summary: string;
 }
 
 // =============================================================================

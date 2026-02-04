@@ -19,8 +19,8 @@
     "refs:sync": "node scripts/sync-ts-references.mjs",
     "test": "node scripts/turbo.mjs run test",
     "typecheck": "node scripts/turbo.mjs run typecheck",
-    "deps:check": "dependency-cruiser packages --config .dependency-cruiser.cjs",
-    "deps:graph": "dependency-cruiser packages --config .dependency-cruiser.cjs --output-type dot | dot -T svg > dependency-graph.svg"
+    "deps:check": "dependency-cruiser packages --config scripts/lint/dependency-cruiser.cjs",
+    "deps:graph": "dependency-cruiser packages --config scripts/lint/dependency-cruiser.cjs --output-type dot | dot -T svg > dependency-graph.svg"
   },
   "lint-staged": {
     "*.{js,cjs,mjs,jsx,ts,tsx}": [
@@ -44,7 +44,7 @@
     "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
     "@types/node": "^24.10.1",
     "@types/pg": "^8.16.0",
-    "@vitest/coverage-v8": "4.0.16",
+    "@vitest/coverage-v8": "4.0.18",
     "add": "^2.0.6",
     "dependency-cruiser": "^17.3.7",
     "dotenv": "^17.2.3",
@@ -56,7 +56,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "markdownlint-cli": "^0.47.0",
-    "pnpm": "^10.27.0",
+    "pnpm": "^10.28.2",
     "prettier": "^3.6.2",
     "prettier-plugin-packagejson": "^2.5.19",
     "rimraf": "^6.1.2",
@@ -64,16 +64,17 @@
     "sucrase": "^3.35.1",
     "tsup": "^8.5.1",
     "tsx": "^4.20.6",
-    "turbo": "^2.7.4",
+    "turbo": "^2.8.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.18"
   },
   "pnpm": {
     "overrides": {
+      "@isaacs/brace-expansion": "5.0.1",
       "glob": "13.0.0",
       "@esbuild-kit/core-utils>esbuild": "0.25.12"
     }
   },
-  "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a"
+  "packageManager": "pnpm@10.28.2+sha512.41872f037ad22f7348e3b1debbaf7e867cfd448f2726d9cf74c08f19507c31d2c8e7a11525b983febc2df640b5438dee6023ebb1f84ed43cc2d654d2bc326264"
 }

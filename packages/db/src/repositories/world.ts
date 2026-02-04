@@ -20,7 +20,7 @@ export type LocationDataEntity = 'map' | 'prefab';
 export interface LocationDataValidationDetails {
   entity: LocationDataEntity;
   recordId?: string;
-  fields: Array<'nodesJson' | 'connectionsJson'>;
+  fields: ('nodesJson' | 'connectionsJson')[];
   issues: ZodIssue[];
 }
 
@@ -55,7 +55,7 @@ function parseLocationJson(
     };
   }
 
-  const fields: Array<'nodesJson' | 'connectionsJson'> = [];
+  const fields: ('nodesJson' | 'connectionsJson')[] = [];
   const issues: ZodIssue[] = [];
 
   if (!nodesResult.success) {
@@ -87,7 +87,7 @@ function validateLocationJsonUpdate(
   recordId: string | undefined,
   updates: Partial<Pick<CreateLocationMapInput, 'nodesJson' | 'connectionsJson'>>
 ): void {
-  const fields: Array<'nodesJson' | 'connectionsJson'> = [];
+  const fields: ('nodesJson' | 'connectionsJson')[] = [];
   const issues: ZodIssue[] = [];
 
   if (updates.nodesJson !== undefined) {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { SensoryModifiersDataSchema } from '@minimal-rpg/schemas';
 import { parseJsonWithSchema } from '@minimal-rpg/utils';
 import type { z } from 'zod';
-import type { HygieneModifiersProvider, HygieneSensoryModifiers } from './types.js';
+import type { HygieneModifiersProvider, HygieneModifiersData } from './types.js';
 import { resolveDataDir } from '../utils/dataDir.js';
 
 const SENSORY_MODIFIERS_FILE = 'sensory-modifiers.json';
@@ -14,8 +14,8 @@ export interface FileHygieneModifiersOptions {
 
 export class FileHygieneModifiersProvider implements HygieneModifiersProvider {
   private readonly dataDir: string | undefined;
-  private cache: HygieneSensoryModifiers | null = null;
-  private loadPromise: Promise<HygieneSensoryModifiers> | null = null;
+  private cache: HygieneModifiersData | null = null;
+  private loadPromise: Promise<HygieneModifiersData> | null = null;
 
   constructor(options?: FileHygieneModifiersOptions) {
     // Treat "" as "not provided"
@@ -23,7 +23,7 @@ export class FileHygieneModifiersProvider implements HygieneModifiersProvider {
     this.dataDir = dir ?? undefined;
   }
 
-  async load(): Promise<HygieneSensoryModifiers> {
+  async load(): Promise<HygieneModifiersData> {
     if (this.cache) return this.cache;
 
     // Prevent duplicate reads if load() is called concurrently
@@ -52,7 +52,7 @@ export class FileHygieneModifiersProvider implements HygieneModifiersProvider {
         throw new Error(`Invalid sensory modifiers data at ${filePath}: ${message}`);
       }
 
-      const loaded: HygieneSensoryModifiers = {
+      const loaded: HygieneModifiersData = {
         decayRates: parsed.decayRates,
         bodyParts: parsed.bodyParts,
       };

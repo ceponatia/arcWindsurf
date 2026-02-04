@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { AuthTokenPayload } from './types.js';
+import { getEnvValue } from '../utils/env.js';
 
 function base64UrlEncode(input: Uint8Array): string {
   return Buffer.from(input)
@@ -28,12 +29,12 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 }
 
 export function getAuthSecret(): string {
-  const secret = process.env['AUTH_SECRET'];
+  const secret = getEnvValue('AUTH_SECRET');
   if (secret && secret.trim().length > 0) return secret.trim();
 
   // Dev fallback: tokens are only as strong as this secret.
   // If you want stable tokens across restarts, set AUTH_SECRET in your environment.
-  return process.env['NODE_ENV'] === 'production' ? '' : 'dev-secret-change-me';
+  return getEnvValue('NODE_ENV') === 'production' ? '' : 'dev-secret-change-me';
 }
 
 export function signAuthToken(payload: AuthTokenPayload, secret: string): string {

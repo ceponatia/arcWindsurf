@@ -5,7 +5,7 @@ import type {
   SensoryModifiersData,
 } from '../state/hygiene.js';
 
-export type LoadedSensoryModifiers = {
+export interface LoadedSensoryModifiers {
   data: SensoryModifiersData;
   bodyParts: Record<string, BodyPartSensoryModifiers>;
   decayRates: Record<string, BodyPartHygieneConfig>;
@@ -14,4 +14,4 @@ export type LoadedSensoryModifiers = {
     senseType: 'smell' | 'touch' | 'taste',
     level: HygieneLevel
   ) => string;
-};
+}

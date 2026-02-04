@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { WorldEvent } from '@minimal-rpg/schemas';
 import { PerceptionLayer } from '../src/npc/perception.js';
-import type { NpcActorState } from '../src/npc/types.js';
+import type { NpcRuntimeState } from '../src/npc/types.js';
 
-function buildState(): NpcActorState {
+function buildState(): NpcRuntimeState {
   return {
     id: 'npc-1',
     type: 'npc',

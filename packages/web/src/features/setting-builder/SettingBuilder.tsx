@@ -46,9 +46,7 @@ export const SettingBuilder: React.FC<{
 
     const profile = buildProfile(form);
 
-    // Use any cast for validation until schema types propagate
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const validation = SettingBackgroundSchema.safeParse(profile as any);
+    const validation = SettingBackgroundSchema.safeParse(profile);
 
     if (!validation.success) {
       const fieldMap = mapZodErrorsToFields<SettingFormKey>(validation.error, {

@@ -5,18 +5,6 @@ import security from 'eslint-plugin-security';
 import minimalRpg from './config/eslint/minimal-rpg-eslint-plugin.mjs';
 
 export default tseslint.config(
-  // Global ignores (flat config replaces .eslintignore)
-  {
-    ignores: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/coverage/**',
-      '**/package.json',
-      'packages/*/test/**',
-      'packages/web/src/shared/hooks/useFetchOnce.test.ts',
-      'packages/web/src/layouts/__tests__/**',
-    ],
-  },
   // Tooling/config files inside packages (no type-aware linting)
   {
     files: [
@@ -57,13 +45,13 @@ export default tseslint.config(
         },
       ],
       'minimal-rpg/package-layer-boundaries': [
-        'warn',
+        'error',
         {
-          allowSameLevel: true,
+          allowSameLevel: false,
         },
       ],
       'minimal-rpg/schemas-only-in-schemas-package': [
-        'warn',
+        'error',
         {
           repoRoot: import.meta.dirname,
         },
@@ -121,6 +109,106 @@ export default tseslint.config(
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  // TypeScript + JS rules for test files across packages
+  {
+    files: [
+      'packages/*/test/**/*.{ts,tsx,js}',
+      'packages/*/src/**/*.{test,spec}.{ts,tsx,js}',
+      'packages/*/src/**/__tests__/**/*.{ts,tsx,js}',
+    ],
+    plugins: {
+      'minimal-rpg': minimalRpg,
+      security,
+    },
+    extends: [
+      js.configs.recommended,
+      ...tseslint.configs.recommendedTypeChecked,
+      ...tseslint.configs.stylisticTypeChecked,
+    ],
+    rules: {
+      'security/detect-object-injection': 'warn',
+      'minimal-rpg/no-duplicate-exported-types': [
+        'error',
+        {
+          repoRoot: import.meta.dirname,
+          ignoreTypeNames: [],
+        },
+      ],
+      'minimal-rpg/package-layer-boundaries': [
+        'error',
+        {
+          allowSameLevel: false,
+        },
+      ],
+      'minimal-rpg/schemas-only-in-schemas-package': [
+        'error',
+        {
+          repoRoot: import.meta.dirname,
+        },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@minimal-rpg/*/src/*', '@minimal-rpg/*/src/**'],
+              message:
+                'Import from package root (@minimal-rpg/pkg) or explicit subpath exports, not /src/ internals.',
+            },
+            {
+              group: ['@minimal-rpg/*/dist/*', '@minimal-rpg/*/dist/**'],
+              message:
+                'Import from package root (@minimal-rpg/pkg) or explicit subpath exports, not /dist/ internals.',
+            },
+            {
+              group: ['../../packages/*', '../../packages/**'],
+              message: 'Use @minimal-rpg/* imports for cross-package dependencies.',
+            },
+            {
+              group: ['../../../packages/*', '../../../packages/**'],
+              message: 'Use @minimal-rpg/* imports for cross-package dependencies.',
+            },
+            {
+              group: ['../../../../packages/*', '../../../../packages/**'],
+              message: 'Use @minimal-rpg/* imports for cross-package dependencies.',
+            },
+          ],
+        },
+      ],
+      'no-console': [
+        'warn',
+        {
+          allow: ['warn', 'error', 'info', 'debug'],
+        },
+      ],
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector:
+            'MemberExpression[object.object.name="process"][object.property.name="env"]',
+          message:
+            'Access process.env only in config modules (config.ts, env.ts, settings.ts). Import config values instead.',
+        },
+      ],
+    },
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: {
+        beforeAll: 'readonly',
+        beforeEach: 'readonly',
+        afterAll: 'readonly',
+        afterEach: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
       },
     },
   },

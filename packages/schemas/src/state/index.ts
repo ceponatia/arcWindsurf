@@ -8,6 +8,9 @@
 // Proximity state for tracking player-NPC physical/sensory relationships
 export * from './proximity.js';
 
+// Actor state shapes stored in persistence
+export * from './actor-state.js';
+
 // NPC location state for tracking where NPCs are and what they're doing
 export * from './npc-location.js';
 

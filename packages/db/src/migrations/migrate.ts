@@ -58,7 +58,7 @@ export async function runMigrations(): Promise<void> {
     // Directory may already exist; ignore
   }
 
-  console.log(`[db] Using SQL directory: ${sqlDirName}`);
+  console.info(`[db] Using SQL directory: ${sqlDirName}`);
 
   // Only apply real, ordered migrations (e.g. 001_init.sql).
   // Ignore generated helpers like supabase_bootstrap.sql.
@@ -87,7 +87,7 @@ export async function runMigrations(): Promise<void> {
       return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
     });
 
-  console.log(
+  console.info(
     `[db] Running migrations against ${redactDbUrl(resolvedDbUrl)} (source=${resolvedDb.source})`
   );
 
@@ -152,19 +152,19 @@ export async function runMigrations(): Promise<void> {
   for (const f of files) {
     const relativeName = Path.relative(sqlDir, f);
     if (appliedSet.has(relativeName)) {
-      console.log(`[db] Skipping ${relativeName} (already applied)`);
+      console.info(`[db] Skipping ${relativeName} (already applied)`);
       continue;
     }
 
     const sql: SqlText = await FS.readFile(f, 'utf8');
-    console.log(`[db] Applying ${relativeName}...`);
+    console.info(`[db] Applying ${relativeName}...`);
     await pool.query(sql);
 
     // Record this migration as applied
     await pool.query('INSERT INTO _migrations (name) VALUES ($1)', [relativeName]);
   }
 
-  console.log('[db] Migrations complete.');
+  console.info('[db] Migrations complete.');
   await pool.end();
 }
 

@@ -22,10 +22,10 @@ const pool = new Pool({
 });
 
 async function clearDb() {
-  console.log('[db] Clearing database...');
+  console.info('[db] Clearing database...');
   try {
     await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
-    console.log('[db] Database cleared.');
+    console.info('[db] Database cleared.');
   } catch (err) {
     console.error('[db] Failed to clear database:', err);
     throw err;

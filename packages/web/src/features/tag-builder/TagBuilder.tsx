@@ -14,9 +14,6 @@ import {
 } from './hooks/useTagBuilderForm.js';
 import type { TriggerFormEntry } from './types.js';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const noop = () => {};
-
 interface TagBuilderProps {
   id?: string | null;
   onCancel?: () => void;
@@ -89,6 +86,10 @@ export const TagBuilder: React.FC<TagBuilderProps> = ({ id, onCancel, onSaved })
     [updateTriggerEntry]
   );
 
+  const handleCancel = useCallback(() => {
+    onCancel?.();
+  }, [onCancel]);
+
   const isEditing = Boolean(id);
   const disabled = saving || loading;
 
@@ -150,7 +151,7 @@ export const TagBuilder: React.FC<TagBuilderProps> = ({ id, onCancel, onSaved })
           isEditing={isEditing}
           isSaving={saving}
           onSave={() => void handleSave()}
-          onCancel={onCancel ?? noop}
+          onCancel={handleCancel}
           onDelete={isEditing ? () => void handleDelete() : undefined}
           error={error}
           success={success}

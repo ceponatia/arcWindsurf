@@ -12,10 +12,10 @@ export type HygieneDecayConfig = BodyPartHygieneConfig;
 
 export type HygieneSenseModifiers = BodyPartSensoryModifiers;
 
-export type HygieneSensoryModifiers = SensoryModifiersData;
+export type HygieneModifiersData = SensoryModifiersData;
 
 export interface HygieneModifiersProvider {
-  load(): Promise<HygieneSensoryModifiers>;
+  load(): Promise<HygieneModifiersData>;
 }
 
 export interface HygieneRepository {

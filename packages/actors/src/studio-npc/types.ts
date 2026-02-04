@@ -1,5 +1,12 @@
-import type { CharacterProfile } from '@minimal-rpg/schemas';
+import type {
+  CharacterProfile,
+  ConversationMessage,
+  InferredTrait,
+  SuggestedPrompt,
+} from '@minimal-rpg/schemas';
 import type { LLMProvider } from '@minimal-rpg/llm';
+
+export type { ConversationMessage, InferredTrait, SuggestedPrompt } from '@minimal-rpg/schemas';
 
 // ============================================================================
 // Core Types
@@ -21,41 +28,6 @@ export interface StudioNpcActorConfig {
   onProfileUpdate?: ((updates: Partial<CharacterProfile>) => void) | undefined;
 }
 
-/**
- * A single message in the studio conversation.
- */
-export interface ConversationMessage {
-  /** Unique message identifier */
-  id: string;
-  /** Role of the message sender */
-  role: 'user' | 'character' | 'system';
-  /** Text content of the message */
-  content: string;
-  /** When the message was sent */
-  timestamp: Date;
-  /** Optional inner monologue or reasoning from the actor */
-  thought?: string | undefined;
-}
-
-/**
- * A trait inferred from the conversation by the NPC.
- */
-export interface InferredTrait {
-  /** Path in the JSON profile where this trait belongs */
-  path: string;
-  /** The value of the trait */
-  value: unknown;
-  /** Confidence score (0.0 to 1.0) */
-  confidence: number;
-  /** Source text or event that led to this inference */
-  evidence: string;
-  /** Detailed reasoning for the inference */
-  reasoning?: string | undefined;
-  /** Reference to an existing trait this inference contradicts */
-  contradicts?: string | undefined;
-  /** Strategy for resolving conflicts with existing data */
-  resolution?: ('newer' | 'stronger' | 'context-dependent' | 'flag-for-review') | undefined;
-}
 
 // ============================================================================
 // Discovery Types
@@ -75,17 +47,6 @@ export type DiscoveryTopic =
   | 'goals-motivations'
   | 'emotional-range';
 
-/**
- * A prompt suggested by the NPC to explore a specific topic.
- */
-export interface SuggestedPrompt {
-  /** The suggested text for the user to send */
-  prompt: string;
-  /** The topic this prompt aims to explore */
-  topic: DiscoveryTopic;
-  /** Why this prompt was suggested */
-  rationale: string;
-}
 
 // ============================================================================
 // Response Types

@@ -18,6 +18,7 @@ import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
 import { OpenAIProvider, createOpenRouterProviderFromEnv } from '@minimal-rpg/llm';
 import { toSessionId } from '../../utils/uuid.js';
 import { validateBody, validateParamId } from '../../utils/request-validation.js';
+import { getEnvValue } from '../../utils/env.js';
 import { z } from 'zod';
 
 interface SessionRecord {
@@ -40,16 +41,18 @@ const TurnRequestSchema = z.object({
   npcId: z.string().trim().min(1).optional(),
 });
 
+const openaiApiKey = getEnvValue('OPENAI_API_KEY') ?? '';
+const openaiModel = getEnvValue('OPENAI_MODEL') ?? 'gpt-4o-mini';
+const openaiBaseUrl = getEnvValue('OPENAI_BASE_URL');
+
 const defaultTurnLlmProvider =
   createOpenRouterProviderFromEnv({ id: 'session-turns' }) ??
-  (process.env['OPENAI_API_KEY']
+  (openaiApiKey
     ? new OpenAIProvider({
       id: 'session-turns-openai',
-      apiKey: process.env['OPENAI_API_KEY'],
-      model: process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini',
-      ...(process.env['OPENAI_BASE_URL']
-        ? { baseURL: process.env['OPENAI_BASE_URL'] }
-        : {}),
+      apiKey: openaiApiKey,
+      model: openaiModel,
+      ...(openaiBaseUrl ? { baseURL: openaiBaseUrl } : {}),
     })
     : null);
 

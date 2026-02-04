@@ -8,6 +8,7 @@
  */
 import { z } from 'zod';
 import { type AffinityScores } from './awareness.js';
+import type { NpcTier } from '../npc-tier/types.js';
 
 // =============================================================================
 // Unavailability Reason
@@ -44,11 +45,6 @@ export type NpcAvailability = z.infer<typeof NpcAvailabilitySchema>;
 // =============================================================================
 // Availability Calculation
 // =============================================================================
-
-/**
- * NPC tier for availability rules.
- */
-export type NpcTier = 'major' | 'minor' | 'background' | 'transient';
 
 /**
  * Input for availability check.

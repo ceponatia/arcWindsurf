@@ -6,28 +6,16 @@ import {
   SettingProfileSchema,
   type CharacterProfile,
   type SettingProfile,
+  CreateNpcInstanceRequestSchema,
+  CreateSessionRequestSchema,
+  MessageRequestSchema,
 } from '@minimal-rpg/schemas';
-import { z } from 'zod';
 import type { LoadedData } from '../../../loaders/types.js';
 import { getEntityProfile } from '@minimal-rpg/db/node';
 import { extractJsonField } from '@minimal-rpg/utils';
 import { isUuid, toId } from '../../../utils/uuid.js';
 
-export const MessageRequestSchema = z.object({
-  content: z.string().min(1).max(4000),
-});
-
-export const CreateSessionRequestSchema = z.object({
-  characterId: z.string().trim().min(1),
-  settingId: z.string().trim().min(1),
-  tagIds: z.array(z.string()).optional(),
-});
-
-export const CreateNpcInstanceRequestSchema = z.object({
-  templateId: z.string().trim().min(1),
-  role: z.string().optional(),
-  label: z.string().optional(),
-});
+export { MessageRequestSchema, CreateSessionRequestSchema, CreateNpcInstanceRequestSchema };
 
 /**
  * Extract name field from profile JSON string.

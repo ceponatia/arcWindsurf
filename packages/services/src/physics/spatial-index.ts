@@ -9,8 +9,7 @@ import {
   type SensoryEngagement,
   type EngagementIntensity,
   type ProximityLevel,
-  type SenseType,
-  type ProximityAction,
+  type UpdateProximityParams as UpdateProximityParamsBase,
   makeEngagementKey,
   createDefaultProximityState,
   getRecordOptional,
@@ -24,14 +23,9 @@ import {
 /**
  * Parameters for updating proximity.
  */
-export interface UpdateProximityParams {
-  npcId: string;
-  bodyPart: string;
-  senseType: SenseType;
-  action: ProximityAction;
-  newIntensity?: EngagementIntensity;
+export type SpatialUpdateProximityParams = UpdateProximityParamsBase & {
   currentTick: number;
-}
+};
 
 /**
  * Result of a proximity update operation.
@@ -113,7 +107,7 @@ export class SpatialIndex {
    */
   static updateEngagement(
     state: ProximityState,
-    params: UpdateProximityParams
+    params: SpatialUpdateProximityParams
   ): SpatialUpdateResult {
     const { npcId, bodyPart, senseType, action, newIntensity, currentTick } = params;
     const key = makeEngagementKey(npcId, bodyPart, senseType);
@@ -143,7 +137,7 @@ export class SpatialIndex {
     state: ProximityState,
     key: string,
     existing: SensoryEngagement | undefined,
-    params: UpdateProximityParams
+    params: SpatialUpdateProximityParams
   ): SpatialUpdateResult {
     if (existing) {
       return {
@@ -185,7 +179,7 @@ export class SpatialIndex {
     existing: SensoryEngagement | undefined,
     newIntensity: EngagementIntensity | undefined,
     currentTick: number,
-    params: UpdateProximityParams
+    params: SpatialUpdateProximityParams
   ): SpatialUpdateResult {
     if (!newIntensity) {
       return {

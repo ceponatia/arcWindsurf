@@ -3,13 +3,7 @@ import path from 'node:path';
 import { CharacterProfileSchema, SettingProfileSchema } from '@minimal-rpg/schemas';
 import type { CharacterProfile, SettingProfile } from '@minimal-rpg/schemas';
 import type { LoadedData } from './types.js';
-
-// Narrowed view of process.env for this loader
-interface LoaderEnv extends NodeJS.ProcessEnv {
-  DATA_DIR?: string;
-}
-
-const env = process.env as LoaderEnv;
+import { getEnvValue } from '../utils/env.js';
 
 // Returns the closest ancestor folder that contains a `data` directory
 function findNearestDataDir(startDir: string): string | null {
@@ -36,10 +30,11 @@ const DEFAULT_DATA_DIR = (() => {
 })();
 
 export function resolveDataDir(dataDir?: string): string {
+  const envDataDir = getEnvValue('DATA_DIR');
   return dataDir
     ? path.resolve(dataDir)
-    : env.DATA_DIR
-      ? path.resolve(env.DATA_DIR)
+    : envDataDir
+      ? path.resolve(envDataDir)
       : DEFAULT_DATA_DIR;
 }
 

@@ -4,54 +4,17 @@
  * Generates narrative descriptions for NPC encounters.
  * Migrated from packages/api/src/services/encounter-service.ts
  */
-import { getRecord, getRecordOptional, type CrowdLevel, type NpcActivity } from '@minimal-rpg/schemas';
+import {
+  getRecord,
+  getRecordOptional,
+  type CrowdLevel,
+  type EncounterNarration,
+  type EncounterNarrationOptions,
+  type EncounterNpcInfo,
+  type NpcActivity,
+} from '@minimal-rpg/schemas';
 
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * NPC info for encounter narration.
- */
-export interface EncounterNpcInfo {
-  npcId: string;
-  name: string;
-  appearance?: string;
-  activity: NpcActivity;
-  tier: 'major' | 'minor' | 'background' | 'transient';
-}
-
-/**
- * Encounter narration result.
- */
-export interface EncounterNarration {
-  /** Main scene description */
-  sceneDescription: string;
-  /** Individual NPC introductions (for major/minor NPCs) */
-  npcIntroductions: { npcId: string; introduction: string }[];
-  /** Crowd description (for background NPCs) */
-  crowdDescription: string | null;
-  /** Full combined narration */
-  fullNarration: string;
-}
-
-/**
- * Options for generating encounter narration.
- */
-export interface EncounterNarrationOptions {
-  /** Location name */
-  locationName: string;
-  /** Location description */
-  locationDescription?: string;
-  /** NPCs present at the location */
-  npcsPresent: EncounterNpcInfo[];
-  /** Crowd level */
-  crowdLevel: CrowdLevel;
-  /** Time of day for atmosphere */
-  timeOfDay?: 'dawn' | 'morning' | 'midday' | 'afternoon' | 'evening' | 'night';
-  /** Whether this is the player entering (vs NPCs entering) */
-  playerEntering: boolean;
-}
+export type { EncounterNarration, EncounterNarrationOptions, EncounterNpcInfo };
 
 // =============================================================================
 // Narration Generation

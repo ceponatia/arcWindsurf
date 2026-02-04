@@ -28,11 +28,6 @@ export interface MessageResponse {
 }
 
 // Session creation
-export interface CreateSessionRequest {
-  characterId: string;
-  settingId: string;
-  tagIds?: string[];
-}
 export interface CreateSessionResponse {
   id: string;
   characterTemplateId: string;
@@ -43,9 +38,6 @@ export interface CreateSessionResponse {
 }
 
 // Message append
-export interface MessageRequest {
-  content: string;
-}
 export interface MessageResponseBody {
   message: MessageResponse;
 }
