@@ -1,7 +1,7 @@
 # TASK-009: Add Database Access Boundary Rule
 
 **Priority**: P2
-**Status**: ✅ Ready for Review
+**Status**: Completed
 **Estimate**: 1 hour
 **Depends On**: TASK-004 (layer boundaries rule provides foundation)
 **Category**: Custom ESLint Rule
@@ -132,11 +132,22 @@ pnpm lint
 
 ## Acceptance Criteria
 
-- [ ] Rule configured (via no-restricted-imports or custom rule)
-- [ ] Allowed packages can still import `@minimal-rpg/db`
-- [ ] Forbidden packages receive error when importing `@minimal-rpg/db`
-- [ ] `pnpm lint` runs without config errors
-- [ ] Existing violations documented (if any)
+- [x] Rule configured (via no-restricted-imports or custom rule)
+- [x] Allowed packages can still import `@minimal-rpg/db`
+- [x] Forbidden packages receive error when importing `@minimal-rpg/db`
+- [x] `pnpm lint` runs without config errors
+- [x] Existing violations documented (if any)
+
+## Existing Violations
+
+No actual `import` statements from `@minimal-rpg/db` exist in any forbidden package. Verified clean for: schemas, utils, bus, llm, generator, characters, actors, ui.
+
+Allowed packages with active db imports (all legitimate): api, projections, services, workers.
+
+## Validation Results
+
+- Tested forbidden import in `packages/characters/src/` - correctly reported `no-restricted-imports` error.
+- Tested allowed import in `packages/api/src/` - no restriction error (only `no-unused-vars` for the test stub).
 
 ## Notes
 

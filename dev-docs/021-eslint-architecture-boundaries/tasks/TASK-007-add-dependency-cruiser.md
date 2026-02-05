@@ -1,7 +1,7 @@
 # TASK-007: Add Dependency Cruiser for Graph Analysis
 
 **Priority**: P2
-**Status**: ✅ Ready for Review
+**Status**: ✅ Completed
 **Estimate**: 1 hour
 **Depends On**: None
 **Category**: Tooling
@@ -133,12 +133,12 @@ ls dependency-graph.svg
 
 ## Acceptance Criteria
 
-- [ ] `dependency-cruiser` installed as devDependency
-- [ ] `.dependency-cruiser.cjs` configuration created
-- [ ] `deps:check` script works
-- [ ] `deps:graph` script works (graphviz optional)
-- [ ] No circular dependencies detected (or documented)
-- [ ] schemas package has no internal deps (verified)
+- [x] `dependency-cruiser` installed as devDependency
+- [x] `.dependency-cruiser.cjs` configuration created
+- [x] `deps:check` script works
+- [x] `deps:graph` script works (graphviz optional)
+- [x] No circular dependencies detected (or documented)
+- [x] schemas package has no internal deps (verified)
 
 ## Deliverables
 
@@ -152,3 +152,4 @@ ls dependency-graph.svg
 - Start with `warn` severity if many violations, upgrade to `error` incrementally
 - Graph visualization helps understand architecture at a glance
 - Added a root `tsconfig.json` that extends `tsconfig.base.json` so dependency-cruiser can resolve TypeScript settings referenced by the new config.
+- Current config lives at `scripts/lint/dependency-cruiser.cjs` and scripts point there.

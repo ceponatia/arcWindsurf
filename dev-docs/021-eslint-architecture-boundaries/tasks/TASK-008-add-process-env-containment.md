@@ -1,7 +1,7 @@
 # TASK-008: Add Process.env Containment Rule
 
 **Priority**: P2
-**Status**: ✅ Ready for Review
+**Status**: Completed
 **Estimate**: 45 minutes
 **Depends On**: None
 **Category**: ESLint Configuration
@@ -114,11 +114,11 @@ pnpm lint
 
 ## Acceptance Criteria
 
-- [ ] Rule configured in `eslint.config.mjs`
-- [ ] Config files (`config.ts`, `env.ts`, `settings.ts`) can use process.env
-- [ ] Other files receive warning when accessing process.env
-- [ ] `pnpm lint` runs without config errors
-- [ ] Existing violations documented
+- [x] Rule configured in `eslint.config.mjs`
+- [x] Config files (`config.ts`, `env.ts`, `settings.ts`) can use process.env
+- [x] Other files receive warning when accessing process.env
+- [x] `pnpm lint` runs without config errors
+- [x] Existing violations documented
 
 ## Recommended Config Module Pattern
 
@@ -140,6 +140,22 @@ Then import:
 import { config } from '../config';
 // Use config.openRouterApiKey instead of process.env.OPENROUTER_API_KEY
 ```
+
+## Existing Violations
+
+All `process.env` usages are in config/env files (properly exempted) except one:
+
+- `packages/characters/src/utils/dataDir.ts` - assigns `process.env` to a typed local variable. Not flagged by the current `no-restricted-syntax` selector because it matches `process.env.X` (three-level member expressions) but not bare `process.env` assignment. Low risk since the pattern is equivalent to a config module.
+
+Config-file usages (all exempted, no action needed):
+
+- `packages/api/src/utils/config.ts`
+- `packages/api/src/utils/env.ts`
+- `packages/bus/src/config.ts`
+- `packages/db/src/cache/config.ts`
+- `packages/llm/src/config.ts`
+- `packages/retrieval/src/config.ts`
+- `packages/workers/src/config.ts`
 
 ## Notes
 

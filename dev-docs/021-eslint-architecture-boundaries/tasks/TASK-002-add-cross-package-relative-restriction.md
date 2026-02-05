@@ -1,7 +1,7 @@
 # TASK-002: Add Cross-Package Relative Import Restriction
 
 **Priority**: P0
-**Status**: ✅ Ready for Review
+**Status**: Completed
 **Estimate**: 15 minutes
 **Depends On**: TASK-001 (can be combined)
 **Category**: ESLint Configuration
@@ -61,9 +61,9 @@ pnpm lint
 
 ## Acceptance Criteria
 
-- [ ] Rule patterns added to `eslint.config.mjs`
-- [ ] `pnpm lint` runs without config errors
-- [ ] No relative cross-package imports exist (or they are documented for fix)
+- [x] Rule patterns added to `eslint.config.mjs`
+- [x] `pnpm lint` runs without config errors
+- [x] No relative cross-package imports exist (or they are documented for fix)
 
 ## Notes
 

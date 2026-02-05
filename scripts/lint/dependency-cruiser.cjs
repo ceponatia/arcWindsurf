@@ -231,6 +231,9 @@ module.exports = {
     doNotFollow: {
       path: 'node_modules|dist',
     },
+    exclude: {
+      path: ['(^|/)test/', '(^|/)dist/', '\\.test\\.ts$', '\\.spec\\.ts$'],
+    },
     tsPreCompilationDeps: true,
     tsConfig: {
       fileName: './tsconfig.json',
@@ -241,7 +244,68 @@ module.exports = {
     },
     reporterOptions: {
       dot: {
-        collapsePattern: 'node_modules/(@[^/]+/[^/]+|[^/]+)',
+        /* Collapse every file under packages/<name> into one node per package */
+        collapsePattern: [
+          'packages/[^/]+',
+          'node_modules/(@[^/]+/[^/]+|[^/]+)',
+        ],
+        theme: {
+          graph: {
+            rankdir: 'TB',
+            splines: 'ortho',
+            fontname: 'Helvetica Neue,Helvetica,Arial,sans-serif',
+            fontsize: 14,
+            ranksep: '1.0',
+            nodesep: '0.8',
+            bgcolor: '#fafafa',
+          },
+          node: {
+            fontname: 'Helvetica Neue,Helvetica,Arial,sans-serif',
+            fontsize: 11,
+            shape: 'box',
+            style: 'rounded,filled,bold',
+            fillcolor: '#ffffcc',
+            height: '0.4',
+            penwidth: '2',
+          },
+          edge: {
+            fontname: 'Helvetica Neue,Helvetica,Arial,sans-serif',
+            fontsize: 9,
+            arrowsize: '0.7',
+            penwidth: '1.5',
+          },
+          modules: [
+            /* Collapsed nodes use paths like 'packages/schemas' (no trailing slash) */
+            {
+              criteria: { source: 'packages/schemas$' },
+              attributes: { fillcolor: '#d4edda', shape: 'octagon', color: '#28a745', fontcolor: '#155724' },
+            },
+            {
+              criteria: { source: 'packages/utils$' },
+              attributes: { fillcolor: '#cce5ff', shape: 'component', color: '#007bff', fontcolor: '#004085' },
+            },
+            {
+              criteria: { source: 'packages/(db|bus|llm)$' },
+              attributes: { fillcolor: '#fff3cd', shape: 'cylinder', color: '#ffc107', fontcolor: '#856404' },
+            },
+            {
+              criteria: { source: 'packages/(generator|retrieval|projections|characters)$' },
+              attributes: { fillcolor: '#f8d7da', shape: 'hexagon', color: '#dc3545', fontcolor: '#721c24' },
+            },
+            {
+              criteria: { source: 'packages/services$' },
+              attributes: { fillcolor: '#e2d5f1', shape: 'parallelogram', color: '#7b1fa2', fontcolor: '#4a148c' },
+            },
+            {
+              criteria: { source: 'packages/(actors|ui)$' },
+              attributes: { fillcolor: '#d1ecf1', shape: 'house', color: '#17a2b8', fontcolor: '#0c5460' },
+            },
+            {
+              criteria: { source: 'packages/(api|web|workers)$' },
+              attributes: { fillcolor: '#d6d8db', shape: 'doubleoctagon', color: '#6c757d', fontcolor: '#1b1e21' },
+            },
+          ],
+        },
       },
     },
   },

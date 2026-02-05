@@ -1,7 +1,7 @@
 # TASK-003: Add No Console Rule
 
 **Priority**: P1
-**Status**: ✅ Ready for Review
+**Status**: Completed
 **Estimate**: 30 minutes
 **Depends On**: None
 **Category**: ESLint Configuration
@@ -46,11 +46,13 @@ grep -r "console\.log" packages/*/src --include="*.ts" --include="*.tsx" | wc -l
 pnpm lint
 ```
 
+Current count: 0 executable console.log usages in src (2 textual matches: one string literal, one comment).
+
 ## Acceptance Criteria
 
-- [ ] Rule added to `eslint.config.mjs`
-- [ ] `pnpm lint` runs and reports console.log as warnings
-- [ ] Document count of existing violations in PR
+- [x] Rule added to `eslint.config.mjs`
+- [x] `pnpm lint` runs and reports console.log as warnings
+- [x] Document count of existing violations in PR
 
 ## Follow-Up Tasks
 

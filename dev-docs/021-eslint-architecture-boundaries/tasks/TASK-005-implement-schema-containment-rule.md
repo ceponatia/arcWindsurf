@@ -1,7 +1,7 @@
 # TASK-005: Implement Schema Containment Rule
 
 **Priority**: P1
-**Status**: ✅ Ready for Review
+**Status**: ✅ Completed
 **Estimate**: 2-3 hours
 **Depends On**: None
 **Category**: Custom ESLint Rule
@@ -153,15 +153,19 @@ pnpm lint
 # Should report warning
 ```
 
+Validation notes:
+- Existing violations: none found by rg.
+- Intentional violation in api triggered `minimal-rpg/schemas-only-in-schemas-package` as expected.
+
 ## Acceptance Criteria
 
-- [ ] Rule file created at `config/eslint/rules/schemas-only-in-schemas-package.mjs`
-- [ ] Rule integrated into `minimal-rpg-eslint-plugin.mjs`
-- [ ] Rule enabled in `eslint.config.mjs` (warn mode)
-- [ ] `pnpm lint` runs without config errors
-- [ ] Rule correctly identifies exported schemas outside schemas package
-- [ ] Rule ignores non-exported (local) schemas
-- [ ] Any existing violations documented
+- [x] Rule file created at `config/eslint/rules/schemas-only-in-schemas-package.mjs`
+- [x] Rule integrated into `minimal-rpg-eslint-plugin.mjs`
+- [x] Rule enabled in `eslint.config.mjs` (error mode)
+- [x] `pnpm lint` runs without config errors
+- [x] Rule correctly identifies exported schemas outside schemas package
+- [x] Rule ignores non-exported (local) schemas
+- [x] Any existing violations documented
 
 ## Notes
 
@@ -169,3 +173,4 @@ pnpm lint
 - Start with `'warn'` severity to identify scope
 - Non-exported schemas for local validation (e.g., request body parsing) are allowed
 - Some packages may have legitimate local schemas - document exceptions if needed
+- Current config uses `error` severity.

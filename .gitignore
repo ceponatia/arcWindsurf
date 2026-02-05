@@ -21,6 +21,9 @@ coverage
 **/.vite
 .pnpm-store
 
+## Generated dependency graphs
+dependency-graph.*
+
 ## Env files (keep examples tracked)
 **/.env*
 !**/.env.example

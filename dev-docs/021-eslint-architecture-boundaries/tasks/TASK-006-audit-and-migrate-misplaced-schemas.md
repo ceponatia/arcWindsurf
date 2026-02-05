@@ -1,7 +1,7 @@
 # TASK-006: Audit and Migrate Misplaced Schemas
 
 **Priority**: P2
-**Status**: ✅ Ready for Review
+**Status**: ✅ Completed
 **Estimate**: 1-2 hours
 **Depends On**: TASK-005
 **Category**: Code Migration
@@ -102,13 +102,13 @@ pnpm test  # Should pass
 
 ## Acceptance Criteria
 
-- [ ] All exported schemas outside schemas package identified
-- [ ] Each schema categorized (move / localize / delete)
-- [ ] Schemas migrated to `@minimal-rpg/schemas` as appropriate
-- [ ] All imports updated across packages
-- [ ] `pnpm lint` passes with no schema-containment warnings
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm test` passes
+- [x] All exported schemas outside schemas package identified
+- [x] Each schema categorized (move / localize / delete)
+- [x] Schemas migrated to `@minimal-rpg/schemas` as appropriate
+- [x] All imports updated across packages
+- [x] `pnpm lint` passes with no schema-containment warnings
+- [x] `pnpm typecheck` passes
+- [x] `pnpm test` passes
 
 ## Deliverables
 

@@ -44,6 +44,7 @@ describe('OpenAIProvider', () => {
             tool_calls: [
               {
                 id: 'tool-1',
+                type: 'function',
                 function: { name: 'doThing', arguments: '{"a":1}' },
               },
             ],

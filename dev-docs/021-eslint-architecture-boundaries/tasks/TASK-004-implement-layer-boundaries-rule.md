@@ -1,7 +1,7 @@
 # TASK-004: Implement Package Layer Boundaries Rule
 
 **Priority**: P1
-**Status**: ✅ Ready for Review
+**Status**: Completed
 **Estimate**: 2-3 hours
 **Depends On**: None
 **Category**: Custom ESLint Rule
@@ -170,17 +170,22 @@ pnpm lint
 # Should report error
 ```
 
+Validation notes:
+- Intentional violation reported: "Package 'schemas' (layer 0) cannot import from 'api' (layer 6)".
+- Existing violations in normal lint run: none observed.
+
 ## Acceptance Criteria
 
-- [ ] Rule file created at `config/eslint/rules/package-layer-boundaries.mjs`
-- [ ] Rule integrated into `minimal-rpg-eslint-plugin.mjs`
-- [ ] Rule enabled in `eslint.config.mjs` (warn mode)
-- [ ] `pnpm lint` runs without config errors
-- [ ] Rule correctly reports violations (test with intentional violation)
-- [ ] Any existing violations documented for follow-up
+- [x] Rule file created at `config/eslint/rules/package-layer-boundaries.mjs`
+- [x] Rule integrated into `minimal-rpg-eslint-plugin.mjs`
+- [x] Rule enabled in `eslint.config.mjs` (error mode, `allowSameLevel: false`)
+- [x] `pnpm lint` runs without config errors
+- [x] Rule correctly reports violations (test with intentional violation)
+- [x] Any existing violations documented for follow-up
 
 ## Notes
 
 - Start with `'warn'` severity to identify scope of violations
 - Upgrade to `'error'` once all violations are resolved
 - `allowSameLevel: true` permits same-layer imports (e.g., db <-> bus)
+- Current config enforces `allowSameLevel: false` and uses `error` severity.

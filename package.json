@@ -19,10 +19,10 @@
     "refs:sync": "node scripts/sync-ts-references.mjs",
     "test": "node scripts/turbo.mjs run test",
     "typecheck": "node scripts/turbo.mjs run typecheck",
-    "cruise": "dependency-cruiser packages --config scripts/lint/dependency-cruiser.cjs",
-    "deps:check": "pnpm cruise",
-    "deps:graph": "dependency-cruiser packages --config scripts/lint/dependency-cruiser.cjs --output-type dot | dot -T svg > dependency-graph.svg",
-    "policy:check": "pnpm lint -- --no-cache && pnpm deps:check"
+    "deps:check": "dependency-cruiser packages --config scripts/lint/dependency-cruiser.cjs",
+    "deps:graph": "node scripts/deps-graph.mjs",
+    "deps:graph:dot": "node scripts/deps-graph.mjs --format dot",
+    "deps:graph:cruiser": "dependency-cruiser packages --config scripts/lint/dependency-cruiser.cjs --output-type dot | dot -T svg > dependency-graph-cruiser.svg"
   },
   "lint-staged": {
     "*.{js,cjs,mjs,jsx,ts,tsx}": [
