@@ -72,6 +72,9 @@
     "vitest": "^4.0.18"
   },
   "pnpm": {
+    "patchedDependencies": {
+      "openai@6.17.0": "patches/openai@6.17.0.patch"
+    },
     "overrides": {
       "@isaacs/brace-expansion": "5.0.1",
       "glob": "13.0.0",

@@ -1,0 +1,11 @@
+diff --git a/src/tsconfig.json b/src/tsconfig.json
+--- a/src/tsconfig.json
++++ b/src/tsconfig.json
+@@ -6,6 +6,6 @@
+   "compilerOptions": {
+     "target": "ES2015",
+     "lib": ["DOM", "DOM.Iterable", "ES2018"],
+-    "moduleResolution": "node"
++    "moduleResolution": "node16"
+   }
+ }

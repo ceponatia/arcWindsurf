@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Effect } from 'effect';
 import type { LLMProvider, LLMResponse } from '@minimal-rpg/llm';
 import type { CharacterProfile, WorldEvent } from '@minimal-rpg/schemas';
@@ -116,5 +116,55 @@ describe('npc/cognition', () => {
     const result = await CognitionLayer.decideLLM(context, profile, provider);
 
     expect(result).toBeNull();
+  });
+
+  it('decideLLM falls back to rules when LLM errors', async () => {
+    const context = buildContext([
+      { type: 'SPOKE', actorId: 'player-1', sessionId: 'session-1' } as WorldEvent,
+    ]);
+
+    const profile = { name: 'NPC' } as CharacterProfile;
+    const provider: LLMProvider = {
+      id: 'mock',
+      supportsTools: false,
+      supportsFunctions: false,
+      chat: () => Effect.fail(new Error('boom')),
+      stream: () => Effect.succeed((async function* empty() { })()),
+    };
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+    const result = await CognitionLayer.decideLLM(context, profile, provider);
+
+    expect(result?.intent.type).toBe('SPEAK_INTENT');
+    expect(errorSpy).toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+  });
+
+  it('logs a warning when LLM decision exceeds the threshold', async () => {
+    const context = buildContext([
+      { type: 'SPOKE', actorId: 'player-1', sessionId: 'session-1' } as WorldEvent,
+    ]);
+
+    const profile = { name: 'NPC' } as CharacterProfile;
+    const provider: LLMProvider = {
+      id: 'mock',
+      supportsTools: false,
+      supportsFunctions: false,
+      chat: () => Effect.succeed({ id: 'resp', content: 'Hello' } as LLMResponse),
+      stream: () => Effect.succeed((async function* empty() { })()),
+    };
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const perfSpy = vi.spyOn(performance, 'now');
+    perfSpy.mockReturnValueOnce(0).mockReturnValueOnce(2501);
+
+    await CognitionLayer.decideLLM(context, profile, provider);
+
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    perfSpy.mockRestore();
   });
 });
