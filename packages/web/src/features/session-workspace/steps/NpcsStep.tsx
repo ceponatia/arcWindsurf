@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { useWorkspaceStore, useNpcsState } from '../store.js';
+import { useWorkspaceStore } from '../store.js';
 import { SelectableCard } from '../components/SelectableCard.js';
 import type { CharacterSummary } from '../../../types.js';
 import type { NpcSessionConfig, NpcRole, SessionNpcTier } from '../store.js';
@@ -12,11 +12,11 @@ import { Search, Filter, X } from 'lucide-react';
 /**
  * Guard for session NPC tier values from UI inputs.
  */
-function isSessionNpcTier(value: unknown): value is SessionNpcTier {
+function isSessionNpcTier(value: string): value is SessionNpcTier {
   return value === 'major' || value === 'minor' || value === 'transient';
 }
 
-function getSessionNpcTier(value: unknown): SessionNpcTier {
+function getSessionNpcTier(value: string): SessionNpcTier {
   return isSessionNpcTier(value) ? value : 'minor';
 }
 
@@ -45,7 +45,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
   onRefresh,
   onNavigateToBuilder,
 }) => {
-  const npcs = useNpcsState();
+  const npcs = useWorkspaceStore((state) => state.npcs);
   const { addNpc, removeNpc, updateNpc } = useWorkspaceStore();
   const [selectedForConfig, setSelectedForConfig] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,9 +82,9 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
   };
 
   const selectedNpcConfig = selectedForConfig
-    ? npcs.find((n: NpcSessionConfig) => n.characterId === selectedForConfig)
+    ? (npcs.find((n: NpcSessionConfig) => n.characterId === selectedForConfig) ?? null)
     : null;
-  const selectedNpcTier = selectedNpcConfig ? getSessionNpcTier(selectedNpcConfig.tier) : 'minor';
+  const selectedNpcTier = getSessionNpcTier(selectedNpcConfig?.tier ?? 'minor');
 
   // Get character name from characters list
   const getCharacterName = (characterId: string): string => {
@@ -132,7 +132,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                  setSearchQuery(e.currentTarget.value);
                 }}
                 placeholder="Search characters..."
                 className="w-full pl-8 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 placeholder-slate-500 focus:ring-1 focus:ring-violet-500"
@@ -153,7 +153,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                 <select
                   value={filterArchetype ?? ''}
                   onChange={(e) => {
-                    setFilterArchetype(e.target.value || null);
+                    setFilterArchetype(e.currentTarget.value || null);
                   }}
                   className="pl-2 pr-6 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 focus:ring-1 focus:ring-violet-500 appearance-none"
                 >
@@ -330,7 +330,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                 type="text"
                 value={selectedNpcConfig.startLocationId ?? ''}
                 onChange={(e) => {
-                  const value = e.target.value;
+                  const value = e.currentTarget.value;
                   updateNpc(selectedNpcConfig.characterId, value ? { startLocationId: value } : {});
                 }}
                 placeholder="Default location"
@@ -345,7 +345,7 @@ export const NpcsStep: React.FC<NpcsStepProps> = ({
                 type="text"
                 value={selectedNpcConfig.label ?? ''}
                 onChange={(e) => {
-                  const value = e.target.value;
+                  const value = e.currentTarget.value;
                   updateNpc(selectedNpcConfig.characterId, value ? { label: value } : {});
                 }}
                 placeholder="Custom label for this session..."

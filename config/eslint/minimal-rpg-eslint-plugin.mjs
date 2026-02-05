@@ -120,13 +120,6 @@ function scanDuplicateExportedTypes(repoRoot, ignoreTypeNames) {
   const files = globSync('packages/*/src/**/*.{ts,tsx}', {
     cwd: repoRoot,
     absolute: true,
-    ignore: [
-      '**/*.d.ts',
-      '**/*.test.*',
-      '**/*.spec.*',
-      '**/__tests__/**',
-      'packages/*/src/**/test/**',
-    ],
   });
 
   for (const filePath of files) {

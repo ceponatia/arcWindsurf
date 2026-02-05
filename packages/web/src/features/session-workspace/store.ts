@@ -18,7 +18,6 @@ import type {
   SettingProfile,
   PersonaProfile,
   TagTargetType,
-  NpcTier as SchemaNpcTier,
   WorkspaceValidationResult as SharedWorkspaceValidationResult,
 } from '@minimal-rpg/schemas';
 import {
@@ -62,7 +61,7 @@ export interface LocationMapState {
 }
 
 export type NpcRole = 'primary' | 'supporting' | 'background' | 'antagonist';
-export type SessionNpcTier = Exclude<SchemaNpcTier, 'background'>;
+export type SessionNpcTier = 'major' | 'minor' | 'transient';
 
 export interface NpcSessionConfig {
   characterId: string;
