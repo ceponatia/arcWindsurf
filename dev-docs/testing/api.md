@@ -85,19 +85,21 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/sessions.get-session.test.ts
 - api/test/routes/sessions.get-messages.test.ts
 - api/test/routes/sessions.turns-unsubscribe.test.ts
+- api/test/routes/game/turns.test.ts
+- api/test/routes/game/hygiene.test.ts
+- api/test/routes/game/schedules.test.ts
+- api/test/routes/game/sessions.list.test.ts
+- api/test/routes/game/sessions.crud.test.ts
+- api/test/routes/game/sessions.npcs.test.ts
+- api/test/routes/game/sessions.effective-overrides.test.ts
+- api/test/routes/game/sessions.presence.test.ts
+- api/test/routes/game/sessions.messages.test.ts
 - api/test/routes/users/workspace-drafts.test.ts
 - api/test/routes/users/profiles.test.ts
 - api/test/routes/users/preferences.test.ts
 - api/test/routes/users/personas.test.ts
 
 ## Missing or thin coverage by area
-
-### Routes - game
-
-- src/routes/game/turns.ts: happy path, NPC spawn, response selection, timeout behavior.
-- src/routes/game/hygiene.ts: all hygiene endpoints, validation, decay and sensory lookup.
-- src/routes/game/schedules.ts: schedule templates CRUD and npc schedule CRUD paths.
-- src/routes/game/sessions/*: list, create, create-full, delete, patch/delete message, list/create npcs, effective, overrides, heartbeat, disconnect.
 
 ### Routes - stream and sensory
 
