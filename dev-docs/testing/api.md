@@ -98,13 +98,10 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/users/profiles.test.ts
 - api/test/routes/users/preferences.test.ts
 - api/test/routes/users/personas.test.ts
+- api/test/routes/stream.test.ts
+- api/test/routes/sensory.test.ts
 
 ## Missing or thin coverage by area
-
-### Routes - stream and sensory
-
-- src/routes/stream.ts: SSE filtering by session id, disconnect cleanup, safeJsonStringify usage.
-- src/routes/sensory.ts: summary vs full template responses.
 
 ### Services (untested modules)
 
