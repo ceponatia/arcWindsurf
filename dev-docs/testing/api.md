@@ -89,23 +89,26 @@ World bus init, service start, data loading, CORS, route registration, error exi
 
 ## Missing or thin coverage by area
 
-Routes - resources
-Routes - users
+### Routes - users
+
 - src/routes/users/profiles.ts: characters + settings list/get/create/delete, file-vs-db behavior, owner checks.
 - src/routes/users/preferences.ts: get/update preferences and workspace mode endpoints.
 - src/routes/users/personas.ts: persona CRUD, session attachment, actor state wiring.
 
-Routes - game
+### Routes - game
+
 - src/routes/game/turns.ts: happy path, NPC spawn, response selection, timeout behavior.
 - src/routes/game/hygiene.ts: all hygiene endpoints, validation, decay and sensory lookup.
 - src/routes/game/schedules.ts: schedule templates CRUD and npc schedule CRUD paths.
 - src/routes/game/sessions/*: list, create, create-full, delete, patch/delete message, list/create npcs, effective, overrides, heartbeat, disconnect.
 
-Routes - stream and sensory
+### Routes - stream and sensory
+
 - src/routes/stream.ts: SSE filtering by session id, disconnect cleanup, safeJsonStringify usage.
 - src/routes/sensory.ts: summary vs full template responses.
 
-Services (untested modules)
+### Services (untested modules)
+
 - src/services/encounter-service.ts: narration generation, deterministic phrasing.
 - src/services/projection-service.ts: manager lifecycle and replay logic.
 - src/services/simulation-service.ts: prioritization, cache rules, triggers, time skip output.
@@ -114,13 +117,15 @@ Services (untested modules)
 - src/services/instances.ts: override and effective profile flow.
 - src/services/schedule-service.ts: API re-export wiring (smoke test).
 
-Game tools (LLM function calls)
+### Game tools (LLM function calls)
+
 - src/game/tools/definitions.ts: tool schemas and list.
 - src/game/tools/handlers.ts: session tool queries, argument parsing, error paths.
 - src/game/tools/gameplay-handlers.ts: examine/navigate/use item flows, inventory update and projections.
 - src/game/tools/tool-args.ts: schema validation.
 
-Data and type-only modules
+### Data and type-only modules
+
 - src/db/sessionsClient.ts: re-exports only; low risk.
 - src/types/*: type-only or guards, minimal runtime behavior.
 
