@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Hono } from 'hono';
 
 const serverMocks = vi.hoisted(() => ({
   loadDataMock: vi.fn(),
@@ -27,6 +26,41 @@ const serverMocks = vi.hoisted(() => ({
   schedulerStartMock: vi.fn(),
   tickEmitterStartMock: vi.fn(),
 }));
+
+const honoMocks = vi.hoisted(() => ({
+  useMock: vi.fn(),
+  routeMock: vi.fn(),
+  getMock: vi.fn(),
+  onErrorMock: vi.fn(),
+  fetchMock: vi.fn(),
+}));
+
+const HonoMock = vi.hoisted(
+  () =>
+    class HonoMock {
+      public fetch = honoMocks.fetchMock;
+
+      public use(...args: unknown[]): this {
+        honoMocks.useMock(...args);
+        return this;
+      }
+
+      public route(...args: unknown[]): this {
+        honoMocks.routeMock(...args);
+        return this;
+      }
+
+      public get(...args: unknown[]): this {
+        honoMocks.getMock(...args);
+        return this;
+      }
+
+      public onError(...args: unknown[]): this {
+        honoMocks.onErrorMock(...args);
+        return this;
+      }
+    }
+);
 
 const telemetryMiddleware = { name: 'telemetry' };
 const persistenceMiddleware = { name: 'persistence' };
@@ -98,6 +132,10 @@ vi.mock('../src/services/event-persistence.js', () => ({
   persistWorldEvent: serverMocks.persistWorldEventMock,
 }));
 
+vi.mock('hono', () => ({
+  Hono: HonoMock,
+}));
+
 vi.mock('@minimal-rpg/services', () => ({
   rulesEngine: {
     start: serverMocks.rulesEngineStartMock,
@@ -161,9 +199,6 @@ describe('server-impl bootstrap', () => {
   });
 
   it('initializes services, routes, and server on startup', async () => {
-    const useSpy = vi.spyOn(Hono.prototype, 'use');
-    const routeSpy = vi.spyOn(Hono.prototype, 'route');
-
     const { startServer } = await importServerImpl();
 
     await startServer();
@@ -190,20 +225,20 @@ describe('server-impl bootstrap', () => {
     });
 
     const corsHandler = serverMocks.corsMock.mock.results[0]?.value as unknown;
-    expect(useSpy.mock.calls).toEqual(
+    expect(honoMocks.useMock.mock.calls).toEqual(
       expect.arrayContaining([
         ['*', corsHandler],
         ['*', serverMocks.attachAuthUserMock],
         ['*', serverMocks.requireAuthIfEnabledMock],
       ])
     );
-    expect(routeSpy).toHaveBeenCalledWith('/stream', expect.any(Hono));
+    expect(honoMocks.routeMock).toHaveBeenCalledWith('/stream', expect.any(HonoMock));
 
-    expect(serverMocks.registerSystemRoutesMock).toHaveBeenCalledWith(expect.any(Hono));
-    expect(serverMocks.registerAdminRoutesMock).toHaveBeenCalledWith(expect.any(Hono));
-    expect(serverMocks.registerResourceRoutesMock).toHaveBeenCalledWith(expect.any(Hono));
-    expect(serverMocks.registerStudioRoutesMock).toHaveBeenCalledWith(expect.any(Hono));
-    expect(serverMocks.registerSensoryRoutesMock).toHaveBeenCalledWith(expect.any(Hono));
+    expect(serverMocks.registerSystemRoutesMock).toHaveBeenCalledWith(expect.any(HonoMock));
+    expect(serverMocks.registerAdminRoutesMock).toHaveBeenCalledWith(expect.any(HonoMock));
+    expect(serverMocks.registerResourceRoutesMock).toHaveBeenCalledWith(expect.any(HonoMock));
+    expect(serverMocks.registerStudioRoutesMock).toHaveBeenCalledWith(expect.any(HonoMock));
+    expect(serverMocks.registerSensoryRoutesMock).toHaveBeenCalledWith(expect.any(HonoMock));
 
     const userOptions = serverMocks.registerUserRoutesMock.mock.calls[0]?.[1] as {
       getLoaded?: () => typeof loadedData | undefined;

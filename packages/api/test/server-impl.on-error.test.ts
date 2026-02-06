@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface JsonContext {
   json: (body: unknown, status: number) => unknown;
@@ -22,10 +22,53 @@ vi.mock('hono', () => ({
   Hono: HonoMock,
 }));
 
+vi.mock('@minimal-rpg/db/node', () => ({
+  ensureLocalAdminUser: vi.fn(),
+  initStudioSessionsTable: vi.fn(),
+  cleanupExpiredSessions: vi.fn(),
+}));
+
+vi.mock('../src/routes/system/index.js', () => ({
+  registerSystemRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/admin/index.js', () => ({
+  registerAdminRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/game/index.js', () => ({
+  registerGameRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/users/index.js', () => ({
+  registerUserRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/resources/index.js', () => ({
+  registerResourceRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/studio.js', () => ({
+  registerStudioRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/sensory.js', () => ({
+  registerSensoryRoutes: vi.fn(),
+}));
+
+vi.mock('../src/routes/stream.js', () => ({
+  default: {},
+}));
+
 describe('server-impl error handler', () => {
   beforeEach(() => {
     vi.resetModules();
     HonoMock.lastOnError = undefined;
+    vi.stubEnv('DATABASE_URL', 'postgres://test');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('maps error objects with message to JSON response', async () => {

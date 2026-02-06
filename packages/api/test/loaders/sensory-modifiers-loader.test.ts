@@ -30,6 +30,8 @@ const validData = {
         '2': 'noticeable',
         '3': 'strong',
         '4': 'overpowering',
+        '5': '',
+        '6': '',
       },
       touch: {
         '0': '',
@@ -37,6 +39,8 @@ const validData = {
         '2': 'grimy',
         '3': 'sticky',
         '4': 'filthy',
+        '5': '',
+        '6': '',
       },
     },
   },
@@ -60,7 +64,9 @@ describe('loaders/sensory-modifiers-loader', () => {
     const result = await loadSensoryModifiers('/data');
 
     expect(result.bodyParts).toEqual(validData.bodyParts);
-    expect(result.decayRates).toEqual(validData.decayRates);
+    expect(result.decayRates.hand?.bodyPart).toBe('hand');
+    expect(result.decayRates.hand?.baseDecayPerTurn).toBe(2);
+    expect(result.decayRates.hand?.thresholds).toEqual([0, 5, 15, 30, 60, 200, 400]);
     expect(result.getModifier('hand', 'smell', 2)).toBe('noticeable');
     expect(result.getModifier('missing', 'smell', 2)).toBe('');
     expect(fsMocks.promises.readFile).toHaveBeenCalledWith(
