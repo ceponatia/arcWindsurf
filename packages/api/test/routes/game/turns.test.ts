@@ -79,7 +79,7 @@ interface TurnRoutesModule {
 const { registerTurnRoutes } = (await import('../../../src/routes/game/turns.js')) as TurnRoutesModule;
 
 const ownerEmail = 'owner@example.com';
-const sessionId = '11111111-1111-1111-1111-111111111111';
+const sessionId = '11111111-1111-4111-8111-111111111111';
 
 /**
  * Build a Hono app with turn routes registered.

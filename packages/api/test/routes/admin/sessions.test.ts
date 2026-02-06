@@ -9,7 +9,7 @@ vi.mock('@minimal-rpg/db/node', () => ({
   getEventsForSession: adminSessionMocks.getEventsForSessionMock,
 }));
 
-vi.mock('../../../../src/auth/middleware.js', () => ({
+vi.mock('../../../src/auth/middleware.js', () => ({
   requireAdmin: async (_c: unknown, next: () => Promise<void>) => next(),
 }));
 

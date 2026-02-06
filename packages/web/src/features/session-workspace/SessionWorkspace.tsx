@@ -31,6 +31,7 @@ import { RelationshipsStep } from './steps/RelationshipsStep.js';
 import { ReviewStep } from './steps/ReviewStep.js';
 import { CompactBuilder } from './CompactBuilder.js';
 import type { CharacterSummary, SettingSummary, PersonaSummary, TagSummary } from '../../types.js';
+import type { CreateFullSessionRequest } from '../../shared/api/types.js';
 import { API_BASE_URL } from '../../config.js';
 
 const API_BASE = API_BASE_URL;
@@ -109,41 +110,8 @@ interface SessionWorkspaceProps {
   onNavigateToSettingBuilder: () => void;
   onNavigateToCharacterBuilder: () => void;
   onNavigateToPersonaBuilder: () => void;
-  onCreateSession: (config: SessionCreateConfig) => Promise<string>;
+  onCreateSession: (config: CreateFullSessionRequest) => Promise<string>;
   onSessionCreated: (sessionId: string) => void;
-}
-
-export interface SessionCreateConfig {
-  settingId: string;
-  personaId?: string;
-  startLocationId?: string;
-  startTime?: {
-    hour: number;
-    minute: number;
-  };
-  secondsPerTurn?: number;
-  npcs: {
-    characterId: string;
-    role: string;
-    tier: string;
-    startLocationId?: string;
-    label?: string;
-  }[];
-  tags: {
-    tagId: string;
-    targetType: string;
-    targetEntityId?: string | null;
-  }[];
-  relationships: {
-    fromActorId: string;
-    toActorId: string;
-    relationshipType: string;
-    affinitySeed?: {
-      trust?: number;
-      fondness?: number;
-      fear?: number;
-    };
-  }[];
 }
 
 // ============================================================================
@@ -310,9 +278,9 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
     setCreateError(null);
 
     try {
-      const tagBindings: SessionCreateConfig['tags'] = [];
+      const tagBindings: NonNullable<CreateFullSessionRequest['tags']> = [];
       for (const t of selectedTags) {
-        const targetType = t.targetType as string;
+        const targetType = t.targetType;
 
         if (targetType === 'character' || targetType === 'location') {
           const ids = t.targetEntityIds ?? [];
@@ -334,13 +302,13 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
       }
 
       // Build config with conditional optional properties
-      const config: SessionCreateConfig = {
+      const config: CreateFullSessionRequest = {
         settingId: settingState.settingId,
         npcs: npcs.map((n: NpcSessionConfig) => {
-          const npcConfig: SessionCreateConfig['npcs'][number] = {
+          const npcConfig: CreateFullSessionRequest['npcs'][number] = {
             characterId: n.characterId,
-            role: n.role as string,
-            tier: n.tier as string,
+            role: n.role,
+            tier: n.tier,
           };
           if (n.startLocationId) npcConfig.startLocationId = n.startLocationId;
           if (n.label) npcConfig.label = n.label;
@@ -348,7 +316,7 @@ export const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
         }),
         tags: tagBindings,
         relationships: relationships.map((r: RelationshipConfig) => {
-          const relConfig: SessionCreateConfig['relationships'][number] = {
+          const relConfig: NonNullable<CreateFullSessionRequest['relationships']>[number] = {
             fromActorId: r.fromActorId,
             toActorId: r.toActorId,
             relationshipType: r.relationshipType,

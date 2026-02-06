@@ -1,6 +1,9 @@
 import React from 'react';
 import { CharactersPanel as CharactersPanelView } from '@minimal-rpg/ui';
-import type { CharactersPanelProps as CharactersPanelViewProps } from '@minimal-rpg/ui';
+import type {
+  CharactersPanelCharacterSummary,
+  CharactersPanelProps as CharactersPanelViewProps,
+} from '@minimal-rpg/ui';
 import { deleteCharacter } from '../../shared/api/client.js';
 
 interface CharactersPanelProps {
@@ -22,7 +25,12 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
   error,
   onRefresh,
 }) => {
-  const data = characters;
+  const data: CharactersPanelCharacterSummary[] | null = characters
+    ? characters.map((character) => ({
+        ...character,
+        tags: character.tags ?? null,
+      }))
+    : null;
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this character?')) return;
@@ -44,7 +52,7 @@ export const CharactersPanel: React.FC<CharactersPanelProps> = ({
       (() => {
         // no-op edit handler when none provided
       }),
-    characters: data ?? null,
+    characters: data,
     loading: loading ?? false,
     error: error ?? null,
     onRefresh:

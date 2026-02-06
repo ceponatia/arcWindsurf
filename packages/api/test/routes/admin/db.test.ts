@@ -13,7 +13,7 @@ vi.mock('@minimal-rpg/db/node', () => ({
   deleteDbRow: adminDbMocks.deleteDbRowMock,
 }));
 
-vi.mock('../../../../src/auth/middleware.js', () => ({
+vi.mock('../../../src/auth/middleware.js', () => ({
   requireAdmin: async (_c: unknown, next: () => Promise<void>) => next(),
 }));
 

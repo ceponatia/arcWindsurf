@@ -40,8 +40,8 @@ const { registerProfileRoutes } = (await import(
 )) as ProfileRoutesModule;
 
 const ownerEmail = 'owner@example.com';
-const characterId = '11111111-1111-1111-1111-111111111111';
-const settingId = '22222222-2222-2222-2222-222222222222';
+const characterId = '11111111-1111-4111-8111-111111111111';
+const settingId = '22222222-2222-4222-8222-222222222222';
 
 const characterProfile: CharacterProfile = {
   id: characterId,
@@ -104,12 +104,14 @@ describe('routes/users/profiles', () => {
         name: characterProfile.name,
         summary: characterProfile.summary,
         source: 'fs',
+        tags: characterProfile.tags,
       },
       {
         id: characterId,
         name: characterProfile.name,
         summary: characterProfile.summary,
         source: 'db',
+        tags: characterProfile.tags,
       },
     ]);
   });
@@ -177,6 +179,7 @@ describe('routes/users/profiles', () => {
         name: characterProfile.name,
         summary: characterProfile.summary,
         source: 'db',
+        tags: characterProfile.tags,
       },
     });
   });
@@ -219,6 +222,7 @@ describe('routes/users/profiles', () => {
         name: characterProfile.name,
         summary: characterProfile.summary,
         source: 'db',
+        tags: characterProfile.tags,
       },
     });
   });

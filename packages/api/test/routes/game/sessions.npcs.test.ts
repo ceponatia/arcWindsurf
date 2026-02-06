@@ -19,9 +19,13 @@ vi.mock('../../../src/auth/ownerEmail.js', () => ({
   getOwnerEmail: npcMocks.getOwnerEmailMock,
 }));
 
-vi.mock('@minimal-rpg/utils', () => ({
-  generateInstanceId: (id: string) => `${id}-instance`,
-}));
+vi.mock('@minimal-rpg/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@minimal-rpg/utils')>();
+  return {
+    ...actual,
+    generateInstanceId: (id: string) => `${id}-instance`,
+  };
+});
 
 interface NpcRoutesModule {
   handleListNpcs: (c: Context) => Promise<Response>;
@@ -49,6 +53,8 @@ const settingProfile: SettingProfile = {
   lore: 'A coastal city-state.',
 };
 
+const sessionId = '11111111-1111-4111-8111-111111111111';
+
 function makeContext(body?: unknown): Context {
   const jsonResponse = (value: unknown, status?: number) => {
     const init = status ? { status } : undefined;
@@ -57,7 +63,7 @@ function makeContext(body?: unknown): Context {
 
   return {
     req: {
-      param: vi.fn((key: string) => (key === 'id' ? 'session-1' : '')),
+      param: vi.fn((key: string) => (key === 'id' ? sessionId : '')),
       json: vi.fn(() => Promise.resolve(body)),
     },
     json: jsonResponse,
@@ -68,7 +74,7 @@ describe('routes/game/sessions npcs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     npcMocks.getOwnerEmailMock.mockReturnValue('owner@example.com');
-    npcMocks.getSessionMock.mockResolvedValue({ id: 'session-1' });
+    npcMocks.getSessionMock.mockResolvedValue({ id: sessionId });
   });
 
   afterEach(() => {

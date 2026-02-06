@@ -66,7 +66,11 @@ export function registerUserPreferencesRoutes(app: Hono): void {
         await getOrCreateDefaultUser();
       }
 
-      const preferences = await updateUserPreferences(userId, parsed.data);
+      const update =
+        parsed.data.workspaceMode !== undefined
+          ? { workspaceMode: parsed.data.workspaceMode }
+          : {};
+      const preferences = await updateUserPreferences(userId, update);
       return c.json({ ok: true, preferences }, 200);
     } catch (err) {
       console.error('[API] Failed to update user preferences:', err);

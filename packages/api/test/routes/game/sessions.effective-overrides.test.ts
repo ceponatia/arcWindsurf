@@ -62,6 +62,8 @@ const settingProfile: SettingProfile = {
   lore: 'A coastal city-state.',
 };
 
+const sessionId = '11111111-1111-4111-8111-111111111111';
+
 function makeContext(body?: unknown): Context {
   const jsonResponse = (value: unknown, status?: number) => {
     const init = status ? { status } : undefined;
@@ -70,7 +72,7 @@ function makeContext(body?: unknown): Context {
 
   return {
     req: {
-      param: vi.fn((key: string) => (key === 'id' ? 'session-1' : '')),
+      param: vi.fn((key: string) => (key === 'id' ? sessionId : '')),
       json: vi.fn(() => Promise.resolve(body)),
     },
     json: jsonResponse,
@@ -82,7 +84,7 @@ describe('routes/game/sessions effective and overrides', () => {
     vi.clearAllMocks();
     effectiveMocks.getOwnerEmailMock.mockReturnValue('owner@example.com');
     effectiveMocks.getSessionMock.mockResolvedValue({
-      id: 'session-1',
+      id: sessionId,
       playerCharacterId: 'char-1',
       settingId: 'setting-1',
     });

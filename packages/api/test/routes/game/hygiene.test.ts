@@ -25,7 +25,7 @@ const { registerHygieneRoutes } = (await import(
   '../../../src/routes/game/hygiene.js'
 )) as HygieneRoutesModule;
 
-const sessionId = '11111111-1111-1111-1111-111111111111';
+const sessionId = '11111111-1111-4111-8111-111111111111';
 const npcId = 'npc-1';
 const bodyPart = BODY_REGIONS[0] ?? 'torso';
 

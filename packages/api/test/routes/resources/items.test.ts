@@ -31,8 +31,8 @@ const { registerItemRoutes } = (await import(
 )) as ItemRoutesModule;
 
 const ownerEmail = 'owner@example.com';
-const itemId = '11111111-1111-1111-1111-111111111111';
-const otherId = '22222222-2222-2222-2222-222222222222';
+const itemId = '11111111-1111-4111-8111-111111111111';
+const otherId = '22222222-2222-4222-8222-222222222222';
 
 const genericItem = {
   id: itemId,

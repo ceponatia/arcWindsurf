@@ -52,10 +52,16 @@ vi.mock('../../../src/auth/middleware.js', () => ({
   getAuthUser: crudMocks.getAuthUserMock,
 }));
 
-vi.mock('@minimal-rpg/utils', () => ({
-  generateId: () => 'session-1',
-  generateInstanceId: (id: string) => `${id}-instance`,
-}));
+const sessionId = '11111111-1111-4111-8111-111111111111';
+
+vi.mock('@minimal-rpg/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@minimal-rpg/utils')>();
+  return {
+    ...actual,
+    generateId: () => sessionId,
+    generateInstanceId: (id: string) => `${id}-instance`,
+  };
+});
 
 interface SessionCrudModule {
   handleCreateSession: (c: Context, getLoaded: () => { characters: CharacterProfile[]; settings: SettingProfile[] } | undefined) => Promise<Response>;
@@ -97,12 +103,18 @@ function makeContext(body?: unknown): Context {
     return new Response(JSON.stringify(value), init);
   };
 
+  const bodyResponse = (value: string | null, status?: number) => {
+    const init = status ? { status } : undefined;
+    return new Response(value, init);
+  };
+
   return {
     req: {
-      param: vi.fn((key: string) => (key === 'id' ? 'session-1' : '')),
+      param: vi.fn((key: string) => (key === 'id' ? sessionId : '')),
       json: vi.fn(() => Promise.resolve(body)),
     },
     json: jsonResponse,
+    body: bodyResponse,
   } as unknown as Context;
 }
 
@@ -112,6 +124,7 @@ describe('routes/game/sessions create/delete', () => {
     crudMocks.getOwnerEmailMock.mockReturnValue('owner@example.com');
     crudMocks.getEventsForSessionMock.mockResolvedValue([]);
     crudMocks.getSessionProjectionMock.mockResolvedValue(null);
+    crudMocks.deleteSessionMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -127,7 +140,7 @@ describe('routes/game/sessions create/delete', () => {
 
   it('creates a session when inputs are valid', async () => {
     crudMocks.createSessionMock.mockResolvedValue({
-      id: 'session-1',
+      id: sessionId,
       playerCharacterId: null,
       settingId: null,
       createdAt: new Date('2026-02-06T12:00:00.000Z'),
@@ -147,13 +160,13 @@ describe('routes/game/sessions create/delete', () => {
 
     expect(res.status).toBe(201);
     const body = (await res.json()) as { id: string };
-    expect(body.id).toBe('session-1');
+    expect(body.id).toBe(sessionId);
     expect(crudMocks.createSessionTagBindingMock).toHaveBeenCalled();
   });
 
   it('rolls back when actor state creation fails', async () => {
     crudMocks.createSessionMock.mockResolvedValue({
-      id: 'session-1',
+      id: sessionId,
       playerCharacterId: null,
       settingId: null,
       createdAt: new Date('2026-02-06T12:00:00.000Z'),
@@ -171,7 +184,7 @@ describe('routes/game/sessions create/delete', () => {
     }));
 
     expect(res.status).toBe(500);
-    expect(crudMocks.deleteSessionMock).toHaveBeenCalledWith('session-1', 'owner@example.com');
+    expect(crudMocks.deleteSessionMock).toHaveBeenCalledWith(sessionId, 'owner@example.com');
   });
 
   it('deletes a session', async () => {
@@ -242,7 +255,7 @@ describe('routes/game/sessions create-full', () => {
 
     expect(res.status).toBe(201);
     const body = (await res.json()) as { id: string; npcs: { templateId: string }[] };
-    expect(body.id).toBe('session-1');
+    expect(body.id).toBe(sessionId);
     expect(body.npcs[0]?.templateId).toBe('char-1');
   });
 });

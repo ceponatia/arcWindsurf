@@ -61,8 +61,8 @@ const { registerLocationMapRoutes } = (await import(
 )) as LocationRoutesModule;
 
 const ownerEmail = 'owner@example.com';
-const mapId = '11111111-1111-1111-1111-111111111111';
-const prefabId = '22222222-2222-2222-2222-222222222222';
+const mapId = '11111111-1111-4111-8111-111111111111';
+const prefabId = '22222222-2222-4222-8222-222222222222';
 
 const createdAt = new Date('2026-02-03T12:00:00.000Z');
 const updatedAt = new Date('2026-02-03T12:30:00.000Z');

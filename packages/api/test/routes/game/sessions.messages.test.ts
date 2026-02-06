@@ -38,18 +38,26 @@ const { handlePatchMessage, handleDeleteMessage } = (await import(
   '../../../src/routes/game/sessions/session-messages.js'
 )) as MessageModule;
 
+const sessionId = '11111111-1111-4111-8111-111111111111';
+
 function makeContext(body?: unknown): Context {
   const jsonResponse = (value: unknown, status?: number) => {
     const init = status ? { status } : undefined;
     return new Response(JSON.stringify(value), init);
   };
 
+  const bodyResponse = (value: string | null, status?: number) => {
+    const init = status ? { status } : undefined;
+    return new Response(value, init);
+  };
+
   return {
     req: {
-      param: vi.fn((key: string) => (key === 'id' ? 'session-1' : '1')),
+      param: vi.fn((key: string) => (key === 'id' ? sessionId : '1')),
       json: vi.fn(() => Promise.resolve(body)),
     },
     json: jsonResponse,
+    body: bodyResponse,
   } as unknown as Context;
 }
 
@@ -57,7 +65,7 @@ describe('routes/game/sessions messages maintenance', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     messageMocks.getOwnerEmailMock.mockReturnValue('owner@example.com');
-    messageMocks.getSessionMock.mockResolvedValue({ id: 'session-1' });
+    messageMocks.getSessionMock.mockResolvedValue({ id: sessionId });
   });
 
   afterEach(() => {

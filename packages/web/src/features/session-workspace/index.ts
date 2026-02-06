@@ -3,7 +3,6 @@
  */
 
 export { SessionWorkspace } from './SessionWorkspace.js';
-export type { SessionCreateConfig } from './SessionWorkspace.js';
 export { CompactBuilder } from './CompactBuilder.js';
 export {
   useWorkspaceStore,

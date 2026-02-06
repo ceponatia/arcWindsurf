@@ -124,7 +124,7 @@ describe('routes/game/schedules', () => {
     });
 
     const app = makeApp();
-    const res = await app.request('/schedule-templates/template-1');
+    const res = await app.request('/schedule-templates/11111111-1111-4111-8111-111111111111');
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ ok: false, error: 'Schedule template not found' });
@@ -181,7 +181,7 @@ describe('routes/game/schedules', () => {
     });
 
     const app = makeApp();
-    const res = await app.request('/schedule-templates/template-1', {
+    const res = await app.request('/schedule-templates/11111111-1111-4111-8111-111111111111', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated' }),
@@ -199,7 +199,7 @@ describe('routes/game/schedules', () => {
     });
 
     const app = makeApp();
-    const res = await app.request('/schedule-templates/template-1', { method: 'DELETE' });
+    const res = await app.request('/schedule-templates/11111111-1111-4111-8111-111111111111', { method: 'DELETE' });
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
@@ -218,7 +218,7 @@ describe('routes/game/schedules', () => {
     });
 
     const app = makeApp();
-    const res = await app.request('/sessions/11111111-1111-1111-1111-111111111111/npc-schedules');
+    const res = await app.request('/sessions/11111111-1111-4111-8111-111111111111/npc-schedules');
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { ok: boolean; schedules: { npcId: string }[] };
@@ -231,7 +231,7 @@ describe('routes/game/schedules', () => {
 
     const app = makeApp();
     const res = await app.request(
-      '/sessions/11111111-1111-1111-1111-111111111111/npc-schedules/npc-1'
+      '/sessions/11111111-1111-4111-8111-111111111111/npc-schedules/npc-1'
     );
 
     expect(res.status).toBe(404);
@@ -248,7 +248,7 @@ describe('routes/game/schedules', () => {
 
     const app = makeApp();
     const res = await app.request(
-      '/sessions/11111111-1111-1111-1111-111111111111/npc-schedules',
+      '/sessions/11111111-1111-4111-8111-111111111111/npc-schedules',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -270,7 +270,7 @@ describe('routes/game/schedules', () => {
 
     const app = makeApp();
     const res = await app.request(
-      '/sessions/11111111-1111-1111-1111-111111111111/npc-schedules',
+      '/sessions/11111111-1111-4111-8111-111111111111/npc-schedules',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -294,7 +294,7 @@ describe('routes/game/schedules', () => {
 
     const app = makeApp();
     const res = await app.request(
-      '/sessions/11111111-1111-1111-1111-111111111111/npc-schedules/npc-1',
+      '/sessions/11111111-1111-4111-8111-111111111111/npc-schedules/npc-1',
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -318,7 +318,7 @@ describe('routes/game/schedules', () => {
 
     const app = makeApp();
     const res = await app.request(
-      '/sessions/11111111-1111-1111-1111-111111111111/npc-schedules/npc-1',
+      '/sessions/11111111-1111-4111-8111-111111111111/npc-schedules/npc-1',
       { method: 'DELETE' }
     );
 
