@@ -122,4 +122,20 @@ describe('routes/system/usage', () => {
 
     errorSpy.mockRestore();
   });
+
+  it('returns 500 when setting usage query fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    usageRouteMocks.orderByMock.mockRejectedValue(new Error('db failure'));
+
+    const app = makeApp();
+    const res = await app.request('/entity-usage/settings/setting-1');
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: 'Failed to fetch setting usage',
+    });
+
+    errorSpy.mockRestore();
+  });
 });

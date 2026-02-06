@@ -145,6 +145,15 @@ describe('routes/system/auth', () => {
     await expect(res.json()).resolves.toEqual({ ok: false, error: 'Forbidden' });
   });
 
+  it('denies invite-only access when user email is missing', async () => {
+    setEnv({ INVITE_ONLY: 'true', INVITE_EMAILS: 'allowed@example.com' });
+    const app = makeApp({ identifier: 'user@example.com', role: 'user', email: null });
+    const res = await app.request('/auth/me');
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({ ok: false, error: 'Forbidden' });
+  });
+
   it('allows invited users on /auth/me (case-insensitive)', async () => {
     setEnv({ INVITE_ONLY: 'true', INVITE_EMAILS: 'Allowed@Example.com' });
     const app = makeApp({

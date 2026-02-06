@@ -84,10 +84,6 @@ World bus init, service start, data loading, CORS, route registration, error exi
 
 ## Missing or thin coverage by area
 
-Routes - system
-- src/routes/system/auth.ts: login flow, auth/me with invite-only filtering.
-- src/routes/system/usage.ts: entity usage queries and error handling.
-
 Routes - admin
 - src/routes/admin/db.ts: overview/path/delete semantics and error mapping.
 - src/routes/admin/sessions.ts: tooling-failure extraction and limit handling.
