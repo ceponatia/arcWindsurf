@@ -42,11 +42,20 @@ Mapper functions for items, messages, profiles, session list items.
 Event persistence sequencing, error handling.
 Tier service score updates and promotion logic.
 TurnOrchestrator basic processing and emit/tick behavior.
+Encounter narration, simulation runs, occupancy hooks, projection lifecycle.
+Overrides/effective profile helpers and sensory template loading.
 
 - api/test/services/event-persistence.test.ts
 - api/test/services/tier-service.test.ts
 - api/test/services/turn-orchestrator.test.ts
 - api/test/services/turn-orchestrator.integration.test.ts (skipped unless OPENROUTER_API_KEY)
+- api/test/services/encounter-service.test.ts
+- api/test/services/projection-service.test.ts
+- api/test/services/simulation-service.test.ts
+- api/test/services/simulation-hooks.test.ts
+- api/test/services/sensoryTemplates.test.ts
+- api/test/services/instances.test.ts
+- api/test/services/schedule-service.test.ts
 
 ### Loaders (partial)
 
@@ -103,16 +112,6 @@ World bus init, service start, data loading, CORS, route registration, error exi
 
 ## Missing or thin coverage by area
 
-### Services (untested modules)
-
-- src/services/encounter-service.ts: narration generation, deterministic phrasing.
-- src/services/projection-service.ts: manager lifecycle and replay logic.
-- src/services/simulation-service.ts: prioritization, cache rules, triggers, time skip output.
-- src/services/simulation-hooks.ts: turn/period/location/time-skip hooks and bulk updates.
-- src/services/sensoryTemplates.ts: disk scan refresh, fallback to static templates.
-- src/services/instances.ts: override and effective profile flow.
-- src/services/schedule-service.ts: API re-export wiring (smoke test).
-
 ### Game tools (LLM function calls)
 
 - src/game/tools/definitions.ts: tool schemas and list.
@@ -136,8 +135,8 @@ World bus init, service start, data loading, CORS, route registration, error exi
 3) Studio routes (modern flow)
 - /studio/conversation, /studio/conversation/stream, /studio/summarize, /studio/suggest-prompt, /studio/dilemma endpoints, session CRUD.
 
-4) Game services and tools
-- Simulation service/hooks, encounter narration, gameplay tool handlers, session tool handlers.
+4) Game tools and handlers
+- Gameplay tool handlers, session tool handlers.
 
-5) Loader and sensory/template services
-- loadData, resolveDataDir default fallback, deleteCharacterFile error handling, sensory modifiers missing file/schema, live sensory templates.
+5) Loader services
+- loadData, resolveDataDir default fallback, deleteCharacterFile error handling, sensory modifiers missing file/schema.
