@@ -84,10 +84,6 @@ World bus init, service start, data loading, CORS, route registration, error exi
 
 ## Missing or thin coverage by area
 
-Loaders
-- src/loaders/loader.ts: loadData success/failure, resolveDataDir default fallback, deleteCharacterFile error handling.
-- src/loaders/sensory-modifiers-loader.ts: missing file error, schema validation failure.
-
 Routes - system
 - src/routes/system/auth.ts: login flow, auth/me with invite-only filtering.
 - src/routes/system/usage.ts: entity usage queries and error handling.

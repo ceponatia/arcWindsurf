@@ -77,6 +77,22 @@ describe('loaders/sensory-modifiers-loader', () => {
     );
   });
 
+  it('throws when the file is missing', async () => {
+    fsMocks.promises.readFile.mockRejectedValue(new Error('missing file'));
+
+    await expect(loadSensoryModifiers('/data')).rejects.toThrow(
+      `Sensory modifiers file not found: ${path.join('/data', 'sensory-modifiers.json')}`
+    );
+  });
+
+  it('throws when validation fails', async () => {
+    fsMocks.promises.readFile.mockResolvedValue(JSON.stringify({ bodyParts: {} }));
+
+    await expect(loadSensoryModifiers('/data')).rejects.toThrow(
+      'Invalid sensory modifiers data'
+    );
+  });
+
   it('loads modifiers synchronously', () => {
     fsMocks.readFileSync.mockReturnValue(JSON.stringify(validData));
 
