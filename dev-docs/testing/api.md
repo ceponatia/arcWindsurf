@@ -86,14 +86,11 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/sessions.get-messages.test.ts
 - api/test/routes/sessions.turns-unsubscribe.test.ts
 - api/test/routes/users/workspace-drafts.test.ts
+- api/test/routes/users/profiles.test.ts
+- api/test/routes/users/preferences.test.ts
+- api/test/routes/users/personas.test.ts
 
 ## Missing or thin coverage by area
-
-### Routes - users
-
-- src/routes/users/profiles.ts: characters + settings list/get/create/delete, file-vs-db behavior, owner checks.
-- src/routes/users/preferences.ts: get/update preferences and workspace mode endpoints.
-- src/routes/users/personas.ts: persona CRUD, session attachment, actor state wiring.
 
 ### Routes - game
 
