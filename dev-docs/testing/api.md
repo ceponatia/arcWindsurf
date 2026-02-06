@@ -75,6 +75,8 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/system/config.test.ts
 - api/test/routes/system/auth.test.ts
 - api/test/routes/system/usage.test.ts
+- api/test/routes/admin/db.test.ts
+- api/test/routes/admin/sessions.test.ts
 - api/test/routes/studio.generate-stream.test.ts
 - api/test/routes/studio-error-handling.test.ts
 - api/test/routes/sessions.get-session.test.ts
@@ -83,10 +85,6 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/users/workspace-drafts.test.ts
 
 ## Missing or thin coverage by area
-
-Routes - admin
-- src/routes/admin/db.ts: overview/path/delete semantics and error mapping.
-- src/routes/admin/sessions.ts: tooling-failure extraction and limit handling.
 
 Routes - resources
 - src/routes/resources/items.ts: list/filter, create/update/delete auth rules, invalid data handling.
