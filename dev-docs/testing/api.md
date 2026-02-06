@@ -78,6 +78,8 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/admin/db.test.ts
 - api/test/routes/admin/sessions.test.ts
 - api/test/routes/resources/items.test.ts
+- api/test/routes/resources/locations.test.ts
+- api/test/routes/resources/tags.test.ts
 - api/test/routes/studio.generate-stream.test.ts
 - api/test/routes/studio-error-handling.test.ts
 - api/test/routes/sessions.get-session.test.ts
@@ -88,9 +90,6 @@ World bus init, service start, data loading, CORS, route registration, error exi
 ## Missing or thin coverage by area
 
 Routes - resources
-- src/routes/resources/locations.ts: map and prefab CRUD, duplicate map, invalid location data handling.
-- src/routes/resources/tags.ts: tag CRUD, session bindings, filtering and toggle behavior.
-
 Routes - users
 - src/routes/users/profiles.ts: characters + settings list/get/create/delete, file-vs-db behavior, owner checks.
 - src/routes/users/preferences.ts: get/update preferences and workspace mode endpoints.
