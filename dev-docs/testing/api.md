@@ -110,14 +110,14 @@ World bus init, service start, data loading, CORS, route registration, error exi
 - api/test/routes/stream.test.ts
 - api/test/routes/sensory.test.ts
 
+### Game tools
+
+- api/test/game/tools/definitions.test.ts
+- api/test/game/tools/tool-args.test.ts
+- api/test/game/tools/handlers.test.ts
+- api/test/game/tools/gameplay-handlers.test.ts
+
 ## Missing or thin coverage by area
-
-### Game tools (LLM function calls)
-
-- src/game/tools/definitions.ts: tool schemas and list.
-- src/game/tools/handlers.ts: session tool queries, argument parsing, error paths.
-- src/game/tools/gameplay-handlers.ts: examine/navigate/use item flows, inventory update and projections.
-- src/game/tools/tool-args.ts: schema validation.
 
 ### Data and type-only modules
 
