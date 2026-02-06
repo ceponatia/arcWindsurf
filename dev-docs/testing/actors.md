@@ -2,6 +2,7 @@
 
 Date: 2026-02-04
 Scope: packages/actors (tests + source review)
+Status: Completed
 
 ## Existing tests
 

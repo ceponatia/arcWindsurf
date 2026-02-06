@@ -2,77 +2,91 @@
 
 Date: 2026-02-04
 Scope: packages/api (tests + source review)
+Status: In Progress
 
-## Existing tests
+## Current coverage
 
-Auth
-- test/auth/middleware.test.ts
-- test/auth/owner-email.test.ts
-- test/auth/supabase.test.ts
-- test/auth/token.test.ts
+All tests below are in `@minimal-rpg/api` (`packages/api/test/`) unless noted.
 
-Utils
-- test/utils/config.test.ts
-- test/utils/version.test.ts
-- test/utils/uuid.test.ts
-- test/utils/json.test.ts
-- test/utils/request-validation.test.ts
-- test/utils/health.test.ts
-- test/utils/responses.test.ts
+### Auth and config
 
-Mappers + middleware
-- test/mappers/item-mappers.test.ts
-- test/mappers/message-mappers.test.ts
-- test/mappers/profile-mappers.test.ts
-- test/mappers/session-mappers.test.ts
-- test/rate-limiter.test.ts
+Local JWT tokens, Supabase JWT verification, invite-only logic, auth middleware behavior.
+Config defaults and env parsing, version reading, health checks.
 
-Services
-- test/services/event-persistence.test.ts
-- test/services/tier-service.test.ts
-- test/services/turn-orchestrator.test.ts
-- test/services/turn-orchestrator.integration.test.ts (skipped unless OPENROUTER_API_KEY)
+- api/test/auth/middleware.test.ts
+- api/test/auth/owner-email.test.ts
+- api/test/auth/supabase.test.ts
+- api/test/auth/token.test.ts
+- api/test/utils/config.test.ts
+- api/test/utils/version.test.ts
+- api/test/utils/health.test.ts
 
-Routes
-- test/routes/system/config.test.ts
-- test/routes/studio.generate-stream.test.ts
-- test/routes/studio-error-handling.test.ts
-- test/routes/sessions.get-session.test.ts
-- test/routes/sessions.get-messages.test.ts
-- test/routes/sessions.turns-unsubscribe.test.ts
-- test/routes/users/workspace-drafts.test.ts
+### Utils and mappers
 
-## What is covered today
+Request validation helpers, response helpers, UUID validation.
+JSON BigInt conversion utilities. Rate-limiter middleware.
+Mapper functions for items, messages, profiles, session list items.
 
-Auth + config
-- Local JWT tokens, supabase JWT verification, invite-only logic, auth middleware behavior.
-- Config defaults and env parsing, version reading, health checks.
+- api/test/utils/uuid.test.ts
+- api/test/utils/json.test.ts
+- api/test/utils/request-validation.test.ts
+- api/test/utils/responses.test.ts
+- api/test/rate-limiter.test.ts
+- api/test/mappers/item-mappers.test.ts
+- api/test/mappers/message-mappers.test.ts
+- api/test/mappers/profile-mappers.test.ts
+- api/test/mappers/session-mappers.test.ts
 
-Utils and mappers
-- Request validation helpers, response helpers, UUID validation.
-- JSON BigInt conversion utilities.
-- Mapper functions for items, messages, profiles, session list items.
+### Core services (partial)
 
-Core services (partial)
-- Event persistence sequencing, error handling.
-- Tier service score updates and promotion logic.
-- TurnOrchestrator basic processing and emit/tick behavior.
+Event persistence sequencing, error handling.
+Tier service score updates and promotion logic.
+TurnOrchestrator basic processing and emit/tick behavior.
 
-Routes (partial)
-- /system/config health + config endpoints.
-- /studio/generate, /studio/generate/stream, /studio/infer-traits error handling.
-- /sessions/:id and /sessions/:id/messages for non-UUID actorId handling.
-- /sessions/:id/turns unsubscribe-on-error path.
-- /workspace-drafts full CRUD + error paths.
+- api/test/services/event-persistence.test.ts
+- api/test/services/tier-service.test.ts
+- api/test/services/turn-orchestrator.test.ts
+- api/test/services/turn-orchestrator.integration.test.ts (skipped unless OPENROUTER_API_KEY)
+
+### Loaders (partial)
+
+resolveDataDir env-vs-arg precedence, deleteCharacterFile match/skip.
+Sensory modifiers async/sync load happy path, invalid JSON rejection.
+
+- api/test/loaders/loader.test.ts
+- api/test/loaders/sensory-modifiers-loader.test.ts
+
+### Server bootstrap (partial)
+
+World bus init, service start, data loading, CORS, route registration, error exit.
+
+- api/test/server-impl.test.ts
+- api/test/server-impl.on-error.test.ts
+- api/test/server.test.ts
+
+### Routes (partial)
+
+/system/config health + config endpoints.
+/studio/generate, /studio/generate/stream, /studio/infer-traits error handling.
+/sessions/:id and /sessions/:id/messages for non-UUID actorId handling.
+/sessions/:id/turns unsubscribe-on-error path.
+/workspace-drafts full CRUD + error paths.
+
+- api/test/routes/system/config.test.ts
+- api/test/routes/system/auth.test.ts
+- api/test/routes/system/usage.test.ts
+- api/test/routes/studio.generate-stream.test.ts
+- api/test/routes/studio-error-handling.test.ts
+- api/test/routes/sessions.get-session.test.ts
+- api/test/routes/sessions.get-messages.test.ts
+- api/test/routes/sessions.turns-unsubscribe.test.ts
+- api/test/routes/users/workspace-drafts.test.ts
 
 ## Missing or thin coverage by area
 
-Server bootstrap
-- src/server.ts and src/server-impl.ts: world bus init, service start, data loading, CORS, route registration, error handler.
-
 Loaders
-- src/loaders/loader.ts: resolveDataDir behavior, loadData success/failure, deleteCharacterFile path matching.
-- src/loaders/sensory-modifiers-loader.ts: happy path and error paths for missing or invalid JSON.
+- src/loaders/loader.ts: loadData success/failure, resolveDataDir default fallback, deleteCharacterFile error handling.
+- src/loaders/sensory-modifiers-loader.ts: missing file error, schema validation failure.
 
 Routes - system
 - src/routes/system/auth.ts: login flow, auth/me with invite-only filtering.
@@ -136,4 +150,4 @@ Data and type-only modules
 - Simulation service/hooks, encounter narration, gameplay tool handlers, session tool handlers.
 
 5) Loader and sensory/template services
-- loadData, resolveDataDir, deleteCharacterFile, sensory modifiers loader, live sensory templates.
+- loadData, resolveDataDir default fallback, deleteCharacterFile error handling, sensory modifiers missing file/schema, live sensory templates.
