@@ -65,7 +65,7 @@ vi.mock('@minimal-rpg/services', () => ({
 
 vi.mock('@minimal-rpg/llm', () => ({
   createOpenRouterProviderFromEnv: () => null,
-  OpenAIProvider: class {},
+  OpenAIProvider: class { },
 }));
 
 vi.mock('../../../src/utils/env.js', () => ({

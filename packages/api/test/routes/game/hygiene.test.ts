@@ -81,11 +81,11 @@ describe('routes/game/hygiene', () => {
       }) => {
         const existing = actorStateStore.get(stateKey(session, actorId));
         actorStateStore.set(stateKey(session, actorId), {
-        actorType: existing?.actorType ?? 'npc',
-        actorId,
-        state: state as Record<string, unknown>,
-        lastEventSeq: existing?.lastEventSeq ?? 0n,
-      });
+          actorType: existing?.actorType ?? 'npc',
+          actorId,
+          state: state as Record<string, unknown>,
+          lastEventSeq: existing?.lastEventSeq ?? 0n,
+        });
       }
     );
 
