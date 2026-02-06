@@ -13,8 +13,8 @@ const handlerMocks = vi.hoisted(() => ({
   eqMock: vi.fn(),
   andMock: vi.fn(),
   descMock: vi.fn(),
-  actorStateRows: [] as Array<Record<string, unknown>>,
-  eventRows: [] as Array<Record<string, unknown>>,
+  actorStateRows: [] as Record<string, unknown>[],
+  eventRows: [] as Record<string, unknown>[],
 }));
 
 vi.mock('@minimal-rpg/db/node', () => ({
@@ -33,13 +33,13 @@ vi.mock('../../../src/game/tools/gameplay-handlers.js', () => ({
   handleUseItem: handlerMocks.handleUseItemMock,
 }));
 
-function createQuery(rows: Array<Record<string, unknown>>) {
+function createQuery(rows: Record<string, unknown>[]) {
   const query = {
     where: () => query,
     orderBy: () => query,
     limit: () => Promise.resolve(rows),
     then: (
-      onFulfilled: (value: Array<Record<string, unknown>>) => unknown,
+      onFulfilled: (value: Record<string, unknown>[]) => unknown,
       onRejected?: (reason: unknown) => unknown
     ) => Promise.resolve(rows).then(onFulfilled, onRejected),
     catch: (onRejected: (reason: unknown) => unknown) => Promise.resolve(rows).catch(onRejected),
